@@ -168,3 +168,22 @@ okx_rest:
 # entries (MAXLEN ~), so the bus never grows without bound; Postgres is the record.
 event_bus:
   stream_maxlen: 100000
+
+# ATL-38: War Room API (brief §12, §16). `agents` maps each of the nine agent keys (brief §7) to the
+# extra @mention spellings that resolve to it; "@Historian", "@historian", "@market_scout" and
+# "@MarketScout" always resolve to the key itself (case-insensitive, "_"/"-" ignored).
+warroom:
+  page_limit_default: 50
+  page_limit_max: 100
+  post_per_minute: 30
+  content_max_chars: 4000
+  agents:
+    orchestrator: [orch]
+    market_scout: [scout]
+    news_intelligence: [news, newsintel]
+    historian: []
+    technical_analyst: [technical, ta]
+    derivatives_sentiment: [derivatives, sentiment]
+    strategist: []
+    devils_advocate: [devil, devilsadvocate, da]
+    portfolio_manager: [pm, portfolio]

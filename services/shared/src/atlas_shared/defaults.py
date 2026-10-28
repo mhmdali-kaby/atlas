@@ -211,4 +211,41 @@ DEFAULTS: Final[dict[str, Any]] = {
     "event_bus": {
         "stream_maxlen": 100000,
     },
+    "warroom": {
+        "page_limit_default": 50,
+        "page_limit_max": 100,
+        "post_per_minute": 30,
+        "content_max_chars": 4000,
+        "agents": {
+            "orchestrator": [
+                "orch",
+            ],
+            "market_scout": [
+                "scout",
+            ],
+            "news_intelligence": [
+                "news",
+                "newsintel",
+            ],
+            "historian": [],
+            "technical_analyst": [
+                "technical",
+                "ta",
+            ],
+            "derivatives_sentiment": [
+                "derivatives",
+                "sentiment",
+            ],
+            "strategist": [],
+            "devils_advocate": [
+                "devil",
+                "devilsadvocate",
+                "da",
+            ],
+            "portfolio_manager": [
+                "pm",
+                "portfolio",
+            ],
+        },
+    },
 }
