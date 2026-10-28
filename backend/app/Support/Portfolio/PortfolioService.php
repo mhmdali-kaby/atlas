@@ -146,10 +146,20 @@ final class PortfolioService
      */
     public function holdings(string $env): array
     {
-        $rows = DB::table('balances_snapshots as b')
+        $query = DB::table('balances_snapshots as b')
             ->where('b.env', $env)
-            ->whereRaw('b.taken_at = (SELECT max(taken_at) FROM balances_snapshots m WHERE m.env = b.env AND m.account = b.account)')
-            ->get();
+            ->whereRaw('b.taken_at = (SELECT max(taken_at) FROM balances_snapshots m WHERE m.env = b.env AND m.account = b.account)');
+
+        // ATL-27: an account's newest tick counts only when it is also the newest successful
+        // account sync (ATL-10 stream 'account'); otherwise that account emptied (or stopped
+        // syncing) since, and its last-known balances are stale. No row for this env (e.g. the
+        // PortfolioDemoSeeder, which never writes stream 'account') keeps the old behaviour.
+        $accountSyncedAt = $this->accountSyncedAt($env);
+        if ($accountSyncedAt !== null) {
+            $query->where('b.taken_at', $accountSyncedAt);
+        }
+
+        $rows = $query->get();
 
         $total = BigDecimal::zero();
         $items = [];
@@ -201,7 +211,13 @@ final class PortfolioService
      */
     public function positions(string $env): array
     {
-        $takenAt = DB::table('positions_snapshots')->where('env', $env)->max('taken_at');
+        // ATL-27: a tick that closes the last open position writes no positions_snapshots rows,
+        // so the newest row can be older than the newest sync. Trust it only when it is also the
+        // newest successful account sync (ATL-10 stream 'account'); otherwise there are no open
+        // positions now. No row for this env (e.g. the PortfolioDemoSeeder) keeps the old
+        // behaviour of just reading the newest tick.
+        $accountSyncedAt = $this->accountSyncedAt($env);
+        $takenAt = $accountSyncedAt ?? DB::table('positions_snapshots')->where('env', $env)->max('taken_at');
         if ($takenAt === null) {
             return ['taken_at' => null, 'items' => []];
         }
@@ -338,6 +354,18 @@ final class PortfolioService
             ->selectRaw('coalesce(sum(bal_chg), 0) AS s')->value('s');
 
         return Money::of($sum) ?? BigDecimal::zero();
+    }
+
+    /**
+     * The latest successful account-sync tick (ATL-10, `sync_status` stream `account`), raw
+     * (un-parsed) so it can be compared exactly against `taken_at` columns in SQL. Null when no
+     * such row exists for this env (e.g. the PortfolioDemoSeeder never writes stream 'account'),
+     * which callers treat as "nothing to check against, keep the old behaviour".
+     */
+    private function accountSyncedAt(string $env): ?string
+    {
+        return DB::table('sync_status')->where('env', $env)->where('stream', 'account')
+            ->whereNotNull('last_success_at')->value('last_success_at');
     }
 
     private function settleCcy(object $row): ?string
