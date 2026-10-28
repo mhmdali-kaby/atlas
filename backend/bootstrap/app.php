@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\SecurityHeaders;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -14,7 +15,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // Sanctum SPA cookie auth for requests from the stateful origins in config/sanctum.php.
+        $middleware->statefulApi();
+        $middleware->append(SecurityHeaders::class);
+        // There is no server-rendered login page (the SPA owns it), so guests are never
+        // redirected; unauthenticated API calls get a JSON 401 even without Accept: application/json.
+        $middleware->redirectGuestsTo(fn () => null);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

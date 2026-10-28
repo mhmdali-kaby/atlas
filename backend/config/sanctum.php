@@ -18,12 +18,18 @@ return [
     |
     */
 
-    'stateful' => explode(',', env('SANCTUM_STATEFUL_DOMAINS', sprintf(
-        '%s%s',
-        'localhost,localhost:3000,127.0.0.1,127.0.0.1:8000,::1',
-        Sanctum::currentApplicationUrlWithPort(),
-        // Sanctum::currentRequestHost(),
-    ))),
+    'stateful' => array_values(array_filter([
+        // host:port of the SPA (FRONTEND_URL) and of the API itself (APP_URL).
+        (static function (): ?string {
+            $parts = parse_url((string) env('FRONTEND_URL', 'http://localhost:3000'));
+            if (! is_array($parts) || ! isset($parts['host'])) {
+                return null;
+            }
+
+            return $parts['host'].(isset($parts['port']) ? ':'.$parts['port'] : '');
+        })(),
+        ltrim(Sanctum::currentApplicationUrlWithPort(), ','),
+    ])),
 
     /*
     |--------------------------------------------------------------------------
