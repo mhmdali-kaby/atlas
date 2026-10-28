@@ -20,7 +20,7 @@ export function AppShell() {
 
 export function EnvFooter({ label }: { label: string }) {
   return (
-    <footer role="contentinfo" className="px-6 py-2 text-xs opacity-60">
+    <footer role="contentinfo" className="px-6 py-2 text-caption text-label-secondary">
       {label}
     </footer>
   )
