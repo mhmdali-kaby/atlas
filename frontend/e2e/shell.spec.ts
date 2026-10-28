@@ -154,8 +154,8 @@ for (const [width, lang] of [
     expect(mainBox.width).toBeGreaterThan(width - 270) // at 768 the 248px sidebar is in the grid
     if (width <= 760) expect(mainBox.width).toBeGreaterThan(width - 4)
     expect((await title.boundingBox())!.width).toBeGreaterThan(30)
-    await expect(page.getByRole('heading', { level: 2 })).toBeVisible()
-    expect((await page.getByRole('heading', { level: 2 }).boundingBox())!.width).toBeGreaterThan(80)
+    await expect(main.getByRole('heading', { level: 2 })).toBeVisible()
+    expect((await main.getByRole('heading', { level: 2 }).boundingBox())!.width).toBeGreaterThan(80)
 
     if (width <= 760) {
       const sidebar = page.locator('aside.shell-sidebar')

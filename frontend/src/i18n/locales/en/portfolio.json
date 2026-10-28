@@ -1,0 +1,52 @@
+{
+  "nav": {
+    "overview": "Overview"
+  },
+  "equity": "Total equity",
+  "reconciled": "Reconciled with OKX at {{time}}",
+  "reconciledTip": "Atlas checks every figure against OKX: balances and positions every minute, fees, funding and transfers every 5 minutes.",
+  "stale": "Last synced {{ago}}",
+  "staleNever": "Not synced with OKX yet",
+  "staleTip": "OKX hasn’t answered for a few minutes. Atlas keeps retrying every minute; figures may be out of date.",
+  "sealCaption": "OKX demo account",
+  "range": {
+    "label": "Chart range",
+    "1D": "1D",
+    "1W": "1W",
+    "1M": "1M",
+    "3M": "3M",
+    "YTD": "YTD",
+    "ALL": "All"
+  },
+  "deposit": "Deposit",
+  "withdrawal": "Withdrawal",
+  "chartLabel": "Equity over {{range}}, from {{from}} to {{to}}. Use the arrow keys to read values.",
+  "chartTable": "Equity values",
+  "chartTableTime": "Time",
+  "chartTableValue": "Equity",
+  "chartMarkers": "Deposits and withdrawals",
+  "netDeposits": "Net deposits",
+  "netDepositsSub": "All time",
+  "totalPnl": "Total PnL",
+  "sinceDate": "since {{date}}",
+  "pctNeedsBaseline": "Atlas shows a percentage once it has a starting equity above zero to measure from.",
+  "todayPnl": "Today’s PnL",
+  "sinceMidnight": "since 00:00",
+  "unrealised": "Unrealised PnL",
+  "openPositions_one": "{{count}} open position",
+  "openPositions_other": "{{count}} open positions",
+  "fees": "Fees paid",
+  "funding": "Funding net",
+  "figures": "Account figures",
+  "empty": {
+    "title": "No data yet",
+    "body": "Atlas is syncing your OKX demo account. The first sync takes about a minute; figures appear here as soon as OKX answers."
+  },
+  "waiting": "Waiting for OKX…",
+  "error": {
+    "title": "Couldn’t load your portfolio",
+    "body": "Atlas’s server didn’t answer. Check that Atlas is running with ./atlas up, then try again.",
+    "retry": "Try again"
+  },
+  "loading": "Loading your portfolio"
+}
