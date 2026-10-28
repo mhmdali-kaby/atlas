@@ -64,7 +64,7 @@ final class TestDatabase
         return $name;
     }
 
-    private static function createIfMissing(string $name): void
+    public static function createIfMissing(string $name): void
     {
         if (preg_match('/^[a-z_][a-z0-9_]{0,62}$/', $name) !== 1) {
             throw new RuntimeException("Refusing to use test database name '{$name}': lowercase letters, digits and underscores only.");
