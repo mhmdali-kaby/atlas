@@ -106,6 +106,7 @@ DEFAULTS: Final[dict[str, Any]] = {
         "max_clock_drift_ms": 2000,
         "min_free_disk_gb": 5,
         "trading_core_timeout_seconds": 5,
+        "max_session_lifetime_minutes": 15,
     },
     "account_sync": {
         "usd_stablecoins": [

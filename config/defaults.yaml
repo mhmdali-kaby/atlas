@@ -105,6 +105,9 @@ doctor:
   max_clock_drift_ms: 2000
   min_free_disk_gb: 5
   trading_core_timeout_seconds: 5
+  # ATL-33 AC4: the one place this number lives. config/session.php's SESSION_LIFETIME
+  # fallback and Doctor::security() both read it, so they cannot drift apart.
+  max_session_lifetime_minutes: 15
 
 # ATL-10: account sync. Funding-account coins are valued in USD with OKX SPOT tickers
 # (<CCY>-<quote> last price, quotes tried in order). Stablecoins count 1:1 with USD in Phase 0.

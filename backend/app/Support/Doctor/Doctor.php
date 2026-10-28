@@ -296,7 +296,7 @@ final class Doctor
     private function security(): CheckResult
     {
         $lifetime = (int) config('session.lifetime');
-        $max = 15;
+        $max = (int) config('atlas_defaults.doctor.max_session_lifetime_minutes');
         if ($lifetime > $max) {
             return CheckResult::fail('security', self::t('session_lifetime_too_long', ['lifetime' => $lifetime, 'max' => $max]));
         }

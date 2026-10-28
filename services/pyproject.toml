@@ -13,7 +13,6 @@ dev = [
   "respx>=0.21",
   "ruff>=0.7",
   "mypy>=1.13",
-  "pip-audit>=2.7",
   "atlas-shared",
   "atlas-trading-core",
   "atlas-agents",
