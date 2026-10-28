@@ -1,10 +1,12 @@
-import { Clock, CloudOff, FlaskConical, Laptop, RefreshCw, ShieldCheck, TriangleAlert } from 'lucide-react'
+import { Clock, CloudOff, FlaskConical, Laptop, RefreshCw, ShieldCheck, SlidersHorizontal, TriangleAlert } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AppIcon, Button } from '../../ui'
 import { ConnectionForm, KeyHelp, SavedKey, TestFailure, TestSuccess } from './ConnectionForm'
 import { isVerified, useConnection, type TestOutcome } from './connections'
 import { Notice } from './Notice'
+import { AutonomyPicker, CompareDisclosure, LimitsCompare, RiskProfilePicker } from './Pickers'
+import { useSettings, type RiskProfile } from './settings'
 
 /** Every step: `autoFocus` moves focus to its heading when it opens from another step. */
 export interface StepProps {
@@ -192,8 +194,80 @@ export function ConnectStep({
   )
 }
 
-/** Steps 3 and 4 belong to ATL-19; until then they show their heading only. */
-export function PendingStep({ step, autoFocus }: StepProps & { step: 'risk' | 'autonomy' }) {
+/**
+ * Step 3 (design onboarding.js risk()): the three profile cards from GET /api/settings presets,
+ * then "Compare all ten limits". The choice is saved when the owner presses Continue.
+ */
+export function RiskStep({
+  autoFocus,
+  value,
+  onChange,
+}: StepProps & { value: RiskProfile; onChange: (profile: RiskProfile) => void }) {
   const { t } = useTranslation('onboarding')
-  return <StepHead autoFocus={autoFocus} title={t(`${step}.title`)} lead={t(`${step}.lead`)} />
+  const query = useSettings('demo')
+  const head = <StepHead autoFocus={autoFocus} title={t('risk.title')} lead={t('risk.lead')} />
+
+  if (query.isPending) {
+    return (
+      <>
+        {head}
+        <div aria-busy="true" aria-label={t('risk.loading')} className="ob-profile-cards" data-testid="risk-loading">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="ob-choice grid gap-2" aria-hidden="true">
+              <span className="ob-skeleton h-5 w-3/5 animate-pulse" />
+              <span className="ob-skeleton h-3.5 w-[90%] animate-pulse" />
+              <span className="ob-skeleton mt-2 h-24 w-full animate-pulse" />
+            </div>
+          ))}
+        </div>
+      </>
+    )
+  }
+
+  if (query.isError) {
+    return (
+      <>
+        {head}
+        <Notice
+          tone="error"
+          role="alert"
+          icon={CloudOff}
+          title={t('risk.error.title')}
+          actions={
+            <Button size="sm" icon={<RefreshCw />} onClick={() => void query.refetch()}>
+              {t('retry')}
+            </Button>
+          }
+        >
+          {t('risk.error.body')}
+        </Notice>
+      </>
+    )
+  }
+
+  const presets = query.data.data.presets
+  return (
+    <>
+      {head}
+      <RiskProfilePicker value={value} onChange={onChange} presets={presets} />
+      <CompareDisclosure>
+        <LimitsCompare presets={presets} selected={value} />
+      </CompareDisclosure>
+    </>
+  )
+}
+
+/** Step 4 (design onboarding.js autonomy()): levels 1–4; Phase 0 allows only 1 and 2. */
+export function AutonomyStep({ autoFocus, value, onChange }: StepProps & { value: number; onChange: (level: number) => void }) {
+  const { t } = useTranslation('onboarding')
+  return (
+    <>
+      <StepHead autoFocus={autoFocus} title={t('autonomy.title')} lead={t('autonomy.lead')} />
+      <AutonomyPicker value={value} onChange={onChange} />
+      <p className="flex items-center gap-2 text-footnote text-label-secondary">
+        <SlidersHorizontal aria-hidden="true" strokeWidth={1.5} className="size-3.5" />
+        <span>{t('autonomy.note')}</span>
+      </p>
+    </>
+  )
 }

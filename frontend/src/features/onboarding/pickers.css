@@ -1,0 +1,156 @@
+/* Radio cards (design: css/components.css .choice, css/forms.css profile cards + autonomy rows). */
+
+.ob-choice {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  text-align: start;
+  padding: 16px;
+  border-radius: var(--radius-card);
+  background: var(--bg-grouped-row);
+  color: var(--label);
+  box-shadow: 0 0 0 0.5px var(--hairline-color), var(--ui-shadow-1);
+  transition: box-shadow var(--dur-fast), transform var(--dur-fast) var(--ease-out);
+  cursor: pointer;
+}
+.ob-choice:hover { box-shadow: 0 0 0 1px var(--separator-strong), var(--ui-shadow-2); }
+.ob-choice[aria-checked='true'] { box-shadow: 0 0 0 2px var(--accent), var(--ui-shadow-2); }
+.ob-choice:focus-visible { outline: none; box-shadow: 0 0 0 2px var(--accent), var(--ui-focus-ring); }
+.ob-choice[aria-disabled='true'] { cursor: not-allowed; background: var(--fill-4); box-shadow: 0 0 0 0.5px var(--hairline-color); }
+.ob-choice[aria-disabled='true'] .ob-choice-title,
+.ob-choice[aria-disabled='true'] .ob-choice-text { color: var(--label-tertiary); }
+.ob-choice[aria-disabled='true']:focus-visible { box-shadow: 0 0 0 0.5px var(--hairline-color), var(--ui-focus-ring); }
+
+.ob-choice-radio {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: inset 0 0 0 1.5px var(--separator-strong);
+  display: grid;
+  place-items: center;
+}
+.ob-choice[aria-checked='true'] .ob-choice-radio { background: var(--accent); box-shadow: none; }
+.ob-choice[aria-checked='true'] .ob-choice-radio::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--on-solid);
+}
+.ob-choice-title {
+  font-size: var(--fs-headline);
+  line-height: var(--lh-headline);
+  font-weight: 600;
+}
+.ob-choice-text { font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+
+.ob-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding-inline: 8px;
+  border-radius: var(--radius-full);
+  background: var(--accent-wash);
+  color: var(--accent-ink);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* RiskProfilePicker */
+.ob-profile-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.ob-profile-cards.has-custom { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ob-profile-card { align-content: start; grid-template-rows: auto 1fr auto; gap: 8px; padding: 16px 16px 14px; }
+.ob-pc-head { display: flex; align-items: center; gap: 10px; }
+.ob-pc-head .ob-tag { margin-inline-start: auto; }
+.ob-pc-figures { display: grid; margin-top: 6px; border-top: 0.5px solid var(--separator); }
+.ob-pc-fig {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 0;
+  border-bottom: 0.5px solid var(--separator);
+  font-size: var(--fs-footnote);
+  line-height: var(--lh-footnote);
+}
+.ob-pc-fig:last-child { border-bottom: 0; padding-bottom: 0; }
+.ob-pc-fig-label { color: var(--label-secondary); }
+.ob-pc-fig-value { font-weight: 600; font-size: var(--fs-subheadline); }
+.ob-profile-card[aria-checked='true'] .ob-pc-fig-value { color: var(--accent-ink); }
+/* "2×", "1.0%" keep their visual order in RTL */
+.ob-num { direction: ltr; unicode-bidi: isolate; display: inline-block; font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+
+/* Compare all ten limits */
+.ob-disclosure {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent-ink);
+  font-size: var(--fs-subheadline);
+  font-weight: 500;
+  padding: 4px 6px;
+  border-radius: 6px;
+}
+.ob-disclosure:hover { background: var(--fill-4); }
+.ob-disclosure:focus-visible { outline: none; box-shadow: var(--ui-focus-ring); }
+.ob-disclosure svg { width: 14px; height: 14px; transition: transform var(--dur-base) var(--ease-settle); }
+.ob-disclosure[aria-expanded='true'] svg { transform: rotate(90deg); }
+[dir='rtl'] .ob-disclosure[aria-expanded='false'] svg { transform: scaleX(-1); }
+
+.ob-compare-wrap {
+  border-radius: var(--radius-card);
+  background: var(--bg-grouped-row);
+  box-shadow: 0 0 0 0.5px var(--hairline-color);
+  overflow: auto;
+}
+.ob-compare { width: 100%; font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); border-collapse: collapse; }
+.ob-compare th,
+.ob-compare td { padding: 10px 12px; border-bottom: 0.5px solid var(--separator); white-space: nowrap; }
+.ob-compare thead th { font-size: var(--fs-footnote); font-weight: 600; color: var(--label-secondary); text-align: start; border-bottom: 0.5px solid var(--separator); }
+.ob-compare th[scope='row'] { font-weight: 400; color: var(--label); text-align: start; }
+.ob-compare tr:last-child th,
+.ob-compare tr:last-child td { border-bottom: 0; }
+.ob-compare .is-num { text-align: end; }
+.ob-compare th:first-child { padding-inline-start: 20px; }
+.ob-compare th:last-child,
+.ob-compare td:last-child { padding-inline-end: 20px; }
+.ob-compare .is-on { background: var(--accent-wash); color: var(--accent-ink); font-weight: 600; }
+
+/* AutonomyPicker */
+.ob-autonomy-list { display: grid; gap: 8px; }
+.ob-autonomy-row { grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 14px 16px; }
+.ob-au-level {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  background: var(--fill-3);
+  font-weight: 600;
+  font-size: var(--fs-subheadline);
+  color: var(--label);
+}
+.ob-autonomy-row[aria-checked='true'] .ob-au-level { background: var(--accent-solid); color: var(--on-solid); }
+.ob-autonomy-row[aria-disabled='true'] .ob-au-level { background: var(--fill-4); color: var(--label-tertiary); }
+.ob-au-main { display: grid; gap: 2px; }
+.ob-au-main .ob-choice-title { display: flex; align-items: center; gap: 8px; font-size: var(--fs-callout); line-height: var(--lh-callout); }
+.ob-au-later { display: inline-flex; align-items: center; gap: 5px; margin-top: 4px; font-size: var(--fs-footnote); color: var(--label-secondary); }
+.ob-au-later svg { width: 14px; height: 14px; }
+.ob-autonomy-row[aria-disabled='true'] .ob-choice-radio { opacity: 0.4; }
+
+.ob-skeleton { display: block; border-radius: 6px; background: var(--fill-3); }
+
+@media (max-width: 900px) {
+  .ob-profile-cards,
+  .ob-profile-cards.has-custom { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .ob-profile-cards,
+  .ob-profile-cards.has-custom { grid-template-columns: minmax(0, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ob-choice,
+  .ob-disclosure svg { transition: none; }
+}

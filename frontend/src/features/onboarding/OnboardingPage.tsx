@@ -13,7 +13,8 @@ import { FADE } from '../../ui/motion'
 import { SIGNED_OUT_KEY, useLogout, useSession } from '../auth/session'
 import { isVerified, useConnection } from './connections'
 import { AFTER_ONBOARDING_PATH, onboardingPath, parseStep, STEPS, type StepId } from './paths'
-import { ConnectStep, PendingStep, WelcomeStep } from './steps'
+import { DEFAULT_AUTONOMY, DEFAULT_PROFILE, ENABLED_AUTONOMY, isOnboarded, isPreset, usePatchSettings, useSettings, type RiskProfile } from './settings'
+import { AutonomyStep, ConnectStep, RiskStep, WelcomeStep } from './steps'
 
 
 /**
@@ -37,6 +38,17 @@ export function OnboardingPage() {
   if (shown.index !== index) setShown({ index, direction: index > shown.index ? 1 : -1 })
   const direction = shown.index !== index ? (index > shown.index ? 1 : -1) : shown.direction
 
+  const settings = useSettings('demo')
+  const doc = settings.data?.data
+  const patch = usePatchSettings('demo')
+  // The owner's picks; until they touch a card, the saved values (Balanced and level 2 on a new row).
+  const [profilePick, setProfilePick] = useState<RiskProfile | null>(null)
+  const [autonomyPick, setAutonomyPick] = useState<number | null>(null)
+  const profile: RiskProfile = profilePick ?? (isPreset(doc?.settings.risk_profile) ? doc.settings.risk_profile : DEFAULT_PROFILE)
+  const savedLevel = doc?.settings.autonomy_level
+  const autonomy =
+    autonomyPick ?? (savedLevel !== undefined && (ENABLED_AUTONOMY as readonly number[]).includes(savedLevel) ? savedLevel : DEFAULT_AUTONOMY)
+
   const session = useSession()
   const logout = useLogout()
   const client = useQueryClient()
@@ -47,8 +59,11 @@ export function OnboardingPage() {
 
   // Steps after Connect need a verified demo key; a URL that skips ahead goes back to Connect.
   if (index > 1 && !demo.isPending && !verified) return <Navigate to={onboardingPath('connect')} replace />
+  // A finished setup does not reopen: /onboarding goes to Portfolio (verified key + Finish saved).
+  if (verified && isOnboarded(doc)) return <Navigate to={AFTER_ONBOARDING_PATH} replace />
 
-  const canContinue = step === 'connect' ? verified && !replacing : index > 1 ? verified : true
+  const canContinue =
+    step === 'connect' ? verified && !replacing : index > 1 ? verified && !!doc && !patch.isPending : true
   const last = index === STEPS.length - 1
 
   function go(next: StepId) {
@@ -57,10 +72,28 @@ export function OnboardingPage() {
     setParams(next === 'welcome' ? {} : { step: next })
   }
 
+  function saveFailed() {
+    toast({ title: t('saveError.title'), body: t('saveError.body'), tone: 'error' })
+  }
+
   function onContinue() {
     if (!canContinue) return
+    if (step === 'risk') {
+      patch.mutate({ risk_profile: profile }, { onSuccess: () => go('autonomy'), onError: saveFailed })
+      return
+    }
     if (last) {
-      void navigate(AFTER_ONBOARDING_PATH)
+      // Finish always writes onboarding_completed, so the version moves past 1 even with defaults.
+      patch.mutate(
+        { autonomy_level: autonomy, onboarding_completed: 1 },
+        {
+          onSuccess: () => {
+            toast({ title: t('complete.title'), body: t('complete.body'), tone: 'success' })
+            void navigate(AFTER_ONBOARDING_PATH, { replace: true })
+          },
+          onError: saveFailed,
+        },
+      )
       return
     }
     go(STEPS[index + 1] as StepId)
@@ -110,7 +143,8 @@ export function OnboardingPage() {
             >
               {step === 'welcome' && <WelcomeStep autoFocus={moved} />}
               {step === 'connect' && <ConnectStep autoFocus={moved} onReplacingChange={setReplacing} />}
-              {(step === 'risk' || step === 'autonomy') && <PendingStep step={step} autoFocus={moved} />}
+              {step === 'risk' && <RiskStep autoFocus={moved} value={profile} onChange={setProfilePick} />}
+              {step === 'autonomy' && <AutonomyStep autoFocus={moved} value={autonomy} onChange={setAutonomyPick} />}
             </motion.section>
           </AnimatePresence>
         </main>
@@ -128,7 +162,8 @@ export function OnboardingPage() {
               size="lg"
               variant="primary"
               className="min-w-[148px]"
-              disabled={!canContinue}
+              disabled={!canContinue && !patch.isPending}
+              loading={patch.isPending}
               aria-describedby={step === 'connect' && !canContinue ? 'ob-continue-hint' : undefined}
               onClick={onContinue}
               data-testid="ob-next"
