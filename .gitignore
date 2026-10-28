@@ -48,3 +48,6 @@ Pods/
 # Python
 .venv/
 __pycache__/
+
+# CCQ's code graph. Not yours to keep.
+.graphifyignore
