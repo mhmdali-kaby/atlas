@@ -1,7 +1,7 @@
 """Account sync (ATL-10, brief §13, decision #235).
 
 Every ``sync.account_interval_seconds`` for the active env, if that env has a verified OKX connection
-(``last_verified_at`` set; withdraw-enabled keys never are, decision #237):
+(``last_verified_at`` set; live withdraw-enabled keys never are, demo ones are with a warning, ATL-30):
 
 1. Fetch ``account/balance`` (trading account), ``asset/balances`` (funding account) and
    ``account/positions``; and, only when the funding account holds a non-stablecoin, SPOT

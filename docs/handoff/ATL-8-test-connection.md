@@ -1,4 +1,4 @@
-# ATL-8 — Test connection (OKX account/config, withdraw keys refused)
+# ATL-8 — Test connection (OKX account/config; withdraw keys refused in live, warned in demo)
 
 ## The two-minute version
 
@@ -7,9 +7,16 @@
   `account/config`, **writes the verification columns itself**, and returns the result. Laravel adds
   `message` (from `lang/en/connections_test.php`), audits `connection.tested`, and returns the fresh
   connection resource too.
-- `ok` is true only when account/config answered **and** permissions do not include `withdraw`
-  (decision #237, demo too). A withdraw key returns `ok:false, error:"withdraw_permission_enabled"`
-  but still fills account_mode/position_mode/permissions/uid_last4 so the UI can show what the key is.
+- **Withdraw permission (ATL-30, relaxes #237 for demo only):**
+  - **live** — `ok` is true only when account/config answered **and** permissions do not include
+    `withdraw`. A live withdraw key returns `ok:false, error:"withdraw_permission_enabled"` but still
+    fills account_mode/position_mode/permissions/uid_last4 so the UI can show what the key is.
+  - **demo** — a withdraw key is verified: `ok:true`, `error:null`, `last_verified_at` set, and
+    `warnings: ["withdraw_permission_enabled"]`. Sync runs for it. ATL-18/ATL-20 should show the
+    warning (e.g. "This demo key can withdraw funds. Atlas never withdraws; use a Read + Trade key
+    for live.") — the slug is the key; Laravel does not add a message for warnings.
+- `warnings` is always present: a list of slugs, `[]` when there is nothing to warn about (and on
+  every failure). The only slug today is `withdraw_permission_enabled`.
 - `last_verified_at` is set on success and **cleared to null on every failure** (a key that used to
   pass and now fails is not verified any more). `last_test_error` holds the error slug (not the
   message) or null.
@@ -19,8 +26,8 @@
 - The full UID never leaves trading_core: only `uid_last4`.
 - trading_core needs `APP_KEY` (same value as Laravel's) in its environment. Without it the internal
   route answers 503 `app_key_missing`, which Laravel reports as 502 `trading_core_error`.
-- The real vault demo key currently comes back `withdraw_permission_enabled`, acctLv 2, net_mode
-  (checked 2026-10-28). QA's ok:true check waits for the CEO's Read + Trade key.
+- The real vault demo key reports perm `read_only,withdraw,trade`, acctLv 2, net_mode (checked
+  2026-10-28). Since ATL-30 it is accepted (`ok:true` with the withdraw warning).
 
 ## Laravel endpoint
 
@@ -35,6 +42,7 @@
   "account_mode": "futures",
   "position_mode": "net_mode",
   "permissions": ["read_only", "trade"],
+  "warnings": [],
   "uid_last4": "6123",
   "error": null,
   "okx_code": null,
@@ -48,11 +56,24 @@
 }
 ```
 
+Demo key with withdraw (ATL-30), 200:
+
+```json
+{ "ok": true, "acct_lv": "2", "account_mode": "futures", "position_mode": "net_mode",
+  "permissions": ["read_only", "trade", "withdraw"], "warnings": ["withdraw_permission_enabled"],
+  "uid_last4": "6123", "error": null, "okx_code": null, "verified_at": "2026-10-28T08:00:00.123456Z",
+  "message": null, "connection": { … "env": "demo", "last_verified_at": "2026-10-28T08:00:00.123456Z",
+  "last_test_error": null … } }
+```
+
+The same key on a live connection: `"ok": false, "warnings": [], "error": "withdraw_permission_enabled",
+"verified_at": null, "message": "This key can withdraw funds. Create a key with Read + Trade only."`.
+
 Failure example (still 200):
 
 ```json
 { "ok": false, "acct_lv": null, "account_mode": null, "position_mode": null, "permissions": [],
-  "uid_last4": null, "error": "invalid_credentials", "okx_code": "50113", "verified_at": null,
+  "warnings": [], "uid_last4": null, "error": "invalid_credentials", "okx_code": "50113", "verified_at": null,
   "message": "Key or passphrase is wrong", "connection": { … "last_verified_at": null,
   "last_test_error": "invalid_credentials" … } }
 ```
@@ -91,7 +112,10 @@ stored error; the `message` field is English only.
 ## Audit
 
 `action = connection.tested`, `subject_type = connections`, `after` = `{exchange, env, label,
-api_key_last4, ok, acct_lv, account_mode, position_mode, permissions, uid_last4, error, okx_code}`.
+api_key_last4, ok, acct_lv, account_mode, position_mode, permissions, warnings, uid_last4, error, okx_code}`.
+
+`atlas:doctor`'s `withdraw_permission` check (ATL-30): ⚠ warning (exit 0) for a demo key with
+withdraw; ✗ failure when a live connection's stored permissions include withdraw.
 No audit row when trading_core was unreachable/errored.
 
 ## Python (trading_core)
@@ -101,6 +125,7 @@ No audit row when trading_core was unreachable/errored.
   `ConnectionNotFound`. Reuse it from `atlas:doctor` (ATL-13) via the signed route rather than
   duplicating the withdraw check.
 - New `atlas_shared.db.Connection` SQLAlchemy model (mirrors the ATL-4 table; schema reflection test
-  covers it). ATL-10: load connections with it; skip rows where `last_verified_at is None` (#237).
+  covers it). ATL-10: load connections with it; skip rows where `last_verified_at is None` (a live
+  withdraw key is never verified; a demo one is, ATL-30).
 - `create_app(..., engine=)` now takes an optional engine (stored as `app.state.engine`) and
   `Settings.app_key` reads `APP_KEY`. `app.state.okx_client_factory` can override the OKX client in tests.
