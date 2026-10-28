@@ -1,8 +1,9 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Navigate, useLocation } from 'react-router'
 import { Spinner } from '../../ui'
-import { IDLE_LOCK_MS, loginPath, useAuthExpiredListener, useLogout, useSession } from './session'
+import { IDLE_LOCK_MS, loginPath, SIGNED_OUT_KEY, useAuthExpiredListener, useLogout, useSession } from './session'
 import { useIdleLock } from './useIdleLock'
 
 /**
@@ -15,6 +16,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   const session = useSession()
   const location = useLocation()
   const logout = useLogout()
+  const client = useQueryClient()
   const [locked, setLocked] = useState(false)
   const signedIn = session.data !== null && session.data !== undefined
 
@@ -29,6 +31,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   if (locked || session.data === null || (session.data === undefined && session.isError)) {
     // While the idle sign-out request is in flight, keep the redirect until it lands.
     if (locked && logout.isPending) return <Checking label={t('checking')} />
+    if (!locked && client.getQueryData(SIGNED_OUT_KEY) === true) return <Navigate to="/login" replace />
     return <Navigate to={loginPath(requested, locked ? 'idle' : undefined)} replace />
   }
   if (!signedIn) return <Checking label={t('checking')} />

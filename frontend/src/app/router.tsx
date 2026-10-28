@@ -1,15 +1,9 @@
 import { createBrowserRouter, type RouteObject } from 'react-router'
 import { RequireAuth } from '../features/auth/RequireAuth'
-import type { FeatureModule } from './feature'
-import { AppShell } from './AppShell'
+import { AppShell, HomeRedirect, NotFound } from './AppShell'
+import { features } from './registry'
 
-const modules = import.meta.glob<{ default: FeatureModule }>('../features/*/routes.tsx', { eager: true })
-
-export const features: FeatureModule[] = Object.values(modules).map((m) => m.default)
-
-export const navEntries = features
-  .flatMap((f) => (f.nav ? [f.nav] : []))
-  .sort((a, b) => a.order - b.order)
+export { features, navEntries } from './registry'
 
 const children: RouteObject[] = features.flatMap((f) => f.routes)
 const publicRoutes: RouteObject[] = features.flatMap((f) => f.publicRoutes ?? [])
@@ -24,9 +18,10 @@ export const routes: RouteObject[] = [
         <AppShell />
       </RequireAuth>
     ),
-    // The catch-all keeps unknown paths behind the guard too: signed out, any URL goes to
-    // /login?next=… (a page whose feature is not built yet included); signed in, an empty shell.
-    children: [...children, { path: '*', element: null }],
+    // Feature routes first, so a feature's own index route wins over the fallback "/"
+    // (the first sidebar page). The catch-all keeps unknown paths behind the guard too:
+    // signed out, any URL goes to /login?next=…; signed in, a "nothing here yet" page.
+    children: [...children, { index: true, element: <HomeRedirect /> }, { path: '*', element: <NotFound /> }],
   },
 ]
 
