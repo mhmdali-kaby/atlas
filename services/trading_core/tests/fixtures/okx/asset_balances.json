@@ -1,0 +1,8 @@
+{
+  "code": "0",
+  "msg": "",
+  "data": [
+    { "availBal": "1250.5", "bal": "1250.5", "ccy": "USDT", "frozenBal": "0" },
+    { "availBal": "0.0012", "bal": "0.0015", "ccy": "BTC", "frozenBal": "0.0003" }
+  ]
+}
