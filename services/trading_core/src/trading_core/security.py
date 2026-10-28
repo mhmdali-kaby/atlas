@@ -1,14 +1,19 @@
 """HMAC signing for Laravel -> trading_core calls (decision #235).
 
-Signature = hex HMAC-SHA256(INTERNAL_SHARED_SECRET, timestamp + METHOD + path + raw body), where
-`timestamp` is unix seconds as sent in X-Atlas-Timestamp, METHOD is upper case, and `path` is the
-request path plus `?query` when there is a query string. The PHP twin is App\\Support\\TradingCore.
+Signature = hex HMAC-SHA256(INTERNAL_SHARED_SECRET, timestamp + nonce + METHOD + path + raw body),
+where `timestamp` is unix seconds as sent in X-Atlas-Timestamp, `nonce` is the 32 lower-case hex
+chars sent in X-Atlas-Nonce, METHOD is upper case, and `path` is the request path plus `?query` when
+there is a query string. A nonce is accepted once: a repeat within NONCE_TTL_SECONDS is a replay and
+is rejected (ATL-34). The PHP twin is App\\Support\\TradingCore.
 """
 
 from __future__ import annotations
 
 import hashlib
 import hmac
+import re
+import secrets
+import threading
 import time
 from collections.abc import Callable
 
@@ -16,12 +21,67 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 TIMESTAMP_HEADER = "x-atlas-timestamp"
 SIGNATURE_HEADER = "x-atlas-signature"
+NONCE_HEADER = "x-atlas-nonce"
 PROTECTED_PREFIX = "/internal"
+# Longer than the accepted clock window (±30 s → a 60 s span), so a nonce cannot be forgotten while
+# its timestamp would still pass the skew check.
+NONCE_TTL_SECONDS = 60
+_NONCE_RE = re.compile(r"[0-9a-f]{32}")
 
 
-def sign(secret: str, timestamp: str, method: str, path: str, body: bytes) -> str:
-    message = f"{timestamp}{method.upper()}{path}".encode() + body
+def sign(secret: str, timestamp: str, nonce: str, method: str, path: str, body: bytes) -> str:
+    message = f"{timestamp}{nonce}{method.upper()}{path}".encode() + body
     return hmac.new(secret.encode(), message, hashlib.sha256).hexdigest()
+
+
+def new_nonce() -> str:
+    return secrets.token_hex(16)
+
+
+def signed_headers(
+    secret: str,
+    method: str,
+    path: str,
+    body: bytes = b"",
+    *,
+    timestamp: int | None = None,
+    nonce: str | None = None,
+) -> dict[str, str]:
+    """The three X-Atlas-* headers for one call, exactly as Laravel sends them. Used by tests."""
+    ts = str(int(time.time()) if timestamp is None else timestamp)
+    n = new_nonce() if nonce is None else nonce
+    return {
+        "X-Atlas-Timestamp": ts,
+        "X-Atlas-Nonce": n,
+        "X-Atlas-Signature": sign(secret, ts, n, method, path, body),
+    }
+
+
+class NonceStore:
+    """In-process set of nonces seen in the last `ttl_seconds` (trading_core is one process)."""
+
+    def __init__(
+        self, ttl_seconds: float = NONCE_TTL_SECONDS, clock: Callable[[], float] = time.time
+    ) -> None:
+        self.ttl_seconds = ttl_seconds
+        self.clock = clock
+        self._seen: dict[str, float] = {}
+        self._lock = threading.Lock()
+
+    def claim(self, nonce: str) -> bool:
+        """Record `nonce`; False if it was already seen and has not expired."""
+        now = self.clock()
+        with self._lock:
+            expired = [n for n, until in self._seen.items() if until <= now]
+            for n in expired:
+                del self._seen[n]
+            if nonce in self._seen:
+                return False
+            self._seen[nonce] = now + self.ttl_seconds
+            return True
+
+    def __len__(self) -> int:
+        return len(self._seen)
 
 
 def is_protected(path: str) -> bool:
@@ -29,7 +89,8 @@ def is_protected(path: str) -> bool:
 
 
 class InternalSignatureMiddleware:
-    """Rejects every /internal request whose signature or timestamp does not check out with 401.
+    """Rejects with 401 every /internal request whose signature, timestamp or nonce does not check
+    out, and every replay of a nonce already accepted.
 
     Pure ASGI so the raw body can be read for the MAC and then replayed to the handler unchanged.
     Fails closed: with no secret configured, every /internal call is rejected.
@@ -41,11 +102,13 @@ class InternalSignatureMiddleware:
         secret: str,
         max_skew_seconds: int = 30,
         clock: Callable[[], float] = time.time,
+        nonces: NonceStore | None = None,
     ) -> None:
         self.app = app
         self.secret = secret
         self.max_skew_seconds = max_skew_seconds
         self.clock = clock
+        self.nonces = nonces if nonces is not None else NonceStore(clock=clock)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http" or not is_protected(scope["path"]):
@@ -83,7 +146,10 @@ class InternalSignatureMiddleware:
         headers = {k.decode("latin-1").lower(): v.decode("latin-1") for k, v in scope["headers"]}
         timestamp = headers.get(TIMESTAMP_HEADER, "")
         signature = headers.get(SIGNATURE_HEADER, "")
+        nonce = headers.get(NONCE_HEADER, "")
         if not timestamp or not signature or not timestamp.isdigit():
+            return False
+        if not _NONCE_RE.fullmatch(nonce):
             return False
         if abs(self.clock() - int(timestamp)) > self.max_skew_seconds:
             return False
@@ -91,8 +157,11 @@ class InternalSignatureMiddleware:
         query = scope.get("query_string", b"")
         if query:
             path = f"{path}?{query.decode('latin-1')}"
-        expected = sign(self.secret, timestamp, scope["method"], path, body)
-        return hmac.compare_digest(expected, signature.lower())
+        expected = sign(self.secret, timestamp, nonce, scope["method"], path, body)
+        if not hmac.compare_digest(expected, signature.lower()):
+            return False
+        # Claimed only after the MAC checks out, so unsigned junk cannot fill the store or burn nonces.
+        return self.nonces.claim(nonce)
 
 
 async def _unauthorised(send: Send) -> None:

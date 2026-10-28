@@ -26,20 +26,28 @@ Environment (process env, read once at startup by `trading_core.config.Settings.
 - `GET /internal/ping` — signed no-op. `200 {"ok":true}`. Use it to check the secret end to end.
 - Anything else under `/internal` without a valid signature → `401 {"detail":"invalid or missing signature"}`
   (even routes that do not exist, so the API surface is not discoverable).
+- No `/openapi.json`, `/docs` or `/redoc` (all 404; `openapi_url=None` since ATL-34).
 
 ## Signing recipe (both sides)
 
 ```
-timestamp = unix seconds, as a decimal string            -> header X-Atlas-Timestamp
-message   = timestamp + METHOD(upper) + path + raw_body   (path includes "?query" when there is one)
-signature = hex(HMAC-SHA256(INTERNAL_SHARED_SECRET, message)) -> header X-Atlas-Signature
+timestamp = unix seconds, as a decimal string                    -> header X-Atlas-Timestamp
+nonce     = 32 lower-case hex chars, fresh per call              -> header X-Atlas-Nonce
+            (PHP: bin2hex(random_bytes(16)); Python: secrets.token_hex(16))
+message   = timestamp + nonce + METHOD(upper) + path + raw_body  (path includes "?query" when there is one)
+signature = hex(HMAC-SHA256(INTERNAL_SHARED_SECRET, message))    -> header X-Atlas-Signature
 ```
 
-- Rejected if either header is missing, the timestamp is not all digits, `|now - timestamp| > 30 s`,
-  or the signature does not match (`hmac.compare_digest`). Body and query are covered, so tampering
-  with either is a 401.
+- Rejected if any header is missing, the timestamp is not all digits, the nonce is not exactly 32
+  lower-case hex chars, `|now - timestamp| > 30 s`, or the signature does not match
+  (`hmac.compare_digest`). Body, query and nonce are covered, so tampering with any of them is a 401.
+- Replay (ATL-34): a nonce is accepted once. The same nonce again within 60 s is a 401 even with a
+  valid MAC; after 60 s the 30 s skew check refuses it anyway. The store is in-process memory
+  (`NonceStore` in `security.py`), fine while trading_core is one process; a restart forgets it, and
+  only requests still inside the 30 s window could be replayed across one. Move it to Redis if
+  trading_core ever runs more than one worker. A nonce is only recorded after its MAC checks out.
 - Empty body = empty string (GET). POST bodies are signed byte-for-byte as sent.
-- Pinned test vector: `test-vectors/internal_hmac.json` (secret, timestamp, method, path, body, signature).
+- Pinned test vector: `test-vectors/internal_hmac.json` (secret, timestamp, nonce, method, path, body, signature).
   Pest `backend/tests/Unit/TradingCoreSigningTest.php` and pytest
   `services/trading_core/tests/test_signing.py` both check it — if you change the recipe, both fail.
 
@@ -51,7 +59,8 @@ Put it on `internal_router` in `services/trading_core/src/trading_core/app.py` (
 model) — the middleware replays it unchanged.
 
 For tests, `create_app(settings, extra_internal=router)` builds an app with a test-only router; see
-`test_signing.py` for the `_headers()` helper that signs a request.
+`trading_core.security.signed_headers(secret, method, path, body)` for the three headers of one
+signed request (a new nonce each call — reuse the dict to test a replay).
 
 ## Call it from PHP
 

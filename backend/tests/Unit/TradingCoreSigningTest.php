@@ -11,11 +11,11 @@ use Tests\TestCase;
 uses(TestCase::class);
 
 /**
- * @return array{secret: string, timestamp: string, method: string, path: string, body: string, signature: string}
+ * @return array{secret: string, timestamp: string, nonce: string, method: string, path: string, body: string, signature: string}
  */
 function internalHmacVector(): array
 {
-    /** @var array{secret: string, timestamp: string, method: string, path: string, body: string, signature: string} $vector */
+    /** @var array{secret: string, timestamp: string, nonce: string, method: string, path: string, body: string, signature: string} $vector */
     $vector = json_decode(
         (string) file_get_contents(dirname(base_path()).'/test-vectors/internal_hmac.json'),
         true,
@@ -28,7 +28,7 @@ function internalHmacVector(): array
 it('produces the shared test-vector signature that pytest verifies', function (): void {
     $v = internalHmacVector();
 
-    expect(TradingCore::sign($v['secret'], $v['timestamp'], $v['method'], $v['path'], $v['body']))
+    expect(TradingCore::sign($v['secret'], $v['timestamp'], $v['nonce'], $v['method'], $v['path'], $v['body']))
         ->toBe($v['signature']);
 });
 
@@ -41,6 +41,7 @@ it('sends the shared test-vector request with exactly that signature', function 
         'http://127.0.0.1:8100/',
         $v['secret'],
         clock: static fn (): int => (int) $v['timestamp'],
+        nonce: static fn (): string => $v['nonce'],
     );
     $response = $client->send($v['method'], $v['path'], $v['body']);
 
@@ -50,6 +51,7 @@ it('sends the shared test-vector request with exactly that signature', function 
             && $request->url() === 'http://127.0.0.1:8100'.$v['path']
             && $request->body() === $v['body']
             && $request->header(TradingCore::TIMESTAMP_HEADER) === [$v['timestamp']]
+            && $request->header(TradingCore::NONCE_HEADER) === [$v['nonce']]
             && $request->header(TradingCore::SIGNATURE_HEADER) === [$v['signature']];
     });
 });
@@ -64,11 +66,26 @@ it('signs GET query strings and POST JSON bodies exactly as they go on the wire'
     Http::assertSent(function (Request $request): bool {
         $parts = parse_url($request->url());
         $path = ($parts['path'] ?? '').(isset($parts['query']) ? '?'.$parts['query'] : '');
-        $expected = TradingCore::sign('s3cret', '1700000000', $request->method(), $path, $request->body());
+        $nonce = $request->header(TradingCore::NONCE_HEADER)[0] ?? '';
+        $expected = TradingCore::sign('s3cret', '1700000000', $nonce, $request->method(), $path, $request->body());
 
         return $request->header(TradingCore::SIGNATURE_HEADER) === [$expected];
     });
     Http::assertSentCount(2);
+});
+
+it('sends a fresh 32-hex nonce on every call', function (): void {
+    Http::fake(['*' => Http::response(['ok' => true])]);
+    $client = new TradingCore(app(HttpFactory::class), 'http://127.0.0.1:8100', 's3cret');
+
+    $client->get('/internal/ping');
+    $client->get('/internal/ping');
+
+    $nonces = Http::recorded()->map(fn (array $pair): string => $pair[0]->header(TradingCore::NONCE_HEADER)[0] ?? '')->all();
+    expect($nonces)->toHaveCount(2)
+        ->and($nonces[0])->toMatch('/^[0-9a-f]{32}$/')
+        ->and($nonces[1])->toMatch('/^[0-9a-f]{32}$/')
+        ->and($nonces[0])->not->toBe($nonces[1]);
 });
 
 it('refuses to call trading_core without a shared secret', function (): void {

@@ -9,10 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import copy
-import hashlib
-import hmac
 import json
-import time
 from collections.abc import Iterator
 from decimal import Decimal
 from pathlib import Path
@@ -31,6 +28,7 @@ from trading_core.config import Settings
 from trading_core.okx import OkxClient
 from trading_core.okx.models import Instrument as OkxInstrument
 from trading_core.scheduler import Scheduler
+from trading_core.security import signed_headers
 from trading_core.sync.instruments import derive_asset_class, instruments_job, sync_instruments
 
 FIXTURES = Path(__file__).parent / "fixtures" / "okx"
@@ -288,9 +286,7 @@ async def test_scheduler_survives_a_failing_job_and_run_now_raises() -> None:
 
 
 def signed(method: str, path: str, body: bytes = b"") -> dict[str, str]:
-    ts = str(int(time.time()))
-    sig = hmac.new(SECRET.encode(), (ts + method + path).encode() + body, hashlib.sha256).hexdigest()
-    return {"X-Atlas-Timestamp": ts, "X-Atlas-Signature": sig}
+    return signed_headers(SECRET, method, path, body)
 
 
 @respx.mock(base_url=BASE, assert_all_called=False)

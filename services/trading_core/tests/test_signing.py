@@ -10,7 +10,7 @@ from fastapi.testclient import TestClient
 from trading_core.app import create_app
 from trading_core.config import Settings
 from trading_core.logs import JsonFormatter
-from trading_core.security import sign
+from trading_core.security import NonceStore, new_nonce, sign
 
 VECTOR: dict[str, str] = json.loads(
     (Path(__file__).resolve().parents[3] / "test-vectors" / "internal_hmac.json").read_text(encoding="utf-8")
@@ -32,12 +32,19 @@ def client() -> TestClient:
 
 
 def _headers(
-    method: str, path: str, body: bytes, ts: int | None = None, secret: str = SECRET
+    method: str,
+    path: str,
+    body: bytes,
+    ts: int | None = None,
+    secret: str = SECRET,
+    nonce: str | None = None,
 ) -> dict[str, str]:
     timestamp = str(int(time.time()) if ts is None else ts)
+    n = new_nonce() if nonce is None else nonce
     return {
         "X-Atlas-Timestamp": timestamp,
-        "X-Atlas-Signature": sign(secret, timestamp, method, path, body),
+        "X-Atlas-Nonce": n,
+        "X-Atlas-Signature": sign(secret, timestamp, n, method, path, body),
         "Content-Type": "application/json",
     }
 
@@ -46,6 +53,7 @@ def test_shared_vector_matches_the_php_signature() -> None:
     got = sign(
         VECTOR["secret"],
         VECTOR["timestamp"],
+        VECTOR["nonce"],
         VECTOR["method"],
         VECTOR["path"],
         VECTOR["body"].encode("utf-8"),
@@ -111,6 +119,76 @@ def test_non_numeric_timestamp_is_rejected(client: TestClient) -> None:
     headers = _headers("GET", "/internal/ping", b"")
     headers["X-Atlas-Timestamp"] = "2026-10-28T08:00:00Z"
     assert client.get("/internal/ping", headers=headers).status_code == 401
+
+
+def test_openapi_schema_is_not_served(client: TestClient) -> None:
+    assert client.get("/openapi.json").status_code == 404
+    assert client.get("/docs").status_code == 404
+    assert client.get("/health").status_code == 200
+
+
+def test_missing_nonce_is_rejected(client: TestClient) -> None:
+    body = b"{}"
+    headers = _headers("POST", "/internal/echo", body)
+    del headers["X-Atlas-Nonce"]
+    assert client.post("/internal/echo", content=body, headers=headers).status_code == 401
+
+
+def test_nonce_left_out_of_the_mac_is_rejected(client: TestClient) -> None:
+    """The pre-ATL-34 recipe (ts + METHOD + path + body) with a nonce header alongside is refused."""
+    body = b"{}"
+    timestamp = str(int(time.time()))
+    headers = {
+        "X-Atlas-Timestamp": timestamp,
+        "X-Atlas-Nonce": new_nonce(),
+        "X-Atlas-Signature": sign(SECRET, timestamp, "", "POST", "/internal/echo", body),
+    }
+    assert client.post("/internal/echo", content=body, headers=headers).status_code == 401
+
+
+def test_nonce_swapped_after_signing_is_rejected(client: TestClient) -> None:
+    body = b"{}"
+    headers = _headers("POST", "/internal/echo", body)
+    headers["X-Atlas-Nonce"] = new_nonce()
+    assert client.post("/internal/echo", content=body, headers=headers).status_code == 401
+
+
+@pytest.mark.parametrize(
+    "nonce",
+    ["abc", "g" * 32, "A" * 32, "0" * 31, "0" * 33, "0" * 16 + "-" + "0" * 15],
+)
+def test_malformed_nonce_is_rejected(client: TestClient, nonce: str) -> None:
+    body = b"{}"
+    headers = _headers("POST", "/internal/echo", body, nonce=nonce)
+    assert client.post("/internal/echo", content=body, headers=headers).status_code == 401
+
+
+def test_replayed_request_is_rejected(client: TestClient) -> None:
+    body = b'{"a":1}'
+    headers = _headers("POST", "/internal/echo", body)
+    assert client.post("/internal/echo", content=body, headers=headers).status_code == 200
+    assert client.post("/internal/echo", content=body, headers=headers).status_code == 401
+
+
+def test_rejected_request_does_not_burn_its_nonce(client: TestClient) -> None:
+    body = b"{}"
+    nonce = new_nonce()
+    bad = _headers("POST", "/internal/echo", body, secret="not-the-secret", nonce=nonce)  # noqa: S106
+    assert client.post("/internal/echo", content=body, headers=bad).status_code == 401
+    good = _headers("POST", "/internal/echo", body, nonce=nonce)
+    assert client.post("/internal/echo", content=body, headers=good).status_code == 200
+
+
+def test_nonce_store_forgets_after_its_ttl() -> None:
+    now = [1000.0]
+    store = NonceStore(ttl_seconds=60, clock=lambda: now[0])
+    assert store.claim("a" * 32) is True
+    now[0] += 59
+    assert store.claim("a" * 32) is False
+    now[0] += 1.5
+    assert store.claim("b" * 32) is True
+    assert len(store) == 1  # the expired nonce was pruned
+    assert store.claim("a" * 32) is True
 
 
 def test_unknown_internal_route_is_still_401_without_signature(client: TestClient) -> None:
