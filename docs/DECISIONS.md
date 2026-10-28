@@ -26,3 +26,11 @@ decisions where the brief was silent, as the brief asks.
   `App\Support\Events\EventBus` on the `events` Redis connection, which has no key prefix.
 - **Settings values travel as strings for decimals and integers for counts/leverage/autonomy;** a settings
   change event carries the new version, not the values, and consumers reload from Postgres.
+- **Withdraw-enabled OKX keys: refused in live, accepted with a warning in demo** (ATL-30, CEO
+  instruction of 2026-10-28, relaxing decision #237 for `env=demo` only). Test connection on a demo key
+  whose `perm` includes `withdraw` returns `ok: true`, sets `last_verified_at` and carries
+  `warnings: ["withdraw_permission_enabled"]`; sync runs for it like any verified key. A live key with
+  `withdraw` is still refused with `error: "withdraw_permission_enabled"` and is never verified.
+  `atlas:doctor` reports the demo case as a warning (exit 0) and fails on a live connection whose last
+  test stored `withdraw`. Brief rule 5 is unchanged: no withdrawal or transfer code exists anywhere,
+  and `NoWithdrawalCodeTest` guards it.

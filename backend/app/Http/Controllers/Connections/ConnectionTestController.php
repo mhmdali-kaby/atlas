@@ -14,7 +14,7 @@ use Illuminate\Http\JsonResponse;
 use RuntimeException;
 
 /**
- * Test connection (brief §14.2, §18; decisions #235, #237). trading_core decrypts the stored key,
+ * Test connection (brief §14.2, §18; decisions #235, #237, ATL-30). trading_core decrypts the stored key,
  * calls OKX account/config and writes the verification columns; this endpoint relays its result,
  * adds the human message for the error slug, and audits the attempt. Only uid_last4 ever reaches
  * Laravel; the full UID stays inside trading_core.
@@ -23,7 +23,7 @@ class ConnectionTestController extends Controller
 {
     /** Fields relayed from trading_core's answer, in this order. */
     private const RESULT_FIELDS = [
-        'ok', 'acct_lv', 'account_mode', 'position_mode', 'permissions', 'uid_last4', 'error', 'okx_code', 'verified_at',
+        'ok', 'acct_lv', 'account_mode', 'position_mode', 'permissions', 'warnings', 'uid_last4', 'error', 'okx_code', 'verified_at',
     ];
 
     public function __construct(private readonly Auditable $audit) {}
@@ -50,6 +50,8 @@ class ConnectionTestController extends Controller
         }
         $result['ok'] = $result['ok'] === true;
         $result['permissions'] = is_array($result['permissions']) ? array_values($result['permissions']) : [];
+        // Slugs for a passing test the owner should still know about, e.g. a demo key with withdraw (ATL-30).
+        $result['warnings'] = is_array($result['warnings']) ? array_values(array_filter($result['warnings'], 'is_string')) : [];
         $result['message'] = $this->message($result['error']);
 
         $this->audit->record(
