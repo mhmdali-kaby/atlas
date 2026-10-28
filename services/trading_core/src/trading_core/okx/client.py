@@ -22,6 +22,7 @@ import httpx
 from atlas_shared.defaults import DEFAULTS
 
 from trading_core.okx.errors import OkxError, OkxHttpError, OkxNetworkError, OkxResponseError
+from trading_core.okx.fixtures import fixture_transport, fixtures_enabled
 from trading_core.okx.models import (
     AccountBalance,
     AccountConfig,
@@ -112,7 +113,10 @@ class OkxClient:
         self._env_headers: dict[str, str] = {str(k): str(v) for k, v in envs[env]["headers"].items()}
         self._owns_http = http is None
         self._http = http or httpx.AsyncClient(
-            base_url=str(envs[env]["rest_base_url"]), timeout=float(cfg["timeout_seconds"])
+            base_url=str(envs[env]["rest_base_url"]),
+            timeout=float(cfg["timeout_seconds"]),
+            # ATLAS_OKX_FIXTURES=1 answers from recorded JSON; nothing reaches OKX (ATL-25).
+            transport=fixture_transport() if fixtures_enabled() else None,
         )
         self._limiter = rate_limiter or RateLimiter(sleep=sleep)
         self._retry = retry or RetryPolicy.from_defaults()
