@@ -13,11 +13,6 @@ use Illuminate\Support\Str;
 class UserFactory extends Factory
 {
     /**
-     * The current password being used by the factory.
-     */
-    protected static ?string $password;
-
-    /**
      * Define the model's default state.
      *
      * @return array<string, mixed>
@@ -28,7 +23,10 @@ class UserFactory extends Factory
             'name' => fake()->name(),
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
-            'password' => static::$password ??= Hash::make('password'),
+            // No shared default password: tests that log in pass their own.
+            'password' => Hash::make(Str::random(32)),
+            'locale' => 'en',
+            'theme' => 'system',
             'remember_token' => Str::random(10),
         ];
     }
