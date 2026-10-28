@@ -1,16 +1,4 @@
-/* Portfolio Overview (design: css/portfolio.css): skeletons, the equity tint, the ledger strip. */
-
-.pf-skeleton {
-  display: block;
-  border-radius: 6px;
-  background: linear-gradient(90deg, var(--fill-3) 0%, var(--fill-4) 50%, var(--fill-3) 100%);
-  background-size: 200% 100%;
-  animation: pf-shimmer 1.4s ease-in-out infinite;
-}
-@keyframes pf-shimmer {
-  from { background-position: 100% 0; }
-  to { background-position: -100% 0; }
-}
+/* Portfolio Overview (design: css/portfolio.css): the equity tint, the ledger strip (skeletons: src/ui/Skeleton). */
 
 /* A changed equity figure flashes green or red, then settles to the label colour. */
 .pf-tint-profit { animation: pf-tint-profit 1200ms var(--ease-out); }

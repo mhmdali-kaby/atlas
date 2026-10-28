@@ -76,11 +76,12 @@ export function canWithdraw(c: Connection | null | undefined, warnings: readonly
 }
 
 /** Error slug from a non-200 test or save (503 trading_core_unavailable, 502 trading_core_error…). */
-function errorSlug(err: unknown): string {
+export function errorSlug(err: unknown): string {
   if (err instanceof ApiError) {
     const body = err.body as { error?: unknown } | null
     if (body && typeof body.error === 'string') return body.error
     if (err.network) return 'trading_core_unavailable'
+    if (err.status >= 500) return 'trading_core_error'
   }
   return 'unknown'
 }

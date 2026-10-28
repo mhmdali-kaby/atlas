@@ -6,14 +6,13 @@ import { cx } from '../../ui/cx'
 import type { PortfolioSummary } from './api'
 import { formatAgo, formatClock } from './time'
 
+/** Re-exported so the Portfolio pages keep importing it from here; it lives in src/ui. */
+export { Skeleton } from '../../ui'
+
 /*
  * Pieces every Portfolio page shares (design: css/portfolio.css): the reconciled
  * indicator, the state blocks and skeletons (hooks are in hooks.ts).
  */
-
-export function Skeleton({ className, style }: { className?: string; style?: React.CSSProperties }) {
-  return <span aria-hidden="true" className={cx('pf-skeleton', className)} style={style} />
-}
 
 export function ReconciledIndicator({ summary, lang, now }: { summary: PortfolioSummary; lang: Lang; now: number }) {
   const { t } = useTranslation('portfolio')

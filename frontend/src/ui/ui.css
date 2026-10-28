@@ -12,3 +12,16 @@
   from { opacity: 0.85; }
   to { opacity: 0.15; }
 }
+
+/* Skeleton: a loading placeholder that shimmers left to right. */
+.ui-skeleton {
+  display: block;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--fill-3) 0%, var(--fill-4) 50%, var(--fill-3) 100%);
+  background-size: 200% 100%;
+  animation: ui-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes ui-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}

@@ -1,6 +1,7 @@
 /* What other features reuse from onboarding (ATL-20 Settings → Connections, ATL-21 Settings → Risk). */
 export {
   AccountRows,
+  type AccountRow,
   ConnectionForm,
   KeyHelp,
   SavedKey,
@@ -12,6 +13,7 @@ export {
 export {
   canWithdraw,
   CONNECTIONS_KEY,
+  errorSlug,
   isVerified,
   useConnection,
   useConnections,
