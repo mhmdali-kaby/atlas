@@ -18,6 +18,8 @@ class Settings:
     env: str
     internal_shared_secret: str
     max_clock_skew_seconds: int = 30
+    # TRADING_CORE_SCHEDULER=0 serves the API without the periodic sync loops (tests, one-off runs).
+    run_scheduler: bool = True
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -30,4 +32,6 @@ class Settings:
             port=int(os.environ.get("TRADING_CORE_PORT", str(DEFAULT_PORT))),
             env=env,
             internal_shared_secret=os.environ.get("INTERNAL_SHARED_SECRET", ""),
+            run_scheduler=os.environ.get("TRADING_CORE_SCHEDULER", "1").strip().lower()
+            not in ("0", "false", "no"),
         )

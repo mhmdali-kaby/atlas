@@ -101,6 +101,27 @@ DEFAULTS: Final[dict[str, Any]] = {
         "account_interval_seconds": 60,
         "bills_interval_seconds": 300,
     },
+    "instruments": {
+        "inst_types": [
+            "SPOT",
+            "SWAP",
+            "FUTURES",
+        ],
+        "delisted_state": "delisted_local",
+        "category_asset_class": {
+            "1": "crypto",
+            "3": "stock",
+            "4": "commodity",
+        },
+        "stock_class_overrides": {
+            "SPY": "etf",
+            "QQQ": "etf",
+            "IWM": "etf",
+            "TQQQ": "etf",
+            "SQQQ": "etf",
+            "US100": "index",
+        },
+    },
     "okx_rest": {
         "timeout_seconds": 10,
         "max_attempts": 3,

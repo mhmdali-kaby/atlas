@@ -96,6 +96,24 @@ sync:
   account_interval_seconds: 60
   bills_interval_seconds: 300
 
+# ATL-9, brief §2/§4.3: instrument universe sync. OPTION is off in Phase 0 (options disabled by default).
+# asset_class is derived from OKX instCategory; unknown or missing categories become "other".
+# Stock-category instruments whose base symbol is listed in stock_class_overrides get that class instead.
+instruments:
+  inst_types: [SPOT, SWAP, FUTURES]
+  delisted_state: delisted_local
+  category_asset_class:
+    "1": crypto
+    "3": stock
+    "4": commodity
+  stock_class_overrides:
+    SPY: etf
+    QQQ: etf
+    IWM: etf
+    TQQQ: etf
+    SQQQ: etf
+    US100: index
+
 # ATL-7: OKX REST client behaviour. Rate limits are the documented per-endpoint OKX v5 limits
 # (https://www.okx.com/docs-v5/en/), as "requests per per_seconds"; keys are paths after /api/v5/.
 okx_rest:

@@ -7,13 +7,22 @@ Add new internal routes to `internal_router`; the middleware already protects th
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from importlib.metadata import PackageNotFoundError, version
+from typing import Any
 
-from fastapi import APIRouter, FastAPI
+from atlas_shared.db import make_engine
+from atlas_shared.defaults import DEFAULTS
+from fastapi import APIRouter, FastAPI, Request
+from fastapi.responses import JSONResponse
 
 from trading_core.config import Settings
 from trading_core.logs import AccessLogMiddleware
+from trading_core.scheduler import Scheduler
 from trading_core.security import PROTECTED_PREFIX, InternalSignatureMiddleware
+from trading_core.sync.instruments import STREAM as INSTRUMENTS_JOB
+from trading_core.sync.instruments import instruments_job
 
 logger = logging.getLogger("trading_core")
 
@@ -31,13 +40,62 @@ async def internal_ping() -> dict[str, bool]:
     return {"ok": True}
 
 
-def create_app(settings: Settings | None = None, extra_internal: APIRouter | None = None) -> FastAPI:
+@internal_router.post("/sync/instruments", response_model=None)
+async def sync_instruments_now(request: Request) -> dict[str, Any] | JSONResponse:
+    """Run the instruments sync for the active env now (waits for a scheduled run in flight)."""
+    scheduler: Scheduler = request.app.state.scheduler
+    try:
+        result: dict[str, Any] = await scheduler.run_now(INSTRUMENTS_JOB)
+    except Exception as exc:
+        logger.warning("instruments sync failed", extra={"error": type(exc).__name__})
+        return JSONResponse(
+            status_code=502,
+            content={
+                "ok": False,
+                "error": "instruments_sync_failed",
+                "detail": f"{type(exc).__name__}: {exc}",
+            },
+        )
+    return {"ok": True, **result}
+
+
+def default_scheduler(settings: Settings) -> Scheduler:
+    """The jobs trading_core runs in production. ATL-10 adds its account jobs here."""
+    scheduler = Scheduler()
+    engine = make_engine()
+    scheduler.add(
+        INSTRUMENTS_JOB,
+        DEFAULTS["sync"]["instruments_interval_seconds"],
+        instruments_job(settings.env, engine),
+    )
+    return scheduler
+
+
+def create_app(
+    settings: Settings | None = None,
+    extra_internal: APIRouter | None = None,
+    *,
+    scheduler: Scheduler | None = None,
+) -> FastAPI:
     settings = settings or Settings.from_env()
     if not settings.internal_shared_secret:
         logger.warning("INTERNAL_SHARED_SECRET is empty; every /internal call will be rejected")
+    jobs = scheduler if scheduler is not None else default_scheduler(settings)
 
-    application = FastAPI(title="Atlas trading_core", version=VERSION, docs_url=None, redoc_url=None)
+    @asynccontextmanager
+    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        if settings.run_scheduler:
+            jobs.start()
+        try:
+            yield
+        finally:
+            await jobs.stop()
+
+    application = FastAPI(
+        title="Atlas trading_core", version=VERSION, docs_url=None, redoc_url=None, lifespan=lifespan
+    )
     application.state.settings = settings
+    application.state.scheduler = jobs
 
     @application.get("/health")
     async def health() -> dict[str, str]:
