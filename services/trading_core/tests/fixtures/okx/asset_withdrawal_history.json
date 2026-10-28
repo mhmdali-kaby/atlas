@@ -1,0 +1,26 @@
+{
+  "code": "0",
+  "msg": "",
+  "data": [
+    {
+      "addrEx": null,
+      "amt": "250",
+      "areaCodeFrom": "",
+      "areaCodeTo": "",
+      "ccy": "USDT",
+      "chain": "USDT-TRC20",
+      "clientId": "",
+      "fee": "1.5",
+      "feeCcy": "USDT",
+      "from": "",
+      "nonTradableAsset": false,
+      "state": "2",
+      "tag": "",
+      "to": "TXfixtureAddressScrubbed000000001",
+      "toAddrType": "1",
+      "ts": "1793050000000",
+      "txId": "fixturetxid0000000000000000000000000000000000000000000000000002",
+      "wdId": "99999999"
+    }
+  ]
+}
