@@ -7,4 +7,5 @@ return [
     'decimal_range_exclusive' => 'The :attribute must be greater than :min and at most :max.',
     'decimal_range_inclusive' => 'The :attribute must be between :min and :max.',
     'stale_version' => 'Settings were changed elsewhere. Reload them and apply your change again.',
+    'autonomy_level_locked' => 'Autonomy level :max is the highest this build phase supports.',
 ];

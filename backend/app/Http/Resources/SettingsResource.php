@@ -29,6 +29,8 @@ class SettingsResource extends JsonResource
             'version' => $setting->version,
             'settings' => app(SettingsService::class)->values($setting),
             'presets' => SettingsSchema::presets(),
+            // ATL-33 AC2: the SPA's AutonomyPicker disables levels above this without guessing it.
+            'max_enabled_autonomy_level' => (int) config('atlas_defaults.autonomy.max_enabled_level'),
             'updated_at' => $setting->updated_at->toIso8601ZuluString('microsecond'),
         ];
     }

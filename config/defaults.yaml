@@ -60,6 +60,10 @@ autonomy:
   default_level: 2                 # 1 advise only, 2 approve each trade, 3 auto within limits, 4 full auto
   levels: [1, 2, 3, 4]
   on_approval_timeout: reject
+  # ATL-33 AC2: autonomy 3 (auto within limits) and 4 (full auto) place orders without the owner's
+  # per-trade approval; neither the Risk Engine nor the Executor exist before Phase 2, so Settings
+  # must refuse them until then. Raise this when the build phase that implements them ships.
+  max_enabled_level: 2
 
 # Brief §7.1 / §14.5. Volumes are USD notional over 24h.
 markets:
@@ -101,6 +105,9 @@ doctor:
   max_clock_drift_ms: 2000
   min_free_disk_gb: 5
   trading_core_timeout_seconds: 5
+  # ATL-33 AC4: the one place this number lives. config/session.php's SESSION_LIFETIME
+  # fallback and Doctor::security() both read it, so they cannot drift apart.
+  max_session_lifetime_minutes: 15
 
 # ATL-10: account sync. Funding-account coins are valued in USD with OKX SPOT tickers
 # (<CCY>-<quote> last price, quotes tried in order). Stablecoins count 1:1 with USD in Phase 0.

@@ -64,6 +64,7 @@ return [
             4,
         ],
         'on_approval_timeout' => 'reject',
+        'max_enabled_level' => 2,
     ],
     'markets' => [
         'min_24h_volume_usd' => [
@@ -106,6 +107,7 @@ return [
         'max_clock_drift_ms' => 2000,
         'min_free_disk_gb' => 5,
         'trading_core_timeout_seconds' => 5,
+        'max_session_lifetime_minutes' => 15,
     ],
     'account_sync' => [
         'usd_stablecoins' => [

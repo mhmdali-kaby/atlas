@@ -57,6 +57,7 @@ final class Doctor
             $this->demoConnection(),
             $this->withdrawPermission(),
             $this->diskSpace(),
+            $this->security(),
             $this->backup(),
         ];
     }
@@ -286,6 +287,26 @@ final class Doctor
         return $free >= $min * 1024 ** 3
             ? CheckResult::pass('disk_space', self::t('disk_ok', ['free' => $gb, 'min' => $min]))
             : CheckResult::fail('disk_space', self::t('disk_low', ['free' => $gb, 'min' => $min]));
+    }
+
+    /**
+     * ATL-33 AC4: an insecure session lifetime or debug mode left on outside local must fail
+     * doctor, not just be caught in code review.
+     */
+    private function security(): CheckResult
+    {
+        $lifetime = (int) config('session.lifetime');
+        $max = (int) config('atlas_defaults.doctor.max_session_lifetime_minutes');
+        if ($lifetime > $max) {
+            return CheckResult::fail('security', self::t('session_lifetime_too_long', ['lifetime' => $lifetime, 'max' => $max]));
+        }
+
+        $env = (string) config('app.env');
+        if ((bool) config('app.debug') && $env !== 'local') {
+            return CheckResult::fail('security', self::t('debug_enabled', ['env' => $env]));
+        }
+
+        return CheckResult::pass('security', self::t('security_ok', ['lifetime' => $lifetime]));
     }
 
     private function backup(): CheckResult

@@ -17,7 +17,8 @@ return [
     |
     */
 
-    'default' => env('DB_CONNECTION', 'sqlite'),
+    // ATL-33 AC4 / decision #233: Postgres+Timescale+pgvector, never SQLite (no jsonb/arrays/hypertables).
+    'default' => env('DB_CONNECTION', 'pgsql'),
 
     /*
     |--------------------------------------------------------------------------

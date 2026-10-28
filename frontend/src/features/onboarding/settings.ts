@@ -34,6 +34,8 @@ export interface SettingsDoc {
   version: number
   settings: SettingsValues
   presets: Record<PresetId, RiskLimits>
+  /** Highest autonomy level the backend accepts this build phase (ATL-33 AC2); absent only in stale fixtures. */
+  max_enabled_autonomy_level?: number
   updated_at: string
 }
 
@@ -41,8 +43,16 @@ export type SettingsChanges = Partial<Record<keyof SettingsValues, string | numb
 
 /** Phase 0 enables autonomy levels 1 (Advise only) and 2 (Approve each trade). */
 export const AUTONOMY_LEVELS = [1, 2, 3, 4] as const
+/** Fallback when a settings doc has no `max_enabled_autonomy_level` (e.g. an older fixture). */
 export const ENABLED_AUTONOMY = [1, 2] as const
 export const DEFAULT_AUTONOMY = 2
+
+/** The levels the owner may pick right now, from GET /api/settings's phase gate. */
+export function enabledAutonomyLevels(doc: SettingsDoc | undefined): readonly number[] {
+  const max = doc?.max_enabled_autonomy_level ?? Math.max(...ENABLED_AUTONOMY)
+
+  return AUTONOMY_LEVELS.filter((level) => level <= max)
+}
 export const DEFAULT_PROFILE: PresetId = 'balanced'
 
 export const settingsKey = (env: SettingsDoc['env'] = 'demo') => ['settings', env] as const

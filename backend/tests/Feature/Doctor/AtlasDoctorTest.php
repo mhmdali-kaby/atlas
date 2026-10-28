@@ -18,7 +18,7 @@ const ATL13_FULL_UID = '4471029384756123';
 
 const ATL13_CHECKS = [
     'postgres', 'postgres_extensions', 'migrations', 'redis', 'trading_core', 'okx_clock',
-    'demo_connection', 'withdraw_permission', 'disk_space', 'backup',
+    'demo_connection', 'withdraw_permission', 'disk_space', 'security', 'backup',
 ];
 
 /**
@@ -215,6 +215,36 @@ it('fails when free disk space is under the minimum', function (): void {
 
     expect($code)->not->toBe(0);
     expect(lineFor($output, 'disk_space'))->toStartWith('✗')->toContain('1000000 GB');
+});
+
+it('fails when the session lifetime is over 15 minutes', function (): void {
+    config(['session.lifetime' => 120]);
+    fakeCore();
+
+    [$code, $output] = doctor();
+
+    expect($code)->not->toBe(0);
+    expect(lineFor($output, 'security'))->toStartWith('✗')->toContain('120 min');
+});
+
+it('fails when debug is on outside local', function (): void {
+    config(['app.debug' => true, 'app.env' => 'production']);
+    fakeCore();
+
+    [$code, $output] = doctor();
+
+    expect($code)->not->toBe(0);
+    expect(lineFor($output, 'security'))->toStartWith('✗')->toContain('production');
+});
+
+it('passes security when debug is on but APP_ENV is local', function (): void {
+    config(['app.debug' => true, 'app.env' => 'local']);
+    fakeCore();
+
+    [$code, $output] = doctor();
+
+    expect($code)->toBe(0);
+    expect(lineFor($output, 'security'))->toStartWith('✓');
 });
 
 it('prints one JSON object per check with name, ok and detail', function (): void {

@@ -13,7 +13,11 @@ class AppServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        //
+        // ATL-33 AC3: stops PHP capturing function arguments (ciphertext, secrets) in exception
+        // traces in the first place. Must run before any request code can throw, so it is set
+        // here rather than in boot(). DropExceptionTraceArgsProcessor (config/logging.php 'tap')
+        // is the second line of defence for an exception already carrying them.
+        ini_set('zend.exception_ignore_args', '1');
     }
 
     public function boot(): void

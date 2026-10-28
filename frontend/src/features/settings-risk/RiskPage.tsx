@@ -10,7 +10,7 @@ import { useLang } from '../portfolio/hooks'
 import {
   AutonomyPicker,
   CompareDisclosure,
-  ENABLED_AUTONOMY,
+  enabledAutonomyLevels,
   LimitsCompare,
   LIMIT_DEFS,
   Notice,
@@ -256,7 +256,7 @@ export function RiskPage() {
         </Section>
 
         <Section id="st-au-title" title={tOb('au.label')} note={t('risk.autonomyNote')}>
-          <AutonomyPicker value={draft.autonomy} enabled={ENABLED_AUTONOMY} onChange={(level) => update({ ...draft, autonomy: level })} />
+          <AutonomyPicker value={draft.autonomy} enabled={enabledAutonomyLevels(doc)} onChange={(level) => update({ ...draft, autonomy: level })} />
         </Section>
 
         <Section id="st-act-title" title={t('risk.activity')} note={t('risk.activityNote')}>

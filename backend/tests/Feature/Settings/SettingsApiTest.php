@@ -175,10 +175,12 @@ it('rejects out-of-range values with a field error', function (array $changes, s
 it('accepts the range boundaries', function (): void {
     $this->getJson('/api/settings?env=demo')->assertOk();
 
+    // autonomy_level's own boundary (1-4) is covered separately: this build phase caps it at 2
+    // (ATL-33 AC2), so 4 is not a usable boundary value here.
     $this->patchJson('/api/settings', ['env' => 'demo', 'version' => 1, 'changes' => [
         'max_loss_per_trade_pct' => '100',
         'max_leverage' => 125,
-        'autonomy_level' => 4,
+        'autonomy_level' => 2,
         'max_instruments_per_day' => 10,
     ]])->assertOk()->assertJsonPath('data.version', 2);
 
@@ -189,6 +191,28 @@ it('accepts the range boundaries', function (): void {
         'max_instruments_per_day' => 1,
     ]])->assertOk()->assertJsonPath('data.version', 3);
 });
+
+it('exposes the autonomy phase gate and refuses autonomy 3-4 above it, for demo and live', function (string $env): void {
+    $this->getJson("/api/settings?env={$env}")
+        ->assertOk()
+        ->assertJsonPath('data.max_enabled_autonomy_level', 2);
+
+    $this->patchJson('/api/settings', ['env' => $env, 'version' => 1, 'changes' => ['autonomy_level' => 3]])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('changes.autonomy_level');
+    $this->patchJson('/api/settings', ['env' => $env, 'version' => 1, 'changes' => ['autonomy_level' => 4]])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('changes.autonomy_level');
+
+    $this->patchJson('/api/settings', ['env' => $env, 'version' => 1, 'changes' => ['autonomy_level' => 1]])
+        ->assertOk()
+        ->assertJsonPath('data.settings.autonomy_level', 1);
+    $this->patchJson('/api/settings', ['env' => $env, 'version' => 2, 'changes' => ['autonomy_level' => 2]])
+        ->assertOk()
+        ->assertJsonPath('data.settings.autonomy_level', 2);
+
+    expect(Setting::query()->where('env', $env)->value('version'))->toBe(3);
+})->with(['demo', 'live']);
 
 it('refuses unknown fields, an empty change set and a missing version', function (): void {
     $this->patchJson('/api/settings', ['env' => 'demo', 'version' => 1, 'changes' => ['withdraw' => true]])

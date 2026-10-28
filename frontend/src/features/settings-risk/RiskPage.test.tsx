@@ -59,10 +59,11 @@ function initialSettings(): SettingsValues {
 }
 
 /** A Laravel-shaped settings backend: versioned PATCH with 409 and the real 422 messages. */
-function fakeBackend() {
+function fakeBackend(opts: { maxAutonomy?: number } = {}) {
   const state = {
     version: 2,
     settings: initialSettings(),
+    maxAutonomy: opts.maxAutonomy ?? 2,
     history: [
       { id: 'h2', version: 2, diff: { onboarding_completed: { from: 0, to: 1 } }, changed_by: null, created_at: '2026-10-28T09:00:00.000000Z' },
       { id: 'h1', version: 1, diff: { risk_profile: { from: null, to: 'balanced' } }, changed_by: null, created_at: '2026-10-28T08:00:00.000000Z' },
@@ -70,7 +71,17 @@ function fakeBackend() {
     patches: [] as { version: number; changes: Record<string, string | number> }[],
     failGet: false,
   }
-  const doc = () => ({ data: { id: 's1', env: 'demo', version: state.version, settings: state.settings, presets: PRESETS, updated_at: '2026-10-28T09:00:00Z' } })
+  const doc = () => ({
+    data: {
+      id: 's1',
+      env: 'demo',
+      version: state.version,
+      settings: state.settings,
+      presets: PRESETS,
+      max_enabled_autonomy_level: state.maxAutonomy,
+      updated_at: '2026-10-28T09:00:00Z',
+    },
+  })
 
   /** What another window saving does. */
   const saveElsewhere = (changes: Partial<SettingsValues>) => {
@@ -188,6 +199,16 @@ describe('Settings → Risk & Autonomy (ATL-21)', () => {
     // 08:00 UTC → 11:00 Baghdad
     expect(activity).toHaveTextContent('Oct 28, 2026, 11:00')
     expect(screen.queryByTestId('save-bar')).toBeNull()
+  })
+
+  it('disables autonomy levels above GET /api/settings’s max_enabled_autonomy_level (ATL-33 AC2)', async () => {
+    fakeBackend({ maxAutonomy: 1 })
+    renderPage()
+    const autonomy = within(await screen.findByRole('radiogroup', { name: 'Autonomy' }))
+    expect(autonomy.getByRole('radio', { name: 'Advise only' })).not.toHaveAttribute('aria-disabled')
+    expect(autonomy.getByRole('radio', { name: 'Approve each trade' })).toHaveAttribute('aria-disabled', 'true')
+    expect(autonomy.getByRole('radio', { name: 'Auto within limits' })).toHaveAttribute('aria-disabled', 'true')
+    expect(autonomy.getByRole('radio', { name: 'Full auto' })).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('Max leverage 5 → 3 on Balanced switches to Custom, and Save adds a version describing it', async () => {
