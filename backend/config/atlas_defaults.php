@@ -102,6 +102,11 @@ return [
         'account_interval_seconds' => 60,
         'bills_interval_seconds' => 300,
     ],
+    'doctor' => [
+        'max_clock_drift_ms' => 2000,
+        'min_free_disk_gb' => 5,
+        'trading_core_timeout_seconds' => 5,
+    ],
     'instruments' => [
         'inst_types' => [
             'SPOT',

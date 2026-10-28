@@ -96,6 +96,12 @@ sync:
   account_interval_seconds: 60
   bills_interval_seconds: 300
 
+# ATL-13, brief §18: `php artisan atlas:doctor` thresholds.
+doctor:
+  max_clock_drift_ms: 2000
+  min_free_disk_gb: 5
+  trading_core_timeout_seconds: 5
+
 # ATL-9, brief §2/§4.3: instrument universe sync. OPTION is off in Phase 0 (options disabled by default).
 # asset_class is derived from OKX instCategory; unknown or missing categories become "other".
 # Stock-category instruments whose base symbol is listed in stock_class_overrides get that class instead.
