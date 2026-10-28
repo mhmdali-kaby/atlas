@@ -17,15 +17,20 @@ import threading
 import time
 from collections.abc import Callable
 
+from atlas_shared.defaults import DEFAULTS
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 TIMESTAMP_HEADER = "x-atlas-timestamp"
 SIGNATURE_HEADER = "x-atlas-signature"
 NONCE_HEADER = "x-atlas-nonce"
+CONTENT_LENGTH_HEADER = "content-length"
 PROTECTED_PREFIX = "/internal"
 # Longer than the accepted clock window (±30 s → a 60 s span), so a nonce cannot be forgotten while
 # its timestamp would still pass the skew check.
 NONCE_TTL_SECONDS = 60
+# ATL-35: no /internal body may exceed this, whether declared by Content-Length or discovered
+# while streaming a chunked body. config/defaults.yaml is the one place this number lives.
+MAX_INTERNAL_BODY_BYTES: int = DEFAULTS["internal_api"]["max_body_bytes"]
 _NONCE_RE = re.compile(r"[0-9a-f]{32}")
 
 
@@ -115,17 +120,39 @@ class InternalSignatureMiddleware:
             await self.app(scope, receive, send)
             return
 
+        headers = _header_map(scope)
+
+        # Header-only checks first (ATL-35): an unsigned or malformed request is rejected before
+        # a single byte of its body is read, so it cannot be used to make trading_core buffer an
+        # unbounded body in memory.
+        if not self._verify_headers(headers):
+            await _unauthorised(send)
+            return
+
+        declared_length = _content_length(headers)
+        if declared_length is not None and declared_length > MAX_INTERNAL_BODY_BYTES:
+            await _payload_too_large(send)
+            return
+
         chunks: list[bytes] = []
+        total = 0
         while True:
             message = await receive()
             if message["type"] == "http.disconnect":
                 return
-            chunks.append(message.get("body", b""))
+            chunk = message.get("body", b"")
+            total += len(chunk)
+            if total > MAX_INTERNAL_BODY_BYTES:
+                # Covers a chunked body with no (or an understated) Content-Length: the cap is
+                # enforced on what is actually read, not on what the client claims to send.
+                await _payload_too_large(send)
+                return
+            chunks.append(chunk)
             if not message.get("more_body", False):
                 break
         body = b"".join(chunks)
 
-        if not self._verify(scope, body):
+        if not self._verify_body(headers, scope, body):
             await _unauthorised(send)
             return
 
@@ -140,10 +167,10 @@ class InternalSignatureMiddleware:
 
         await self.app(scope, replay, send)
 
-    def _verify(self, scope: Scope, body: bytes) -> bool:
+    def _verify_headers(self, headers: dict[str, str]) -> bool:
+        """Checks that need only the request headers: present, well-formed, in-skew."""
         if not self.secret:
             return False
-        headers = {k.decode("latin-1").lower(): v.decode("latin-1") for k, v in scope["headers"]}
         timestamp = headers.get(TIMESTAMP_HEADER, "")
         signature = headers.get(SIGNATURE_HEADER, "")
         nonce = headers.get(NONCE_HEADER, "")
@@ -153,6 +180,13 @@ class InternalSignatureMiddleware:
             return False
         if abs(self.clock() - int(timestamp)) > self.max_skew_seconds:
             return False
+        return True
+
+    def _verify_body(self, headers: dict[str, str], scope: Scope, body: bytes) -> bool:
+        """The MAC check, which needs the body; only reached once the header checks passed."""
+        timestamp = headers[TIMESTAMP_HEADER]
+        signature = headers[SIGNATURE_HEADER]
+        nonce = headers[NONCE_HEADER]
         path = scope["path"]
         query = scope.get("query_string", b"")
         if query:
@@ -164,12 +198,35 @@ class InternalSignatureMiddleware:
         return self.nonces.claim(nonce)
 
 
+def _header_map(scope: Scope) -> dict[str, str]:
+    return {k.decode("latin-1").lower(): v.decode("latin-1") for k, v in scope["headers"]}
+
+
+def _content_length(headers: dict[str, str]) -> int | None:
+    raw = headers.get(CONTENT_LENGTH_HEADER)
+    if raw is None or not raw.isdigit():
+        return None
+    return int(raw)
+
+
 async def _unauthorised(send: Send) -> None:
     body = b'{"detail":"invalid or missing signature"}'
     await send(
         {
             "type": "http.response.start",
             "status": 401,
+            "headers": [(b"content-type", b"application/json"), (b"content-length", str(len(body)).encode())],
+        }
+    )
+    await send({"type": "http.response.body", "body": body})
+
+
+async def _payload_too_large(send: Send) -> None:
+    body = b'{"detail":"request body too large"}'
+    await send(
+        {
+            "type": "http.response.start",
+            "status": 413,
             "headers": [(b"content-type", b"application/json"), (b"content-length", str(len(body)).encode())],
         }
     )

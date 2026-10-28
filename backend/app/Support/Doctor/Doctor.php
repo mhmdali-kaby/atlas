@@ -302,7 +302,10 @@ final class Doctor
         }
 
         $env = (string) config('app.env');
-        if ((bool) config('app.debug') && $env !== 'local') {
+        // ATL-35: the shipped APP_ENV is local, so a check that only fired "outside local" never
+        // ran in practice. APP_DEBUG leaks stack traces and config values to any requester
+        // whatever the environment, so it fails here regardless of app.env.
+        if ((bool) config('app.debug')) {
             return CheckResult::fail('security', self::t('debug_enabled', ['env' => $env]));
         }
 

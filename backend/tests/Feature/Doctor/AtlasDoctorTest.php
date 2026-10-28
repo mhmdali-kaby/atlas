@@ -237,14 +237,15 @@ it('fails when debug is on outside local', function (): void {
     expect(lineFor($output, 'security'))->toStartWith('✗')->toContain('production');
 });
 
-it('passes security when debug is on but APP_ENV is local', function (): void {
+it('fails security when debug is on even though APP_ENV is local', function (): void {
+    // ATL-35: the shipped APP_ENV is local, so a check gated on "outside local" never fired.
     config(['app.debug' => true, 'app.env' => 'local']);
     fakeCore();
 
     [$code, $output] = doctor();
 
-    expect($code)->toBe(0);
-    expect(lineFor($output, 'security'))->toStartWith('✓');
+    expect($code)->not->toBe(0);
+    expect(lineFor($output, 'security'))->toStartWith('✗')->toContain('local');
 });
 
 it('prints one JSON object per check with name, ok and detail', function (): void {

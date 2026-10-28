@@ -100,6 +100,12 @@ sync:
   account_interval_seconds: 60
   bills_interval_seconds: 300
 
+# ATL-35: InternalSignatureMiddleware rejects any /internal request body larger than this (by
+# Content-Length, and by a running total while reading chunked bodies) before it is ever handed
+# to the MAC check, so an unsigned caller cannot force trading_core to buffer an unbounded body.
+internal_api:
+  max_body_bytes: 1048576
+
 # ATL-13, brief §18: `php artisan atlas:doctor` thresholds.
 doctor:
   max_clock_drift_ms: 2000
