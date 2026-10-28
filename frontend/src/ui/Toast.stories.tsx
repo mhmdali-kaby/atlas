@@ -3,7 +3,7 @@ import { useEffect } from 'react'
 import { expect, userEvent, waitFor, within } from 'storybook/test'
 import { useCopy } from '../storybook/copy'
 import { Button } from './Button'
-import { DARK, DARK_RTL, RTL } from './storyHelpers'
+import { DARK, DARK_RTL, RTL, expectFocusRing } from './storyHelpers'
 import { Toaster } from './Toast'
 import { toast, useToasts } from './toastStore'
 
@@ -46,6 +46,25 @@ export const Trigger: Story = {
     await userEvent.click(body.getByRole('button', { name: 'Dismiss' }))
     await waitFor(() => expect(body.queryByText('Saved', { selector: 'li *' })).toBeNull())
   },
+}
+
+/** Tab from the trigger reaches the toast, which shows the 3px accent focus ring (design §8). */
+async function playFocusVisible(canvasElement: HTMLElement, trigger: string, title: string) {
+  await userEvent.click(within(canvasElement).getByRole('button', { name: trigger }))
+  const card = (await within(document.body).findByText(title, { selector: 'li *' })).closest('li')
+  await userEvent.tab()
+  await waitFor(() => expect(card).toBe(document.activeElement))
+  await expect(card!.matches(':focus-visible')).toBe(true)
+  await expectFocusRing(card)
+}
+
+export const FocusVisible: Story = {
+  play: ({ canvasElement }) => playFocusVisible(canvasElement, 'Save changes', 'Saved'),
+}
+
+export const FocusVisibleRightToLeft: Story = {
+  globals: RTL,
+  play: ({ canvasElement }) => playFocusVisible(canvasElement, 'حفظ التغييرات', 'تم الحفظ'),
 }
 
 /** Success, warning, error and info, stacked. */

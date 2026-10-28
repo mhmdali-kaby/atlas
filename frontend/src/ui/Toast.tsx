@@ -46,7 +46,7 @@ function ToastCard({ item, onDismiss }: { item: ToastItem; onDismiss: () => void
         initial={{ opacity: 0, x: fromX }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, scale: 0.96 }}
-        className="flex items-start gap-3 rounded-panel px-3.5 py-3 text-label vibrancy-popover shadow-[var(--ui-shadow-popover),0_0_0_0.5px_var(--hairline-color)]"
+        className="flex items-start gap-3 rounded-panel px-3.5 py-3 text-label vibrancy-popover shadow-[var(--ui-shadow-popover),0_0_0_0.5px_var(--hairline-color)] focus-visible:shadow-[var(--ui-focus-ring),var(--ui-shadow-popover)]"
       >
         <span
           aria-hidden="true"
