@@ -96,9 +96,10 @@ it('relays a verified result from a signed trading_core call and audits it', fun
         ->and(json_encode($audit->after))->not->toContain('atl8-secret');
 });
 
-it('reports a withdraw-enabled key as refused', function (): void {
+it('reports a withdraw-enabled live key as refused', function (): void {
+    $this->connection->update(['env' => 'live', 'label' => 'OKX Live']);
     Http::fake(['*' => Http::response(coreResult([
-        'ok' => false, 'permissions' => ['read_only', 'trade', 'withdraw'],
+        'ok' => false, 'permissions' => ['read_only', 'trade', 'withdraw'], 'warnings' => [],
         'error' => 'withdraw_permission_enabled', 'verified_at' => null,
     ]))]);
 
@@ -106,8 +107,38 @@ it('reports a withdraw-enabled key as refused', function (): void {
         ->assertOk()
         ->assertJsonPath('ok', false)
         ->assertJsonPath('error', 'withdraw_permission_enabled')
+        ->assertJsonPath('warnings', [])
         ->assertJsonPath('message', 'This key can withdraw funds. Create a key with Read + Trade only.')
         ->assertJsonPath('connection.last_verified_at', null);
+});
+
+it('relays a withdraw-enabled demo key as verified with a warning (ATL-30)', function (): void {
+    Http::fake(function () {
+        Connection::query()->whereKey($this->connection->id)->update([
+            'permissions' => json_encode(['read_only', 'trade', 'withdraw']), 'last_verified_at' => now(),
+        ]);
+
+        return Http::response(coreResult([
+            'permissions' => ['read_only', 'trade', 'withdraw'], 'warnings' => ['withdraw_permission_enabled'],
+        ]));
+    });
+
+    $this->postJson($this->url)
+        ->assertOk()
+        ->assertJsonPath('ok', true)
+        ->assertJsonPath('error', null)
+        ->assertJsonPath('permissions', ['read_only', 'trade', 'withdraw'])
+        ->assertJsonPath('warnings', ['withdraw_permission_enabled'])
+        ->assertJsonPath('connection.last_verified_at', fn ($v): bool => is_string($v) && $v !== '');
+
+    expect(AuditLog::query()->where('action', 'connection.tested')->sole()->after)
+        ->toMatchArray(['ok' => true, 'warnings' => ['withdraw_permission_enabled']]);
+});
+
+it('relays an empty warnings list when trading_core sends none', function (): void {
+    Http::fake(['*' => Http::response(coreResult())]);
+
+    $this->postJson($this->url)->assertOk()->assertJsonPath('warnings', []);
 });
 
 it('maps OKX credential and environment errors to short messages', function (string $slug, string $code, string $message): void {

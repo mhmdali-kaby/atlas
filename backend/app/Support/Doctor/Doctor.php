@@ -233,8 +233,24 @@ final class Doctor
         ]));
     }
 
+    /**
+     * Withdraw permission (decision #237 as relaxed by ATL-30): a live key with withdraw fails; a demo
+     * key with withdraw is accepted by the CEO's instruction and only warns. Live is read from the
+     * stored result of its last connection test (doctor only re-tests the demo key in Phase 0).
+     */
     private function withdrawPermission(): CheckResult
     {
+        try {
+            $live = $this->databaseUp
+                ? Connection::query()->where('exchange', 'okx')->where('env', 'live')->first()
+                : null;
+        } catch (Throwable $e) {
+            return CheckResult::fail('withdraw_permission', self::t('query_failed', ['reason' => self::reason($e)]));
+        }
+        if ($live !== null && in_array(self::WITHDRAW, self::stringList($live->permissions), true)) {
+            return CheckResult::fail('withdraw_permission', self::t('withdraw_enabled_live'));
+        }
+
         if ($this->connection === null) {
             return CheckResult::fail('withdraw_permission', $this->testFailure ?? self::t('withdraw_no_connection'));
         }
@@ -245,10 +261,10 @@ final class Doctor
             $permissions = $this->connection->permissions ?? [];
             $source = self::t('withdraw_source_stored');
         }
-        $permissions = is_array($permissions) ? array_values(array_filter($permissions, 'is_string')) : [];
+        $permissions = self::stringList($permissions);
 
         if (in_array(self::WITHDRAW, $permissions, true)) {
-            return CheckResult::fail('withdraw_permission', self::t('withdraw_enabled', ['source' => $source]));
+            return CheckResult::warn('withdraw_permission', self::t('withdraw_enabled_demo', ['source' => $source]));
         }
         if ($this->testResult === null || ($this->testResult['account_mode'] ?? null) === null) {
             // We never saw what OKX says today; a stored "no withdraw" is not proof.
@@ -314,6 +330,14 @@ final class Doctor
     private static function t(string $key, array $replace = []): string
     {
         return self::str(__("doctor.{$key}", $replace));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function stringList(mixed $value): array
+    {
+        return is_array($value) ? array_values(array_filter($value, 'is_string')) : [];
     }
 
     private static function str(mixed $value): string

@@ -122,7 +122,7 @@ def _wipe(engine: Engine) -> None:
         conn.execute(delete(Connection).where(Connection.exchange == "okx", Connection.env == ENV))
 
 
-def _connection(engine: Engine, *, verified: bool) -> None:
+def _connection(engine: Engine, *, verified: bool, permissions: list[str] | None = None) -> None:
     now = datetime.now(UTC)
     with engine.begin() as conn:
         conn.execute(
@@ -135,6 +135,7 @@ def _connection(engine: Engine, *, verified: bool) -> None:
                 api_secret=laravel_encrypt("test-secret"),
                 passphrase=laravel_encrypt("test-passphrase"),
                 last_verified_at=now if verified else None,
+                permissions=permissions,
                 created_at=now,
                 updated_at=now,
             )
@@ -307,6 +308,21 @@ async def test_two_runs_in_one_minute_leave_one_equity_row(
         BTC_SPOT_LAST
     )
     assert set(ticks) == {T0, later}  # snapshots are per tick; only the equity point is per minute
+
+
+@respx.mock(base_url=BASE, assert_all_called=False)
+async def test_verified_demo_key_with_withdraw_permission_still_syncs(
+    respx_mock: respx.MockRouter, clean: Engine
+) -> None:
+    """ATL-30: a demo key OKX reports as read_only,withdraw,trade is verified with a warning and syncs."""
+    _connection(clean, verified=True, permissions=["read_only", "trade", "withdraw"])
+    mock_okx(respx_mock)
+
+    result = await account_job(ENV, clean, APP_KEY, now=clock(T0))()
+
+    assert result["skipped"] is False
+    assert counts(clean)[2] == 1  # one equity_curve row
+    assert status(clean).last_error is None
 
 
 @respx.mock(base_url=BASE, assert_all_called=False)

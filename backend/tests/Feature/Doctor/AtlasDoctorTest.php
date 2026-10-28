@@ -126,24 +126,59 @@ it('fails with "unreachable" when trading_core is stopped', function (): void {
     expectNoSecrets($output);
 });
 
-it('fails naming the withdraw permission when the key can withdraw', function (): void {
-    fakeCore(['ok' => false, 'error' => 'withdraw_permission_enabled', 'permissions' => ['read_only', 'trade', 'withdraw'], 'verified_at' => null]);
+/**
+ * A live OKX connection whose last test stored the withdraw permission (trading_core refused it).
+ */
+function liveWithdrawConnection(): Connection
+{
+    return Connection::query()->create([
+        'exchange' => 'okx', 'env' => 'live', 'label' => 'OKX Live',
+        'api_key' => 'atl30-live-key', 'api_secret' => 'atl30-live-secret', 'passphrase' => 'atl30-live-pass',
+        'permissions' => ['read_only', 'trade', 'withdraw'], 'last_test_error' => 'withdraw_permission_enabled',
+    ]);
+}
+
+it('warns, and still exits 0, when the demo key can withdraw (ATL-30)', function (): void {
+    fakeCore(['permissions' => ['read_only', 'trade', 'withdraw'], 'warnings' => ['withdraw_permission_enabled']]);
+
+    [$code, $output] = doctor();
+
+    expect($code)->toBe(0);
+    expect(lineFor($output, 'withdraw_permission'))->toStartWith('⚠')->toContain('withdraw permission')->toContain('demo');
+    expect(lineFor($output, 'demo_connection'))->toStartWith('✓');
+    expectNoSecrets($output);
+});
+
+it('fails naming the withdraw permission when the live key can withdraw', function (): void {
+    liveWithdrawConnection();
+    fakeCore();
 
     [$code, $output] = doctor();
 
     expect($code)->not->toBe(0);
-    expect(lineFor($output, 'withdraw_permission'))->toStartWith('✗')->toContain('withdraw permission');
-    expect(lineFor($output, 'demo_connection'))->toStartWith('✗');
+    expect(lineFor($output, 'withdraw_permission'))->toStartWith('✗')->toContain('withdraw permission')->toContain('live');
+    expect(lineFor($output, 'demo_connection'))->toStartWith('✓');
     expectNoSecrets($output);
 });
 
-it('fails the withdraw check from the stored permissions when trading_core is down', function (): void {
+it('fails on a withdraw-enabled live key even when the demo key can withdraw too', function (): void {
+    liveWithdrawConnection();
+    fakeCore(['permissions' => ['read_only', 'trade', 'withdraw'], 'warnings' => ['withdraw_permission_enabled']]);
+
+    [$code, $output] = doctor();
+
+    expect($code)->not->toBe(0);
+    expect(lineFor($output, 'withdraw_permission'))->toStartWith('✗')->toContain('live');
+});
+
+it('warns on the demo withdraw permission from the stored permissions when trading_core is down', function (): void {
     $this->connection->update(['permissions' => ['read_only', 'trade', 'withdraw']]);
     Http::fake(fn () => throw new ConnectionException('Connection refused'));
 
-    [, $output] = doctor();
+    [$code, $output] = doctor();
 
-    expect(lineFor($output, 'withdraw_permission'))->toStartWith('✗')->toContain('withdraw permission');
+    expect($code)->not->toBe(0); // trading_core is down
+    expect(lineFor($output, 'withdraw_permission'))->toStartWith('⚠')->toContain('withdraw permission');
 });
 
 it('fails when there is no demo connection', function (): void {
@@ -183,7 +218,8 @@ it('fails when free disk space is under the minimum', function (): void {
 });
 
 it('prints one JSON object per check with name, ok and detail', function (): void {
-    fakeCore(['ok' => false, 'error' => 'withdraw_permission_enabled', 'permissions' => ['read_only', 'trade', 'withdraw']]);
+    liveWithdrawConnection();
+    fakeCore();
 
     [$code, $output] = doctor(json: true);
 

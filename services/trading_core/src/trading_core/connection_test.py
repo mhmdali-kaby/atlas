@@ -3,8 +3,11 @@
 POST /internal/connections/{id}/test loads the ``connections`` row, decrypts its key with APP_KEY
 (decision #235), calls OKX ``account/config`` and writes the verification columns back.
 
-- A key whose permissions include ``withdraw`` is refused in every environment: ok=false,
-  error ``withdraw_permission_enabled`` and ``last_verified_at`` stays null.
+- A live key whose permissions include ``withdraw`` is refused: ok=false, error
+  ``withdraw_permission_enabled`` and ``last_verified_at`` stays null.
+- A demo key with ``withdraw`` is verified (CEO instruction, ATL-30) and the answer carries
+  ``warnings: ["withdraw_permission_enabled"]`` so the UI and doctor can say so. Atlas still has no
+  withdrawal or transfer code (brief rule 5).
 - Spot mode (acctLv "1") still passes; the raw ``acct_lv`` is returned so the UI can warn.
 - The full UID is never stored, logged or returned: only its last 4 characters leave this module.
 
@@ -50,6 +53,8 @@ UNKNOWN_ACCOUNT_MODE = "unknown"
 
 WITHDRAW_PERMISSION = "withdraw"
 WITHDRAW_ERROR = "withdraw_permission_enabled"
+# Environments where a withdraw-enabled key is accepted with a warning instead of refused.
+WITHDRAW_TOLERATED_ENVS = frozenset({"demo"})
 
 # OKX error codes → Atlas error slugs. Everything else is "okx_error" with the code attached.
 OKX_ERROR_SLUGS: dict[str, str] = {
@@ -84,6 +89,7 @@ class ConnectionTestResult:
     error: str | None = None
     okx_code: str | None = None
     verified_at: datetime | None = None
+    warnings: list[str] = field(default_factory=list)
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -92,6 +98,7 @@ class ConnectionTestResult:
             "account_mode": self.account_mode,
             "position_mode": self.position_mode,
             "permissions": self.permissions,
+            "warnings": self.warnings,
             "uid_last4": self.uid_last4,
             "error": self.error,
             "okx_code": self.okx_code,
@@ -180,8 +187,11 @@ async def _probe(row: Connection, app_key: str, client_factory: ClientFactory) -
         uid_last4=uid_last4(cfg.uid),
     )
     if WITHDRAW_PERMISSION in permissions:
-        result.ok = False
-        result.error = WITHDRAW_ERROR
+        if row.env in WITHDRAW_TOLERATED_ENVS:
+            result.warnings.append(WITHDRAW_ERROR)
+        else:
+            result.ok = False
+            result.error = WITHDRAW_ERROR
     return result
 
 

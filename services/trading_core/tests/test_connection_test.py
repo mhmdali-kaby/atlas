@@ -87,19 +87,18 @@ def engine() -> Engine:
     return eng
 
 
-@pytest.fixture
-def connection_id(engine: Engine) -> Iterator[uuid.UUID]:
-    """A demo connection row with encrypted secrets and a stale verified_at to prove it is cleared."""
+def _insert_connection(engine: Engine, env: str) -> uuid.UUID:
+    """A connection row with encrypted secrets and a stale verified_at to prove it is cleared."""
     cid = uuid.uuid4()
     now = datetime.now(UTC)
     with engine.begin() as conn:
-        conn.execute(delete(Connection).where(Connection.exchange == "okx", Connection.env == "demo"))
+        conn.execute(delete(Connection).where(Connection.exchange == "okx", Connection.env == env))
         conn.execute(
             insert(Connection).values(
                 id=cid,
                 exchange="okx",
-                env="demo",
-                label="OKX Demo",
+                env=env,
+                label=f"OKX {env}",
                 api_key=laravel_encrypt("test-api-key-0000"),
                 api_secret=laravel_encrypt("test-secret"),
                 passphrase=laravel_encrypt("test-passphrase"),
@@ -108,6 +107,20 @@ def connection_id(engine: Engine) -> Iterator[uuid.UUID]:
                 updated_at=now,
             )
         )
+    return cid
+
+
+@pytest.fixture
+def connection_id(engine: Engine) -> Iterator[uuid.UUID]:
+    cid = _insert_connection(engine, "demo")
+    yield cid
+    with engine.begin() as conn:
+        conn.execute(delete(Connection).where(Connection.id == cid))
+
+
+@pytest.fixture
+def live_connection_id(engine: Engine) -> Iterator[uuid.UUID]:
+    cid = _insert_connection(engine, "live")
     yield cid
     with engine.begin() as conn:
         conn.execute(delete(Connection).where(Connection.id == cid))
@@ -182,6 +195,7 @@ def test_read_trade_key_is_verified_and_only_uid_last4_is_kept(
     assert body["acct_lv"] == "2" and body["account_mode"] == "futures"
     assert body["position_mode"] == "net_mode"
     assert body["permissions"] == ["read_only", "trade"]
+    assert body["warnings"] == []
     assert body["uid_last4"] == LAST4
     assert body["verified_at"] is not None
     # The call was signed with the decrypted key, in demo.
@@ -199,19 +213,48 @@ def test_read_trade_key_is_verified_and_only_uid_last4_is_kept(
     assert "test-secret" not in caplog.text and "test-passphrase" not in caplog.text
 
 
+def recorded_withdraw_config() -> dict[str, Any]:
+    """The recorded account/config fixture: perm "read_only,withdraw,trade", like the vault demo key."""
+    body: dict[str, Any] = json.loads((FIXTURES / "account_config.json").read_text(encoding="utf-8"))
+    assert body["data"][0]["perm"] == "read_only,withdraw,trade"
+    return body
+
+
 @respx.mock(base_url=BASE, assert_all_called=False)
-def test_withdraw_permission_is_refused_and_not_verified(
+def test_demo_withdraw_key_is_verified_with_a_warning(
     respx_mock: respx.MockRouter, engine: Engine, connection_id: uuid.UUID
+) -> None:
+    """ATL-30: in demo a withdraw-enabled key is accepted with warnings=["withdraw_permission_enabled"]."""
+    respx_mock.route(host="testserver").pass_through()
+    mock_okx(respx_mock, recorded_withdraw_config())
+
+    response = post_test(engine, connection_id)
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["ok"] is True and body["error"] is None
+    assert body["permissions"] == ["read_only", "trade", "withdraw"]
+    assert body["warnings"] == ["withdraw_permission_enabled"]
+    assert body["verified_at"] is not None
+    row = load(engine, connection_id)
+    assert row.last_verified_at is not None and row.last_test_error is None
+    assert row.permissions == ["read_only", "trade", "withdraw"]
+
+
+@respx.mock(base_url=BASE, assert_all_called=False)
+def test_live_withdraw_key_is_refused_and_not_verified(
+    respx_mock: respx.MockRouter, engine: Engine, live_connection_id: uuid.UUID
 ) -> None:
     respx_mock.route(host="testserver").pass_through()
     mock_okx(respx_mock, config_body(perm="read_only,withdraw,trade", uid=FULL_UID))
 
-    body = post_test(engine, connection_id).json()
+    body = post_test(engine, live_connection_id).json()
 
     assert body["ok"] is False and body["error"] == "withdraw_permission_enabled"
     assert body["permissions"] == ["read_only", "trade", "withdraw"]
+    assert body["warnings"] == []
     assert body["verified_at"] is None
-    row = load(engine, connection_id)
+    row = load(engine, live_connection_id)
     assert row.last_verified_at is None  # also clears the earlier verification
     assert row.last_test_error == "withdraw_permission_enabled"
     assert row.permissions == ["read_only", "trade", "withdraw"]
