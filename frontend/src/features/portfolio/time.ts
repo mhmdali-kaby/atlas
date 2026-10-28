@@ -36,8 +36,15 @@ export function formatDay(ts: number | string, lang: Lang, year = false): string
 }
 
 /** "Oct 28, 17:36" */
-export function formatDayTime(ts: number | string, lang: Lang): string {
-  return dtf(lang, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(ts))
+export function formatDayTime(ts: number | string, lang: Lang, year = false): string {
+  return dtf(lang, {
+    day: 'numeric',
+    month: 'short',
+    year: year ? 'numeric' : undefined,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(new Date(ts))
 }
 
 /** "12 minutes ago" / "قبل 12 دقيقة", Western digits. */

@@ -94,7 +94,7 @@ afterEach(() => {
 describe('Portfolio Positions', () => {
   it('registers /portfolio/positions and a Positions nav entry after Overview', () => {
     const nav = Array.isArray(portfolio.nav) ? portfolio.nav : [portfolio.nav]
-    expect(nav.map((n) => n?.path)).toEqual(['/portfolio', '/portfolio/positions'])
+    expect(nav.map((n) => n?.path).slice(0, 2)).toEqual(['/portfolio', '/portfolio/positions'])
     expect(nav[1]).toMatchObject({ labelKey: 'portfolio:nav.positions', section: 'portfolio', order: 20 })
   })
 

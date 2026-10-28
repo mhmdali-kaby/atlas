@@ -84,6 +84,37 @@ export interface PositionsPayload {
   items: Position[]
 }
 
+/** One balance of one account (ATL-12 /api/portfolio/holdings). */
+export interface Holding {
+  ccy: string
+  account: 'trading' | 'funding'
+  quantity: string
+  available: string | null
+  frozen: string | null
+  /** null when OKX gave no USD value and the currency is not a USD stablecoin. */
+  value_usd: string | null
+  /** Percent units (4 dp) of `total_value_usd`; null when the value is unknown. */
+  pct_of_portfolio: string | null
+  /** Phase 2 (decision #236): always null until the Executor exists; shown as "—". */
+  avg_cost_usd: null
+  change_24h_pct: null
+}
+
+export interface HoldingsPayload {
+  taken_at: string | null
+  total_value_usd: string
+  items: Holding[]
+}
+
+/** The standard Laravel paginator envelope (ATL-12 /api/portfolio/cashflows). */
+export interface Paginated<T> {
+  data: T[]
+  meta: { current_page: number; last_page: number; per_page: number; from: number | null; to: number | null; total: number }
+}
+
+/** Rows per Cash flows page. */
+export const CASHFLOWS_PER_PAGE = 20
+
 export interface ConnectionSummary {
   id: string
   exchange: string
@@ -96,6 +127,8 @@ export const portfolioKeys = {
   summary: (env: TradingEnv) => ['portfolio', env, 'summary'] as const,
   equity: (env: TradingEnv, range: EquityRange) => ['portfolio', env, 'equity', range] as const,
   positions: (env: TradingEnv) => ['portfolio', env, 'positions'] as const,
+  holdings: (env: TradingEnv) => ['portfolio', env, 'holdings'] as const,
+  cashflows: (env: TradingEnv, page: number) => ['portfolio', env, 'cashflows', page] as const,
   connections: ['connections'] as const,
 }
 
@@ -117,6 +150,20 @@ export function usePositions(env: TradingEnv) {
   return useApiQuery<{ data: PositionsPayload }>(portfolioKeys.positions(env), `/api/portfolio/positions?env=${env}`, {
     refetchInterval: POLL_MS,
   })
+}
+
+export function useHoldings(env: TradingEnv) {
+  return useApiQuery<{ data: HoldingsPayload }>(portfolioKeys.holdings(env), `/api/portfolio/holdings?env=${env}`, {
+    refetchInterval: POLL_MS,
+  })
+}
+
+export function useCashflows(env: TradingEnv, page: number) {
+  return useApiQuery<Paginated<CashflowMarker>>(
+    portfolioKeys.cashflows(env, page),
+    `/api/portfolio/cashflows?env=${env}&per_page=${CASHFLOWS_PER_PAGE}&page=${page}`,
+    { refetchInterval: POLL_MS, placeholderData: keepPreviousData },
+  )
 }
 
 export function useConnections() {

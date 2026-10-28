@@ -122,3 +122,19 @@ export function signOf(value: Figure): -1 | 0 | 1 | null {
   if (!/[1-9]/.test(mantissa)) return 0
   return text.startsWith('-') ? -1 : 1
 }
+
+/**
+ * A plain decimal string, grouped en-US in both languages and never rounded: at least
+ * `minFrac` fraction digits and every digit the API sent ("5099121.5" → "5,099,121.50").
+ * `signDisplay: 'exceptZero'` adds "+" to positives; negatives always carry "−".
+ */
+export function formatDecimal(
+  value: Figure,
+  lang: Lang = 'en',
+  minFrac = 2,
+  signDisplay: Intl.NumberFormatOptions['signDisplay'] = 'auto',
+): string {
+  if (isMissing(value)) return NO_VALUE
+  const nf = formatter(FIGURE_LOCALE[lang], { minimumFractionDigits: minFrac, maximumFractionDigits: 20, signDisplay })
+  return typographicMinus(nf.format(asIntlValue(value)))
+}

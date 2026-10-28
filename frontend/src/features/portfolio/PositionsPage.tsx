@@ -1,7 +1,7 @@
 import { ArrowDownRight, ArrowUpRight, Layers } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTradingEnv } from '../../app/shell/tradingEnv'
-import { FIGURE_LOCALE, NO_VALUE, type Lang } from '../../lib/format'
+import { formatDecimal, NO_VALUE, type Lang } from '../../lib/format'
 import { SignedValue } from '../../ui'
 import { POLL_MS, usePositions, useSummary, type Position } from './api'
 import { useLang, useNow } from './hooks'
@@ -18,17 +18,6 @@ import './portfolio.css'
 const COLUMNS = ['instrument', 'side', 'size', 'leverage', 'mgnMode', 'entry', 'mark', 'liq', 'upl', 'time'] as const
 type Column = (typeof COLUMNS)[number]
 const NUMERIC = new Set<Column>(['size', 'leverage', 'entry', 'mark', 'liq', 'upl', 'time'])
-
-/**
- * A decimal string grouped en-US in both languages, never rounded: at least `minFrac`
- * fraction digits (the design's 1 for prices ≥ 10,000, else 2), and every digit OKX sent.
- */
-function formatDecimal(value: string | null, lang: Lang, minFrac: number): string {
-  if (value === null || value.trim() === '') return NO_VALUE
-  return new Intl.NumberFormat(FIGURE_LOCALE[lang], { minimumFractionDigits: minFrac, maximumFractionDigits: 20 })
-    .format(value.trim() as Intl.StringNumericLiteral)
-    .replace(/-/g, '−')
-}
 
 /** Display precision only (design priceDecimals); the value itself stays a string. */
 function priceDecimals(value: string | null): number {
