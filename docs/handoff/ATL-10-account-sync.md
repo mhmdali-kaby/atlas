@@ -23,7 +23,9 @@ Tests: `services/trading_core/tests/test_account_sync.py`.
    - `balances_snapshots`: one row per `account/balance.details[]` entry (`account = trading`) and
      one per `asset/balances[]` entry (`account = funding`). Zero balances that OKX lists are kept.
    - `positions_snapshots`: one row per `account/positions[]` entry. No open positions → no rows
-     for that tick (see the two-minute version below).
+     for that tick (see the two-minute version below). Unique key is
+     `(env, inst_id, pos_side, mgn_mode, taken_at)`: in net mode one instrument can hold a cross
+     and an isolated position at once, so readers must not assume one row per inst_id per tick.
    - `equity_curve`: upsert on `(env, ts)` with `ts` = `taken_at` truncated to the minute. A second
      run in the same minute overwrites that minute's point (latest wins); it never adds a row.
    - `sync_status` (env, stream **`account`**): `last_error = NULL`, `last_success_at` and
