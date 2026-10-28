@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
-         bootstrap="vendor/autoload.php"
+         bootstrap="tests/bootstrap.php"
          colors="true"
 >
     <testsuites>
@@ -28,7 +28,7 @@
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
         <env name="DB_CONNECTION" value="pgsql"/>
-        <env name="DB_DATABASE" value="atlas_test"/>
+        <!-- DB_DATABASE is set by tests/bootstrap.php: atlas_test_<hash of this checkout>, or DB_TEST_DATABASE. -->
         <env name="DB_URL" value=""/>
         <env name="DB_HOST" value="127.0.0.1"/>
         <env name="DB_PORT" value="5433"/>

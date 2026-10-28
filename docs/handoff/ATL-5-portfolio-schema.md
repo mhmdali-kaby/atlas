@@ -43,7 +43,7 @@ Migrations: `backend/database/migrations/2026_10_28_2000*`–`2002*`. Python mir
 - `inst_category` is stored raw; derive `asset_class` in code, unknown → `other` (brief §2).
 - Engine: `make_engine()` reads `DB_HOST`, `DB_PORT` (5433), `DB_DATABASE`, `DB_USERNAME`,
   `DB_PASSWORD` and sets the session timezone to UTC.
-- Schema drift: `services/shared/tests/test_schema_reflection.py` reflects atlas_test and fails
+- Schema drift: `services/shared/tests/test_schema_reflection.py` reflects this checkout's test DB (`atlas_shared.testing`, ATL-29) and fails
   on any column/type/nullability/PK/unique mismatch. Change a migration → change the model in the
-  same commit, and run `php artisan test` (migrates atlas_test) before `uv run pytest shared`.
+  same commit, and run `php artisan test` (creates and migrates that DB) before `uv run pytest shared`.
 - Not built: `orders`, `fills`, `algo_orders` (Phase 2), any FK between tables.

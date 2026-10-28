@@ -1,26 +1,20 @@
-"""Reflects the live atlas_test schema (migrated by Laravel) and compares it with the models.
+"""Reflects the live test-database schema (migrated by Laravel) and compares it with the models.
 
-Run `cd backend && php artisan test` (or `php artisan migrate` against atlas_test) first so the
+Run `cd backend && php artisan test` first: it creates and migrates this checkout's test DB, so the
 schema exists. Connection settings mirror backend/phpunit.xml and can be overridden with DB_*.
 """
 
-import os
 from typing import Any
 
 import pytest
+from atlas_shared import testing
 from atlas_shared.db import Base, make_engine
 from sqlalchemy import Column, Engine, Float, MetaData, Table, inspect
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.types import TypeEngine
 
-TEST_DB = {
-    "DB_HOST": os.environ.get("DB_HOST", "127.0.0.1"),
-    "DB_PORT": os.environ.get("DB_PORT", "5433"),
-    "DB_DATABASE": os.environ.get("DB_TEST_DATABASE", "atlas_test"),
-    "DB_USERNAME": os.environ.get("DB_USERNAME", "atlas"),
-    "DB_PASSWORD": os.environ.get("DB_PASSWORD", "atlas"),
-}
+TEST_DB = testing.db_settings()
 
 DIALECT = postgresql.dialect()  # type: ignore[no-untyped-call]
 
@@ -75,7 +69,9 @@ def engine() -> Engine:
         with eng.connect():
             pass
     except OperationalError as exc:
-        pytest.fail(f"atlas_test is not reachable on {TEST_DB['DB_HOST']}:{TEST_DB['DB_PORT']}: {exc}")
+        pytest.fail(
+            f"{TEST_DB['DB_DATABASE']} is not reachable on {TEST_DB['DB_HOST']}:{TEST_DB['DB_PORT']}: {exc}"
+        )
     return eng
 
 
