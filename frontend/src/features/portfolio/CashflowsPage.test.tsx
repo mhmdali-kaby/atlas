@@ -64,6 +64,9 @@ function renderCashflows(entry = '/portfolio/cashflows') {
   return router
 }
 
+/** The pager's range text without its bidi isolates. */
+const range = () => screen.getByTestId('cashflows-range').textContent!.replace(/[\u2066-\u2069]/g, '')
+
 const cell = (r: HTMLElement, col: string) => r.querySelector<HTMLElement>(`[data-col="${col}"]`)!
 
 beforeEach(async () => {
@@ -127,17 +130,17 @@ describe('Portfolio Cash flows', () => {
     expect(buttons.map((b) => b.textContent)).toEqual(['Previous', 'Next'])
     expect(buttons.every((b) => b.closest('[data-testid="cashflows-pager"]'))).toBe(true)
     expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled()
-    expect(screen.getByTestId('cashflows-range')).toHaveTextContent('1–20 of 23')
+    expect(range()).toBe('1–20 of 23')
 
     await userEvent.click(screen.getByRole('button', { name: 'Next' }))
-    await vi.waitFor(() => expect(screen.getByTestId('cashflows-range')).toHaveTextContent('21–23 of 23'))
+    await vi.waitFor(() => expect(range()).toBe('21–23 of 23'))
     expect(screen.getAllByTestId('cashflow-row')).toHaveLength(3)
     expect(router.state.location.search).toBe('?page=2')
     expect(fetch.mock.calls.some((c) => String(c[0]).includes('page=2'))).toBe(true)
     expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled()
 
     await userEvent.click(screen.getByRole('button', { name: 'Previous' }))
-    await vi.waitFor(() => expect(screen.getByTestId('cashflows-range')).toHaveTextContent('1–20 of 23'))
+    await vi.waitFor(() => expect(range()).toBe('1–20 of 23'))
     expect(router.state.location.search).toBe('')
   })
 
@@ -145,7 +148,7 @@ describe('Portfolio Cash flows', () => {
     fakeBackend(ALL)
     const router = renderCashflows('/portfolio/cashflows?page=9')
     await vi.waitFor(() => expect(router.state.location.search).toBe('?page=2'))
-    await vi.waitFor(() => expect(screen.getByTestId('cashflows-range')).toHaveTextContent('21–23 of 23'))
+    await vi.waitFor(() => expect(range()).toBe('21–23 of 23'))
   })
 
   it('shows the empty state when there are no deposits or withdrawals', async () => {
@@ -173,6 +176,8 @@ describe('Portfolio Cash flows', () => {
     expect(cell(rows[0]!, 'amount')).toHaveTextContent('−1,000.00')
     expect(cell(rows[0]!, 'date')).toHaveTextContent('20:36')
     expect(screen.getByRole('button', { name: 'التالي' })).toBeEnabled()
+    // The range is isolated left-to-right so it never reverses inside the Arabic sentence.
+    expect(screen.getByTestId('cashflows-range').textContent).toBe('\u20661–20\u2069 من \u206623\u2069')
   })
 })
 

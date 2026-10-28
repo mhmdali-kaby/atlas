@@ -95,7 +95,7 @@ export interface Holding {
   value_usd: string | null
   /** Percent units (4 dp) of `total_value_usd`; null when the value is unknown. */
   pct_of_portfolio: string | null
-  /** Phase 2 (decision #236): always null until the Executor exists; shown as "—". */
+  /** Phase 2 (decision 236): always null until the Executor exists; shown as "—". */
   avg_cost_usd: null
   change_24h_pct: null
 }

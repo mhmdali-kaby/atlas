@@ -11,7 +11,7 @@ import './portfolio.css'
 /*
  * Portfolio → Holdings (brief §13, design: Holdings). Every balance of the newest synced
  * trading and funding ticks, from /api/portfolio/holdings (polled every 30 s), largest value
- * first. Average cost and 24h change arrive with the Executor (decision #236).
+ * first. Average cost and 24h change arrive with the Executor (decision 236).
  */
 
 const COLUMNS = ['currency', 'account', 'quantity', 'value', 'share', 'avgCost', 'change'] as const

@@ -194,7 +194,9 @@ export function CashflowsPage() {
 
   const from = meta?.from ?? (page - 1) * CASHFLOWS_PER_PAGE + 1
   const to = meta?.to ?? from + rows.length - 1
-  const fig = (n: number) => formatDecimal(n, lang, 0)
+  // Each figure is a left-to-right isolate (U+2066…U+2069) so "21–40" never reads "40–21" in Arabic.
+  const fig = (text: string) => `\u2066${text}\u2069`
+  const count = (n: number) => formatDecimal(n, lang, 0)
 
   return (
     <div>
@@ -218,7 +220,7 @@ export function CashflowsPage() {
         </table>
         <nav className="pf-pager" aria-label={t('cashflows.pagination')} data-testid="cashflows-pager">
           <span className="text-footnote text-label-secondary fig" data-testid="cashflows-range" aria-live="polite">
-            {t('cashflows.page', { range: `${fig(from)}–${fig(to)}`, total: fig(total) })}
+            {t('cashflows.page', { range: fig(`${count(from)}–${count(to)}`), total: fig(count(total)) })}
           </span>
           <div className="pf-pager-btns">
             <Button
@@ -231,8 +233,10 @@ export function CashflowsPage() {
               {t('cashflows.prev')}
             </Button>
             <Button size="sm" variant="secondary" disabled={page >= lastPage} onClick={() => goTo(page + 1)}>
-              <span>{t('cashflows.next')}</span>
-              <ChevronRight aria-hidden="true" className="rtl:-scale-x-100" />
+              <span className="inline-flex items-center gap-1.5">
+                {t('cashflows.next')}
+                <ChevronRight aria-hidden="true" className="rtl:-scale-x-100" />
+              </span>
             </Button>
           </div>
         </nav>
