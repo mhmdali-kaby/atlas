@@ -1,0 +1,6 @@
+{
+    "_comment": "TEST-ONLY throwaway APP_KEY. Produced once by Illuminate\\Encryption\\Encrypter::encryptString (what Laravel encrypted casts use). Never a real key.",
+    "app_key": "base64:I3R2889cb7NOiwjeUk72bhr04/SRpDVvWKFngNUudNE=",
+    "plaintext": "okx-demo-throwaway: secret/with+symbols é ✓",
+    "payload": "eyJpdiI6IlRaVmorK1c4TGNRU2VtN0RxQUxENmc9PSIsInZhbHVlIjoiMjZ2dnlLQTdQRmp5dzYyLy9hZVZOTTFUWktYKytpUFRRM0VJUGN6aHRuYm0vVmdhQkU3TDhXR3BWUlN6d3dPdiIsIm1hYyI6ImYwNGRkYjAxNzJmZGZjMjRiMDcwZTA3NTJlNzVmNDBlNjhlMWU5ZGQxNzYyOTI4YzUzYmMzYTY4ZmMzOGZlOTciLCJ0YWciOiIifQ=="
+}

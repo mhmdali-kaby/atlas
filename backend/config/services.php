@@ -28,6 +28,13 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
+    // Internal FastAPI trading core (decision #235). Calls are HMAC-signed by App\Support\TradingCore.
+    'trading_core' => [
+        'url' => env('TRADING_CORE_URL', 'http://127.0.0.1:8100'),
+        'secret' => env('INTERNAL_SHARED_SECRET', ''),
+        'timeout' => 10,
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
