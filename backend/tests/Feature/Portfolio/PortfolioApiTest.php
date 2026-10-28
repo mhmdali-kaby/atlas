@@ -31,6 +31,38 @@ function cashflowRow(string $env, string $kind, string $amount, CarbonImmutable 
     ]);
 }
 
+function positionRow(string $env, CarbonImmutable $takenAt, string $instId = 'BTC-USDT-SWAP', string $pos = '1'): void
+{
+    DB::table('positions_snapshots')->insert([
+        'id' => (string) Str::uuid(), 'env' => $env, 'inst_id' => $instId, 'pos_side' => 'net',
+        'pos' => $pos, 'avg_px' => '100', 'mark_px' => '100', 'liq_px' => '1', 'lever' => '1',
+        'upl' => '0', 'upl_ratio' => '0', 'margin' => '1', 'mgn_mode' => 'isolated',
+        'c_time' => ts($takenAt), 'taken_at' => ts($takenAt),
+        'created_at' => ts($takenAt), 'updated_at' => ts($takenAt),
+    ]);
+}
+
+function balanceRow(string $env, CarbonImmutable $takenAt, string $account, string $ccy, string $eq): void
+{
+    DB::table('balances_snapshots')->insert([
+        'id' => (string) Str::uuid(), 'env' => $env, 'ccy' => $ccy, 'account' => $account,
+        'eq' => $eq, 'avail_bal' => $eq, 'frozen_bal' => '0', 'eq_usd' => $eq, 'upl' => null,
+        'taken_at' => ts($takenAt), 'created_at' => ts($takenAt), 'updated_at' => ts($takenAt),
+    ]);
+}
+
+/** The account-sync tick (ATL-10 writes stream 'account'). */
+function accountSyncStatus(string $env, CarbonImmutable $lastSuccessAt): void
+{
+    DB::table('sync_status')->updateOrInsert(
+        ['env' => $env, 'stream' => 'account'],
+        [
+            'id' => (string) Str::uuid(), 'last_success_at' => ts($lastSuccessAt), 'last_error' => null,
+            'reconciled_at' => ts($lastSuccessAt), 'created_at' => ts($lastSuccessAt), 'updated_at' => ts($lastSuccessAt),
+        ],
+    );
+}
+
 /**
  * Asserts every value in a decoded JSON tree is a string, bool, int, array or null — never a float.
  */
@@ -220,6 +252,48 @@ describe('signed in', function (): void {
             ->and($items['XAU-USDT-SWAP']['upl_usd'])->toBe('53.6');
         expect(array_key_exists('take_profits', $items['XAU-USDT-SWAP']))->toBeTrue()
             ->and(array_key_exists('agent', $items['XAU-USDT-SWAP']))->toBeTrue();
+    });
+
+    it('shows no positions once the account sync tick after them has none (ATL-27)', function (): void {
+        CarbonImmutable::setTestNow('2026-10-28 12:00:00');
+        $now = CarbonImmutable::now();
+        $t1 = $now->subMinutes(10);
+        $t2 = $now;
+
+        positionRow('demo', $t1); // the open position from the earlier tick
+        accountSyncStatus('demo', $t2); // the tick that closed it wrote zero positions rows
+
+        expect($this->getJson('/api/portfolio/positions')->assertOk()->json('data.items'))->toBe([]);
+    });
+
+    it('still returns positions when the latest tick matches the account sync (ATL-27)', function (): void {
+        CarbonImmutable::setTestNow('2026-10-28 12:00:00');
+        $now = CarbonImmutable::now();
+
+        positionRow('demo', $now, 'BTC-USDT-SWAP', '2');
+        accountSyncStatus('demo', $now);
+
+        $items = $this->getJson('/api/portfolio/positions')->assertOk()->json('data.items');
+
+        expect($items)->toHaveCount(1)
+            ->and($items[0]['inst_id'])->toBe('BTC-USDT-SWAP');
+    });
+
+    it('drops a funding account from holdings once the account sync advances without it (ATL-27)', function (): void {
+        CarbonImmutable::setTestNow('2026-10-28 12:00:00');
+        $now = CarbonImmutable::now();
+        $t1 = $now->subMinutes(10);
+        $t2 = $now;
+
+        balanceRow('demo', $t1, 'funding', 'USDT', '500'); // emptied before T2
+        balanceRow('demo', $t1, 'trading', 'USDT', '1000');
+        balanceRow('demo', $t2, 'trading', 'USDT', '1000'); // trading-only tick
+        accountSyncStatus('demo', $t2);
+
+        $data = $this->getJson('/api/portfolio/holdings')->assertOk()->json('data');
+
+        expect(collect($data['items'])->pluck('account')->all())->not->toContain('funding')
+            ->and(BigDecimal::of($data['total_value_usd'])->isEqualTo('1000'))->toBeTrue();
     });
 
     it('returns holdings whose pct_of_portfolio sums to 100 within 0.01', function (): void {
