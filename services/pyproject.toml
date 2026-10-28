@@ -45,5 +45,7 @@ ignore = ["S101"]
 
 [tool.mypy]
 strict = true
+# Bare `uv run mypy` checks every workspace package's source.
+files = ["shared/src", "trading_core/src", "agents/src", "ingest/src"]
 python_version = "3.12"
 plugins = ["pydantic.mypy"]

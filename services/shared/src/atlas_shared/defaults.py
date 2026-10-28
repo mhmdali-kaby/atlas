@@ -208,4 +208,7 @@ DEFAULTS: Final[dict[str, Any]] = {
             },
         },
     },
+    "event_bus": {
+        "stream_maxlen": 100000,
+    },
 }

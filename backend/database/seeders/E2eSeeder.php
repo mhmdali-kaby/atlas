@@ -44,6 +44,7 @@ class E2eSeeder extends Seeder
             'password' => self::PASSWORD,
         ]);
 
+        $this->call(WarroomThreadSeeder::class);
         $this->call(PortfolioDemoSeeder::class);
     }
 }

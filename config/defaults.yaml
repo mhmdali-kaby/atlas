@@ -163,3 +163,8 @@ okx_rest:
     asset/balances: { requests: 6, per_seconds: 1 }
     asset/deposit-history: { requests: 6, per_seconds: 1 }
     asset/withdrawal-history: { requests: 6, per_seconds: 1 }
+
+# ATL-36: Redis Streams event bus (brief §3.2). Each XADD trims its stream to about this many
+# entries (MAXLEN ~), so the bus never grows without bound; Postgres is the record.
+event_bus:
+  stream_maxlen: 100000
