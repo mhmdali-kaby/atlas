@@ -4,6 +4,8 @@ import type { RouteObject } from 'react-router'
 export interface FeatureModule {
   /** Routes mounted inside the app shell. */
   routes: RouteObject[]
+  /** Routes outside the shell that need no session (the login page). */
+  publicRoutes?: RouteObject[]
   /** Optional sidebar entry; `labelKey` is an i18n key (namespace:key). */
   nav?: { path: string; labelKey: string; order: number }
 }

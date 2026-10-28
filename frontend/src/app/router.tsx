@@ -1,4 +1,5 @@
 import { createBrowserRouter, type RouteObject } from 'react-router'
+import { RequireAuth } from '../features/auth/RequireAuth'
 import type { FeatureModule } from './feature'
 import { AppShell } from './AppShell'
 
@@ -11,5 +12,22 @@ export const navEntries = features
   .sort((a, b) => a.order - b.order)
 
 const children: RouteObject[] = features.flatMap((f) => f.routes)
+const publicRoutes: RouteObject[] = features.flatMap((f) => f.publicRoutes ?? [])
 
-export const router = createBrowserRouter([{ path: '/', element: <AppShell />, children }])
+/** Public routes first; everything else lives in the shell behind the session guard. */
+export const routes: RouteObject[] = [
+  ...publicRoutes,
+  {
+    path: '/',
+    element: (
+      <RequireAuth>
+        <AppShell />
+      </RequireAuth>
+    ),
+    // The catch-all keeps unknown paths behind the guard too: signed out, any URL goes to
+    // /login?next=… (a page whose feature is not built yet included); signed in, an empty shell.
+    children: [...children, { path: '*', element: null }],
+  },
+]
+
+export const router = createBrowserRouter(routes)
