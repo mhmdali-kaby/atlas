@@ -1,6 +1,7 @@
 """ATL-10: balances, positions and the equity curve sync from OKX into Postgres.
 
-DB tests run against atlas_test (migrated by `cd backend && php artisan test`). OKX is mocked with
+DB tests run against this checkout's test DB (atlas_shared.testing), migrated by
+`cd backend && php artisan test`. OKX is mocked with
 respx using the recorded fixtures account_balance.json, asset_balances.json, account_positions.json
 and market_tickers_swap.json. The connection row holds Laravel-format ciphertext made with a
 throwaway test-only APP_KEY, so the real decrypt path is exercised.
@@ -25,6 +26,7 @@ from typing import Any
 
 import pytest
 import respx
+from atlas_shared import testing
 from atlas_shared.db import (
     BalanceSnapshot,
     Connection,
@@ -52,13 +54,7 @@ SECRET = "atlas-test-only-internal-secret"  # noqa: S105
 APP_KEY = "base64:" + base64.b64encode(b"atlas-test-only-app-key-32-bytes").decode()
 BTC_SPOT_LAST = "80470.8"
 
-TEST_DB = {
-    "DB_HOST": os.environ.get("DB_HOST", "127.0.0.1"),
-    "DB_PORT": os.environ.get("DB_PORT", "5433"),
-    "DB_DATABASE": os.environ.get("DB_TEST_DATABASE", "atlas_test"),
-    "DB_USERNAME": os.environ.get("DB_USERNAME", "atlas"),
-    "DB_PASSWORD": os.environ.get("DB_PASSWORD", "atlas"),
-}
+TEST_DB = testing.db_settings()
 
 
 def laravel_encrypt(plaintext: str, app_key: str = APP_KEY) -> str:
@@ -111,7 +107,9 @@ def engine() -> Engine:
         with eng.connect():
             pass
     except OperationalError as exc:
-        pytest.fail(f"atlas_test is not reachable on {TEST_DB['DB_HOST']}:{TEST_DB['DB_PORT']}: {exc}")
+        pytest.fail(
+            f"{TEST_DB['DB_DATABASE']} is not reachable on {TEST_DB['DB_HOST']}:{TEST_DB['DB_PORT']}: {exc}"
+        )
     return eng
 
 
