@@ -13,7 +13,8 @@ use Illuminate\Support\Str;
 /**
  * Publishes brief §3.2 event envelopes to the Redis Streams bus, in the shape of
  * atlas_shared.events.EventEnvelope. Each stream entry has one field, `envelope`,
- * holding the envelope as JSON.
+ * holding the envelope as JSON. Every XADD trims the stream to about
+ * `atlas_defaults.event_bus.stream_maxlen` entries (MAXLEN ~); Postgres is the record.
  */
 final class EventBus
 {
@@ -70,14 +71,25 @@ final class EventBus
         return $this->redis->connection('events');
     }
 
+    public static function maxLength(): int
+    {
+        $maxlen = config('atlas_defaults.event_bus.stream_maxlen');
+
+        return is_int($maxlen) && $maxlen > 0
+            ? $maxlen
+            : throw new \UnexpectedValueException('atlas_defaults.event_bus.stream_maxlen must be a positive integer.');
+    }
+
     private function xadd(Connection $connection, string $stream, string $json): void
     {
+        $args = ['XADD', $stream, 'MAXLEN', '~', (string) self::maxLength(), '*', self::FIELD, $json];
+
         if ($connection instanceof PhpRedisConnection) {
-            $connection->client()->rawCommand('XADD', $stream, '*', self::FIELD, $json);
+            $connection->client()->rawCommand(...$args);
 
             return;
         }
 
-        $connection->command('executeRaw', [['XADD', $stream, '*', self::FIELD, $json]]);
+        $connection->command('executeRaw', [$args]);
     }
 }

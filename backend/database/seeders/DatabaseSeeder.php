@@ -10,10 +10,10 @@ class DatabaseSeeder extends Seeder
 {
     /**
      * Atlas seeds no users and no credentials. The owner is created with
-     * `php artisan atlas:create-owner`.
+     * `php artisan atlas:create-owner`. Only production-safe reference data is seeded here.
      */
     public function run(): void
     {
-        //
+        $this->call(WarroomThreadSeeder::class);
     }
 }

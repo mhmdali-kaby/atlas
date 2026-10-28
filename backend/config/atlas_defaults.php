@@ -209,4 +209,7 @@ return [
             ],
         ],
     ],
+    'event_bus' => [
+        'stream_maxlen' => 100000,
+    ],
 ];
