@@ -3,7 +3,8 @@ import { MotionConfig, motion } from 'motion/react'
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Navigate, useNavigate, useSearchParams } from 'react-router'
-import { EnvFooter } from '../../app/AppShell'
+import { RiskFooter } from '../../app/shell/RiskFooter'
+import { LanguageButton, ThemeMenu, ToolbarGroup } from '../../app/shell/Prefs'
 import { ApiError } from '../../lib/api'
 import { AppIcon, Button, SecureField, Seal, TextField } from '../../ui'
 import { FADE } from '../../ui/motion'
@@ -103,6 +104,10 @@ export function LoginPage() {
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 -z-0 bg-[radial-gradient(70%_60%_at_50%_42%,var(--wash-1),transparent_72%)]"
         />
+        <ToolbarGroup className="absolute end-4 top-3 z-3">
+          <LanguageButton />
+          <ThemeMenu />
+        </ToolbarGroup>
         <div className="relative grid flex-1 place-items-center px-6 pt-18 pb-14">
           <main aria-labelledby="auth-title" className="relative z-1 grid w-full max-w-[380px] gap-6">
             <Seal
@@ -180,7 +185,7 @@ export function LoginPage() {
             </motion.div>
           </main>
         </div>
-        <EnvFooter label={t('common:footer', { env: t('common:env.demo') })} />
+        <RiskFooter />
       </div>
     </MotionConfig>
   )

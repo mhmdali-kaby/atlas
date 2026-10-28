@@ -6,6 +6,8 @@
       No-flash theme: runs before the first paint and before React. Same rule as
       src/theme/theme.ts: localStorage "atlas.theme" = "light" | "dark"; anything
       else (or missing) follows the OS. src/theme/theme.test.ts runs this script.
+      Language, same idea (src/i18n/language.ts): "atlas.lang" = "ar" sets lang/dir
+      to ar/rtl before paint; anything else is English.
     -->
     <script id="atlas-theme-init">
       (function () {
@@ -15,6 +17,12 @@
           dark = stored === 'dark' || (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
         } catch (e) {}
         document.documentElement.classList.toggle('dark', dark)
+        var lang = 'en'
+        try {
+          if (window.localStorage.getItem('atlas.lang') === 'ar') lang = 'ar'
+        } catch (e) {}
+        document.documentElement.lang = lang
+        document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'
       })()
     </script>
     <!-- Paints the browser canvas in the right scheme before the stylesheet arrives. -->

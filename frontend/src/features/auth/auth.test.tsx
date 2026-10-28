@@ -187,8 +187,9 @@ describe('Arabic', () => {
     const labels = [...document.body.querySelectorAll('[aria-label],[title]')]
       .map((el) => `${el.getAttribute('aria-label') ?? ''} ${el.getAttribute('title') ?? ''}`)
       .join(' ')
-    // Only the server address and the shell command are Latin by design.
-    const latin = `${text} ${labels}`.replace(/localhost:8000|\.\/atlas (up|create-owner)/g, '').match(/[A-Za-z]{2,}/g)
+    // Only the server address, the shell command and the language switch's "English"
+    // (each language names itself, design: Shell) are Latin by design.
+    const latin = `${text} ${labels}`.replace(/localhost:8000|\.\/atlas (up|create-owner)|English/g, '').match(/[A-Za-z]{2,}/g)
     expect(latin).toBeNull()
     expect(screen.getByText('قُفل أطلس بعد 15 دقيقة من الخمول')).toBeInTheDocument()
     expect(screen.getByLabelText('البريد الإلكتروني')).toBeInTheDocument()

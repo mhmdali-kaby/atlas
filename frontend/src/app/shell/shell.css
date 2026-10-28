@@ -1,0 +1,175 @@
+/*
+ * App shell layout (design css/shell.css): floating glass sidebar, unified toolbar,
+ * permanent risk footer. Logical properties only; colours only through tokens.
+ */
+
+.shell-wash {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(520px 420px at 0% 0%, var(--wash-1), transparent 70%),
+    radial-gradient(420px 520px at 8% 85%, var(--wash-2), transparent 70%),
+    var(--bg);
+}
+[dir='rtl'] .shell-wash {
+  background:
+    radial-gradient(520px 420px at 100% 0%, var(--wash-1), transparent 70%),
+    radial-gradient(420px 520px at 92% 85%, var(--wash-2), transparent 70%),
+    var(--bg);
+}
+
+.shell-app {
+  position: fixed;
+  inset-block: 0 var(--footer-height);
+  inset-inline: 0;
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+}
+.shell-app[data-sidebar='hidden'] {
+  grid-template-columns: 0 minmax(0, 1fr);
+}
+
+.shell-sidebar {
+  margin: 8px;
+  margin-inline-end: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-sidebar), var(--glass-edge), 0 0 0 0.5px var(--hairline-color);
+  transition:
+    opacity var(--dur-base) var(--ease-out),
+    transform var(--dur-slow) var(--ease-standard);
+}
+.shell-app[data-sidebar='hidden'] .shell-sidebar {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transform: translateX(-12px);
+}
+[dir='rtl'] .shell-app[data-sidebar='hidden'] .shell-sidebar {
+  transform: translateX(12px);
+}
+
+.shell-main {
+  position: relative;
+  display: grid;
+  grid-template-rows: var(--toolbar-height) minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+
+.shell-toolbar {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-inline: 12px 16px;
+  min-width: 0;
+  transition:
+    background-color var(--dur-base),
+    box-shadow var(--dur-base);
+}
+.shell-toolbar[data-scrolled='true'] {
+  background-color: var(--material-bar);
+  -webkit-backdrop-filter: var(--material-filter);
+  backdrop-filter: var(--material-filter);
+  box-shadow: 0 0.5px 0 var(--separator);
+}
+
+.shell-content {
+  overflow: auto;
+  overscroll-behavior: contain;
+  scroll-padding-top: 16px;
+}
+.shell-content:focus,
+.shell-content:focus-visible {
+  box-shadow: none;
+  outline: none;
+}
+.shell-page {
+  max-width: var(--content-max);
+  margin-inline: auto;
+  padding: 4px 32px 56px;
+  animation: shell-page-in var(--dur-slow) var(--ease-out);
+}
+@keyframes shell-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.shell-popover {
+  transform-origin: var(--radix-dropdown-menu-content-transform-origin);
+  animation: shell-pop-in var(--dur-base) var(--ease-settle);
+}
+@keyframes shell-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.shell-footer {
+  position: fixed;
+  inset-block: auto 0;
+  inset-inline: 0;
+  z-index: 30;
+  height: var(--footer-height);
+  box-shadow: 0 -0.5px 0 var(--separator);
+}
+
+@media (max-width: 1100px) {
+  .shell-page {
+    padding-inline: 24px;
+  }
+}
+
+/* Narrow windows: the sidebar floats over the content and starts closed. */
+@media (max-width: 760px) {
+  .shell-app,
+  .shell-app[data-sidebar='hidden'] {
+    grid-template-columns: 0 minmax(0, 1fr);
+  }
+  .shell-app .shell-sidebar {
+    position: fixed;
+    z-index: 40;
+    inset-block: 0 var(--footer-height);
+    inset-inline-start: 0;
+    width: 260px;
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+    transform: translateX(-16px);
+  }
+  [dir='rtl'] .shell-app .shell-sidebar {
+    transform: translateX(16px);
+  }
+  .shell-app[data-narrow-open='true'] .shell-sidebar {
+    opacity: 1;
+    pointer-events: auto;
+    visibility: visible;
+    transform: none;
+  }
+  .shell-page {
+    padding-inline: 16px;
+  }
+  .shell-footer {
+    font-size: 11px;
+    padding-inline: 8px;
+  }
+}

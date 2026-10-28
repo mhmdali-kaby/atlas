@@ -13,6 +13,11 @@ export interface SessionUser {
 
 export const SESSION_KEY = ['auth', 'me'] as const
 export const AUTH_STATUS_KEY = ['auth', 'status'] as const
+/**
+ * Set while the owner signs out on purpose (the shell's Sign out), so the guard sends
+ * them to a plain /login instead of /login?next=<the page they left>.
+ */
+export const SIGNED_OUT_KEY = ['auth', 'signed-out'] as const
 
 /** Brief §18: lock after 15 minutes without input. */
 export const IDLE_LOCK_MS = 15 * 60 * 1000
@@ -61,6 +66,7 @@ export function useLogin() {
   return useMutation<SessionUser, ApiError, Credentials>({
     mutationFn: async (credentials) => (await api.post<{ data: SessionUser }>('/api/auth/login', credentials)).data,
     onSuccess: (user) => {
+      client.setQueryData(SIGNED_OUT_KEY, false)
       client.setQueryData(SESSION_KEY, user)
     },
   })

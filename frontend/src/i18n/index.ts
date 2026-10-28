@@ -1,5 +1,8 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
+import { applyDocumentDirection, readStoredLanguage, writeStoredLanguage, type Language } from './language'
+
+export { applyDocumentDirection, RTL_LANGUAGES } from './language'
 
 /*
  * One JSON file per feature namespace per language: src/i18n/locales/<lang>/<namespace>.json.
@@ -16,16 +19,9 @@ for (const [path, mod] of Object.entries(modules)) {
   resources[lang][ns] = mod.default
 }
 
-export const RTL_LANGUAGES = new Set(['ar'])
-
-export function applyDocumentDirection(lang: string): void {
-  document.documentElement.lang = lang
-  document.documentElement.dir = RTL_LANGUAGES.has(lang) ? 'rtl' : 'ltr'
-}
-
 void i18n.use(initReactI18next).init({
   resources,
-  lng: 'en',
+  lng: readStoredLanguage(),
   fallbackLng: 'en',
   defaultNS: 'common',
   interpolation: { escapeValue: false },
@@ -33,5 +29,11 @@ void i18n.use(initReactI18next).init({
 
 i18n.on('languageChanged', applyDocumentDirection)
 applyDocumentDirection(i18n.language)
+
+/** The owner's language switch: changes it now (dir and lang flip, no reload) and remembers it. */
+export async function setLanguage(lang: Language): Promise<void> {
+  writeStoredLanguage(lang)
+  await i18n.changeLanguage(lang)
+}
 
 export default i18n

@@ -1,0 +1,33 @@
+{
+  "footer": {
+    "risk": "Automated trading can lose money.",
+    "env": "Demo/Live:"
+  },
+  "env": {
+    "demo": "Demo",
+    "live": "Live",
+    "demoTip": "Paper trading on the OKX demo account. No real money moves."
+  },
+  "nav": {
+    "label": "Sidebar",
+    "portfolio": "Portfolio",
+    "settings": "Settings"
+  },
+  "toolbar": "Toolbar",
+  "toggleSidebar": "Show or hide the sidebar",
+  "switchLang": "Switch to Arabic",
+  "otherLang": "العربية",
+  "theme": {
+    "label": "Appearance",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark"
+  },
+  "account": "Account",
+  "signOut": "Sign out",
+  "signedOut": "Signed out",
+  "notFound": {
+    "title": "Nothing here yet",
+    "body": "This page is not part of Atlas yet. Choose a page in the sidebar."
+  }
+}

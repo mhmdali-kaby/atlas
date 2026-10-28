@@ -6,6 +6,7 @@ import './i18n'
 import './index.css'
 import { router } from './app/router'
 import { initTheme } from './theme/useTheme'
+import { Toaster } from './ui'
 
 initTheme()
 
@@ -15,6 +16,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={router} />
+      <Toaster />
     </QueryClientProvider>
   </StrictMode>,
 )

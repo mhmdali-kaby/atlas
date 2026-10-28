@@ -1,3 +1,4 @@
 @import 'tailwindcss';
 @import './styles/tokens.css';
 @import './ui/ui.css';
+@import './app/shell/shell.css';
