@@ -13,6 +13,7 @@ export {
 export {
   canWithdraw,
   CONNECTIONS_KEY,
+  errorSlug,
   isVerified,
   useConnection,
   useConnections,

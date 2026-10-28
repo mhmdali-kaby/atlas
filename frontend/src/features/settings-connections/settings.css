@@ -98,22 +98,6 @@
   color: var(--loss-ink);
 }
 
-.st-skeleton {
-  display: block;
-  background: var(--fill-4);
-  animation: st-pulse 1.4s var(--ease-out) infinite alternate;
-}
-@keyframes st-pulse {
-  to {
-    opacity: 0.5;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .st-skeleton {
-    animation: none;
-  }
-}
-
 /* LTR key fields inside RTL: the reveal button follows the field's own direction. */
 .st-sheet-fields [dir='ltr'] {
   direction: ltr;
