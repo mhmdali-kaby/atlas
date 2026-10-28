@@ -35,6 +35,7 @@ from trading_core.app import create_app
 from trading_core.config import Settings
 from trading_core.connection_test import account_mode_name, run_connection_test, uid_last4
 from trading_core.scheduler import Scheduler
+from trading_core.security import signed_headers
 
 FIXTURES = Path(__file__).parent / "fixtures" / "okx"
 BASE = "https://www.okx.com"
@@ -133,9 +134,7 @@ def load(engine: Engine, cid: uuid.UUID) -> Connection:
 
 
 def signed(method: str, path: str, body: bytes = b"") -> dict[str, str]:
-    ts = str(int(time.time()))
-    sig = hmac.new(SECRET.encode(), (ts + method + path).encode() + body, hashlib.sha256).hexdigest()
-    return {"X-Atlas-Timestamp": ts, "X-Atlas-Signature": sig}
+    return signed_headers(SECRET, method, path, body)
 
 
 def client(engine: Engine, app_key: str = APP_KEY) -> TestClient:

@@ -87,7 +87,7 @@ it('relays a verified result from a signed trading_core call and audits it', fun
         return $request->method() === 'POST'
             && $request->url() === ATL8_CORE.$path
             && $request->header(TradingCore::SIGNATURE_HEADER)[0]
-                === TradingCore::sign(ATL8_SECRET, $ts, 'POST', $path, $request->body());
+                === TradingCore::sign(ATL8_SECRET, $ts, $request->header(TradingCore::NONCE_HEADER)[0], 'POST', $path, $request->body());
     });
 
     $audit = AuditLog::query()->where('action', 'connection.tested')->sole();

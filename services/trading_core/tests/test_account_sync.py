@@ -45,6 +45,7 @@ from trading_core.app import create_app
 from trading_core.config import Settings
 from trading_core.okx.models import AccountBalance, AssetBalance, Position
 from trading_core.scheduler import Scheduler
+from trading_core.security import signed_headers
 from trading_core.sync.account import STREAM, account_job, funding_usd, upl_usd
 
 FIXTURES = Path(__file__).parent / "fixtures" / "okx"
@@ -410,9 +411,7 @@ async def test_wrong_app_key_records_the_failure(clean: Engine) -> None:
 
 
 def signed(method: str, path: str, body: bytes = b"") -> dict[str, str]:
-    ts = str(int(time.time()))
-    sig = hmac.new(SECRET.encode(), (ts + method + path).encode() + body, hashlib.sha256).hexdigest()
-    return {"X-Atlas-Timestamp": ts, "X-Atlas-Signature": sig}
+    return signed_headers(SECRET, method, path, body)
 
 
 def app_client(engine: Engine) -> TestClient:
@@ -447,6 +446,21 @@ def test_signed_endpoint_runs_the_sync(respx_mock: respx.MockRouter, verified: E
     assert Decimal(body["total_eq_usd"]) == Decimal("98702.43") + Decimal("1250.5") + Decimal(
         "0.0015"
     ) * Decimal(BTC_SPOT_LAST)
+
+
+@respx.mock(base_url=BASE, assert_all_called=False)
+def test_replayed_sync_request_is_refused(respx_mock: respx.MockRouter, verified: Engine) -> None:
+    """ATL-34: the same signed request (same nonce) is accepted once; the replay gets 401."""
+    respx_mock.route(host="testserver").pass_through()
+    routes = mock_okx(respx_mock)
+    client = app_client(verified)
+    headers = signed("POST", PATH)
+
+    assert client.post(PATH, headers=headers).status_code == 200
+    calls = routes["balance"].call_count
+    replay = client.post(PATH, headers=headers)
+    assert replay.status_code == 401
+    assert routes["balance"].call_count == calls  # the replay never reached the handler
 
 
 @respx.mock(base_url=BASE, assert_all_called=False)

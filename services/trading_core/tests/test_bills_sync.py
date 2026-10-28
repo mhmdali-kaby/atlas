@@ -38,6 +38,7 @@ from trading_core.app import create_app
 from trading_core.config import Settings
 from trading_core.okx import OkxClient, client_for_connection
 from trading_core.scheduler import Scheduler
+from trading_core.security import signed_headers
 from trading_core.sync import bill_types
 from trading_core.sync.bills import PAGE_LIMIT, STREAM, bills_job
 
@@ -74,9 +75,7 @@ def clock(*stamps: datetime) -> Callable[[], datetime]:
 
 
 def signed(method: str, path: str, body: bytes = b"") -> dict[str, str]:
-    ts = str(int(time.time()))
-    sig = hmac.new(SECRET.encode(), (ts + method + path).encode() + body, hashlib.sha256).hexdigest()
-    return {"X-Atlas-Timestamp": ts, "X-Atlas-Signature": sig}
+    return signed_headers(SECRET, method, path, body)
 
 
 @pytest.fixture(scope="module")
