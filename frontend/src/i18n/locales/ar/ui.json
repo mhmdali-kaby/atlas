@@ -1,0 +1,14 @@
+{
+  "secure": {
+    "show": "إظهار",
+    "hide": "إخفاء"
+  },
+  "signed": {
+    "gain": "ربح",
+    "loss": "خسارة"
+  },
+  "loading": "جارٍ التحميل",
+  "close": "إغلاق",
+  "dismiss": "تجاهل",
+  "notifications": "الإشعارات ({hotkey})"
+}

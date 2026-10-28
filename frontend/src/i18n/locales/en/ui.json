@@ -1,0 +1,14 @@
+{
+  "secure": {
+    "show": "Show",
+    "hide": "Hide"
+  },
+  "signed": {
+    "gain": "gain",
+    "loss": "loss"
+  },
+  "loading": "Loading",
+  "close": "Close",
+  "dismiss": "Dismiss",
+  "notifications": "Notifications ({hotkey})"
+}

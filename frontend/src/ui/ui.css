@@ -1,0 +1,14 @@
+/* Keyframes the src/ui components need beyond motion (design §8, §9). */
+
+/* The spinner's spokes fade in turn. Reduced motion stops the rotation (the
+   base layer makes every animation instant) and leaves a static indicator. */
+.atlas-spoke {
+  transform-origin: 50% 178%;
+  opacity: 0.15;
+  animation: atlas-spoke 1s linear infinite;
+}
+
+@keyframes atlas-spoke {
+  from { opacity: 0.85; }
+  to { opacity: 0.15; }
+}

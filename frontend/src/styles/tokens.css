@@ -74,6 +74,10 @@
   --ui-switch-off: rgba(120, 120, 128, 0.16);
   --ui-switch-off-border: rgba(60, 60, 67, 0.32);
   --ui-selection: rgba(120, 120, 128, 0.16);
+  --ui-segment-thumb: #FFFFFF;
+  --ui-segment-thumb-shadow: 0 3px 8px rgba(0, 0, 0, 0.12), 0 3px 1px rgba(0, 0, 0, 0.04), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
+  --ui-knob-shadow: 0 2px 4px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+  --ui-error-ring: 0 0 0 3px rgba(255, 59, 48, 0.30);
 
   --ui-material-bar: rgba(246, 246, 246, 0.72);
   --ui-material-sidebar: rgba(246, 246, 246, 0.72);
@@ -155,6 +159,10 @@
   --ui-switch-off: rgba(120, 120, 128, 0.32);
   --ui-switch-off-border: rgba(235, 235, 245, 0.16);
   --ui-selection: rgba(255, 255, 255, 0.10);
+  --ui-segment-thumb: #636366;
+  --ui-segment-thumb-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+  --ui-knob-shadow: 0 2px 4px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
+  --ui-error-ring: 0 0 0 3px rgba(255, 69, 58, 0.30);
 
   --ui-material-bar: rgba(30, 30, 30, 0.72);
   --ui-material-sidebar: rgba(30, 30, 30, 0.72);
@@ -238,6 +246,10 @@
   --switch-off-border: var(--ui-switch-off-border);
   --knob: var(--ui-on-solid);
   --selection: var(--ui-selection);
+  --segment-thumb: var(--ui-segment-thumb);
+  --segment-thumb-shadow: var(--ui-segment-thumb-shadow);
+  --knob-shadow: var(--ui-knob-shadow);
+  --error-ring: var(--ui-error-ring);
 
   --material-bar: var(--ui-material-bar);
   --material-sidebar: var(--ui-material-sidebar);
@@ -392,6 +404,7 @@
   --color-switch-off-border: var(--switch-off-border);
   --color-knob: var(--knob);
   --color-selection: var(--selection);
+  --color-segment-thumb: var(--segment-thumb);
   --color-scrim: var(--scrim);
 
   /* Seal and chart */
@@ -415,6 +428,9 @@
   --shadow-sidebar: var(--ui-shadow-sidebar);
   --shadow-focus: var(--ui-focus-ring);
   --shadow-glass-edge: var(--ui-glass-edge);
+  --shadow-segment-thumb: var(--segment-thumb-shadow);
+  --shadow-knob: var(--knob-shadow);
+  --shadow-error-ring: var(--error-ring);
 
   /* Fonts */
   --font-sans: var(--font-stack-sans);
