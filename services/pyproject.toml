@@ -32,6 +32,8 @@ atlas-ingest = { workspace = true }
 testpaths = ["tests", "shared/tests", "trading_core/tests", "agents/tests", "ingest/tests"]
 asyncio_mode = "auto"
 addopts = "--import-mode=importlib"
+# services/trading_core shares its name with the trading_core package; without this pytest shadows it.
+consider_namespace_packages = true
 
 [tool.ruff]
 line-length = 110
