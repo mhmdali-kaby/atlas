@@ -1,4 +1,4 @@
-import { DATE_LOCALE, FIGURE_LOCALE, formatDecimal, formatMoney, formatPercent, formatSigned, NO_VALUE, signOf } from './format'
+import { DATE_LOCALE, FIGURE_LOCALE, formatDecimal, formatFixed, formatMoney, formatPercent, formatSigned, NO_VALUE, signOf } from './format'
 
 const MINUS = '−'
 const WESTERN_ONLY = /^[^٠-٩۰-۹]*$/
@@ -97,5 +97,16 @@ describe('formatDecimal', () => {
   it('renders a missing value as the em dash', () => {
     expect(formatDecimal(null)).toBe(NO_VALUE)
     expect(formatDecimal(' ')).toBe(NO_VALUE)
+  })
+})
+
+describe('formatFixed', () => {
+  it('pads or rounds a decimal string to the digits asked for, in both languages', () => {
+    expect(formatFixed('1', 1)).toBe('1.0')
+    expect(formatFixed('0.5', 1, 'ar')).toBe('0.5')
+    expect(formatFixed('25', 0)).toBe('25')
+    expect(formatFixed('1250.5', 1)).toBe('1,250.5')
+    expect(formatFixed(10, 0, 'ar')).toBe('10')
+    expect(formatFixed(null, 1)).toBe(NO_VALUE)
   })
 })

@@ -1,0 +1,66 @@
+{
+  "nav": {
+    "connections": "Connections"
+  },
+  "conn": {
+    "intro": "Atlas reads your OKX account with these keys. They’re encrypted on this Mac and never shown again.",
+    "okxDemo": "OKX demo",
+    "sealLabel": "Seal of the OKX demo account ending {{last4}}",
+    "connected": "Connected. Verified {{ago}}.",
+    "justNow": "just now",
+    "untested": "Keys saved. They haven’t been tested yet.",
+    "testingLine": "Testing with OKX…",
+    "failedLine": "The last test failed.",
+    "failedLineAgo": "The last test failed. Last verified {{ago}}.",
+    "cantTest": "Atlas couldn’t run the test. Last verified {{ago}}.",
+    "cantTestNever": "Atlas couldn’t run the test.",
+    "test": "Test again",
+    "testing": "Testing…",
+    "replace": "Replace keys",
+    "remove": "Remove…",
+    "footnote": "Atlas never withdraws or moves money, and refuses live keys that can withdraw.",
+    "accountTitle": "Account",
+    "accountNote": "OKX reports these details each time Atlas tests the connection.",
+    "verifiedTip": "Baghdad time (Asia/Baghdad)",
+    "never": "Never",
+    "liveTitle": "Live account",
+    "live": "OKX live",
+    "liveNote": "Live trading is enabled in Phase 4.",
+    "okToast": "Connection works",
+    "okToastBody": "OKX answered at {{time}}.",
+    "failedToast": "Test failed",
+    "none": {
+      "title": "Not connected",
+      "body": "Connect the OKX demo account so Atlas can read its balances, positions and history."
+    },
+    "connect": "Connect OKX demo",
+    "loadError": {
+      "title": "Couldn’t load your connections",
+      "body": "Atlas’s server didn’t answer. Check that Atlas is running with ./atlas up, then try again.",
+      "retry": "Try again"
+    }
+  },
+  "rk": {
+    "title": "Replace the OKX demo keys",
+    "text": "Paste a new key from the OKX demo account. Atlas saves it and tests it straight away.",
+    "save": "Save and test",
+    "toast": "Keys replaced",
+    "toastBody": "API key •••• {{last4}} works."
+  },
+  "ck": {
+    "title": "Connect the OKX demo account",
+    "text": "Paste the key you created in OKX demo trading. Atlas saves it and tests it straight away.",
+    "toast": "Connected to OKX demo"
+  },
+  "rm": {
+    "title": "Remove the OKX demo connection?",
+    "text": "Atlas stops syncing this account, and the Portfolio pages stop updating. The keys are deleted from this Mac. Your OKX account and its funds are not touched.",
+    "confirm": "Type “{{label}}” to confirm",
+    "do": "Remove connection",
+    "removing": "Removing…",
+    "toast": "Connection removed",
+    "toastBody": "The keys were deleted from this Mac.",
+    "failed": "Atlas couldn’t remove the connection. Try again."
+  },
+  "cancel": "Cancel"
+}

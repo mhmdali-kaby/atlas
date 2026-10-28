@@ -35,7 +35,7 @@ export function formatDay(ts: number | string, lang: Lang, year = false): string
   return dtf(lang, { day: 'numeric', month: 'short', year: year ? 'numeric' : undefined }).format(new Date(ts))
 }
 
-/** "Oct 28, 17:36" */
+/** "Oct 28, 17:36"; with `year`, "Oct 28, 2026, 17:36". */
 export function formatDayTime(ts: number | string, lang: Lang, year = false): string {
   return dtf(lang, {
     day: 'numeric',

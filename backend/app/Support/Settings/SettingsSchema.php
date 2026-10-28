@@ -55,6 +55,9 @@ final class SettingsSchema
         'min_24h_volume_usd_stock_perp' => ['decimal', '0', '1000000000000', false],
         'min_24h_volume_usd_commodity_perp' => ['decimal', '0', '1000000000000', false],
         'min_24h_volume_usd_spot' => ['decimal', '0', '1000000000000', false],
+        // 0 until the owner finishes the onboarding wizard, then 1 (ATL-19). Finishing always
+        // writes it, so the version moves past 1 even when the owner keeps every default.
+        'onboarding_completed' => ['integer', 0, 1, false],
     ];
 
     /**
@@ -92,6 +95,7 @@ final class SettingsSchema
             'min_24h_volume_usd_stock_perp' => config('atlas_defaults.markets.min_24h_volume_usd.stock_perp'),
             'min_24h_volume_usd_commodity_perp' => config('atlas_defaults.markets.min_24h_volume_usd.commodity_perp'),
             'min_24h_volume_usd_spot' => config('atlas_defaults.markets.min_24h_volume_usd.spot'),
+            'onboarding_completed' => 0,
         ]);
     }
 

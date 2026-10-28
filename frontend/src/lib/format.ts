@@ -138,3 +138,13 @@ export function formatDecimal(
   const nf = formatter(FIGURE_LOCALE[lang], { minimumFractionDigits: minFrac, maximumFractionDigits: 20, signDisplay })
   return typographicMinus(nf.format(asIntlValue(value)))
 }
+
+/**
+ * A plain figure with a fixed number of decimals and no unit: "1.0", "5", "1,250.5".
+ * Decimal strings go to Intl as strings, so nothing passes through a float.
+ */
+export function formatFixed(value: Figure, digits: number, lang: Lang = 'en'): string {
+  if (isMissing(value)) return NO_VALUE
+  const nf = formatter(FIGURE_LOCALE[lang], { minimumFractionDigits: digits, maximumFractionDigits: digits })
+  return typographicMinus(nf.format(asIntlValue(value)))
+}
