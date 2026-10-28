@@ -221,5 +221,11 @@ describe('Portfolio Positions', () => {
     expect(cell(btc!, 'entry')).toHaveTextContent('67,250.5')
     expect(cell(btc!, 'upl')).toHaveTextContent('+$217.45')
     expect(document.body.textContent).not.toMatch(/[٠-٩]/)
+
+    // The time-in-trade date is read in the Arabic order, so it must not be the
+    // LTR-isolated .fig used for figures (ATL-20 fixed the same bug on Last verified).
+    const dateEl = cell(btc!, 'time').querySelector('.pf-cell-sub')!
+    expect(dateEl).toHaveTextContent('28 تشرين الأول')
+    expect(dateEl).not.toHaveClass('fig')
   })
 })

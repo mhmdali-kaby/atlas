@@ -8,6 +8,12 @@ import { expect, test, type Page } from '@playwright/test'
 
 const OWNER = { id: '01a18376-1d35-70c2-ad01-6d1d2cd870ad', name: 'Mohammed Ali', email: 'owner@atlas.test', locale: 'en', theme: 'system' }
 const SHOTS = '../../evidence/ATL-22'
+/** The three §14.3 presets, enough for the risk step to render when the gate sends us there. */
+const PRESETS = {
+  conservative: { max_loss_per_trade_pct: '0.5', max_position_pct: '2', max_daily_loss_pct: '2', max_weekly_loss_pct: '5', max_leverage: 2, max_open_positions: 3, max_share_per_instrument_pct: '15', max_correlated_exposure_pct: '20', min_expected_r: '2.0', max_consecutive_losses: 2 },
+  balanced: { max_loss_per_trade_pct: '1.0', max_position_pct: '5', max_daily_loss_pct: '4', max_weekly_loss_pct: '10', max_leverage: 5, max_open_positions: 6, max_share_per_instrument_pct: '25', max_correlated_exposure_pct: '35', min_expected_r: '1.8', max_consecutive_losses: 3 },
+  aggressive: { max_loss_per_trade_pct: '2.0', max_position_pct: '10', max_daily_loss_pct: '8', max_weekly_loss_pct: '20', max_leverage: 10, max_open_positions: 10, max_share_per_instrument_pct: '40', max_correlated_exposure_pct: '50', min_expected_r: '1.5', max_consecutive_losses: 4 },
+}
 const NOW = Date.UTC(2026, 9, 28, 17, 36)
 const QUARTER = 15 * 60_000
 
@@ -62,7 +68,7 @@ function summary(stale: boolean) {
   }
 }
 
-async function fakeApi(page: Page, { stale = false } = {}) {
+async function fakeApi(page: Page, { stale = false, onboarded = true }: { stale?: boolean; onboarded?: boolean } = {}) {
   const ranges: string[] = []
   await page.route(/^http:\/\/localhost:8000\//, async (route) => {
     const url = new URL(route.request().url())
@@ -91,7 +97,11 @@ async function fakeApi(page: Page, { stale = false } = {}) {
       return json(200, { data: [{ id: 'c1', exchange: 'okx', env: 'demo', uid_last4: '4821', last_verified_at: new Date(NOW).toISOString() }] })
     }
     if (url.pathname === '/api/settings') {
-      return json(200, { data: { env: 'demo', version: 3, settings: { risk_profile: 'balanced', autonomy_level: 2, onboarding_completed: 1 } } })
+      // onboarding_completed must be 1, not just absent, for the gate (ATL-19's isOnboarded)
+      // to let the owner through to /portfolio — a high version number is not enough.
+      const settings: Record<string, string | number> = { risk_profile: 'balanced', autonomy_level: 2 }
+      if (onboarded) settings.onboarding_completed = 1
+      return json(200, { data: { env: 'demo', version: 3, settings, presets: PRESETS } })
     }
     return json(404, { message: 'Not found' })
   })
@@ -177,4 +187,18 @@ test('narrow window folds the ledger and hides the seal', async ({ page }) => {
   await fakeApi(page)
   await open(page, 'ar', 'light')
   await page.screenshot({ path: `${SHOTS}/overview-narrow-rtl.png`, fullPage: true })
+})
+
+/*
+ * ATL-31: the gate is unchanged — settings without onboarding_completed = 1 must still send
+ * a verified owner to /onboarding, even at a high version. This is what the ATL-19/ATL-24
+ * fixture bug (onboarding_completed missing) was mistaken for app behaviour: the gate was
+ * always correct, only the fixtures were wrong.
+ */
+test('a verified owner whose settings lack onboarding_completed stays on /onboarding, not /portfolio', async ({ page }) => {
+  await fakeApi(page, { onboarded: false })
+  await page.goto('/')
+  await expect(page).toHaveURL(/\/onboarding\?step=risk$/)
+  await expect(page.getByRole('heading', { level: 1, name: 'Choose a risk profile' })).toBeVisible()
+  await expect(page.getByTestId('hero-equity')).not.toBeVisible()
 })

@@ -38,9 +38,7 @@ function FlowRow({ f, lang }: { f: CashflowMarker; lang: Lang }) {
   return (
     <tr data-testid="cashflow-row" data-id={f.id} data-kind={f.kind} data-state={state}>
       <td data-col="date">
-        <span className="fig" title={f.ts}>
-          {formatDayTime(f.ts, lang, true)}
-        </span>
+        <span title={f.ts}>{formatDayTime(f.ts, lang, true)}</span>
       </td>
       <td data-col="kind">
         <span className="pf-flow-type">
