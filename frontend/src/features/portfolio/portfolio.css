@@ -1,0 +1,71 @@
+/* Portfolio Overview (design: css/portfolio.css): skeletons, the equity tint, the ledger strip. */
+
+.pf-skeleton {
+  display: block;
+  border-radius: 6px;
+  background: linear-gradient(90deg, var(--fill-3) 0%, var(--fill-4) 50%, var(--fill-3) 100%);
+  background-size: 200% 100%;
+  animation: pf-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes pf-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+/* A changed equity figure flashes green or red, then settles to the label colour. */
+.pf-tint-profit { animation: pf-tint-profit 1200ms var(--ease-out); }
+.pf-tint-loss { animation: pf-tint-loss 1200ms var(--ease-out); }
+@keyframes pf-tint-profit { 0%, 30% { color: var(--profit-ink); } 100% { color: var(--label); } }
+@keyframes pf-tint-loss { 0%, 30% { color: var(--loss-ink); } 100% { color: var(--label); } }
+
+.equity-chart:focus-within { box-shadow: var(--focus-ring); }
+.equity-chart .recharts-surface:focus { outline: none; }
+
+/* Six figures, one statement. Six across from a 1440 window, three by two below, two below 760. */
+.pf-ledger {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  background: var(--bg-secondary);
+  border-radius: var(--radius-panel);
+  box-shadow: inset 0 0 0 0.5px var(--hairline-color);
+}
+.pf-ledger-item {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 16px 18px 18px;
+  color: var(--label);
+  text-decoration: none;
+  border-radius: var(--radius-panel);
+}
+a.pf-ledger-item:hover { background: var(--fill-4); }
+a.pf-ledger-item:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.pf-ledger-item:nth-child(2n)::before {
+  content: "";
+  position: absolute;
+  inset-block: 16px;
+  inset-inline-start: 0;
+  border-inline-start: 0.5px solid var(--separator);
+}
+.pf-ledger-item:nth-child(n + 3) { border-top: 0.5px solid var(--separator); border-radius: 0; }
+
+@media (min-width: 761px) {
+  .pf-ledger { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .pf-ledger-item::before { display: none; }
+  .pf-ledger-item:not(:nth-child(3n + 1))::before {
+    display: block;
+    content: "";
+    position: absolute;
+    inset-block: 16px;
+    inset-inline-start: 0;
+    border-inline-start: 0.5px solid var(--separator);
+  }
+  .pf-ledger-item:nth-child(n + 3) { border-top: 0; border-radius: var(--radius-panel); }
+  .pf-ledger-item:nth-child(n + 4) { border-top: 0.5px solid var(--separator); border-radius: 0; }
+}
+@media (min-width: 1440px) {
+  .pf-ledger { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .pf-ledger-item:not(:first-child)::before { display: block; }
+  .pf-ledger-item:nth-child(n + 4) { border-top: 0; border-radius: var(--radius-panel); }
+}
