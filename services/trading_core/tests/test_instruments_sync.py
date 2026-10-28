@@ -1,6 +1,6 @@
 """ATL-9: the instrument universe syncs into Postgres with a derived asset_class.
 
-DB tests run against atlas_test (migrated by `cd backend && php artisan test`). OKX is mocked with
+DB tests run against this checkout's test DB (atlas_shared.testing; migrated by `cd backend && php artisan test`). OKX is mocked with
 respx; universes are built from the recorded demo fixture public_instruments_swap.json.
 """
 
@@ -21,6 +21,7 @@ from typing import Any
 import httpx
 import pytest
 import respx
+from atlas_shared import testing
 from atlas_shared.db import Instrument, SyncStatus, make_engine
 from fastapi.testclient import TestClient
 from sqlalchemy import Engine, delete, func, select
@@ -37,13 +38,7 @@ BASE = "https://www.okx.com"
 ENV = "demo"
 SECRET = "atlas-test-only-internal-secret"  # noqa: S105
 
-TEST_DB = {
-    "DB_HOST": os.environ.get("DB_HOST", "127.0.0.1"),
-    "DB_PORT": os.environ.get("DB_PORT", "5433"),
-    "DB_DATABASE": os.environ.get("DB_TEST_DATABASE", "atlas_test"),
-    "DB_USERNAME": os.environ.get("DB_USERNAME", "atlas"),
-    "DB_PASSWORD": os.environ.get("DB_PASSWORD", "atlas"),
-}
+TEST_DB = testing.db_settings()
 
 
 def recorded() -> dict[str, dict[str, Any]]:
@@ -89,7 +84,9 @@ def engine() -> Engine:
         with eng.connect():
             pass
     except OperationalError as exc:
-        pytest.fail(f"atlas_test is not reachable on {TEST_DB['DB_HOST']}:{TEST_DB['DB_PORT']}: {exc}")
+        pytest.fail(
+            f"{TEST_DB['DB_DATABASE']} is not reachable on {TEST_DB['DB_HOST']}:{TEST_DB['DB_PORT']}: {exc}"
+        )
     return eng
 
 
