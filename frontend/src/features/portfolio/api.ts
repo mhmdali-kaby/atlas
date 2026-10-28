@@ -53,9 +53,35 @@ export interface EquitySeries {
   markers: CashflowMarker[]
 }
 
+/** One open position from the newest positions tick (ATL-12). Decimal strings; `size` is in contracts. */
+export interface Position {
+  id: string
+  inst_id: string
+  side: 'long' | 'short'
+  pos_side: string
+  size: string
+  leverage: string | null
+  entry: string | null
+  mark: string | null
+  liq_px: string | null
+  margin: string | null
+  settle_ccy: string | null
+  /** null when the settle currency is not USD-like. */
+  upl_usd: string | null
+  /** OKX uplRatio × 100: return on margin. */
+  upl_pct: string | null
+  margin_mode: string | null
+  opened_at: string | null
+  /** Phase 2 (always null until the Executor exists); not shown. */
+  stop: null
+  take_profits: null
+  agent: null
+  proposal_id: null
+}
+
 export interface PositionsPayload {
   taken_at: string | null
-  items: Array<{ id: string; inst_id: string }>
+  items: Position[]
 }
 
 export interface ConnectionSummary {

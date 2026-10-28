@@ -1,14 +1,16 @@
-import { CircleCheck, CloudOff, RefreshCw, TriangleAlert } from 'lucide-react'
+import { CircleCheck, TriangleAlert } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { useTradingEnv } from '../../app/shell/tradingEnv'
 import { formatMoney, type Lang } from '../../lib/format'
-import { Button, Seal, SegmentedControl, SignedValue, Spinner } from '../../ui'
+import { Seal, SegmentedControl, SignedValue } from '../../ui'
 import { cx } from '../../ui/cx'
-import { RANGES, POLL_MS, useConnections, useEquity, usePositions, useSummary, type EquityRange, type PortfolioSummary } from './api'
+import { RANGES, POLL_MS, useConnections, useEquity, usePositions, useSummary, type EquityRange } from './api'
 import { EquityChart } from './EquityChart'
-import { formatAgo, formatClock, formatDay } from './time'
+import { useLang, useNow } from './hooks'
+import { ReconciledIndicator, Skeleton, StateBlock } from './parts'
+import { formatDay } from './time'
 import './portfolio.css'
 
 /*
@@ -17,25 +19,6 @@ import './portfolio.css'
  * ledger strip. Reads /api/portfolio/summary (polled every 30 s) and
  * /api/portfolio/equity?range=…; never calls OKX.
  */
-
-function useLang(): Lang {
-  const { i18n } = useTranslation()
-  return i18n.language === 'ar' ? 'ar' : 'en'
-}
-
-/** Re-renders every `ms` so "N minutes ago" keeps counting between polls. */
-function useNow(ms: number): number {
-  const [now, setNow] = useState(() => Date.now())
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), ms)
-    return () => window.clearInterval(id)
-  }, [ms])
-  return now
-}
-
-function Skeleton({ className, style }: { className?: string; style?: React.CSSProperties }) {
-  return <span aria-hidden="true" className={cx('pf-skeleton', className)} style={style} />
-}
 
 /** "$5,136,121" + ".59" in the secondary label colour; tinted for a moment when it changes. */
 function HeroEquity({ value, lang }: { value: string; lang: Lang }) {
@@ -70,42 +53,6 @@ function HeroEquity({ value, lang }: { value: string; lang: Lang }) {
   )
 }
 
-function ReconciledIndicator({ summary, lang, now }: { summary: PortfolioSummary; lang: Lang; now: number }) {
-  const { t } = useTranslation('portfolio')
-  const pill = 'inline-flex items-center gap-1.5 rounded-full py-1 ps-2 pe-2.5 text-footnote [&_svg]:size-[15px]'
-  if (summary.stale) {
-    const at = summary.reconciled_at
-    return (
-      <p
-        data-testid="reconciled"
-        data-state="stale"
-        tabIndex={0}
-        title={t('staleTip')}
-        className={cx(pill, 'bg-warning-wash font-medium text-warning-ink')}
-      >
-        <TriangleAlert aria-hidden="true" strokeWidth={2} />
-        <span>{at ? t('stale', { ago: formatAgo(now - Date.parse(at), lang) }) : t('staleNever')}</span>
-        <span className="sr-only">. {t('staleTip')}</span>
-      </p>
-    )
-  }
-  return (
-    <p
-      data-testid="reconciled"
-      data-state="ok"
-      tabIndex={0}
-      title={t('reconciledTip')}
-      aria-live="polite"
-      className={cx(pill, 'bg-fill-4 text-label-secondary')}
-    >
-      <CircleCheck aria-hidden="true" strokeWidth={2} className="text-profit-ink" />
-      <span>
-        {t('reconciled', { time: summary.reconciled_at ? formatClock(summary.reconciled_at, lang) : '—' })}
-      </span>
-    </p>
-  )
-}
-
 function AccountSeal({ uidLast4, stale }: { uidLast4: string; stale: boolean }) {
   const { t } = useTranslation('portfolio')
   return (
@@ -125,68 +72,6 @@ function AccountSeal({ uidLast4, stale }: { uidLast4: string; stale: boolean }) 
         <span className="fig">•••• {uidLast4}</span>
       </figcaption>
     </figure>
-  )
-}
-
-function StateBlock({
-  kind,
-  title,
-  body,
-  compact,
-  onRetry,
-}: {
-  kind: 'empty' | 'error'
-  title: string
-  body: string
-  compact?: boolean
-  onRetry?: () => void
-}) {
-  const { t } = useTranslation('portfolio')
-  const parts = body.split('./atlas up')
-  return (
-    <div
-      role={kind === 'error' ? 'alert' : 'status'}
-      data-testid={`state-${kind}`}
-      className={cx(
-        'mx-auto grid max-w-[520px] justify-items-center gap-2.5 px-6 text-center',
-        compact ? 'pt-14 pb-16' : 'pt-[12vh] pb-16',
-      )}
-    >
-      {kind === 'empty' ? (
-        <span className="mb-2">
-          <Seal seed="okx-demo" size={compact ? 72 : 120} inkClassName="stroke-seal-muted" />
-        </span>
-      ) : (
-        <span className="mb-1.5 grid size-14 place-items-center rounded-panel bg-loss-wash text-loss-ink">
-          <CloudOff aria-hidden="true" className="size-7" strokeWidth={1.5} />
-        </span>
-      )}
-      <h2 className="text-title-3">{title}</h2>
-      <p className="max-w-[44ch] text-subheadline text-balance text-label-secondary">
-        {parts.length === 2 ? (
-          <>
-            {parts[0]}
-            <code dir="ltr" className="inline-block whitespace-nowrap rounded-[6px] bg-fill-3 px-1.5 text-label [unicode-bidi:isolate]">
-              ./atlas up
-            </code>
-            {parts[1]}
-          </>
-        ) : (
-          body
-        )}
-      </p>
-      {kind === 'empty' && (
-        <p className="mt-1.5 inline-flex items-center gap-2 text-footnote text-label-secondary">
-          <Spinner />
-          <span>{t('waiting')}</span>
-        </p>
-      )}
-      {onRetry && (
-        <Button variant="secondary" className="mt-2" icon={<RefreshCw aria-hidden="true" />} onClick={onRetry}>
-          {t('error.retry')}
-        </Button>
-      )}
-    </div>
   )
 }
 

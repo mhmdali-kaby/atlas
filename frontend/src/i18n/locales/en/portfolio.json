@@ -1,6 +1,7 @@
 {
   "nav": {
-    "overview": "Overview"
+    "overview": "Overview",
+    "positions": "Positions"
   },
   "equity": "Total equity",
   "reconciled": "Reconciled with OKX at {{time}}",
@@ -48,5 +49,30 @@
     "body": "Atlas’s server didn’t answer. Check that Atlas is running with ./atlas up, then try again.",
     "retry": "Try again"
   },
-  "loading": "Loading your portfolio"
+  "loading": "Loading your portfolio",
+  "positions": {
+    "col": {
+      "instrument": "Instrument",
+      "side": "Side",
+      "size": "Size",
+      "leverage": "Leverage",
+      "mgnMode": "Margin mode",
+      "entry": "Entry",
+      "mark": "Mark",
+      "liq": "Liq. price",
+      "upl": "Unrealised PnL",
+      "time": "Time in trade"
+    },
+    "contractsUnit": "contracts",
+    "long": "Long",
+    "short": "Short",
+    "isolated": "Isolated",
+    "cross": "Cross",
+    "opened": "Opened {{date}}",
+    "unrealisedTotal": "Unrealised",
+    "empty": {
+      "title": "No open positions",
+      "body": "No open positions on the OKX demo account. Positions you open on OKX appear here within a minute."
+    }
+  }
 }

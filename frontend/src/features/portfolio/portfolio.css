@@ -69,3 +69,92 @@ a.pf-ledger-item:focus-visible { outline: none; box-shadow: var(--focus-ring); }
   .pf-ledger-item:not(:first-child)::before { display: block; }
   .pf-ledger-item:nth-child(n + 4) { border-top: 0; border-radius: var(--radius-panel); }
 }
+
+/* ---- Panels and tables (Positions, Holdings, Cash flows; design: components.css .table) ---- */
+.pf-panel {
+  --panel-bg: var(--bg);
+  background: var(--panel-bg);
+  border-radius: var(--radius-panel);
+  box-shadow: 0 0 0 0.5px var(--hairline-color), var(--shadow-2);
+}
+.dark .pf-panel { --panel-bg: var(--bg-secondary); }
+.pf-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--text-subheadline);
+  line-height: var(--lh-subheadline);
+}
+/* The header sticks to the top of the scrolling page (main.shell-content) as one solid band. */
+.pf-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 10px;
+  text-align: start;
+  white-space: nowrap;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  font-weight: 500;
+  color: var(--label-secondary);
+  background: var(--panel-bg);
+  border-bottom: 0.5px solid var(--separator);
+}
+.pf-table td {
+  padding: 12px 10px;
+  border-bottom: 0.5px solid var(--separator);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.pf-table tbody tr:last-child td { border-bottom: 0; }
+.pf-table tbody tr { transition: background-color var(--dur-fast); }
+.pf-table tbody tr:hover { background: var(--fill-4); }
+.pf-table .is-num { text-align: end; font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+/* Positions has ten columns: 16px between columns keeps it inside a 1280 window. */
+.pf-positions td, .pf-positions th { padding-inline: 8px; }
+.pf-table th:first-child, .pf-table td:first-child { padding-inline-start: 20px; }
+.pf-table th:last-child, .pf-table td:last-child { padding-inline-end: 20px; }
+.pf-table th:first-child { border-start-start-radius: var(--radius-panel); }
+.pf-table th:last-child { border-start-end-radius: var(--radius-panel); }
+.pf-table tbody tr:last-child td:first-child { border-end-start-radius: var(--radius-panel); }
+.pf-table tbody tr:last-child td:last-child { border-end-end-radius: var(--radius-panel); }
+.pf-cell-sub {
+  display: block;
+  margin-top: 1px;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+.pf-table td.is-num [data-sign] { justify-content: flex-end; }
+.pf-inst { font-weight: 600; font-size: var(--text-subheadline); unicode-bidi: isolate; }
+.pf-inst-rest { color: var(--label-secondary); font-weight: 500; }
+.pf-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding-inline: 8px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-footnote);
+  line-height: 1;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--fill-3);
+  color: var(--label);
+}
+.pf-badge svg { width: 13px; height: 13px; color: var(--label-secondary); }
+
+/* Narrow windows: the table scrolls sideways inside its panel; the first column stays pinned. */
+@media (max-width: 1279px) {
+  .pf-panel { overflow-x: auto; overscroll-behavior-x: contain; }
+  .pf-table th:first-child, .pf-table td:first-child {
+    position: sticky;
+    inset-inline-start: 0;
+    z-index: 1;
+    background: var(--panel-bg);
+    padding-inline-end: 16px;
+    box-shadow: inset calc(var(--pin-edge, 1) * -0.5px) 0 0 var(--separator);
+  }
+  [dir='rtl'] .pf-table { --pin-edge: -1; }
+  .pf-table th:first-child { z-index: 3; }
+}

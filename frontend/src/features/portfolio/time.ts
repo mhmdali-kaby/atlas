@@ -104,3 +104,40 @@ export function valueTicks(min: number, max: number): { lo: number; hi: number; 
   for (let v = lo; v <= hi + step / 1e6; v += step) ticks.push(Number(v.toPrecision(12)))
   return { lo, hi, ticks }
 }
+
+const MINUTE = 60_000
+
+interface DurationFormatLike {
+  format(parts: Record<string, number>): string
+}
+type DurationFormatCtor = new (locale: string, options: { style: string }) => DurationFormatLike
+
+/**
+ * Time in trade, from the approved prototype: days+hours, else hours+minutes, else minutes.
+ * Intl.DurationFormat (en narrow "3d 4h", ar short), Western digits in both languages.
+ */
+export function formatDuration(ms: number, lang: Lang): string {
+  const mins = Math.max(0, Math.floor(ms / MINUTE))
+  const d = Math.floor(mins / 1440)
+  const h = Math.floor((mins % 1440) / 60)
+  const m = mins % 60
+  const parts: Record<string, number> = d ? { days: d, hours: h } : h ? { hours: h, minutes: m } : { minutes: m }
+  const Ctor = (Intl as unknown as { DurationFormat?: DurationFormatCtor }).DurationFormat
+  if (Ctor) {
+    try {
+      return new Ctor(DATE_LOCALE[lang], { style: lang === 'ar' ? 'short' : 'narrow' }).format(parts)
+    } catch {
+      // fall through to the unit formatter below
+    }
+  }
+  const unit = { days: 'day', hours: 'hour', minutes: 'minute' } as const
+  return Object.entries(parts)
+    .map(([k, v]) =>
+      new Intl.NumberFormat(DATE_LOCALE[lang], {
+        style: 'unit',
+        unit: unit[k as keyof typeof unit],
+        unitDisplay: lang === 'ar' ? 'short' : 'narrow',
+      }).format(v),
+    )
+    .join(' ')
+}
