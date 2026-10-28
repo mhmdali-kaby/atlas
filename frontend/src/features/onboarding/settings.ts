@@ -47,8 +47,12 @@ export const DEFAULT_PROFILE: PresetId = 'balanced'
 
 export const settingsKey = (env: SettingsDoc['env'] = 'demo') => ['settings', env] as const
 
-export function useSettings(env: SettingsDoc['env'] = 'demo', enabled = true) {
-  return useApiQuery<{ data: SettingsDoc }>(settingsKey(env), `/api/settings?env=${env}`, { staleTime: 30_000, enabled })
+export function useSettings(env: SettingsDoc['env'] = 'demo', enabled = true, retry?: false) {
+  return useApiQuery<{ data: SettingsDoc }>(settingsKey(env), `/api/settings?env=${env}`, {
+    staleTime: 30_000,
+    enabled,
+    ...(retry === false ? { retry: false } : {}),
+  })
 }
 
 export const isPreset = (value: unknown): value is PresetId => (PRESET_IDS as readonly unknown[]).includes(value)

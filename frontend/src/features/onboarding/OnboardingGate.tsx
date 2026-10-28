@@ -18,7 +18,8 @@ export function OnboardingGate({ nav }: { nav?: readonly NavEntry[] }) {
   const { t } = useTranslation('onboarding')
   const demo = useConnection('demo')
   const verified = isVerified(demo.connection)
-  const settings = useSettings('demo', verified)
+  // No retries: a failed lookup lets the owner through at once instead of holding a spinner.
+  const settings = useSettings('demo', verified, false)
 
   if (demo.isPending || (verified && settings.isPending)) {
     return (
