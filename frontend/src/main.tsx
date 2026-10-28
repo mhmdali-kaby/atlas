@@ -5,6 +5,9 @@ import { RouterProvider } from 'react-router'
 import './i18n'
 import './index.css'
 import { router } from './app/router'
+import { initTheme } from './theme/useTheme'
+
+initTheme()
 
 const queryClient = new QueryClient()
 

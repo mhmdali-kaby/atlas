@@ -1,15 +1,2 @@
 @import 'tailwindcss';
-
-/*
- * Design tokens are owned by the design-system task (brief §15, approved design).
- * Until then only the font stack and tabular numbers are set.
- */
-@layer base {
-  html {
-    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', 'Inter', system-ui, sans-serif;
-    font-variant-numeric: tabular-nums;
-  }
-  html[lang='ar'] {
-    font-family: 'SF Arabic', 'IBM Plex Sans Arabic', -apple-system, system-ui, sans-serif;
-  }
-}
+@import './styles/tokens.css';

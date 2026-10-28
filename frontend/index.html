@@ -1,7 +1,27 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" dir="ltr" class="scheme-light dark:scheme-dark">
   <head>
     <meta charset="UTF-8" />
+    <!--
+      No-flash theme: runs before the first paint and before React. Same rule as
+      src/theme/theme.ts: localStorage "atlas.theme" = "light" | "dark"; anything
+      else (or missing) follows the OS. src/theme/theme.test.ts runs this script.
+    -->
+    <script id="atlas-theme-init">
+      (function () {
+        var dark = false
+        try {
+          var stored = window.localStorage.getItem('atlas.theme')
+          dark = stored === 'dark' || (stored !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        } catch (e) {}
+        document.documentElement.classList.toggle('dark', dark)
+      })()
+    </script>
+    <!-- Paints the browser canvas in the right scheme before the stylesheet arrives. -->
+    <style>
+      html { color-scheme: light; }
+      html.dark { color-scheme: dark; }
+    </style>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Atlas</title>

@@ -1,0 +1,533 @@
+/* ==========================================================================
+   Atlas design tokens (brief §15, approved design system "Atlas: Phase 0" §3–§7).
+
+   THE ONLY FILE IN src/ THAT DECLARES A RAW COLOUR. A Vitest test
+   (src/styles/no-raw-colours.test.ts) fails on a hex, rgb(a), hsl(a) or oklch
+   literal anywhere else under src/.
+
+   Three layers:
+   1. §15 primitives  --sys-*            plain custom properties, switched by theme
+   2. semantic layer  --bg, --label, …   plain custom properties (the design's names),
+                                         recomputed on every themed scope
+   3. Tailwind theme  --color-*, --text-*, --radius-*, --shadow-* via @theme inline,
+                      so utilities follow the theme: bg-background, text-label …
+
+   Theme scopes: :root (light by default), .light and .dark. Any element can carry
+   .light or .dark, so a light and a dark panel can sit side by side (Storybook).
+   ========================================================================== */
+
+/* Class-based dark mode: the .dark class (on <html>) drives dark: variants. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ---- 1. §15 primitives, light ------------------------------------------ */
+:root,
+.light {
+  color-scheme: light;
+
+  --sys-bg: #FFFFFF;
+  --sys-bg-secondary: #F2F2F7;
+  --sys-bg-tertiary: #FFFFFF;
+  --sys-bg-grouped: #F2F2F7;
+  --sys-label: #000000;
+  --sys-label-secondary: rgba(60, 60, 67, 0.6);
+  --sys-separator: rgba(60, 60, 67, 0.29);
+  --sys-blue: #007AFF;
+  --sys-green: #34C759;
+  --sys-red: #FF3B30;
+  --sys-orange: #FF9500;
+  --sys-yellow: #FFCC00;
+  --sys-purple: #AF52DE;
+  --sys-teal: #30B0C7;
+  --sys-grey: #8E8E93;
+
+  /* Mode-specific semantic values that are not a straight §15 alias */
+  --ui-bg-grouped-row: #FFFFFF;
+  --ui-bg-elevated: #FFFFFF;
+  --ui-bg-window: #F5F5F7;
+  --ui-label-secondary: rgba(60, 60, 67, 0.75);   /* AA 5.2:1 on white (§15's 0.6 is 3.4:1) */
+  --ui-label-tertiary: rgba(60, 60, 67, 0.45);    /* disabled and decorative only */
+  --ui-separator-strong: rgba(60, 60, 67, 0.36);
+  --ui-on-solid: #FFFFFF;                          /* label on filled buttons and the switch knob */
+
+  --ui-accent-ink: #0066CC;
+  --ui-accent-solid: #0071E3;
+  --ui-accent-solid-hover: #0077ED;
+  --ui-accent-solid-active: #006EDB;
+  --ui-accent-wash: rgba(0, 122, 255, 0.10);
+  --ui-profit-ink: #1F7F37;
+  --ui-profit-wash: rgba(52, 199, 89, 0.14);
+  --ui-loss-ink: #D70015;
+  --ui-loss-wash: rgba(255, 59, 48, 0.10);
+  --ui-warning-ink: #C93400;
+  --ui-warning-wash: rgba(255, 149, 0, 0.14);
+  --ui-demo-ink: #007082;
+  --ui-demo-wash: rgba(48, 176, 199, 0.16);
+  --ui-destructive-solid: #D70015;
+
+  --ui-fill-1: rgba(120, 120, 128, 0.20);
+  --ui-fill-2: rgba(120, 120, 128, 0.16);
+  --ui-fill-3: rgba(118, 118, 128, 0.12);
+  --ui-fill-4: rgba(116, 116, 128, 0.08);
+  --ui-field-bg: #FFFFFF;
+  --ui-field-border: rgba(60, 60, 67, 0.30);
+  --ui-field-border-hover: rgba(60, 60, 67, 0.45);
+  --ui-switch-off: rgba(120, 120, 128, 0.16);
+  --ui-switch-off-border: rgba(60, 60, 67, 0.32);
+  --ui-selection: rgba(120, 120, 128, 0.16);
+
+  --ui-material-bar: rgba(246, 246, 246, 0.72);
+  --ui-material-sidebar: rgba(246, 246, 246, 0.72);
+  --ui-material-popover: rgba(252, 252, 252, 0.82);
+  --ui-hairline-color: rgba(0, 0, 0, 0.12);
+  --ui-glass-edge: inset 0 0 0 0.5px rgba(255, 255, 255, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+
+  --ui-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --ui-shadow-2: 0 2px 8px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --ui-shadow-popover: 0 10px 30px rgba(0, 0, 0, 0.12);  /* §15 */
+  --ui-shadow-sheet: 0 10px 30px rgba(0, 0, 0, 0.12), 0 30px 80px rgba(0, 0, 0, 0.10);
+  --ui-shadow-sidebar: 0 8px 28px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.05);
+  --ui-scrim: rgba(0, 0, 0, 0.18);
+  --ui-focus-ring: 0 0 0 3px rgba(0, 122, 255, 0.40);    /* §15: accent, 3px, 40% */
+
+  --ui-seal-ink-1: #0066CC;
+  --ui-seal-ink-2: #00788C;
+  --ui-seal-ground: #FFFFFF;
+  --ui-seal-muted: rgba(60, 60, 67, 0.5);
+
+  --ui-chart-area-top: rgba(0, 122, 255, 0.16);
+  --ui-chart-area-bottom: rgba(0, 122, 255, 0);
+  --ui-chart-grid: rgba(60, 60, 67, 0.12);
+  --ui-chart-axis: rgba(60, 60, 67, 0.75);
+  --ui-wash-1: rgba(0, 122, 255, 0.10);
+  --ui-wash-2: rgba(48, 176, 199, 0.10);
+}
+
+/* ---- 1. §15 primitives, dark ------------------------------------------- */
+.dark {
+  color-scheme: dark;
+
+  --sys-bg: #000000;
+  --sys-bg-secondary: #1C1C1E;
+  --sys-bg-tertiary: #2C2C2E;
+  --sys-bg-grouped: #000000;
+  --sys-label: #FFFFFF;
+  --sys-label-secondary: rgba(235, 235, 245, 0.6);
+  --sys-separator: rgba(84, 84, 88, 0.6);
+  --sys-blue: #0A84FF;
+  --sys-green: #30D158;
+  --sys-red: #FF453A;
+  --sys-orange: #FF9F0A;
+  --sys-yellow: #FFD60A;
+  --sys-purple: #BF5AF2;
+  --sys-teal: #40C8E0;
+  --sys-grey: #8E8E93;
+
+  --ui-bg-grouped-row: #1C1C1E;
+  --ui-bg-elevated: #1C1C1E;
+  --ui-bg-window: #0B0B0C;
+  --ui-label-secondary: rgba(235, 235, 245, 0.6);   /* 6.4:1 on black */
+  --ui-label-tertiary: rgba(235, 235, 245, 0.3);
+  --ui-separator-strong: rgba(84, 84, 88, 0.8);
+  --ui-on-solid: #FFFFFF;
+
+  --ui-accent-ink: #409CFF;
+  --ui-accent-solid: #0071E3;
+  --ui-accent-solid-hover: #0A7CF0;
+  --ui-accent-solid-active: #0069D4;
+  --ui-accent-wash: rgba(10, 132, 255, 0.18);
+  --ui-profit-ink: #30D158;
+  --ui-profit-wash: rgba(48, 209, 88, 0.16);
+  --ui-loss-ink: #FF6961;
+  --ui-loss-wash: rgba(255, 69, 58, 0.16);
+  --ui-warning-ink: #FF9F0A;
+  --ui-warning-wash: rgba(255, 159, 10, 0.16);
+  --ui-demo-ink: #40C8E0;
+  --ui-demo-wash: rgba(64, 200, 224, 0.16);
+  --ui-destructive-solid: #D70015;
+
+  --ui-fill-1: rgba(120, 120, 128, 0.36);
+  --ui-fill-2: rgba(120, 120, 128, 0.32);
+  --ui-fill-3: rgba(118, 118, 128, 0.24);
+  --ui-fill-4: rgba(118, 118, 128, 0.18);
+  --ui-field-bg: rgba(255, 255, 255, 0.04);
+  --ui-field-border: rgba(235, 235, 245, 0.18);
+  --ui-field-border-hover: rgba(235, 235, 245, 0.3);
+  --ui-switch-off: rgba(120, 120, 128, 0.32);
+  --ui-switch-off-border: rgba(235, 235, 245, 0.16);
+  --ui-selection: rgba(255, 255, 255, 0.10);
+
+  --ui-material-bar: rgba(30, 30, 30, 0.72);
+  --ui-material-sidebar: rgba(30, 30, 30, 0.72);
+  --ui-material-popover: rgba(40, 40, 42, 0.82);
+  --ui-hairline-color: rgba(255, 255, 255, 0.12);
+  --ui-glass-edge: inset 0 0 0 0.5px rgba(255, 255, 255, 0.10), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+
+  --ui-shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --ui-shadow-2: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --ui-shadow-popover: 0 10px 30px rgba(0, 0, 0, 0.5);
+  --ui-shadow-sheet: 0 10px 30px rgba(0, 0, 0, 0.5), 0 30px 80px rgba(0, 0, 0, 0.6);
+  --ui-shadow-sidebar: 0 8px 28px rgba(0, 0, 0, 0.5);
+  --ui-scrim: rgba(0, 0, 0, 0.5);
+  --ui-focus-ring: 0 0 0 3px rgba(10, 132, 255, 0.40);
+
+  --ui-seal-ink-1: #409CFF;
+  --ui-seal-ink-2: #40C8E0;
+  --ui-seal-ground: #000000;
+  --ui-seal-muted: rgba(235, 235, 245, 0.35);
+
+  --ui-chart-area-top: rgba(10, 132, 255, 0.24);
+  --ui-chart-area-bottom: rgba(10, 132, 255, 0);
+  --ui-chart-grid: rgba(235, 235, 245, 0.10);
+  --ui-chart-axis: rgba(235, 235, 245, 0.6);
+  --ui-wash-1: rgba(10, 132, 255, 0.14);
+  --ui-wash-2: rgba(64, 200, 224, 0.08);
+}
+
+/* ---- 2. Semantic layer: the design document's names ---------------------
+   Declared on every themed scope so a nested .light / .dark recomputes them
+   from its own primitives (a var() inside a custom property resolves where it
+   is declared, not where it is used). */
+:root,
+.light,
+.dark {
+  --bg: var(--sys-bg);
+  --bg-secondary: var(--sys-bg-secondary);
+  --bg-tertiary: var(--sys-bg-tertiary);
+  --bg-grouped: var(--sys-bg-grouped);
+  --bg-grouped-row: var(--ui-bg-grouped-row);
+  --bg-elevated: var(--ui-bg-elevated);
+  --bg-window: var(--ui-bg-window);
+
+  --label: var(--sys-label);
+  --label-secondary: var(--ui-label-secondary);
+  --label-tertiary: var(--ui-label-tertiary);
+  --separator: var(--sys-separator);
+  --separator-strong: var(--ui-separator-strong);
+  --on-solid: var(--ui-on-solid);
+
+  --accent: var(--sys-blue);
+  --accent-ink: var(--ui-accent-ink);
+  --accent-solid: var(--ui-accent-solid);
+  --accent-solid-hover: var(--ui-accent-solid-hover);
+  --accent-solid-active: var(--ui-accent-solid-active);
+  --accent-wash: var(--ui-accent-wash);
+  --profit: var(--sys-green);
+  --profit-ink: var(--ui-profit-ink);
+  --profit-wash: var(--ui-profit-wash);
+  --loss: var(--sys-red);
+  --loss-ink: var(--ui-loss-ink);
+  --loss-wash: var(--ui-loss-wash);
+  --warning: var(--sys-orange);
+  --warning-ink: var(--ui-warning-ink);
+  --warning-wash: var(--ui-warning-wash);
+  --agent: var(--sys-purple);
+  --demo: var(--sys-teal);
+  --demo-ink: var(--ui-demo-ink);
+  --demo-wash: var(--ui-demo-wash);
+  --destructive-solid: var(--ui-destructive-solid);
+  --neutral: var(--sys-grey);
+
+  --fill-1: var(--ui-fill-1);
+  --fill-2: var(--ui-fill-2);
+  --fill-3: var(--ui-fill-3);
+  --fill-4: var(--ui-fill-4);
+  --field-bg: var(--ui-field-bg);
+  --field-border: var(--ui-field-border);
+  --field-border-hover: var(--ui-field-border-hover);
+  --switch-off: var(--ui-switch-off);
+  --switch-off-border: var(--ui-switch-off-border);
+  --knob: var(--ui-on-solid);
+  --selection: var(--ui-selection);
+
+  --material-bar: var(--ui-material-bar);
+  --material-sidebar: var(--ui-material-sidebar);
+  --material-popover: var(--ui-material-popover);
+  --material-filter: saturate(180%) blur(20px);
+  --hairline-color: var(--ui-hairline-color);
+  --hairline: 0.5px solid var(--ui-hairline-color);
+  --glass-edge: var(--ui-glass-edge);
+  --scrim: var(--ui-scrim);
+  --focus-ring: var(--ui-focus-ring);
+
+  --seal-ink-1: var(--ui-seal-ink-1);
+  --seal-ink-2: var(--ui-seal-ink-2);
+  --seal-ground: var(--ui-seal-ground);
+  --seal-muted: var(--ui-seal-muted);
+
+  --chart-line: var(--sys-blue);
+  --chart-area-top: var(--ui-chart-area-top);
+  --chart-area-bottom: var(--ui-chart-area-bottom);
+  --chart-grid: var(--ui-chart-grid);
+  --chart-axis: var(--ui-chart-axis);
+  --wash-1: var(--ui-wash-1);
+  --wash-2: var(--ui-wash-2);
+}
+
+/* ---- Type: raw sizes, line heights and tracking (design §4) ------------ */
+:root {
+  --font-stack-latin: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", system-ui, sans-serif;
+  --font-stack-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;
+  --font-stack-arabic: "SF Arabic", "IBM Plex Sans Arabic", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-stack-mono: ui-monospace, "SF Mono", Menlo, monospace;
+  /* Figures keep the Latin stack in both languages (design §5). */
+  --font-stack-num: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", system-ui, sans-serif;
+  --font-stack-sans: var(--font-stack-latin);
+  --font-stack-heading: var(--font-stack-display);
+
+  --fs-hero: 3rem;              --lh-hero: 3.5rem;            --tr-hero: -0.025em;
+  --fs-large-title: 2.125rem;   --lh-large-title: 2.5625rem;  --tr-large-title: -0.012em;
+  --fs-title-1: 1.75rem;        --lh-title-1: 2.125rem;       --tr-title-1: -0.008em;
+  --fs-title-2: 1.375rem;       --lh-title-2: 1.75rem;        --tr-title-2: -0.006em;
+  --fs-title-3: 1.25rem;        --lh-title-3: 1.5625rem;      --tr-title-3: -0.012em;
+  --fs-headline: 1.0625rem;     --lh-headline: 1.375rem;      --tr-headline: -0.022em;
+  --fs-body: 1.0625rem;         --lh-body: 1.375rem;          --tr-body: -0.022em;
+  --fs-callout: 1rem;           --lh-callout: 1.3125rem;      --tr-callout: -0.02em;
+  --fs-subheadline: 0.9375rem;  --lh-subheadline: 1.25rem;    --tr-subheadline: -0.016em;
+  --fs-footnote: 0.8125rem;     --lh-footnote: 1.125rem;      --tr-footnote: -0.006em;
+  --fs-caption: 0.75rem;        --lh-caption: 1rem;           --tr-caption: 0em;
+
+  --dur-fast: 150ms;
+  --dur-base: 250ms;
+  --dur-slow: 300ms;
+  --dur-sheet: 300ms;
+}
+
+/* Arabic (design §4): its own stack, ~15% more line height, no tracking,
+   nothing below 13px. Applies to <html lang="ar"> and to any element with lang="ar". */
+:where(:root:lang(ar), [lang|="ar"]) {
+  --font-stack-sans: var(--font-stack-arabic);
+  --font-stack-heading: var(--font-stack-arabic);
+  --lh-hero: 3.75rem;
+  --lh-large-title: 2.875rem;
+  --lh-title-1: 2.375rem;
+  --lh-title-2: 2rem;
+  --lh-title-3: 1.8125rem;
+  --lh-headline: 1.625rem;
+  --lh-body: 1.625rem;
+  --lh-callout: 1.5rem;
+  --lh-subheadline: 1.4375rem;
+  --fs-footnote: 0.875rem;      --lh-footnote: 1.3125rem;
+  --fs-caption: 0.8125rem;      --lh-caption: 1.1875rem;
+  --tr-hero: 0; --tr-large-title: 0; --tr-title-1: 0; --tr-title-2: 0; --tr-title-3: 0;
+  --tr-headline: 0; --tr-body: 0; --tr-callout: 0; --tr-subheadline: 0; --tr-footnote: 0; --tr-caption: 0;
+  font-family: var(--font-stack-sans);
+}
+
+/* ---- 3. Tailwind theme -------------------------------------------------- */
+
+/* Static tokens. Stock palette, radii, shadows, type sizes and fonts are wiped,
+   so an off-system class (bg-slate-700, rounded-lg) compiles to nothing. */
+@theme static {
+  --color-*: initial;
+  --radius-*: initial;
+  --shadow-*: initial;
+  --text-*: initial;
+  --font-*: initial;
+
+  /* Radius (design §6): controls, cards, panels, sheets, capsules */
+  --radius-control: 10px;
+  --radius-card: 12px;
+  --radius-panel: 16px;
+  --radius-sheet: 20px;
+  --radius-full: 999px;
+
+  /* Motion (design §7): motion's spring 300/30 sampled over 300ms; never bounces */
+  --ease-settle: linear(0, 0.010 2.8%, 0.043 6.2%, 0.106 10.3%, 0.224 16.5%, 0.478 28.8%, 0.604 35.8%, 0.705 42.5%, 0.789 49.3%, 0.856 56.5%, 0.911 64.5%, 0.953 73.7%, 0.983 85%, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-standard: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Theme-switched tokens. `inline` is required so .dark / lang="ar" reach the utilities. */
+@theme inline static {
+  /* Surfaces */
+  --color-background: var(--bg);
+  --color-background-secondary: var(--bg-secondary);
+  --color-background-tertiary: var(--bg-tertiary);
+  --color-background-grouped: var(--bg-grouped);
+  --color-background-grouped-row: var(--bg-grouped-row);
+  --color-background-elevated: var(--bg-elevated);
+  --color-background-window: var(--bg-window);
+
+  /* Text and lines */
+  --color-label: var(--label);
+  --color-label-secondary: var(--label-secondary);
+  --color-label-tertiary: var(--label-tertiary);
+  --color-separator: var(--separator);
+  --color-separator-strong: var(--separator-strong);
+  --color-hairline: var(--hairline-color);
+  --color-on-solid: var(--on-solid);
+
+  /* Accent and status: fills use the §15 value, text uses -ink */
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-solid: var(--accent-solid);
+  --color-accent-solid-hover: var(--accent-solid-hover);
+  --color-accent-solid-active: var(--accent-solid-active);
+  --color-accent-wash: var(--accent-wash);
+  --color-profit: var(--profit);
+  --color-profit-ink: var(--profit-ink);
+  --color-profit-wash: var(--profit-wash);
+  --color-loss: var(--loss);
+  --color-loss-ink: var(--loss-ink);
+  --color-loss-wash: var(--loss-wash);
+  --color-warning: var(--warning);
+  --color-warning-ink: var(--warning-ink);
+  --color-warning-wash: var(--warning-wash);
+  --color-agent: var(--agent);
+  --color-demo: var(--demo);
+  --color-demo-ink: var(--demo-ink);
+  --color-demo-wash: var(--demo-wash);
+  --color-destructive-solid: var(--destructive-solid);
+  --color-neutral: var(--neutral);
+
+  /* Control fills */
+  --color-fill-1: var(--fill-1);
+  --color-fill-2: var(--fill-2);
+  --color-fill-3: var(--fill-3);
+  --color-fill-4: var(--fill-4);
+  --color-field: var(--field-bg);
+  --color-field-border: var(--field-border);
+  --color-field-border-hover: var(--field-border-hover);
+  --color-switch-off: var(--switch-off);
+  --color-switch-off-border: var(--switch-off-border);
+  --color-knob: var(--knob);
+  --color-selection: var(--selection);
+  --color-scrim: var(--scrim);
+
+  /* Seal and chart */
+  --color-seal-ink-1: var(--seal-ink-1);
+  --color-seal-ink-2: var(--seal-ink-2);
+  --color-seal-ground: var(--seal-ground);
+  --color-seal-muted: var(--seal-muted);
+  --color-chart-line: var(--chart-line);
+  --color-chart-area-top: var(--chart-area-top);
+  --color-chart-area-bottom: var(--chart-area-bottom);
+  --color-chart-grid: var(--chart-grid);
+  --color-chart-axis: var(--chart-axis);
+  --color-wash-1: var(--wash-1);
+  --color-wash-2: var(--wash-2);
+
+  /* Elevation (design §6) */
+  --shadow-1: var(--ui-shadow-1);
+  --shadow-2: var(--ui-shadow-2);
+  --shadow-popover: var(--ui-shadow-popover);
+  --shadow-sheet: var(--ui-shadow-sheet);
+  --shadow-sidebar: var(--ui-shadow-sidebar);
+  --shadow-focus: var(--ui-focus-ring);
+  --shadow-glass-edge: var(--ui-glass-edge);
+
+  /* Fonts */
+  --font-sans: var(--font-stack-sans);
+  --font-display: var(--font-stack-heading);
+  --font-arabic: var(--font-stack-arabic);
+  --font-num: var(--font-stack-num);
+  --font-mono: var(--font-stack-mono);
+
+  /* Type scale (§15 + the design's hero). Each pairs size, line height, tracking, weight. */
+  --text-hero: var(--fs-hero);
+  --text-hero--line-height: var(--lh-hero);
+  --text-hero--letter-spacing: var(--tr-hero);
+  --text-hero--font-weight: 600;
+  --text-large-title: var(--fs-large-title);
+  --text-large-title--line-height: var(--lh-large-title);
+  --text-large-title--letter-spacing: var(--tr-large-title);
+  --text-large-title--font-weight: 600;
+  --text-title-1: var(--fs-title-1);
+  --text-title-1--line-height: var(--lh-title-1);
+  --text-title-1--letter-spacing: var(--tr-title-1);
+  --text-title-1--font-weight: 600;
+  --text-title-2: var(--fs-title-2);
+  --text-title-2--line-height: var(--lh-title-2);
+  --text-title-2--letter-spacing: var(--tr-title-2);
+  --text-title-2--font-weight: 600;
+  --text-title-3: var(--fs-title-3);
+  --text-title-3--line-height: var(--lh-title-3);
+  --text-title-3--letter-spacing: var(--tr-title-3);
+  --text-title-3--font-weight: 600;
+  --text-headline: var(--fs-headline);
+  --text-headline--line-height: var(--lh-headline);
+  --text-headline--letter-spacing: var(--tr-headline);
+  --text-headline--font-weight: 600;
+  --text-body: var(--fs-body);
+  --text-body--line-height: var(--lh-body);
+  --text-body--letter-spacing: var(--tr-body);
+  --text-callout: var(--fs-callout);
+  --text-callout--line-height: var(--lh-callout);
+  --text-callout--letter-spacing: var(--tr-callout);
+  --text-subheadline: var(--fs-subheadline);
+  --text-subheadline--line-height: var(--lh-subheadline);
+  --text-subheadline--letter-spacing: var(--tr-subheadline);
+  --text-footnote: var(--fs-footnote);
+  --text-footnote--line-height: var(--lh-footnote);
+  --text-footnote--letter-spacing: var(--tr-footnote);
+  --text-caption: var(--fs-caption);
+  --text-caption--line-height: var(--lh-caption);
+  --text-caption--letter-spacing: var(--tr-caption);
+}
+
+/* ---- Materials (§15 vibrancy) as utilities ------------------------------ */
+@utility vibrancy-bar {
+  background-color: var(--material-bar);
+  -webkit-backdrop-filter: var(--material-filter);
+  backdrop-filter: var(--material-filter);
+}
+
+@utility vibrancy-sidebar {
+  background-color: var(--material-sidebar);
+  -webkit-backdrop-filter: var(--material-filter);
+  backdrop-filter: var(--material-filter);
+}
+
+@utility vibrancy-popover {
+  background-color: var(--material-popover);
+  -webkit-backdrop-filter: var(--material-filter);
+  backdrop-filter: var(--material-filter);
+}
+
+/* Sheets: §15 shadow plus the 0.5px hairline border */
+@utility sheet-surface {
+  background-color: var(--bg-elevated);
+  border: var(--hairline);
+  border-radius: var(--radius-sheet);
+  box-shadow: var(--ui-shadow-sheet);
+}
+
+/* A figure: money, %, ×, signs. Same visual order and digits in Arabic and English. */
+@utility fig {
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-family: var(--font-stack-num);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- Base --------------------------------------------------------------- */
+@layer base {
+  html {
+    font-family: var(--font-stack-sans);
+    font-variant-numeric: tabular-nums;
+    color: var(--label);
+    background-color: var(--bg);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background-color: var(--accent-wash);
+  }
+
+  :focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 1ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
