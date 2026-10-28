@@ -1,0 +1,172 @@
+{
+  "title": "Set up Atlas",
+  "progress": "Setup steps",
+  "stepOf": "Step {{n}} of 4",
+  "steps": {
+    "welcome": "Welcome",
+    "connect": "Connect OKX",
+    "risk": "Risk profile",
+    "autonomy": "Autonomy"
+  },
+  "done": "Done",
+  "continue": "Continue",
+  "back": "Back",
+  "finish": "Finish setup",
+  "checking": "Checking your OKX connection…",
+  "welcome": {
+    "title": "Welcome to Atlas",
+    "lead": "A team of AI agents researches everything tradable on OKX and proposes trades. Then the risk engine, plain code with no AI in it, checks each proposal against the limits you set. No order reaches OKX before that.",
+    "time": "Setup takes about two minutes.",
+    "f1": {
+      "title": "Starts on the demo account",
+      "body": "The demo account trades paper money, never your own funds. Live trading is a separate switch for later, behind your password and a checklist."
+    },
+    "f2": {
+      "title": "Agents propose, code decides",
+      "body": "No agent can place an order. The risk engine approves or rejects each one, using your limits."
+    },
+    "f3": {
+      "title": "Your keys stay on this Mac",
+      "body": "Keys are encrypted here, shown only as their last four characters, and never sent to the AI."
+    },
+    "risk": "Automated trading can lose money. Start on demo, and set limits you can live with."
+  },
+  "connect": {
+    "title": "Connect your OKX demo account",
+    "lead": "Paste the API key you created for demo trading. Atlas saves it encrypted on this Mac, then tests it with OKX.",
+    "continueHint": "Continue unlocks after a successful test.",
+    "loadError": {
+      "title": "Couldn’t load your connection",
+      "body": "Atlas’s server didn’t answer. Check that Atlas is running, then try again."
+    }
+  },
+  "risk": {
+    "title": "Choose a risk profile",
+    "lead": "It sets the ten limits the risk engine applies to every trade. You can change any of them later in Settings."
+  },
+  "autonomy": {
+    "title": "Choose how much Atlas does on its own",
+    "lead": "Start by approving each trade yourself. Levels 3 and 4 open in a later phase."
+  },
+  "retry": "Try again",
+  "cf": {
+    "label": "Label",
+    "labelHint": "Only you see this name.",
+    "defaultLabel": "OKX demo",
+    "apiKey": "API key",
+    "secret": "Secret key",
+    "passphrase": "Passphrase",
+    "passphraseHint": "The passphrase you chose when you created the key on OKX.",
+    "required": {
+      "apiKey": "Paste the API key from OKX.",
+      "secret": "Paste the secret key from OKX.",
+      "passphrase": "Paste the passphrase from OKX."
+    },
+    "invalid": "OKX keys don’t look like this. Paste it again, exactly as OKX showed it.",
+    "where": {
+      "title": "Create a demo key with Read and Trade only",
+      "body": "In OKX, switch to Demo trading, then open Profile → API keys → Create. Tick Read and Trade. Never tick Withdraw."
+    },
+    "saved": "Key saved",
+    "savedMeta": "API key <fig>•••• {{last4}}</fig>. Atlas never shows a saved key again.",
+    "replace": "Replace keys",
+    "test": "Test connection",
+    "testing": "Testing…"
+  },
+  "tr": {
+    "testing": "Testing the key with OKX…",
+    "success": {
+      "title": "Connected to OKX demo",
+      "body": "Atlas can read this account. Syncing starts as soon as you finish setup."
+    },
+    "sealLabel": "Seal of the OKX demo account ending {{last4}}",
+    "spot": {
+      "title": "This account is in Spot mode",
+      "body": "Atlas can read it, but trading perpetuals later needs Spot and futures mode or a margin mode. Switch it in OKX demo settings whenever you’re ready."
+    },
+    "withdrawWarning": {
+      "title": "This key can withdraw funds",
+      "body": "Atlas never withdraws or transfers money, and demo funds are paper money. Still, create a key with Read and Trade only when you can, and use only that kind of key for live trading."
+    },
+    "errors": {
+      "invalid_credentials": {
+        "title": "Key or passphrase is wrong",
+        "body": "OKX didn’t accept these details. Paste the API key, secret key and passphrase again, exactly as OKX showed them."
+      },
+      "withdraw_permission_enabled": {
+        "title": "This key can withdraw funds",
+        "body": "Atlas refuses keys with Withdraw permission here. In OKX, create a new key with Read and Trade only, then paste it here."
+      },
+      "wrong_environment": {
+        "title": "This key belongs to the live account",
+        "body": "Create the key under Demo trading in OKX, then paste it here."
+      },
+      "trading_core_unavailable": {
+        "title": "Atlas’s trading service isn’t running",
+        "body": "Start it with ./atlas up in Terminal, then test again."
+      },
+      "ip_not_allowed": {
+        "title": "This key only works from the IP addresses on its allow-list",
+        "body": "Add this Mac’s IP address to the key in OKX, or create a key without an IP allow-list, then test again."
+      },
+      "clock_out_of_sync": {
+        "title": "This Mac’s clock is out of sync with OKX",
+        "body": "Turn on “Set time and date automatically” in System Settings → General → Date & Time, then test again."
+      },
+      "key_frozen": {
+        "title": "This key is frozen on OKX",
+        "body": "Unfreeze it or create a new demo key in OKX, then paste it here."
+      },
+      "key_not_found": {
+        "title": "OKX does not know this key",
+        "body": "It may have been deleted. Create a new demo key in OKX, then paste it here."
+      },
+      "decrypt_failed": {
+        "title": "Atlas couldn’t read the saved key",
+        "body": "The trading service uses a different APP_KEY from the server. Restart Atlas with ./atlas up, then test again."
+      },
+      "okx_unreachable": {
+        "title": "Atlas couldn’t reach OKX",
+        "body": "Check this Mac’s internet connection, then test again."
+      },
+      "okx_error": {
+        "title": "OKX refused the request",
+        "body": "OKX answered with error {{code}}. Try again in a minute; if it keeps happening, create a new demo key."
+      },
+      "trading_core_error": {
+        "title": "Atlas’s trading service failed",
+        "body": "It answered with an error. Restart Atlas with ./atlas up, then test again."
+      },
+      "unknown": {
+        "title": "The test didn’t finish",
+        "body": "Something went wrong between Atlas and OKX. Try again."
+      }
+    }
+  },
+  "acct": {
+    "mode": "Account mode",
+    "posMode": "Position mode",
+    "perms": "Permissions",
+    "uid": "Account UID",
+    "verified": "Last verified",
+    "key": "API key",
+    "label": "Label"
+  },
+  "mode": {
+    "spot": "Spot mode",
+    "futures": "Spot and futures mode",
+    "multi_currency_margin": "Multi-currency margin mode",
+    "portfolio_margin": "Portfolio margin mode",
+    "unknown": "Unknown mode"
+  },
+  "pos": {
+    "net_mode": "One-way mode",
+    "long_short_mode": "Hedge mode"
+  },
+  "perm": {
+    "read_only": "Read",
+    "trade": "Trade",
+    "withdraw": "Withdraw",
+    "withdrawOff": "Withdraw off"
+  }
+}
