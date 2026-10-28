@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from atlas_shared.defaults import DEFAULTS
 
@@ -20,6 +20,8 @@ class Settings:
     max_clock_skew_seconds: int = 30
     # TRADING_CORE_SCHEDULER=0 serves the API without the periodic sync loops (tests, one-off runs).
     run_scheduler: bool = True
+    # Laravel's APP_KEY ("base64:..."), used only to decrypt connections (decision #235). Never logged.
+    app_key: str = field(default="", repr=False)
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -34,4 +36,5 @@ class Settings:
             internal_shared_secret=os.environ.get("INTERNAL_SHARED_SECRET", ""),
             run_scheduler=os.environ.get("TRADING_CORE_SCHEDULER", "1").strip().lower()
             not in ("0", "false", "no"),
+            app_key=os.environ.get("APP_KEY", ""),
         )

@@ -16,8 +16,10 @@ from atlas_shared.db import make_engine
 from atlas_shared.defaults import DEFAULTS
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import JSONResponse
+from sqlalchemy import Engine
 
 from trading_core.config import Settings
+from trading_core.connection_test import router as connection_test_router
 from trading_core.logs import AccessLogMiddleware
 from trading_core.scheduler import Scheduler
 from trading_core.security import PROTECTED_PREFIX, InternalSignatureMiddleware
@@ -59,10 +61,10 @@ async def sync_instruments_now(request: Request) -> dict[str, Any] | JSONRespons
     return {"ok": True, **result}
 
 
-def default_scheduler(settings: Settings) -> Scheduler:
+def default_scheduler(settings: Settings, engine: Engine | None = None) -> Scheduler:
     """The jobs trading_core runs in production. ATL-10 adds its account jobs here."""
     scheduler = Scheduler()
-    engine = make_engine()
+    engine = engine if engine is not None else make_engine()
     scheduler.add(
         INSTRUMENTS_JOB,
         DEFAULTS["sync"]["instruments_interval_seconds"],
@@ -76,11 +78,13 @@ def create_app(
     extra_internal: APIRouter | None = None,
     *,
     scheduler: Scheduler | None = None,
+    engine: Engine | None = None,
 ) -> FastAPI:
     settings = settings or Settings.from_env()
     if not settings.internal_shared_secret:
         logger.warning("INTERNAL_SHARED_SECRET is empty; every /internal call will be rejected")
-    jobs = scheduler if scheduler is not None else default_scheduler(settings)
+    db = engine if engine is not None else make_engine()
+    jobs = scheduler if scheduler is not None else default_scheduler(settings, db)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -96,12 +100,14 @@ def create_app(
     )
     application.state.settings = settings
     application.state.scheduler = jobs
+    application.state.engine = db
 
     @application.get("/health")
     async def health() -> dict[str, str]:
         return {"status": "ok", "env": settings.env, "version": VERSION}
 
     application.include_router(internal_router)
+    application.include_router(connection_test_router)
     if extra_internal is not None:
         application.include_router(extra_internal)
     # Last added runs first: the access log wraps the signature check, so rejected calls are logged too.
