@@ -1,6 +1,7 @@
 /* What other features reuse from onboarding (ATL-19 steps 3–4, ATL-20 Settings → Connections). */
 export {
   AccountRows,
+  type AccountRow,
   ConnectionForm,
   KeyHelp,
   SavedKey,

@@ -28,6 +28,8 @@ export interface ConnectionFormProps {
   hint?: ReactNode
   /** Prefix for field ids, so two forms on one page never share one. */
   idPrefix?: string
+  /** The submit button's label; defaults to "Test connection" (Settings' sheets say "Save and test"). */
+  submitLabel?: ReactNode
 }
 
 /**
@@ -36,7 +38,15 @@ export interface ConnectionFormProps {
  * (POST /api/connections/{id}/test). The typed secrets stay in this component only; they are
  * cleared once a test succeeds. Shared with Settings → Connections (ATL-20).
  */
-export function ConnectionForm({ connection, env = 'demo', onResult, onTestStart, hint, idPrefix = 'cf' }: ConnectionFormProps) {
+export function ConnectionForm({
+  connection,
+  env = 'demo',
+  onResult,
+  onTestStart,
+  hint,
+  idPrefix = 'cf',
+  submitLabel,
+}: ConnectionFormProps) {
   const { t } = useTranslation('onboarding')
   const saveAndTest = useSaveAndTest(env)
   const [values, setValues] = useState<ConnectionValues>({
@@ -153,7 +163,7 @@ export function ConnectionForm({ connection, env = 'demo', onResult, onTestStart
       </div>
       <div className="flex flex-wrap items-center gap-3.5">
         <Button type="submit" variant="primary" icon={<Plug />} loading={testing}>
-          {testing ? t('cf.testing') : t('cf.test')}
+          {testing ? t('cf.testing') : (submitLabel ?? t('cf.test'))}
         </Button>
         {hint !== undefined && (
           <span className="inline-flex items-center gap-1.5 text-footnote text-label-secondary">
@@ -211,12 +221,30 @@ export function SavedKey({ connection, onReplace }: { connection: Connection; on
 }
 
 /** Design forms.js accountRows: mode, position mode, permissions and UID tail of a tested key. */
-export function AccountRows({ connection, accountMode }: { connection: Connection; accountMode?: string | null }) {
+export type AccountRow = [label: string, value: ReactNode]
+
+export function AccountRows({
+  connection,
+  accountMode,
+  leading = [],
+  trailing = [],
+  className = 'rounded-card bg-background-secondary',
+}: {
+  connection: Connection
+  accountMode?: string | null
+  /** Extra rows before the account mode (Settings: label, API key tail). */
+  leading?: AccountRow[]
+  /** Extra rows after the UID (Settings: Last verified). */
+  trailing?: AccountRow[]
+  /** The list's surface; Settings puts it in a grouped inset list instead. */
+  className?: string
+}) {
   const { t } = useTranslation('onboarding')
   const mode = accountMode ?? connection.account_mode
   const perms = connection.permissions ?? []
   const withdraw = perms.includes('withdraw')
-  const rows: [string, ReactNode][] = [
+  const rows: AccountRow[] = [
+    ...leading,
     [
       t('acct.mode'),
       mode === 'spot' ? (
@@ -262,9 +290,10 @@ export function AccountRows({ connection, accountMode }: { connection: Connectio
         '—'
       ),
     ],
+    ...trailing,
   ]
   return (
-    <dl className="grid rounded-card bg-background-secondary">
+    <dl className={`grid ${className}`}>
       {rows.map(([label, value], i) => (
         <div
           key={label}
