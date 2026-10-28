@@ -118,6 +118,9 @@ async def fetch_bills(okx: OkxClient, *, archive: bool, limit: int = PAGE_LIMIT)
     async def withdrawals(after: str | None) -> list[WithdrawalRecord]:
         return await okx.get_withdrawal_history(after=after, limit=limit)
 
+    # OKX's ``after`` returns records strictly earlier than the given ts, so on a full page a second
+    # record sharing the oldest record's exact millisecond would be skipped. Cash flows are rare
+    # (a few per day at most), so Phase 0 accepts that; the next 5-minute run cannot recover it either.
     dep = await paginate(deposits, lambda r: _ms(r.ts), limit)
     wd = await paginate(withdrawals, lambda r: _ms(r.ts), limit)
     return BillsSnapshot(bills=bills, deposits=dep, withdrawals=wd, archive=archive)

@@ -1,9 +1,10 @@
 """ATL-11: bills, deposits and withdrawals sync from OKX into Postgres.
 
-DB tests run against atlas_test (migrated by `cd backend && php artisan test`). OKX is mocked with
-respx (unmatched routes raise), using the recorded account_bills / account_bills_archive fixtures,
-the hand-written deposit/withdrawal fixtures, and a synthetic full first page so the `after` cursor
-is exercised.
+DB tests run against this checkout's own test DB, atlas_test_<hash> from
+atlas_shared.testing.db_settings() (decision #239; migrated by `cd backend && php artisan test`).
+OKX is mocked with respx (unmatched routes raise), using the recorded account_bills /
+account_bills_archive fixtures, the hand-written deposit/withdrawal fixtures, and a synthetic full
+first page so the `after` cursor is exercised.
 """
 
 from __future__ import annotations
@@ -25,6 +26,7 @@ from typing import Any
 import httpx
 import pytest
 import respx
+from atlas_shared import testing
 from atlas_shared.db import Bill, Connection, DepositWithdrawal, SyncStatus, make_engine
 from atlas_shared.laravel_crypt import parse_app_key
 from cryptography.hazmat.primitives import padding
@@ -44,13 +46,7 @@ BASE = "https://www.okx.com"
 ENV = "demo"
 SECRET = "atlas-test-only-internal-secret"  # noqa: S105
 APP_KEY = "base64:" + base64.b64encode(b"atlas-test-only-app-key-32-bytes").decode()
-TEST_DB = {
-    "DB_HOST": os.environ.get("DB_HOST", "127.0.0.1"),
-    "DB_PORT": os.environ.get("DB_PORT", "5433"),
-    "DB_DATABASE": os.environ.get("DB_TEST_DATABASE", "atlas_test"),
-    "DB_USERNAME": os.environ.get("DB_USERNAME", "atlas"),
-    "DB_PASSWORD": os.environ.get("DB_PASSWORD", "atlas"),
-}
+TEST_DB = testing.db_settings()  # this checkout's atlas_test_<hash> (decision #239)
 
 
 def laravel_encrypt(plaintext: str) -> str:
@@ -90,7 +86,8 @@ def engine() -> Engine:
         with eng.connect():
             pass
     except OperationalError as exc:
-        pytest.fail(f"atlas_test is not reachable on {TEST_DB['DB_HOST']}:{TEST_DB['DB_PORT']}: {exc}")
+        where = f"{TEST_DB['DB_HOST']}:{TEST_DB['DB_PORT']}"
+        pytest.fail(f"test DB {TEST_DB['DB_DATABASE']} is not reachable on {where}: {exc}")
     return eng
 
 
