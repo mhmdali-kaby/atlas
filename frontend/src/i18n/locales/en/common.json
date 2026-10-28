@@ -1,8 +1,3 @@
 {
-  "appName": "Atlas",
-  "footer": "Automated trading can lose money. Demo/Live: {{env}}",
-  "env": {
-    "demo": "Demo",
-    "live": "Live"
-  }
+  "appName": "Atlas"
 }

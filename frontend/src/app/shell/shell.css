@@ -56,6 +56,10 @@
 }
 
 .shell-main {
+  /* Always the content column: at narrow widths the sidebar is fixed (out of the grid),
+     so without this the main column would auto-place into the 0-wide first track. */
+  grid-column: 2;
+  grid-row: 1;
   position: relative;
   display: grid;
   grid-template-rows: var(--toolbar-height) minmax(0, 1fr);
