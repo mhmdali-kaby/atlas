@@ -1,0 +1,168 @@
+/*
+ * Settings → Risk & Autonomy (design css/settings.css "Risk profile in settings", "Limits",
+ * "Activity", "Save bar"; css/components.css .stepper). Shares .st-page/.st-pane/.st-group
+ * with Connections.
+ */
+.st-risk-pane { grid-template-columns: auto minmax(0, 1fr) auto; }
+.st-version {
+  align-self: start;
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding-inline: 9px;
+  border-radius: 999px;
+  background: var(--fill-3);
+  color: var(--label-secondary);
+  font-size: var(--fs-footnote);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Profile cards: the figures live in the limits list on this page. */
+.st-risk .ob-pc-figures,
+.st-risk .ob-profile-card .ob-tag { display: none; }
+.st-risk .ob-profile-card { padding: 14px 14px 16px; gap: 6px; grid-template-rows: auto auto; }
+.st-risk .ob-pc-head { flex-wrap: nowrap; }
+.st-risk .ob-profile-card .ob-choice-title { font-size: var(--fs-callout); line-height: var(--lh-callout); }
+
+/* ---- Limits ---------------------------------------------------------- */
+.st-limit-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 48px;
+  padding: 11px 16px;
+}
+.st-limit-row + .st-limit-row { box-shadow: inset 0 0.5px 0 var(--separator); }
+.st-limit-main { display: grid; gap: 2px; min-width: 0; padding-top: 5px; }
+.st-limit-label { display: inline-flex; align-items: center; }
+.st-limit-help {
+  width: 28px;
+  height: 28px;
+  margin-block: -6px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: var(--label-tertiary);
+}
+.st-limit-help:hover { color: var(--label-secondary); background: var(--fill-4); }
+.st-limit-help:focus-visible { outline: none; box-shadow: var(--ui-focus-ring); color: var(--label-secondary); }
+.st-limit-help svg { width: 15px; height: 15px; }
+.st-limit-meta { color: var(--accent-ink); }
+.st-limit-meta:empty { display: none; }
+.st-field-error { display: flex; align-items: flex-start; gap: 6px; margin-top: 4px; color: var(--loss-ink); }
+.st-field-error svg { width: 15px; height: 15px; flex-shrink: 0; margin-top: 1.5px; }
+
+.st-stepper { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.st-stepper-field { position: relative; display: flex; align-items: center; }
+.st-stepper-input {
+  width: 96px;
+  height: 32px;
+  padding-inline: 10px 30px;
+  text-align: end;
+  border-radius: 8px;
+  border: 1px solid var(--field-border);
+  background: var(--field-bg);
+  color: var(--label);
+  font-family: var(--font-num);
+  font-size: var(--fs-subheadline);
+  font-variant-numeric: tabular-nums;
+}
+.st-stepper-input.no-unit { padding-inline-end: 10px; }
+.st-stepper-input:hover { border-color: var(--field-border-hover); }
+.st-stepper-input:focus { outline: none; border-color: var(--accent); box-shadow: var(--ui-focus-ring); }
+.st-stepper-input[aria-invalid='true'] { border-color: var(--loss); }
+.st-stepper-input[aria-invalid='true']:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--loss) 30%, transparent); }
+.st-stepper-unit {
+  position: absolute;
+  inset-inline-end: 10px;
+  font-family: var(--font-num);
+  font-size: var(--fs-subheadline);
+  color: var(--label-secondary);
+  pointer-events: none;
+}
+.st-stepper-buttons { display: inline-flex; border-radius: 8px; background: var(--fill-3); padding: 2px; }
+.st-stepper-buttons button {
+  width: 30px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  color: var(--label);
+}
+.st-stepper-buttons button svg { width: 14px; height: 14px; }
+.st-stepper-buttons button:hover { background: var(--fill-3); }
+.st-stepper-buttons button:active { background: var(--fill-1); }
+.st-stepper-buttons button:focus-visible { outline: none; box-shadow: var(--ui-focus-ring); }
+.st-stepper-buttons button:disabled { color: var(--label-tertiary); }
+.st-stepper-sep { width: 0.5px; margin-block: 6px; background: var(--separator); }
+
+/* ---- Activity -------------------------------------------------------- */
+.st-activity-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px 16px;
+  padding: 12px 16px;
+}
+.st-activity-row + .st-activity-row { box-shadow: inset 0 0.5px 0 var(--separator); }
+.st-activity-head { display: inline-flex; align-items: center; gap: 8px; font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); font-weight: 600; }
+.st-badge-accent {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding-inline: 8px;
+  border-radius: 999px;
+  background: var(--accent-wash);
+  color: var(--accent-ink);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+}
+.st-activity-time { font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); text-align: end; }
+.st-activity-lines {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 2px;
+  font-size: var(--fs-subheadline);
+  line-height: var(--lh-subheadline);
+  color: var(--label-secondary);
+}
+
+/* ---- Save bar: a floating glass capsule at the foot of the column ---- */
+.st-save-bar {
+  position: sticky;
+  bottom: 16px;
+  z-index: 15;
+  justify-self: center;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-block: 6px;
+  padding-inline: 16px 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg-elevated) 90%, transparent);
+  -webkit-backdrop-filter: var(--material-filter);
+  backdrop-filter: var(--material-filter);
+  box-shadow: var(--ui-shadow-popover), var(--glass-edge), 0 0 0 0.5px var(--hairline-color);
+  animation: st-savebar-in var(--dur-slow) var(--ease-settle);
+}
+.st-save-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warning); }
+.st-save-text { font-size: var(--fs-subheadline); font-weight: 500; margin-inline-end: 8px; white-space: nowrap; }
+@keyframes st-savebar-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .st-save-bar { animation: none; }
+}
+
+@media (max-width: 1100px) {
+  .st-risk .ob-profile-cards.has-custom { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .st-risk-pane { grid-template-columns: auto minmax(0, 1fr); }
+  .st-version { display: none; }
+  .st-limit-row { flex-wrap: wrap; }
+}

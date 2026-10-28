@@ -1,6 +1,7 @@
 {
   "nav": {
-    "connections": "Connections"
+    "connections": "Connections",
+    "risk": "Risk & Autonomy"
   },
   "conn": {
     "intro": "Atlas reads your OKX account with these keys. They’re encrypted on this Mac and never shown again.",
@@ -62,5 +63,66 @@
     "toastBody": "The keys were deleted from this Mac.",
     "failed": "Atlas couldn’t remove the connection. Try again."
   },
-  "cancel": "Cancel"
+  "cancel": "Cancel",
+  "risk": {
+    "intro": "The limits the risk engine applies to every trade, and how much Atlas may do without asking you.",
+    "version": "Version {{v}}",
+    "limits": "Limits",
+    "limitsNote": "Percentages are of total equity. The risk engine applies these limits to every trade, and no agent can change them.",
+    "presetWas": "{{profile}}: {{value}}",
+    "about": "About {{label}}",
+    "decrease": "Decrease {{label}}",
+    "increase": "Increase {{label}}",
+    "autonomyNote": "At levels 1 and 2, nothing reaches OKX without your approval.",
+    "activity": "Activity",
+    "activityNote": "Every save is a new version, sent to the risk engine and the agents straight away.",
+    "activityEmpty": "No saved versions yet.",
+    "current": "Current",
+    "elsewhere": "Saved in another window",
+    "unsaved": "Unsaved changes",
+    "revert": "Revert",
+    "save": "Save changes",
+    "saving": "Saving…",
+    "saved": "Saved as version {{v}}",
+    "savedBody": "The risk engine uses the new limits from its next check.",
+    "saveError": {
+      "title": "Couldn’t save your settings",
+      "body": "Atlas’s server didn’t answer. Check that Atlas is running, then try again."
+    },
+    "invalid": "Fix the highlighted limits, then save again.",
+    "conflict": {
+      "title": "Settings changed elsewhere — reloaded",
+      "body": "Version {{v}} was saved in another window while this page was open. These are its values."
+    },
+    "error": {
+      "title": "Couldn’t load your settings",
+      "body": "Atlas’s server didn’t answer. Check that Atlas is running with ./atlas up, then try again.",
+      "retry": "Try again"
+    },
+    "err": {
+      "empty": "Enter a value for {{label}}.",
+      "range": "{{label}} must be more than {{min}} and at most {{max}}.",
+      "between": "{{label}} must be between {{min}} and {{max}}.",
+      "other": "Atlas’s server didn’t accept this value for {{label}}."
+    },
+    "h": {
+      "created": "Settings created",
+      "onboarded": "Setup finished",
+      "other": "Other settings changed",
+      "set": "{{field}} set to {{to}}",
+      "change": "{{field}} {{from}} → {{to}}"
+    },
+    "help": {
+      "lossPerTrade": "The most one trade can lose if its stop is hit, as a share of equity.",
+      "positionSize": "The largest single position, as a share of equity.",
+      "dailyLoss": "Trading pauses for the day when losses reach this share of equity.",
+      "weeklyLoss": "Trading pauses for the week when losses reach this share of equity.",
+      "leverage": "No position uses more leverage than this, whatever OKX allows.",
+      "openPositions": "New trades wait while this many positions are open.",
+      "instrumentShare": "The most equity that can sit in one instrument across positions.",
+      "correlated": "The most equity in instruments that move together (30-day correlation above 0.8).",
+      "minR": "A trade must aim to win at least this many times what it risks.",
+      "lossStreak": "Trading pauses after this many losing trades in a row."
+    }
+  }
 }
