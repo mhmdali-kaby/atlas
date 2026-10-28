@@ -131,9 +131,4 @@ export function NotFound() {
   )
 }
 
-/** @deprecated Use RiskFooter; kept so screens built before ATL-17 still render the footer. */
-export function EnvFooter(_props: { label?: string }) {
-  return <RiskFooter />
-}
-
 export { RiskFooter }

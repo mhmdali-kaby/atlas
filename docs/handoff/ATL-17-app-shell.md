@@ -4,7 +4,7 @@
 
 - **To get a sidebar item, add `nav` to your feature's `routes.tsx`.** The shell builds the sidebar, the highlight and the toolbar title from it. You never edit `AppShell.tsx`.
 - **Don't render a page title as `<h1>`.** The toolbar's `<h1>` is the label of your nav entry. Your page starts with its own content (`title-2` summary and so on).
-- **Don't add a footer.** `RiskFooter` is on every shell page and on `/login`. A page outside the shell (onboarding, for example) renders `<RiskFooter />` from `src/app/shell/RiskFooter.tsx` itself. `EnvFooter` in `AppShell.tsx` still exists for old imports; it ignores its `label` and renders `RiskFooter`.
+- **Don't add a footer.** `RiskFooter` is on every shell page and on `/login`. A page outside the shell (onboarding, for example) renders `<RiskFooter />` from `src/app/shell/RiskFooter.tsx` itself. The old `EnvFooter` and the `common:footer` / `common:env` keys are gone; use `RiskFooter` and `shell:env.*`.
 - The shell page wrapper already gives you `max-width: var(--content-max)` (1180px), centred, with 32/24/16px gutters and the fade-and-rise page entry. Settings forms can use `max-w-[var(--form-max)]` (720px).
 
 ## Registering nav entries (`src/app/feature.ts`)

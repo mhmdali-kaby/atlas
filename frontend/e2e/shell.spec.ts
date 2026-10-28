@@ -134,3 +134,35 @@ test('Sign out returns to /login and Back does not show the shell', async ({ pag
   await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible()
   await expect(page.getByRole('complementary', { name: 'Sidebar' })).toHaveCount(0)
 })
+
+for (const [width, lang] of [
+  [390, 'en'],
+  [390, 'ar'],
+  [600, 'en'],
+  [768, 'ar'],
+] as const) {
+  test(`at ${width}px (${lang}) the content and toolbar title use the whole width; the sidebar opens over it`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 800 })
+    await page.addInitScript((l) => window.localStorage.setItem('atlas.lang', l), lang)
+    await fakeApi(page)
+    await page.goto('/somewhere')
+    const main = page.locator('main#content')
+    const title = page.getByRole('heading', { level: 1 })
+    await expect(title).toBeVisible()
+
+    const mainBox = (await main.boundingBox())!
+    expect(mainBox.width).toBeGreaterThan(width - 270) // at 768 the 248px sidebar is in the grid
+    if (width <= 760) expect(mainBox.width).toBeGreaterThan(width - 4)
+    expect((await title.boundingBox())!.width).toBeGreaterThan(30)
+    await expect(page.getByRole('heading', { level: 2 })).toBeVisible()
+    expect((await page.getByRole('heading', { level: 2 }).boundingBox())!.width).toBeGreaterThan(80)
+
+    if (width <= 760) {
+      const sidebar = page.locator('aside.shell-sidebar')
+      await expect(sidebar).toBeHidden()
+      await page.locator('header button[aria-expanded]').first().click()
+      await expect(sidebar).toBeVisible()
+    }
+    await page.screenshot({ path: `${SHOTS}/narrow-${width}-${lang}.png` })
+  })
+}
