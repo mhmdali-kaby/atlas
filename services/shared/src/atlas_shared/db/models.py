@@ -9,9 +9,10 @@ the row's own ``ccy`` (or contracts/coins for ``pos``, as OKX reports it).
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 
 from sqlalchemy import Numeric, String, Text, UniqueConstraint, Uuid
-from sqlalchemy.dialects.postgresql import TIMESTAMP
+from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -35,6 +36,27 @@ class _Row:
     env: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
     updated_at: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
+
+
+class Connection(_Row, Base):
+    """Exchange API connection (ATL-4). api_key/api_secret/passphrase are Laravel ``encrypted``-cast
+    ciphertext: decrypt with atlas_shared.laravel_crypt, never log them. trading_core writes only the
+    verification columns (Test connection, ATL-8); uid_last4 is the only part of the UID ever stored."""
+
+    __tablename__ = "connections"
+    __table_args__ = (UniqueConstraint("exchange", "env"),)
+
+    exchange: Mapped[str] = mapped_column(String(16))
+    label: Mapped[str] = mapped_column(String(100))
+    api_key: Mapped[str] = mapped_column(Text)
+    api_secret: Mapped[str] = mapped_column(Text)
+    passphrase: Mapped[str] = mapped_column(Text)
+    permissions: Mapped[Any | None] = mapped_column(JSONB, nullable=True)
+    account_mode: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    position_mode: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    uid_last4: Mapped[str | None] = mapped_column(String(4), nullable=True)
+    last_verified_at: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
+    last_test_error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class Instrument(_Row, Base):
