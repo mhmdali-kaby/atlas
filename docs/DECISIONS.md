@@ -16,3 +16,8 @@ decisions where the brief was silent, as the brief asks.
 - **Tests run on real Postgres** (`atlas_test`), never SQLite: jsonb, arrays and hypertables behave
   differently there.
 - **Redis client is predis** (pure PHP), so no PHP extension is needed on the Mac.
+- **Redis Streams entry format:** every entry on an `atlas.*` stream has one field, `envelope`, holding the
+  brief §3.2 envelope as JSON (the `atlas_shared.events.EventEnvelope` shape). PHP publishes with
+  `App\Support\Events\EventBus` on the `events` Redis connection, which has no key prefix.
+- **Settings values travel as strings for decimals and integers for counts/leverage/autonomy;** a settings
+  change event carries the new version, not the values, and consumers reload from Postgres.
