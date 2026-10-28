@@ -60,6 +60,10 @@ autonomy:
   default_level: 2                 # 1 advise only, 2 approve each trade, 3 auto within limits, 4 full auto
   levels: [1, 2, 3, 4]
   on_approval_timeout: reject
+  # ATL-33 AC2: autonomy 3 (auto within limits) and 4 (full auto) place orders without the owner's
+  # per-trade approval; neither the Risk Engine nor the Executor exist before Phase 2, so Settings
+  # must refuse them until then. Raise this when the build phase that implements them ships.
+  max_enabled_level: 2
 
 # Brief §7.1 / §14.5. Volumes are USD notional over 24h.
 markets:

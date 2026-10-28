@@ -63,6 +63,7 @@ DEFAULTS: Final[dict[str, Any]] = {
             4,
         ],
         "on_approval_timeout": "reject",
+        "max_enabled_level": 2,
     },
     "markets": {
         "min_24h_volume_usd": {

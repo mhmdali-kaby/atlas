@@ -258,12 +258,17 @@ export function RiskStep({
 }
 
 /** Step 4 (design onboarding.js autonomy()): levels 1–4; Phase 0 allows only 1 and 2. */
-export function AutonomyStep({ autoFocus, value, onChange }: StepProps & { value: number; onChange: (level: number) => void }) {
+export function AutonomyStep({
+  autoFocus,
+  value,
+  onChange,
+  enabled,
+}: StepProps & { value: number; onChange: (level: number) => void; enabled?: readonly number[] }) {
   const { t } = useTranslation('onboarding')
   return (
     <>
       <StepHead autoFocus={autoFocus} title={t('autonomy.title')} lead={t('autonomy.lead')} />
-      <AutonomyPicker value={value} onChange={onChange} />
+      <AutonomyPicker value={value} onChange={onChange} enabled={enabled} />
       <p className="flex items-center gap-2 text-footnote text-label-secondary">
         <SlidersHorizontal aria-hidden="true" strokeWidth={1.5} className="size-3.5" />
         <span>{t('autonomy.note')}</span>

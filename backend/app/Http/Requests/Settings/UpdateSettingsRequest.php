@@ -41,7 +41,22 @@ class UpdateSettingsRequest extends FormRequest
                 : ['sometimes', 'string', self::decimalRange((string) $min, (string) $max, $exclusive)];
         }
 
+        // ATL-33 AC2: the schema's 1-4 range is every level the brief defines; this build phase
+        // (Phase 0-2) has no Risk Engine or Executor to run autonomy 3-4 safely, so refuse them
+        // on top of the schema range rather than widening/narrowing NUMERIC_FIELDS per phase.
+        $rules['changes.autonomy_level'][] = self::maxEnabledAutonomyLevel();
+
         return $rules;
+    }
+
+    private static function maxEnabledAutonomyLevel(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail): void {
+            $max = (int) config('atlas_defaults.autonomy.max_enabled_level');
+            if (is_int($value) && $value > $max) {
+                $fail(__('settings.autonomy_level_locked', ['max' => $max]));
+            }
+        };
     }
 
     /**

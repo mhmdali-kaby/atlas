@@ -1,7 +1,5 @@
 <?php
 
-use Illuminate\Support\Str;
-
 return [
 
     /*
@@ -32,7 +30,9 @@ return [
     |
     */
 
-    'lifetime' => (int) env('SESSION_LIFETIME', 120),
+    // ATL-33 AC4: 15 minutes is the brief's idle-lock limit (§18); never fall back to Laravel's
+    // default 120 if .env is missing.
+    'lifetime' => (int) env('SESSION_LIFETIME', 15),
 
     'expire_on_close' => env('SESSION_EXPIRE_ON_CLOSE', false),
 
@@ -127,10 +127,9 @@ return [
     |
     */
 
-    'cookie' => env(
-        'SESSION_COOKIE',
-        Str::slug((string) env('APP_NAME', 'laravel')).'-session'
-    ),
+    // ATL-33 AC4: a fixed fallback name, not derived from APP_NAME, so a missing .env still gets
+    // a deliberate cookie name rather than one that silently follows whatever APP_NAME defaults to.
+    'cookie' => env('SESSION_COOKIE', 'atlas-session'),
 
     /*
     |--------------------------------------------------------------------------

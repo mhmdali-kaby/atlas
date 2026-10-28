@@ -41,6 +41,7 @@ export {
   DEFAULT_AUTONOMY,
   DEFAULT_PROFILE,
   ENABLED_AUTONOMY,
+  enabledAutonomyLevels,
   isOnboarded,
   isPreset,
   PRESET_IDS,

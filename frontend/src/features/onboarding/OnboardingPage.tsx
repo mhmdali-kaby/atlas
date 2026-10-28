@@ -13,7 +13,7 @@ import { FADE } from '../../ui/motion'
 import { SIGNED_OUT_KEY, useLogout, useSession } from '../auth/session'
 import { isVerified, useConnection } from './connections'
 import { AFTER_ONBOARDING_PATH, onboardingPath, parseStep, STEPS, type StepId } from './paths'
-import { DEFAULT_AUTONOMY, DEFAULT_PROFILE, ENABLED_AUTONOMY, isOnboarded, isPreset, usePatchSettings, useSettings, type RiskProfile } from './settings'
+import { DEFAULT_AUTONOMY, DEFAULT_PROFILE, enabledAutonomyLevels, isOnboarded, isPreset, usePatchSettings, useSettings, type RiskProfile } from './settings'
 import { AutonomyStep, ConnectStep, RiskStep, WelcomeStep } from './steps'
 
 
@@ -45,9 +45,10 @@ export function OnboardingPage() {
   const [profilePick, setProfilePick] = useState<RiskProfile | null>(null)
   const [autonomyPick, setAutonomyPick] = useState<number | null>(null)
   const profile: RiskProfile = profilePick ?? (isPreset(doc?.settings.risk_profile) ? doc.settings.risk_profile : DEFAULT_PROFILE)
+  const enabledAutonomy = enabledAutonomyLevels(doc)
   const savedLevel = doc?.settings.autonomy_level
   const autonomy =
-    autonomyPick ?? (savedLevel !== undefined && (ENABLED_AUTONOMY as readonly number[]).includes(savedLevel) ? savedLevel : DEFAULT_AUTONOMY)
+    autonomyPick ?? (savedLevel !== undefined && enabledAutonomy.includes(savedLevel) ? savedLevel : DEFAULT_AUTONOMY)
 
   const session = useSession()
   const logout = useLogout()
@@ -144,7 +145,7 @@ export function OnboardingPage() {
               {step === 'welcome' && <WelcomeStep autoFocus={moved} />}
               {step === 'connect' && <ConnectStep autoFocus={moved} onReplacingChange={setReplacing} />}
               {step === 'risk' && <RiskStep autoFocus={moved} value={profile} onChange={setProfilePick} />}
-              {step === 'autonomy' && <AutonomyStep autoFocus={moved} value={autonomy} onChange={setAutonomyPick} />}
+              {step === 'autonomy' && <AutonomyStep autoFocus={moved} value={autonomy} onChange={setAutonomyPick} enabled={enabledAutonomy} />}
             </motion.section>
           </AnimatePresence>
         </main>

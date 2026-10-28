@@ -1,5 +1,6 @@
 <?php
 
+use App\Logging\DropExceptionTraceArgsProcessor;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
@@ -63,6 +64,9 @@ return [
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
+            // ATL-33 AC3: strips exception trace arguments (e.g. a decrypted ciphertext) before
+            // anything reaches this file.
+            'tap' => [DropExceptionTraceArgsProcessor::class],
         ],
 
         'daily' => [
@@ -71,6 +75,7 @@ return [
             'level' => env('LOG_LEVEL', 'debug'),
             'max_files' => env('LOG_DAILY_DAYS', 14),
             'replace_placeholders' => true,
+            'tap' => [DropExceptionTraceArgsProcessor::class],
         ],
 
         'monthly' => [
