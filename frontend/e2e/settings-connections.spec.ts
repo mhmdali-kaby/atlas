@@ -92,6 +92,8 @@ for (const lang of ['en', 'ar'] as const) {
       await expect(page.getByTestId('key-tail')).toHaveText('•••• ab12')
       await expect(page.locator('nav a[aria-current="page"]')).toHaveText(lang === 'ar' ? 'الاتصالات' : 'Connections')
       await expect(page.getByTestId('live-row')).toHaveAttribute('aria-disabled', 'true')
+      // Dates follow the page direction (design .num), unlike LTR-isolated figures.
+      await expect(page.getByTestId('last-verified')).toHaveCSS('direction', dir)
       await page.waitForTimeout(400)
       await page.screenshot({ path: `${SHOTS}/connections-${dir}-${theme}.png`, fullPage: true })
       await page.getByTestId('live-row').scrollIntoViewIfNeeded()
