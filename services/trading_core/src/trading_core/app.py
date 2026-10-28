@@ -23,6 +23,8 @@ from trading_core.connection_test import router as connection_test_router
 from trading_core.logs import AccessLogMiddleware
 from trading_core.scheduler import Scheduler
 from trading_core.security import PROTECTED_PREFIX, InternalSignatureMiddleware
+from trading_core.sync.account import STREAM as ACCOUNT_JOB
+from trading_core.sync.account import account_job
 from trading_core.sync.instruments import STREAM as INSTRUMENTS_JOB
 from trading_core.sync.instruments import instruments_job
 
@@ -61,14 +63,44 @@ async def sync_instruments_now(request: Request) -> dict[str, Any] | JSONRespons
     return {"ok": True, **result}
 
 
+@internal_router.post("/sync/account", response_model=None)
+async def sync_account_now(request: Request) -> dict[str, Any] | JSONResponse:
+    """Re-sync now: balances, positions and the equity point for the active env (409 if no
+    verified connection)."""
+    scheduler: Scheduler = request.app.state.scheduler
+    try:
+        result: dict[str, Any] = await scheduler.run_now(ACCOUNT_JOB)
+    except Exception as exc:
+        logger.warning("account sync failed", extra={"error": type(exc).__name__})
+        return JSONResponse(
+            status_code=502,
+            content={
+                "ok": False,
+                "error": "account_sync_failed",
+                "detail": f"{type(exc).__name__}: {exc}",
+            },
+        )
+    if result.get("skipped"):
+        return JSONResponse(
+            status_code=409,
+            content={"ok": False, "error": result["reason"], "env": result["env"]},
+        )
+    return {"ok": True, **result}
+
+
 def default_scheduler(settings: Settings, engine: Engine | None = None) -> Scheduler:
-    """The jobs trading_core runs in production. ATL-10 adds its account jobs here."""
+    """The jobs trading_core runs in production."""
     scheduler = Scheduler()
     engine = engine if engine is not None else make_engine()
     scheduler.add(
         INSTRUMENTS_JOB,
         DEFAULTS["sync"]["instruments_interval_seconds"],
         instruments_job(settings.env, engine),
+    )
+    scheduler.add(
+        ACCOUNT_JOB,
+        DEFAULTS["sync"]["account_interval_seconds"],
+        account_job(settings.env, engine, settings.app_key),
     )
     return scheduler
 

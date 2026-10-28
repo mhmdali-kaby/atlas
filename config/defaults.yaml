@@ -96,6 +96,12 @@ sync:
   account_interval_seconds: 60
   bills_interval_seconds: 300
 
+# ATL-10: account sync. Funding-account coins are valued in USD with OKX SPOT tickers
+# (<CCY>-<quote> last price, quotes tried in order). Stablecoins count 1:1 with USD in Phase 0.
+account_sync:
+  usd_stablecoins: [USDT, USDC]
+  price_quotes: [USDT, USDC]
+
 # ATL-9, brief §2/§4.3: instrument universe sync. OPTION is off in Phase 0 (options disabled by default).
 # asset_class is derived from OKX instCategory; unknown or missing categories become "other".
 # Stock-category instruments whose base symbol is listed in stock_class_overrides get that class instead.

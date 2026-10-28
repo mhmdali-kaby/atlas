@@ -101,6 +101,16 @@ DEFAULTS: Final[dict[str, Any]] = {
         "account_interval_seconds": 60,
         "bills_interval_seconds": 300,
     },
+    "account_sync": {
+        "usd_stablecoins": [
+            "USDT",
+            "USDC",
+        ],
+        "price_quotes": [
+            "USDT",
+            "USDC",
+        ],
+    },
     "instruments": {
         "inst_types": [
             "SPOT",
