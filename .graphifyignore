@@ -1,0 +1,25 @@
+# Written by CCQ before each graph build. Not the client's file: edits here
+# are overwritten. A graph of a product should be a graph of the product.
+vendor/
+node_modules/
+.git/
+graphify-out/
+
+# Build output and caches — generated from the code that is already in the
+# graph, so indexing them draws every function twice.
+dist/
+build/
+public/build/
+coverage/
+.expo/
+.next/
+.nuxt/
+__pycache__/
+.venv/
+.pytest_cache/
+.phpunit.cache/
+ios/Pods/
+android/build/
+
+# CCQ's own tree, when a project keeps one.
+storage/ccq/
