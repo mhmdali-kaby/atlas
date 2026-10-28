@@ -180,7 +180,7 @@ export function EquityChart({ series, lang, head }: EquityChartProps) {
               reversed={rtl}
               axisLine={false}
               tickLine={false}
-              tick={AXIS_TICK}
+              tick={{ ...AXIS_TICK, className: 'pf-x-tick' }}
               tickMargin={10}
               height={30}
             />
