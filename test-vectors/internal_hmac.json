@@ -1,9 +1,10 @@
 {
-    "_comment": "Shared HMAC test vector for Laravel -> trading_core signing (ATL-6). Test-only secret. Pest (backend/tests/Unit/TradingCoreSigningTest.php) and pytest (services/trading_core/tests/test_signing.py) must both produce signature.",
+    "_comment": "Shared HMAC test vector for Laravel -> trading_core signing (ATL-6, nonce added by ATL-34). MAC = timestamp + nonce + METHOD + path(+query) + body. Test-only secret. Pest (backend/tests/Unit/TradingCoreSigningTest.php) and pytest (services/trading_core/tests/test_signing.py) must both produce signature.",
     "secret": "atlas-test-only-shared-secret",
     "timestamp": "1793174400",
+    "nonce": "3f9a1c7e5b2d4086a1e0c9b8d7f6e5a4",
     "method": "POST",
     "path": "/internal/connections/test?env=demo",
     "body": "{\"connection_id\":\"9f1c2d3e-0000-4000-8000-000000000001\",\"note\":\"é\"}",
-    "signature": "20ca9a022a7b72a91f78e602069c2cf7e918a7f166fa7e4175605731c679702e"
+    "signature": "1c2410addee989314b9ebf58ef2a67327c5f5213dea03071fd70b9a5263257cb"
 }

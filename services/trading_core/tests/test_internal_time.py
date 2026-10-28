@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
-import hmac
 import time
 from unittest.mock import MagicMock
 
@@ -14,16 +12,15 @@ from trading_core.app import create_app
 from trading_core.config import Settings
 from trading_core.okx.client import OkxClient
 from trading_core.scheduler import Scheduler
+from trading_core.security import signed_headers
 
 BASE = "https://www.okx.com"
 SECRET = "atlas-test-only-internal-secret"  # noqa: S105
 PATH = "/internal/time"
 
 
-def signed(method: str, path: str) -> dict[str, str]:
-    ts = str(int(time.time()))
-    sig = hmac.new(SECRET.encode(), (ts + method + path).encode(), hashlib.sha256).hexdigest()
-    return {"X-Atlas-Timestamp": ts, "X-Atlas-Signature": sig}
+def signed(method: str, path: str, body: bytes = b"") -> dict[str, str]:
+    return signed_headers(SECRET, method, path, body)
 
 
 def client() -> TestClient:

@@ -199,7 +199,12 @@ def create_app(
             await jobs.stop()
 
     application = FastAPI(
-        title="Atlas trading_core", version=VERSION, docs_url=None, redoc_url=None, lifespan=lifespan
+        title="Atlas trading_core",
+        version=VERSION,
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
+        lifespan=lifespan,
     )
     application.state.settings = settings
     application.state.scheduler = jobs

@@ -12,8 +12,10 @@ use RuntimeException;
 /**
  * HMAC-signed client for trading_core's internal API (decision #235).
  *
- * Signature = hex HMAC-SHA256(INTERNAL_SHARED_SECRET, timestamp + METHOD + path + raw body), sent as
- * X-Atlas-Signature with X-Atlas-Timestamp (unix seconds). `path` includes `?query` when there is one.
+ * Signature = hex HMAC-SHA256(INTERNAL_SHARED_SECRET, timestamp + nonce + METHOD + path + raw body),
+ * sent as X-Atlas-Signature with X-Atlas-Timestamp (unix seconds) and X-Atlas-Nonce (32 lower-case hex
+ * chars, fresh per call). `path` includes `?query` when there is one. trading_core accepts each nonce
+ * once, so a captured request cannot be replayed (ATL-34).
  * The Python verifier is services/trading_core/src/trading_core/security.py; both are pinned to
  * test-vectors/internal_hmac.json. Never log the secret, the signature or the body.
  */
@@ -23,11 +25,17 @@ final class TradingCore
 
     public const SIGNATURE_HEADER = 'X-Atlas-Signature';
 
+    public const NONCE_HEADER = 'X-Atlas-Nonce';
+
     /** @var \Closure(): int */
     private \Closure $clock;
 
+    /** @var \Closure(): string */
+    private \Closure $nonce;
+
     /**
      * @param  (\Closure(): int)|null  $clock  unix-seconds clock; injectable for tests
+     * @param  (\Closure(): string)|null  $nonce  nonce source; injectable for tests
      */
     public function __construct(
         private readonly HttpFactory $http,
@@ -35,8 +43,10 @@ final class TradingCore
         private readonly string $secret,
         private readonly int $timeoutSeconds = 10,
         ?\Closure $clock = null,
+        ?\Closure $nonce = null,
     ) {
         $this->clock = $clock ?? static fn (): int => time();
+        $this->nonce = $nonce ?? static fn (): string => bin2hex(random_bytes(16));
     }
 
     public static function fromConfig(): self
@@ -53,9 +63,9 @@ final class TradingCore
         );
     }
 
-    public static function sign(string $secret, string $timestamp, string $method, string $path, string $body): string
+    public static function sign(string $secret, string $timestamp, string $nonce, string $method, string $path, string $body): string
     {
-        return hash_hmac('sha256', $timestamp.strtoupper($method).$path.$body, $secret);
+        return hash_hmac('sha256', $timestamp.$nonce.strtoupper($method).$path.$body, $secret);
     }
 
     /**
@@ -92,6 +102,7 @@ final class TradingCore
 
         $method = strtoupper($method);
         $timestamp = (string) ($this->clock)();
+        $nonce = ($this->nonce)();
 
         $request = $this->http
             ->baseUrl(rtrim($this->baseUrl, '/'))
@@ -99,7 +110,8 @@ final class TradingCore
             ->acceptJson()
             ->withHeaders([
                 self::TIMESTAMP_HEADER => $timestamp,
-                self::SIGNATURE_HEADER => self::sign($this->secret, $timestamp, $method, $pathWithQuery, $body),
+                self::NONCE_HEADER => $nonce,
+                self::SIGNATURE_HEADER => self::sign($this->secret, $timestamp, $nonce, $method, $pathWithQuery, $body),
             ]);
 
         if ($body !== '') {
