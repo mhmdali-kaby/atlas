@@ -106,6 +106,16 @@ DEFAULTS: Final[dict[str, Any]] = {
         "min_free_disk_gb": 5,
         "trading_core_timeout_seconds": 5,
     },
+    "account_sync": {
+        "usd_stablecoins": [
+            "USDT",
+            "USDC",
+        ],
+        "price_quotes": [
+            "USDT",
+            "USDC",
+        ],
+    },
     "instruments": {
         "inst_types": [
             "SPOT",
