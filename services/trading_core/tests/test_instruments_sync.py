@@ -1,6 +1,7 @@
 """ATL-9: the instrument universe syncs into Postgres with a derived asset_class.
 
-DB tests run against this checkout's test DB (atlas_shared.testing; migrated by `cd backend && php artisan test`). OKX is mocked with
+DB tests run against this checkout's test DB (atlas_shared.testing), migrated by
+`cd backend && php artisan test`. OKX is mocked with
 respx; universes are built from the recorded demo fixture public_instruments_swap.json.
 """
 
@@ -11,7 +12,6 @@ import copy
 import hashlib
 import hmac
 import json
-import os
 import time
 from collections.abc import Iterator
 from decimal import Decimal

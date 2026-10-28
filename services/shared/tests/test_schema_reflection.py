@@ -4,7 +4,6 @@ Run `cd backend && php artisan test` first: it creates and migrates this checkou
 schema exists. Connection settings mirror backend/phpunit.xml and can be overridden with DB_*.
 """
 
-import os
 from typing import Any
 
 import pytest

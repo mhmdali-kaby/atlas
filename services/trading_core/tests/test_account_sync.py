@@ -1,6 +1,7 @@
 """ATL-10: balances, positions and the equity curve sync from OKX into Postgres.
 
-DB tests run against this checkout's test DB (atlas_shared.testing; migrated by `cd backend && php artisan test`). OKX is mocked with
+DB tests run against this checkout's test DB (atlas_shared.testing), migrated by
+`cd backend && php artisan test`. OKX is mocked with
 respx using the recorded fixtures account_balance.json, asset_balances.json, account_positions.json
 and market_tickers_swap.json. The connection row holds Laravel-format ciphertext made with a
 throwaway test-only APP_KEY, so the real decrypt path is exercised.

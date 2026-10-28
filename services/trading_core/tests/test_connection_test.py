@@ -1,6 +1,7 @@
 """ATL-8: Test connection reads account/config, records the outcome and refuses withdraw keys.
 
-DB tests run against this checkout's test DB (atlas_shared.testing; migrated by `cd backend && php artisan test`). OKX is mocked with
+DB tests run against this checkout's test DB (atlas_shared.testing), migrated by
+`cd backend && php artisan test`. OKX is mocked with
 respx; the connection row holds Laravel-format ciphertext made with a throwaway test-only APP_KEY.
 """
 
