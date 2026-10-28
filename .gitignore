@@ -1,0 +1,21 @@
+# Kept out of history by CCQ.
+# Secrets: the example file is the one to commit.
+.env
+.env.*
+!.env.example
+
+# Test output. It goes in the project's evidence folder, beside this repository.
+screenshots/
+test-results/
+playwright-report/
+
+# CCQ's code-graph cache, which the graph tool leaves in what it scans.
+graphify-out/
+
+# Dependencies: installed from the lockfile, never committed — in history
+# they bury the real changes under thousands of files.
+node_modules/
+/vendor/
+/*/vendor/
+Pods/
+.gradle/
