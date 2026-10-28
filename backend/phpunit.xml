@@ -34,6 +34,11 @@
         <env name="DB_PORT" value="5433"/>
         <env name="DB_USERNAME" value="atlas"/>
         <env name="DB_PASSWORD" value="atlas"/>
+        <env name="REDIS_CLIENT" value="predis"/>
+        <env name="REDIS_HOST" value="127.0.0.1"/>
+        <env name="REDIS_PORT" value="6380"/>
+        <!-- Tests publish events into their own Redis database, away from dev streams in db 0. -->
+        <env name="REDIS_DB" value="15"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <env name="SESSION_DRIVER" value="array"/>
