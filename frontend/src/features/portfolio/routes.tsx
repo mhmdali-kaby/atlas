@@ -1,6 +1,8 @@
-import { ChartSpline, Layers } from 'lucide-react'
+import { ArrowLeftRight, ChartSpline, Layers, Wallet } from 'lucide-react'
 import { Navigate } from 'react-router'
 import type { FeatureModule } from '../../app/feature'
+import { CashflowsPage } from './CashflowsPage'
+import { HoldingsPage } from './HoldingsPage'
 import { OverviewPage } from './OverviewPage'
 import { PositionsPage } from './PositionsPage'
 
@@ -13,10 +15,14 @@ const portfolio: FeatureModule = {
     { index: true, element: <Navigate to="/portfolio" replace /> },
     { path: 'portfolio', element: <OverviewPage /> },
     { path: 'portfolio/positions', element: <PositionsPage /> },
+    { path: 'portfolio/holdings', element: <HoldingsPage /> },
+    { path: 'portfolio/cashflows', element: <CashflowsPage /> },
   ],
   nav: [
     { path: '/portfolio', labelKey: 'portfolio:nav.overview', order: 10, section: 'portfolio', icon: ChartSpline },
     { path: '/portfolio/positions', labelKey: 'portfolio:nav.positions', order: 20, section: 'portfolio', icon: Layers },
+    { path: '/portfolio/holdings', labelKey: 'portfolio:nav.holdings', order: 30, section: 'portfolio', icon: Wallet },
+    { path: '/portfolio/cashflows', labelKey: 'portfolio:nav.cashflows', order: 40, section: 'portfolio', icon: ArrowLeftRight },
   ],
 }
 

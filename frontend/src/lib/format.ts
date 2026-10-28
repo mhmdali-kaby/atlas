@@ -124,6 +124,22 @@ export function signOf(value: Figure): -1 | 0 | 1 | null {
 }
 
 /**
+ * A plain decimal string, grouped en-US in both languages and never rounded: at least
+ * `minFrac` fraction digits and every digit the API sent ("5099121.5" → "5,099,121.50").
+ * `signDisplay: 'exceptZero'` adds "+" to positives; negatives always carry "−".
+ */
+export function formatDecimal(
+  value: Figure,
+  lang: Lang = 'en',
+  minFrac = 2,
+  signDisplay: Intl.NumberFormatOptions['signDisplay'] = 'auto',
+): string {
+  if (isMissing(value)) return NO_VALUE
+  const nf = formatter(FIGURE_LOCALE[lang], { minimumFractionDigits: minFrac, maximumFractionDigits: 20, signDisplay })
+  return typographicMinus(nf.format(asIntlValue(value)))
+}
+
+/**
  * A plain figure with a fixed number of decimals and no unit: "1.0", "5", "1,250.5".
  * Decimal strings go to Intl as strings, so nothing passes through a float.
  */

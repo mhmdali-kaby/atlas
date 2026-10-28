@@ -1,4 +1,4 @@
-import { DATE_LOCALE, FIGURE_LOCALE, formatFixed, formatMoney, formatPercent, formatSigned, NO_VALUE, signOf } from './format'
+import { DATE_LOCALE, FIGURE_LOCALE, formatDecimal, formatFixed, formatMoney, formatPercent, formatSigned, NO_VALUE, signOf } from './format'
 
 const MINUS = '−'
 const WESTERN_ONLY = /^[^٠-٩۰-۹]*$/
@@ -79,6 +79,24 @@ describe('signOf', () => {
     ['abc', null],
   ] as const)('%s → %s', (value, sign) => {
     expect(signOf(value)).toBe(sign)
+  })
+})
+
+describe('formatDecimal', () => {
+  it('keeps every digit and pads to the minimum fraction digits', () => {
+    expect(formatDecimal('5099121.5')).toBe('5,099,121.50')
+    expect(formatDecimal('0.000123456789', 'ar')).toBe('0.000123456789')
+    expect(formatDecimal('12345678901234.123456789')).toBe('12,345,678,901,234.123456789')
+    expect(formatDecimal('25', 'en', 0)).toBe('25')
+  })
+  it('signs with exceptZero and uses the typographic minus', () => {
+    expect(formatDecimal('1000', 'en', 2, 'exceptZero')).toBe('+1,000.00')
+    expect(formatDecimal('-1000', 'en', 2, 'exceptZero')).toBe('−1,000.00')
+    expect(formatDecimal('0', 'en', 2, 'exceptZero')).toBe('0.00')
+  })
+  it('renders a missing value as the em dash', () => {
+    expect(formatDecimal(null)).toBe(NO_VALUE)
+    expect(formatDecimal(' ')).toBe(NO_VALUE)
   })
 })
 

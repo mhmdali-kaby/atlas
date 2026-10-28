@@ -146,3 +146,54 @@ a.pf-ledger-item:focus-visible { outline: none; box-shadow: var(--focus-ring); }
   [dir='rtl'] .pf-table { --pin-edge: -1; }
   .pf-table th:first-child { z-index: 3; }
 }
+
+/* Holdings and Cash flows (design: .share, .mono-tile, .flow-type, .tx, .pager, .page-head-note). */
+.pf-head-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+.pf-head-note svg { width: 14px; height: 14px; }
+.pf-ccy { display: flex; align-items: center; gap: 12px; }
+.pf-mono {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: var(--bg-secondary);
+  box-shadow: inset 0 0 0 0.5px var(--hairline-color);
+  font-family: var(--font-num);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--label);
+}
+.pf-badge-quiet { background: transparent; box-shadow: inset 0 0 0 1px var(--separator); color: var(--label-secondary); }
+.pf-badge-warning { background: var(--warning-wash); color: var(--warning-ink); }
+.pf-badge-warning svg { color: var(--warning-ink); }
+.pf-badge-loss { background: var(--loss-wash); color: var(--loss-ink); }
+.pf-badge-loss svg { color: var(--loss-ink); }
+.pf-share { display: flex; align-items: center; gap: 10px; }
+.pf-share-track { width: 96px; height: 6px; border-radius: 3px; background: var(--fill-3); overflow: hidden; }
+.pf-share-fill { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
+.pf-share-pct { font-size: var(--text-footnote); color: var(--label-secondary); min-width: 52px; font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.pf-flow-type { display: inline-flex; align-items: center; gap: 6px; }
+.pf-flow-type svg { width: 16px; height: 16px; color: var(--label-secondary); }
+.pf-tx { color: var(--label-secondary); font-size: var(--text-footnote); border-radius: 4px; font-family: var(--font-num); unicode-bidi: isolate; }
+.pf-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  border-top: 0.5px solid var(--separator);
+}
+.pf-pager-btns { display: flex; gap: 8px; }
+@media (max-width: 1279px) {
+  .pf-share-track { width: 64px; }
+}

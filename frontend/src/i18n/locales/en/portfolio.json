@@ -1,7 +1,9 @@
 {
   "nav": {
     "overview": "Overview",
-    "positions": "Positions"
+    "positions": "Positions",
+    "holdings": "Holdings",
+    "cashflows": "Cash flows"
   },
   "equity": "Total equity",
   "reconciled": "Reconciled with OKX at {{time}}",
@@ -73,6 +75,53 @@
     "empty": {
       "title": "No open positions",
       "body": "No open positions on the OKX demo account. Positions you open on OKX appear here within a minute."
+    }
+  },
+  "laterPhase": "Available in a later phase",
+  "holdings": {
+    "summary_one": "{{count}} balance across trading and funding",
+    "summary_other": "{{count}} balances across trading and funding",
+    "total": "Total value",
+    "col": {
+      "currency": "Currency",
+      "account": "Account",
+      "quantity": "Quantity",
+      "value": "Value",
+      "share": "Share of portfolio",
+      "avgCost": "Average cost",
+      "change": "24h change"
+    },
+    "trading": "Trading",
+    "funding": "Funding",
+    "empty": {
+      "title": "No balances",
+      "body": "OKX reports no balances on the demo account yet."
+    }
+  },
+  "cashflows": {
+    "summary_one": "{{count}} deposit or withdrawal",
+    "summary_other": "{{count}} deposits and withdrawals",
+    "readOnly": "Read only. Atlas never moves money; it reads this history from OKX.",
+    "col": {
+      "date": "Date",
+      "kind": "Type",
+      "currency": "Currency",
+      "amount": "Amount",
+      "state": "State",
+      "tx": "Transaction"
+    },
+    "completed": "Completed",
+    "pending": "Pending",
+    "failed": "Failed",
+    "stateCode": "OKX state {{code}}",
+    "noTx": "No transaction",
+    "page": "{{range}} of {{total}}",
+    "prev": "Previous",
+    "next": "Next",
+    "pagination": "Pages",
+    "empty": {
+      "title": "No deposits or withdrawals",
+      "body": "The demo account’s balance is paper money from OKX, so nothing has been deposited or withdrawn."
     }
   }
 }
