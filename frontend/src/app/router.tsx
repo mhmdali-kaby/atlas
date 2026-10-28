@@ -24,7 +24,9 @@ export const routes: RouteObject[] = [
         <AppShell />
       </RequireAuth>
     ),
-    children,
+    // The catch-all keeps unknown paths behind the guard too: signed out, any URL goes to
+    // /login?next=… (a page whose feature is not built yet included); signed in, an empty shell.
+    children: [...children, { path: '*', element: null }],
   },
 ]
 
