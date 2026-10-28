@@ -175,6 +175,8 @@ describe('Portfolio Cash flows', () => {
     expect(cell(rows[0]!, 'kind')).toHaveTextContent('سحب')
     expect(cell(rows[0]!, 'amount')).toHaveTextContent('−1,000.00')
     expect(cell(rows[0]!, 'date')).toHaveTextContent('20:36')
+    // A date is read in the Arabic order, so it must not be the LTR-isolated .fig used for figures.
+    expect(cell(rows[0]!, 'date').querySelector('span')).not.toHaveClass('fig')
     expect(screen.getByRole('button', { name: 'التالي' })).toBeEnabled()
     // The range is isolated left-to-right so it never reverses inside the Arabic sentence.
     expect(screen.getByTestId('cashflows-range').textContent).toBe('\u20661–20\u2069 من \u206623\u2069')

@@ -92,7 +92,7 @@ function PositionRow({ p, lang, now }: { p: Position; lang: Lang; now: number })
             <span className="fig" tabIndex={0} title={t('positions.opened', { date: formatDayTime(p.opened_at, lang) })}>
               {formatDuration(now - Date.parse(p.opened_at), lang)}
             </span>
-            <span className="pf-cell-sub fig">{formatDay(p.opened_at, lang)}</span>
+            <span className="pf-cell-sub">{formatDay(p.opened_at, lang)}</span>
           </>
         ) : (
           <span className="text-label-secondary">{NO_VALUE}</span>
