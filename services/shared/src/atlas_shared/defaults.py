@@ -102,6 +102,9 @@ DEFAULTS: Final[dict[str, Any]] = {
         "account_interval_seconds": 60,
         "bills_interval_seconds": 300,
     },
+    "internal_api": {
+        "max_body_bytes": 1048576,
+    },
     "doctor": {
         "max_clock_drift_ms": 2000,
         "min_free_disk_gb": 5,
