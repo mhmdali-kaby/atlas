@@ -44,3 +44,7 @@ node_modules/
 /*/vendor/
 Pods/
 .gradle/
+
+# Python
+.venv/
+__pycache__/

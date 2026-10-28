@@ -1,0 +1,47 @@
+[project]
+name = "atlas-services"
+version = "0.0.0"
+requires-python = ">=3.12,<3.13"
+description = "Atlas Python services workspace root (dev tooling only)."
+dependencies = []
+
+[dependency-groups]
+dev = [
+  "pytest>=8",
+  "pytest-asyncio>=0.24",
+  "hypothesis>=6",
+  "respx>=0.21",
+  "ruff>=0.7",
+  "mypy>=1.13",
+  "atlas-shared",
+  "atlas-trading-core",
+  "atlas-agents",
+  "atlas-ingest",
+]
+
+[tool.uv.workspace]
+members = ["shared", "trading_core", "agents", "ingest"]
+
+[tool.uv.sources]
+atlas-shared = { workspace = true }
+atlas-trading-core = { workspace = true }
+atlas-agents = { workspace = true }
+atlas-ingest = { workspace = true }
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "shared/tests", "trading_core/tests", "agents/tests", "ingest/tests"]
+asyncio_mode = "auto"
+addopts = "--import-mode=importlib"
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "ASYNC", "DTZ", "RUF"]
+ignore = ["S101"]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
