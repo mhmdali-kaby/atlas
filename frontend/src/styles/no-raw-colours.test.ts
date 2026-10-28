@@ -21,13 +21,20 @@ function walk(dir: string): string[] {
   })
 }
 
-export function findRawColours(text: string): string[] {
-  return [...text.matchAll(HEX), ...text.matchAll(FUNCTIONAL)].map((m) => m[0])
+// Tests and play functions compare against computed styles, which browsers
+// report as rgb(); they may name rgb()/rgba(), but never a hex.
+const ASSERTS_COMPUTED = /\.(test|stories)\.tsx?$/
+
+export function findRawColours(text: string, { allowFunctional = false } = {}): string[] {
+  const hits = [...text.matchAll(HEX)]
+  if (!allowFunctional) hits.push(...text.matchAll(FUNCTIONAL))
+  return hits.map((m) => m[0])
 }
 
 describe('raw colours', () => {
   it('detects hex and functional colour literals', () => {
     expect(findRawColours(`color: ${'#'}fff; b: ${'#'}0A84FF; c: ${'rgba'}(0,0,0,.1)`)).toHaveLength(3)
+    expect(findRawColours(`${'rgba'}(0,0,0,.1) and ${'#'}000`, { allowFunctional: true })).toEqual([`${'#'}000`])
     expect(findRawColours(`getElementById('root'); href="${'#'}main"; id="${'#'}add-row"`)).toHaveLength(0)
   })
 
@@ -36,7 +43,11 @@ describe('raw colours', () => {
       .filter((path) => SCANNED.test(path))
       .map((path) => ({ file: relative(SRC, path).split(sep).join('/'), path }))
       .filter(({ file }) => !ALLOWED.has(file))
-      .flatMap(({ file, path }) => findRawColours(readFileSync(path, 'utf8')).map((hit) => `${file}: ${hit}`))
+      .flatMap(({ file, path }) =>
+        findRawColours(readFileSync(path, 'utf8'), { allowFunctional: ASSERTS_COMPUTED.test(file) }).map(
+          (hit) => `${file}: ${hit}`,
+        ),
+      )
     expect(offenders).toEqual([])
   })
 
