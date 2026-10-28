@@ -136,6 +136,27 @@ it('puts security headers on every API response, including errors', function (st
     'not found' => ['GET', '/api/nope', 404],
 ]);
 
+it('reports owner_exists false on a fresh database, without a session', function (): void {
+    $this->getJson('/api/auth/status')
+        ->assertOk()
+        ->assertExactJson(['owner_exists' => false]);
+});
+
+it('reports owner_exists true after atlas:create-owner and leaks nothing else', function (): void {
+    $this->artisan('atlas:create-owner')
+        ->expectsQuestion('Owner name', 'Mohammed')
+        ->expectsQuestion('Owner email', 'owner@atlas.test')
+        ->expectsQuestion('Password (min 12 characters)', 'a-long-password-1')
+        ->expectsQuestion('Confirm password', 'a-long-password-1')
+        ->assertSuccessful();
+
+    $response = $this->getJson('/api/auth/status')
+        ->assertOk()
+        ->assertExactJson(['owner_exists' => true]);
+
+    expect($response->getContent())->not->toContain('owner@atlas.test')->not->toContain('Mohammed');
+});
+
 it('no longer exposes the install:api /api/user route', function (): void {
     $this->getJson('/api/user')->assertNotFound();
 });

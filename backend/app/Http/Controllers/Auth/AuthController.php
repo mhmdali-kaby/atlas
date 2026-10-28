@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
@@ -18,6 +19,14 @@ use Illuminate\Validation\ValidationException;
  */
 class AuthController extends Controller
 {
+    /**
+     * Unauthenticated: says only whether an owner account exists, nothing about who it is.
+     */
+    public function status(): JsonResponse
+    {
+        return response()->json(['owner_exists' => User::query()->exists()]);
+    }
+
     public function login(LoginRequest $request): UserResource
     {
         /** @var array{email: string, password: string} $credentials */

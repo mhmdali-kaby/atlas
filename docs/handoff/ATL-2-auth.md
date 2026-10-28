@@ -31,6 +31,22 @@ Missing/stale CSRF token → **419**. If you get 419, call `/sanctum/csrf-cookie
 
 ## Endpoints
 
+### GET /api/auth/status
+
+Guest (no session, no CSRF needed for a GET). Throttled 60/min per IP. Always 200, and the body is
+exactly this — never a name or email:
+
+```json
+{ "owner_exists": false }
+```
+
+Use it on the login screen: `owner_exists: false` → show the first-run state ("Run
+`./atlas create-owner` in Terminal") instead of the sign-in form. It flips to `true` as soon as
+`php artisan atlas:create-owner` succeeds.
+
+Suggested boot order for the SPA: `GET /api/auth/me` → 200 means signed in; 401 → `GET /api/auth/status`
+to choose between the sign-in form and the create-owner instructions.
+
 ### POST /api/auth/login
 
 Guest. Throttled: 5 attempts per minute per IP (named limiter `login`); the 6th → 429.
