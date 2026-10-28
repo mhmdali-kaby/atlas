@@ -23,7 +23,7 @@ const BASE =
   'inline-flex shrink-0 select-none items-center justify-center gap-1.5 whitespace-nowrap font-semibold leading-none ' +
   'transition-[background-color,transform,box-shadow,opacity] duration-[var(--dur-fast)] ease-[var(--ease-out)] ' +
   'active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40 aria-disabled:pointer-events-none aria-disabled:opacity-40 ' +
-  '[&_svg]:size-4 [&_svg]:shrink-0'
+  'focus-visible:shadow-focus [&_svg]:size-4 [&_svg]:shrink-0'
 
 const SIZES: Record<ButtonSize, string> = {
   sm: 'h-7 rounded-[8px] px-2.5 text-footnote',
