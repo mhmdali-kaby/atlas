@@ -23,7 +23,7 @@ Migrations: `backend/database/migrations/2026_10_28_2000*`–`2002*`. Python mir
 | --- | --- | --- |
 | `instruments` | inst_id, inst_type, inst_family?, inst_category? (raw OKX string, e.g. "1"), base_ccy?, quote_ccy?, settle_ccy?, ct_val?, ct_val_ccy?, ct_mult?, lot_sz, min_sz, tick_sz, max_lever?, state, list_time?, exp_time?, asset_class (crypto\|stock\|etf\|index\|commodity\|other, default other), last_seen_at? | (env, inst_id) |
 | `balances_snapshots` | ccy, account (trading\|funding), eq, avail_bal?, frozen_bal?, eq_usd?, upl?, taken_at | (env, account, ccy, taken_at) |
-| `positions_snapshots` | inst_id, pos_side (net\|long\|short), pos, avg_px?, mark_px?, liq_px?, lever?, upl?, upl_ratio?, margin?, mgn_mode?, c_time?, taken_at | (env, inst_id, pos_side, taken_at) |
+| `positions_snapshots` | inst_id, pos_side (net\|long\|short), pos, avg_px?, mark_px?, liq_px?, lever?, upl?, upl_ratio?, margin?, mgn_mode?, c_time?, taken_at | (env, inst_id, pos_side, mgn_mode, taken_at) NULLS NOT DISTINCT — mgn_mode added by ATL-10 (net mode allows cross + isolated on one instrument) |
 | `bills` | bill_id, inst_id?, ccy, type, sub_type?, bal_chg, pnl?, fee?, ts | (env, bill_id) |
 | `deposits_withdrawals` | kind (deposit\|withdrawal), external_id (OKX depId / wdId), ccy, amount, state, tx_id?, ts | (env, kind, external_id) |
 | `sync_status` | stream, last_success_at?, last_error? (text), reconciled_at? | (env, stream) |

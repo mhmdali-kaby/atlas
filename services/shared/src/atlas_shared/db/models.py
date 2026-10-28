@@ -100,7 +100,12 @@ class BalanceSnapshot(_Row, Base):
 
 class PositionSnapshot(_Row, Base):
     __tablename__ = "positions_snapshots"
-    __table_args__ = (UniqueConstraint("env", "inst_id", "pos_side", "taken_at"),)
+    # mgn_mode is in the key: net mode allows a cross and an isolated position on one instrument.
+    __table_args__ = (
+        UniqueConstraint(
+            "env", "inst_id", "pos_side", "mgn_mode", "taken_at", postgresql_nulls_not_distinct=True
+        ),
+    )
 
     inst_id: Mapped[str] = mapped_column(String(64))
     pos_side: Mapped[str] = mapped_column(String(8))

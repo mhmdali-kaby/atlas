@@ -312,6 +312,27 @@ async def test_two_runs_in_one_minute_leave_one_equity_row(
 
 
 @respx.mock(base_url=BASE, assert_all_called=False)
+async def test_cross_and_isolated_positions_on_one_instrument_are_both_written(
+    respx_mock: respx.MockRouter, verified: Engine
+) -> None:
+    # Net mode allows a cross and an isolated position on the same instrument (ATL-10 QA round 1).
+    positions = copy.deepcopy(fixture("account_positions"))
+    first = positions["data"][0]
+    other_mode = "cross" if first["mgnMode"] == "isolated" else "isolated"
+    positions["data"].append({**first, "mgnMode": other_mode, "posId": "atl10-other-mode"})
+    mock_okx(respx_mock, positions=positions)
+
+    result = await account_job(ENV, verified, APP_KEY, now=clock(T0))()
+
+    assert result["skipped"] is False
+    with verified.connect() as conn:
+        pos_rows = conn.execute(select(PositionSnapshot).where(PositionSnapshot.env == ENV)).all()
+    assert len(pos_rows) == len(positions["data"])
+    assert {r.mgn_mode for r in pos_rows if r.inst_id == first["instId"]} == {first["mgnMode"], other_mode}
+    assert status(verified).last_error is None
+
+
+@respx.mock(base_url=BASE, assert_all_called=False)
 async def test_okx_error_on_positions_writes_nothing_and_records_the_code(
     respx_mock: respx.MockRouter, verified: Engine
 ) -> None:
