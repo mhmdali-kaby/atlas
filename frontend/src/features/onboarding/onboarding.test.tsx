@@ -141,9 +141,9 @@ function fakeBackend(opts: { mode?: TestMode; stored?: Connection | null; settin
   return state
 }
 
-function renderApp(initial: string) {
+function renderApp(initial: string, { defaultRetries = false } = {}) {
   const router = createMemoryRouter(routes, { initialEntries: [initial] })
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const client = new QueryClient(defaultRetries ? {} : { defaultOptions: { queries: { retry: false } } })
   const view = render(
     <QueryClientProvider client={client}>
       <RouterProvider router={router} />
@@ -516,6 +516,18 @@ describe('onboarding steps 3–4 (ATL-19)', () => {
     const { router } = renderApp('/')
     expect(await screen.findByRole('heading', { level: 1, name: 'Choose a risk profile' })).toBeInTheDocument()
     expect(router.state.location.search).toBe('?step=risk')
+  })
+
+  it('lets a verified owner through at once when the settings lookup fails, without retrying it', async () => {
+    const backend = fakeBackend({ stored: connectionRow(VERIFIED), settingsDown: true })
+    // TanStack's default 3 retries (~7 s of backoff) must not apply to the gate's lookup.
+    const { router } = renderApp('/', { defaultRetries: true })
+    const settingsCalls = () => backend.requests.filter((r) => r.path === '/api/settings?env=demo')
+    await waitFor(() => expect(settingsCalls()).toHaveLength(1))
+    await waitFor(() => expect(screen.queryByRole('status', { name: 'Checking your OKX connection…' })).toBeNull())
+    expect(router.state.location.pathname).not.toBe('/onboarding')
+    await act(() => new Promise((r) => setTimeout(r, 1200)))
+    expect(backend.requests.filter((r) => r.path === '/api/settings?env=demo')).toHaveLength(1)
   })
 
   it('renders both steps in Arabic, with arrows following the reading direction', async () => {

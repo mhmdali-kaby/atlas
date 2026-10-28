@@ -90,6 +90,9 @@ async function fakeApi(page: Page, { stale = false } = {}) {
     if (url.pathname === '/api/connections') {
       return json(200, { data: [{ id: 'c1', exchange: 'okx', env: 'demo', uid_last4: '4821', last_verified_at: new Date(NOW).toISOString() }] })
     }
+    if (url.pathname === '/api/settings') {
+      return json(200, { data: { env: 'demo', version: 3, settings: { risk_profile: 'balanced', autonomy_level: 2, onboarding_completed: 1 } } })
+    }
     return json(404, { message: 'Not found' })
   })
   return ranges
