@@ -55,7 +55,7 @@ function FrostedTooltip({ active, payload, lang, range }: TooltipContentProps<nu
       dir={lang === 'ar' ? 'rtl' : 'ltr'}
       className="vibrancy-popover grid gap-px whitespace-nowrap rounded-[10px] px-2.5 py-[7px] shadow-[var(--shadow-popover),0_0_0_0.5px_var(--hairline-color)]"
     >
-      <span className="fig text-caption text-label-secondary">{when}</span>
+      <span className="text-caption text-label-secondary">{when}</span>
       <span className="fig text-subheadline font-semibold text-label">{formatMoney(row.equity, 'USD', lang)}</span>
     </div>
   )

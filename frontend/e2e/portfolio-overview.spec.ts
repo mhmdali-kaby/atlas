@@ -174,6 +174,31 @@ test('switching to 1D refetches the curve with range=1D and shows the hover card
   await page.screenshot({ path: `${SHOTS}/overview-1D-hover.png` })
 })
 
+/*
+ * ATL-31 round 2 (QA finding): the equity-chart hover card's date line (FrostedTooltip's
+ * `when`, EquityChart.tsx) was wrapped in .fig like a figure, so it rendered LTR in Arabic.
+ * Fixed the same way as Positions and Cash flows: no fig on a date. The money line below it
+ * keeps fig, since it is a figure.
+ */
+test('the equity-chart hover card date reads RTL in Arabic, with no LTR isolate', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 860 })
+  await fakeApi(page)
+  await open(page, 'ar', 'light')
+  const chart = page.getByTestId('equity-chart')
+  const box = (await chart.boundingBox())!
+  await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5)
+  const tooltip = page.locator('.recharts-tooltip-wrapper .vibrancy-popover')
+  await expect(tooltip).toBeVisible()
+  const lines = tooltip.locator('span')
+  const dateLine = lines.first()
+  const moneyLine = lines.last()
+  await expect(dateLine).not.toHaveClass(/fig/)
+  await expect(dateLine).toHaveCSS('direction', 'rtl')
+  await expect(moneyLine).toHaveClass(/fig/)
+  await expect(moneyLine).toHaveCSS('direction', 'ltr')
+  await page.screenshot({ path: `${SHOTS}/overview-ar-hover.png` })
+})
+
 test('stale summary shows the warning pill', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 860 })
   await fakeApi(page, { stale: true })
