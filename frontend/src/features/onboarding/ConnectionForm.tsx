@@ -30,6 +30,8 @@ export interface ConnectionFormProps {
   idPrefix?: string
   /** The submit button's label; defaults to "Test connection" (Settings' sheets say "Save and test"). */
   submitLabel?: ReactNode
+  /** A Cancel button for a sheet: the actions row then sits at the inline end, Cancel first. */
+  cancel?: ReactNode
 }
 
 /**
@@ -46,6 +48,7 @@ export function ConnectionForm({
   hint,
   idPrefix = 'cf',
   submitLabel,
+  cancel,
 }: ConnectionFormProps) {
   const { t } = useTranslation('onboarding')
   const saveAndTest = useSaveAndTest(env)
@@ -161,7 +164,8 @@ export function ConnectionForm({
           error={errors.passphrase}
         />
       </div>
-      <div className="flex flex-wrap items-center gap-3.5">
+      <div className={cancel ? 'flex flex-wrap items-center justify-end gap-2' : 'flex flex-wrap items-center gap-3.5'}>
+        {cancel}
         <Button type="submit" variant="primary" icon={<Plug />} loading={testing}>
           {testing ? t('cf.testing') : (submitLabel ?? t('cf.test'))}
         </Button>

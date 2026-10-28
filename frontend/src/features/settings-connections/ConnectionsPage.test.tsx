@@ -187,6 +187,20 @@ describe('Settings → Connections', () => {
     expect(toastTitles()).toContain('Keys replaced')
   })
 
+  it('Replace keys keeps the sheet open with the mapped error when the new key fails', async () => {
+    fakeBackend({ mode: 'wrong' })
+    const user = userEvent.setup()
+    renderPage()
+    await user.click(await screen.findByRole('button', { name: 'Replace keys' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Replace the OKX demo keys' })
+    await user.type(within(sheet).getByLabelText('API key'), NEW_KEY)
+    await user.type(within(sheet).getByLabelText('Secret key'), 'NEW-SECRET-1')
+    await user.type(within(sheet).getByLabelText('Passphrase'), 'Wrong-pass')
+    await user.click(within(sheet).getByRole('button', { name: 'Save and test' }))
+    expect(await within(sheet).findByTestId('test-error')).toHaveTextContent('Key or passphrase is wrong')
+    expect(screen.getByRole('dialog')).toBeInTheDocument()
+  })
+
   it('Remove asks for the typed label, deletes the connection and shows Not connected', async () => {
     const state = fakeBackend()
     const user = userEvent.setup()

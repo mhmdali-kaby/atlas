@@ -149,23 +149,23 @@ function KeysSheet({
       icon={<KeyRound strokeWidth={1.5} />}
       title={replace ? t('rk.title') : t('ck.title')}
       description={replace ? t('rk.text') : t('ck.text')}
-      actions={
-        <SheetClose>
-          <Button variant="secondary">{t('cancel')}</Button>
-        </SheetClose>
-      }
     >
       {!replace && <KeyHelp />}
+      {failure && <TestFailure error={failure.error} okxCode={failure.okxCode} />}
       <div className="st-sheet-fields">
         <ConnectionForm
           connection={connection}
           idPrefix={replace ? 'rk' : 'ck'}
           submitLabel={t('rk.save')}
+          cancel={
+            <SheetClose>
+              <Button variant="secondary">{t('cancel')}</Button>
+            </SheetClose>
+          }
           onTestStart={() => setFailure(null)}
           onResult={onResult}
         />
       </div>
-      {failure && <TestFailure error={failure.error} okxCode={failure.okxCode} />}
     </Sheet>
   )
 }
