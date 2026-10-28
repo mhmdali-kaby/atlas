@@ -240,7 +240,10 @@ describe('Settings → Connections', () => {
     expect(await screen.findByRole('heading', { level: 1, name: 'الاتصالات' })).toBeInTheDocument()
     expect(await screen.findByRole('button', { name: 'إعادة الاختبار' })).toBeInTheDocument()
     expect(screen.getByTestId('key-tail')).toHaveTextContent('•••• ab12')
-    expect(screen.getByTestId('last-verified').textContent).toMatch(/11:00/)
+    const verifiedAt = screen.getByTestId('last-verified')
+    expect(verifiedAt.textContent).toMatch(/^28 .*2026، 11:00$/)
+    // A date is read in the Arabic order, so it must not be the LTR-isolated .fig used for figures.
+    expect(verifiedAt).not.toHaveClass('fig')
     expect(document.documentElement.dir).toBe('rtl')
   })
 })

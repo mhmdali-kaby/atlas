@@ -77,7 +77,6 @@ export function ConnectedView({ connection, onRemoved }: { connection: Connectio
         key="verified"
         dateTime={connection.last_verified_at}
         title={t('conn.verifiedTip')}
-        className="fig"
         data-testid="last-verified"
       >
         {formatDayTime(connection.last_verified_at, lang, true)}
