@@ -102,4 +102,70 @@ return [
         'account_interval_seconds' => 60,
         'bills_interval_seconds' => 300,
     ],
+    'okx_rest' => [
+        'timeout_seconds' => 10,
+        'max_attempts' => 3,
+        'backoff_base_seconds' => '0.5',
+        'backoff_max_seconds' => '8',
+        'clock_sync_interval_seconds' => 600,
+        'retryable_codes' => [
+            '50001',
+            '50011',
+            '50013',
+        ],
+        'rate_limits' => [
+            'public/time' => [
+                'requests' => 10,
+                'per_seconds' => 2,
+            ],
+            'public/instruments' => [
+                'requests' => 20,
+                'per_seconds' => 2,
+            ],
+            'market/tickers' => [
+                'requests' => 20,
+                'per_seconds' => 2,
+            ],
+            'account/config' => [
+                'requests' => 5,
+                'per_seconds' => 2,
+            ],
+            'account/balance' => [
+                'requests' => 10,
+                'per_seconds' => 2,
+            ],
+            'account/positions' => [
+                'requests' => 10,
+                'per_seconds' => 2,
+            ],
+            'account/positions-history' => [
+                'requests' => 10,
+                'per_seconds' => 10,
+            ],
+            'account/bills' => [
+                'requests' => 5,
+                'per_seconds' => 1,
+            ],
+            'account/bills-archive' => [
+                'requests' => 5,
+                'per_seconds' => 2,
+            ],
+            'account/trade-fee' => [
+                'requests' => 5,
+                'per_seconds' => 2,
+            ],
+            'asset/balances' => [
+                'requests' => 6,
+                'per_seconds' => 1,
+            ],
+            'asset/deposit-history' => [
+                'requests' => 6,
+                'per_seconds' => 1,
+            ],
+            'asset/withdrawal-history' => [
+                'requests' => 6,
+                'per_seconds' => 1,
+            ],
+        ],
+    ],
 ];
