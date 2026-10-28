@@ -1,0 +1,40 @@
+# Atlas local infrastructure. Everything binds to 127.0.0.1 (brief §18).
+# The application processes (API, Reverb, bridge, Horizon, scheduler,
+# trading_core, SPA) run natively on the Mac under `./atlas up`.
+name: atlas
+
+services:
+  postgres:
+    image: timescale/timescaledb-ha:pg16   # Postgres 16 + TimescaleDB + pgvector, arm64
+    environment:
+      POSTGRES_USER: atlas
+      POSTGRES_PASSWORD: ${ATLAS_DB_PASSWORD:-atlas}
+      POSTGRES_DB: atlas
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - pgdata:/home/postgres/pgdata
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atlas -d atlas"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "512mb", "--maxmemory-policy", "noeviction"]
+    ports:
+      - "127.0.0.1:6380:6379"
+    volumes:
+      - redisdata:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  pgdata:
+  redisdata:
