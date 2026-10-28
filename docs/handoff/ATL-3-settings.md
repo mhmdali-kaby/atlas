@@ -39,6 +39,7 @@ JSON key = the key inside `settings` in responses and inside `changes` in PATCH.
 | `min_24h_volume_usd_stock_perp` | decimal string | 0 ≤ x ≤ 1e12 | `"5000000"` |
 | `min_24h_volume_usd_commodity_perp` | decimal string | 0 ≤ x ≤ 1e12 | `"5000000"` |
 | `min_24h_volume_usd_spot` | decimal string | 0 ≤ x ≤ 1e12 | `"10000000"` |
+| `onboarding_completed` | int | 0–1 | `0` (set to 1 by onboarding's Finish setup, ATL-19) |
 
 Decimal strings must match `^\d{1,15}(\.\d{1,8})?$` (no sign, no exponent). The source of these
 ranges is `App\Support\Settings\SettingsSchema::NUMERIC_FIELDS`; the brief gives percentages, leverage,
