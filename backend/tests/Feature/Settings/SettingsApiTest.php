@@ -168,6 +168,8 @@ it('rejects out-of-range values with a field error', function (array $changes, s
     'instruments 11' => [['max_instruments_per_day' => 11], 'max_instruments_per_day'],
     'instruments 0' => [['max_instruments_per_day' => 0], 'max_instruments_per_day'],
     'unknown profile' => [['risk_profile' => 'yolo'], 'risk_profile'],
+    'onboarding_completed 2' => [['onboarding_completed' => 2], 'onboarding_completed'],
+    'onboarding_completed as a bool' => [['onboarding_completed' => true], 'onboarding_completed'],
 ]);
 
 it('accepts the range boundaries', function (): void {
@@ -263,4 +265,21 @@ it('requires authentication', function (): void {
     $this->patchJson('/api/settings', ['env' => 'demo', 'version' => 1, 'changes' => ['max_leverage' => 3]])
         ->assertUnauthorized();
     $this->getJson('/api/settings/history')->assertUnauthorized();
+});
+
+it('records onboarding completion as a new version even when the owner keeps every default', function (): void {
+    $this->getJson('/api/settings?env=demo')
+        ->assertOk()
+        ->assertJsonPath('data.settings.onboarding_completed', 0);
+
+    // Balanced and level 2 are the defaults, so only the flag changes; the version still moves.
+    $this->patchJson('/api/settings', ['env' => 'demo', 'version' => 1, 'changes' => [
+        'risk_profile' => 'balanced',
+        'autonomy_level' => 2,
+        'onboarding_completed' => 1,
+    ]])
+        ->assertOk()
+        ->assertJsonPath('data.version', 2)
+        ->assertJsonPath('data.settings.risk_profile', 'balanced')
+        ->assertJsonPath('data.settings.onboarding_completed', 1);
 });
