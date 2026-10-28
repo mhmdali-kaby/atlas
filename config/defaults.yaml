@@ -96,6 +96,12 @@ sync:
   account_interval_seconds: 60
   bills_interval_seconds: 300
 
+# ATL-13, brief §18: `php artisan atlas:doctor` thresholds.
+doctor:
+  max_clock_drift_ms: 2000
+  min_free_disk_gb: 5
+  trading_core_timeout_seconds: 5
+
 # ATL-10: account sync. Funding-account coins are valued in USD with OKX SPOT tickers
 # (<CCY>-<quote> last price, quotes tried in order). Stablecoins count 1:1 with USD in Phase 0.
 account_sync:

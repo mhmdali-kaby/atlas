@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from importlib.metadata import PackageNotFoundError, version
 from typing import Any
 
@@ -21,6 +22,8 @@ from sqlalchemy import Engine
 from trading_core.config import Settings
 from trading_core.connection_test import router as connection_test_router
 from trading_core.logs import AccessLogMiddleware
+from trading_core.okx.client import OkxClient
+from trading_core.okx.errors import OkxClientError, OkxError, OkxNetworkError
 from trading_core.scheduler import Scheduler
 from trading_core.security import PROTECTED_PREFIX, InternalSignatureMiddleware
 from trading_core.sync.account import STREAM as ACCOUNT_JOB
@@ -42,6 +45,42 @@ internal_router = APIRouter(prefix=PROTECTED_PREFIX)
 async def internal_ping() -> dict[str, bool]:
     """Signed no-op, so Laravel can check the shared secret end to end."""
     return {"ok": True}
+
+
+def _public_client(env: str) -> OkxClient:
+    return OkxClient(env)
+
+
+@internal_router.get("/time", response_model=None)
+async def okx_time(request: Request) -> dict[str, Any] | JSONResponse:
+    """OKX ``public/time`` for the active env and this Mac's clock drift from it (atlas:doctor, ATL-13).
+
+    ``offset_ms`` is server minus local (midpoint of the round trip); ``drift_ms`` is its absolute value.
+    Tests override the client with ``app.state.okx_public_client_factory``.
+    """
+    settings: Settings = request.app.state.settings
+    factory = getattr(request.app.state, "okx_public_client_factory", _public_client)
+    try:
+        async with factory(settings.env) as okx:
+            offset_ms = await okx.sync_clock()
+    except OkxNetworkError:
+        return JSONResponse(status_code=502, content={"ok": False, "error": "okx_unreachable"})
+    except OkxError as exc:
+        return JSONResponse(
+            status_code=502, content={"ok": False, "error": "okx_error", "okx_code": exc.code}
+        )
+    except OkxClientError:
+        return JSONResponse(status_code=502, content={"ok": False, "error": "okx_error"})
+    local = datetime.now(UTC)
+    server_ms = int(local.timestamp() * 1000) + offset_ms
+    return {
+        "ok": True,
+        "env": settings.env,
+        "server_time": datetime.fromtimestamp(server_ms / 1000, UTC).isoformat().replace("+00:00", "Z"),
+        "local_time": local.isoformat().replace("+00:00", "Z"),
+        "offset_ms": offset_ms,
+        "drift_ms": abs(offset_ms),
+    }
 
 
 @internal_router.post("/sync/instruments", response_model=None)
