@@ -28,6 +28,8 @@ from trading_core.scheduler import Scheduler
 from trading_core.security import PROTECTED_PREFIX, InternalSignatureMiddleware
 from trading_core.sync.account import STREAM as ACCOUNT_JOB
 from trading_core.sync.account import account_job
+from trading_core.sync.bills import STREAM as BILLS_JOB
+from trading_core.sync.bills import bills_job
 from trading_core.sync.instruments import STREAM as INSTRUMENTS_JOB
 from trading_core.sync.instruments import instruments_job
 
@@ -127,6 +129,31 @@ async def sync_account_now(request: Request) -> dict[str, Any] | JSONResponse:
     return {"ok": True, **result}
 
 
+@internal_router.post("/sync/bills", response_model=None)
+async def sync_bills_now(request: Request) -> dict[str, Any] | JSONResponse:
+    """Re-sync now: bills, deposits and withdrawals for the active env (409 if no verified
+    connection)."""
+    scheduler: Scheduler = request.app.state.scheduler
+    try:
+        result: dict[str, Any] = await scheduler.run_now(BILLS_JOB)
+    except Exception as exc:
+        logger.warning("bills sync failed", extra={"error": type(exc).__name__})
+        return JSONResponse(
+            status_code=502,
+            content={
+                "ok": False,
+                "error": "bills_sync_failed",
+                "detail": f"{type(exc).__name__}: {exc}",
+            },
+        )
+    if result.get("skipped"):
+        return JSONResponse(
+            status_code=409,
+            content={"ok": False, "error": result["reason"], "env": result["env"]},
+        )
+    return {"ok": True, **result}
+
+
 def default_scheduler(settings: Settings, engine: Engine | None = None) -> Scheduler:
     """The jobs trading_core runs in production."""
     scheduler = Scheduler()
@@ -140,6 +167,11 @@ def default_scheduler(settings: Settings, engine: Engine | None = None) -> Sched
         ACCOUNT_JOB,
         DEFAULTS["sync"]["account_interval_seconds"],
         account_job(settings.env, engine, settings.app_key),
+    )
+    scheduler.add(
+        BILLS_JOB,
+        DEFAULTS["sync"]["bills_interval_seconds"],
+        bills_job(settings.env, engine, settings.app_key),
     )
     return scheduler
 
