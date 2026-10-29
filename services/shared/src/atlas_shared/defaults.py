@@ -674,5 +674,28 @@ DEFAULTS: Final[dict[str, Any]] = {
         "default_asset_class": "crypto",
         "atr_window": 14,
         "hour_table_timezone": "Asia/Baghdad",
+        "analogs": {
+            "k": 20,
+            "horizons": [
+                "1h",
+                "4h",
+                "24h",
+                "72h",
+            ],
+            "weights": {
+                "returns_path": "1",
+                "realised_vol": "1",
+                "volume_z": "1",
+                "funding": "1",
+            },
+        },
+        "seasonality": {
+            "funding_hours_utc": [
+                0,
+                8,
+                16,
+            ],
+            "funding_window_hours": 2,
+        },
     },
 }
