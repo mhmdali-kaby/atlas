@@ -287,6 +287,14 @@ data_api:
   repaired_issue_days: 7
   quality_issue_limit: 500
 
+# ATL-66: Settings → Data sources API. The owner may set a source's poll interval only inside
+# these bounds; writes (toggle, poll, set/remove key) are throttled per user.
+data_sources_api:
+  poll_seconds_min: 60
+  poll_seconds_max: 86400
+  api_key_max_length: 255
+  writes_per_minute: 20
+
 # ATL-57: news and calendar ingest (brief §7.2, decision #243). kind = transport
 # (rss|api|calendar|earnings|sentiment); category = topic the UI groups by (exchange|crypto_news|
 # markets_news|calendar|earnings|sentiment). NewsSourcesSeeder inserts one
@@ -307,6 +315,22 @@ news:
     timeout_seconds: 8
     max_bytes: 2000000
     max_per_poll: 25
+  # ATL-60: API collectors. Provider terms could not be re-read at build time (no network); the
+  # values below follow the providers' published free tiers and are recorded in each module's
+  # docstring. Finnhub's free tier allows 60 calls/minute per key (and 30/second); finnhub.news
+  # spends at most max_calls_per_poll of them per poll (1 general + the rest company news,
+  # rotating through the stock/ETF underlyings), leaving room for finnhub.calendar/earnings on the
+  # same key. A 429 delays the source's next poll by Retry-After, else rate_limit_window_seconds.
+  collectors:
+    finnhub:
+      max_calls_per_poll: 20
+      request_interval_seconds: "0.25"
+      company_news_days: 2
+      rate_limit_window_seconds: 60
+    cryptopanic:
+      rate_limit_window_seconds: 60
+    okx_announcements:
+      language: en-US
   # Per-symbol feed templates expand {symbol} for every stock/ETF perp underlying in instruments.
   sources:
     okx.announcements: { kind: api, category: exchange, name: OKX announcements, url: "https://www.okx.com/api/v5/support/announcements", poll_seconds: 120, requires_key: false }
@@ -399,3 +423,16 @@ news:
     high_novelty_bonus: 1
     low_novelty: "0.15"
     low_novelty_penalty: 1
+
+  # ATL-67: read-only /api/news, /api/news/clusters/{id}, /api/calendar, /api/sentiment/latest.
+  # Earnings rows carry a date plus Finnhub's hour hint; the calendar places bmo/amc at these
+  # US/Eastern wall-clock times (DST handled by Postgres), and dmh/unknown at 00:00 UTC.
+  api:
+    page_limit_default: 50
+    page_limit_max: 100
+    max_inst_ids: 50
+    calendar_default_hours: 48
+    earnings_timezone: America/New_York
+    earnings_bmo_time: "09:30"
+    earnings_amc_time: "16:00"
+    default_sentiment_index: crypto_fng

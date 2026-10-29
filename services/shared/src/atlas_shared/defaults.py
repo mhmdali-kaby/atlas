@@ -396,6 +396,12 @@ DEFAULTS: Final[dict[str, Any]] = {
         "repaired_issue_days": 7,
         "quality_issue_limit": 500,
     },
+    "data_sources_api": {
+        "poll_seconds_min": 60,
+        "poll_seconds_max": 86400,
+        "api_key_max_length": 255,
+        "writes_per_minute": 20,
+    },
     "news": {
         "failure_threshold": 3,
         "disable_minutes": 30,
@@ -405,6 +411,20 @@ DEFAULTS: Final[dict[str, Any]] = {
             "timeout_seconds": 8,
             "max_bytes": 2000000,
             "max_per_poll": 25,
+        },
+        "collectors": {
+            "finnhub": {
+                "max_calls_per_poll": 20,
+                "request_interval_seconds": "0.25",
+                "company_news_days": 2,
+                "rate_limit_window_seconds": 60,
+            },
+            "cryptopanic": {
+                "rate_limit_window_seconds": 60,
+            },
+            "okx_announcements": {
+                "language": "en-US",
+            },
         },
         "sources": {
             "okx.announcements": {
@@ -585,6 +605,16 @@ DEFAULTS: Final[dict[str, Any]] = {
             "high_novelty_bonus": 1,
             "low_novelty": "0.15",
             "low_novelty_penalty": 1,
+        },
+        "api": {
+            "page_limit_default": 50,
+            "page_limit_max": 100,
+            "max_inst_ids": 50,
+            "calendar_default_hours": 48,
+            "earnings_timezone": "America/New_York",
+            "earnings_bmo_time": "09:30",
+            "earnings_amc_time": "16:00",
+            "default_sentiment_index": "crypto_fng",
         },
     },
 }

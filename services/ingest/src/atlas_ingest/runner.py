@@ -10,7 +10,8 @@ Outcomes: success resets ``consecutive_failures`` and ``last_error`` and sets ``
 a failure increments the counter and stores a short ``last_error`` (an HTTP status, an exception
 class name or a CollectError message, never a URL or key); reaching ``failure_threshold`` sets
 ``disabled_until = now + disable_minutes``. After the window the source is tried again; one more
-failure disables it again straight away, one success resets it.
+failure disables it again straight away, one success resets it. A collector raising
+``RateLimited`` (HTTP 429) is one failure, and the next poll waits at least its retry window.
 """
 
 from __future__ import annotations
@@ -27,7 +28,14 @@ from atlas_shared.laravel_crypt import decrypt_string
 from sqlalchemy import Engine
 
 from atlas_ingest import sources as db
-from atlas_ingest.collectors import CollectContext, CollectError, Collector, SourceConfig, factory_for
+from atlas_ingest.collectors import (
+    CollectContext,
+    CollectError,
+    Collector,
+    RateLimited,
+    SourceConfig,
+    factory_for,
+)
 from atlas_ingest.pipeline import Pipeline
 
 logger = logging.getLogger("atlas_ingest.runner")
@@ -74,6 +82,7 @@ class IngestRunner:
         config: RunnerConfig,
         app_key: str,
         clock: Clock = utcnow,
+        env: str | None = None,
     ) -> None:
         self.engine = engine
         self.http = http
@@ -81,6 +90,12 @@ class IngestRunner:
         self.config = config
         self._app_key = app_key
         self.clock = clock
+        if env is None:
+            from atlas_ingest.aliases import active_env
+
+            env = active_env()
+        self.env = env
+        """The active env: per-symbol collectors only see this env's stock/ETF instruments."""
         self._sources: dict[str, db.SourceRow] = {}
         self._next_due: dict[str, datetime] = {}
         self._loaded_at: datetime | None = None
@@ -191,12 +206,17 @@ class IngestRunner:
             ctx = CollectContext(
                 http=self.http,
                 now=now,
-                stock_symbols=lambda: asyncio.to_thread(db.stock_symbols, self.engine),
+                stock_symbols=lambda: asyncio.to_thread(db.stock_symbols, self.engine, self.env),
             )
             items = await collector.collect(source, ctx)
             result = await self.pipeline.process(row.key, items, now)
         except Exception as exc:
             error = short_error(exc, secret)
+            if isinstance(exc, RateLimited):
+                # Honour the provider's window even when poll_seconds is shorter.
+                self._next_due[key] = max(
+                    self._next_due[key], now + timedelta(seconds=exc.retry_after_seconds)
+                )
             failures, disabled_until = await asyncio.to_thread(
                 db.record_failure,
                 self.engine,

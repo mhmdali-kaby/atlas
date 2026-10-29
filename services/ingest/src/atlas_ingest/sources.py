@@ -94,12 +94,14 @@ def record_failure(
     return (int(row[0]), row[1]) if row is not None else (0, None)
 
 
-def stock_symbols(engine: Engine) -> list[str]:
-    """Underlyings of every live stock/ETF instrument in any env (``TSLA-USDT-SWAP`` → ``TSLA``)."""
+def stock_symbols(engine: Engine, env: str | None = None) -> list[str]:
+    """Underlyings of every live stock/ETF instrument (``TSLA-USDT-SWAP`` → ``TSLA``), limited to
+    ``env`` when given (the runner passes its active env)."""
+    stmt = select(Instrument.inst_id).where(
+        Instrument.asset_class.in_(("stock", "etf")), Instrument.state == "live"
+    )
+    if env is not None:
+        stmt = stmt.where(Instrument.env == env)
     with engine.connect() as conn:
-        ids = conn.execute(
-            select(Instrument.inst_id).where(
-                Instrument.asset_class.in_(("stock", "etf")), Instrument.state == "live"
-            )
-        ).scalars()
+        ids = conn.execute(stmt).scalars()
         return sorted({inst_id.split("-", 1)[0] for inst_id in ids if inst_id})
