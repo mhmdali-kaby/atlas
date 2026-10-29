@@ -1,0 +1,122 @@
+{
+  "sidebar": {
+    "agents": "Agents",
+    "threads": "Threads",
+    "allOffline": "All offline",
+    "threadsError": "Couldn’t load threads",
+    "loadingThreads": "Loading threads"
+  },
+  "agents": {
+    "orchestrator": {
+      "name": "Orchestrator",
+      "role": "Runs the process and answers you first"
+    },
+    "market_scout": {
+      "name": "Market Scout",
+      "role": "Picks what the team watches each day"
+    },
+    "news_intelligence": {
+      "name": "News Intelligence",
+      "role": "Reads the news and the event calendar"
+    },
+    "historian": {
+      "name": "Historian",
+      "role": "Answers with statistics from history"
+    },
+    "technical_analyst": {
+      "name": "Technical Analyst",
+      "role": "Turns charts into levels and plans"
+    },
+    "derivatives_sentiment": {
+      "name": "Derivatives & Sentiment",
+      "short": "Derivatives",
+      "role": "Reads funding, open interest and crowding"
+    },
+    "strategist": {
+      "name": "Strategist",
+      "role": "Writes the trade proposals"
+    },
+    "devils_advocate": {
+      "name": "Devil’s Advocate",
+      "role": "Finds the strongest reasons not to trade"
+    },
+    "portfolio_manager": {
+      "name": "Portfolio Manager",
+      "role": "Manages positions after entry"
+    }
+  },
+  "status": {
+    "offline": "Offline",
+    "idle": "Idle",
+    "thinking": "Thinking",
+    "waiting": "Waiting",
+    "degraded": "Degraded",
+    "paused": "Paused"
+  },
+  "agentLabel": "{{name}}, {{status}}",
+  "tag": {
+    "CONFIRMED": "CONFIRMED",
+    "REPORTED": "REPORTED",
+    "RUMOUR": "RUMOUR"
+  },
+  "main": "Main",
+  "mainSub": "Everyone: you and 9 agents",
+  "instSub": "Instrument thread",
+  "agentSub": "Private thread",
+  "today": "Today",
+  "yesterday": "Yesterday",
+  "feed": "Messages in {{thread}}",
+  "you": "You",
+  "atlas": "Atlas",
+  "messageLabel": "{{name}}, {{time}}",
+  "jumpTo": "Show the message {{name}} wrote",
+  "loading": "Loading messages",
+  "loadingOlder": "Loading earlier messages",
+  "olderError": "Couldn’t load earlier messages.",
+  "tryAgain": "Try again",
+  "origin": {
+    "title": "This is the start of {{thread}}",
+    "body": "Created {{date}}. Atlas keeps every message here, with its time."
+  },
+  "empty": {
+    "title": "No messages yet",
+    "body": "Messages from you, the agents and Atlas appear here, newest at the bottom. Write the first one below.",
+    "instTitle": "Nothing about {{inst}} yet",
+    "instBody": "Agents open a thread for each instrument they watch. Write below to start this one."
+  },
+  "error": {
+    "title": "Couldn’t load messages",
+    "bodyBefore": "Atlas’s server didn’t answer. Check that Atlas is running with",
+    "bodyAfter": ", then try again."
+  },
+  "inspector": "Inspector",
+  "toggleInspector": "Show or hide the inspector",
+  "chart": "Price chart",
+  "chartEmpty": {
+    "title": "No price history yet",
+    "bodyBefore": "The candle chart for",
+    "bodyAfter": "appears here once Atlas records its market data."
+  },
+  "facts": "Thread",
+  "started": "Started",
+  "lastMessage": "Last message",
+  "none": "None",
+  "agent": {
+    "status": "Status",
+    "handle": "Mention as",
+    "role": "Role"
+  },
+  "kind": {
+    "watchlist": "Watchlist",
+    "research_report": "Research report",
+    "news_alert": "News alert",
+    "proposal": "Proposal",
+    "vote_summary": "Vote summary",
+    "risk_check": "Risk check",
+    "order": "Order",
+    "fill": "Fill",
+    "position_update": "Position update",
+    "post_mortem": "Post-mortem",
+    "system_alert": "System alert"
+  }
+}

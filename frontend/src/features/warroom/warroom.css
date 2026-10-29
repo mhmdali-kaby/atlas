@@ -1,0 +1,284 @@
+/* ==========================================================================
+   War Room (brief §12; design v4 "Atlas design system: War Room", css/warroom.css).
+   Agents write documents on the page; the owner speaks in bubbles at the
+   inline end. An agent's colour lives in its ring and nowhere else.
+   Logical properties only; colours only through tokens.
+   ========================================================================== */
+
+/* ---- The page fills the shell's content area (no page padding, no page scroll) ---- */
+.shell-content:has(> .shell-page > .wr) { overflow: hidden; }
+.shell-page:has(> .wr) { max-width: none; height: 100%; padding: 0; }
+
+/* ---- Agent medallion ---------------------------------------------------- */
+.medal {
+  --s: 32px;
+  position: relative; display: inline-grid; place-items: center; flex-shrink: 0;
+  width: var(--s); height: var(--s);
+}
+.medal-ring { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.medal-ring circle { fill: none; stroke: var(--ring, var(--neutral)); stroke-width: 1.5; transform-origin: 50% 50%; }
+.medal-disc {
+  width: calc(var(--s) - 7px); height: calc(var(--s) - 7px); border-radius: 50%;
+  display: grid; place-items: center; color: var(--label);
+  background: var(--medal-disc); box-shadow: inset 0 0 0 0.5px var(--hairline-color);
+}
+.medal-glyph { width: calc(var(--s) * 0.47); height: calc(var(--s) * 0.47); }
+.medal.is-atlas .medal-disc { background: none; box-shadow: none; }
+.medal[data-status='offline'] .medal-ring { opacity: 0.38; }
+.medal[data-status='offline'] .medal-disc { color: var(--label-secondary); }
+.medal[data-status='thinking'] .medal-ring circle { stroke-dasharray: 0.7 0.3; animation: wr-ring-turn 1.6s linear infinite; }
+@keyframes wr-ring-turn { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .medal[data-status='thinking'] .medal-ring circle { animation: none; stroke-dasharray: 0.06 0.04; }
+}
+
+/* status dot, bottom inline-end of the medallion (sidebar only) */
+.st {
+  position: absolute; inset-inline-end: -2px; bottom: -2px;
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--status-idle); box-shadow: 0 0 0 2px var(--dot-cutout);
+}
+.st[data-status='thinking'] { background: var(--status-thinking); }
+.st[data-status='waiting'] { background: var(--status-waiting); }
+.st[data-status='degraded'] { background: var(--status-degraded); }
+.st[data-status='paused'] { background: var(--status-paused); }
+.st[data-status='offline'] { background: var(--dot-cutout); box-shadow: inset 0 0 0 1.5px var(--status-offline), 0 0 0 2px var(--dot-cutout); }
+
+/* ---- Sidebar: agents and threads (a size container for the narrow sidebar) ---- */
+.side-section { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; container: side / inline-size; }
+.side-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  padding: 0 10px 4px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 600; color: var(--label-secondary);
+}
+.side-note { font-weight: 500; font-size: var(--fs-caption); }
+.side-error { padding: 4px 10px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.agent-row, .thread-row {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding-inline: 8px 10px; border-radius: 9px; text-align: start; color: var(--label); text-decoration: none;
+}
+.agent-row { min-height: 44px; padding-block: 5px; }
+.thread-row { min-height: 34px; padding-block: 5px; }
+.agent-row:hover, .thread-row:hover { background: var(--fill-4); text-decoration: none; }
+.agent-row:focus-visible, .thread-row:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.thread-row[aria-current='page'] { background: var(--selection); }
+.thread-row[aria-current='page'] .thread-title { font-weight: 600; }
+.agent-text { display: grid; min-width: 0; flex: 1; }
+.agent-name {
+  font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); letter-spacing: var(--tr-subheadline); font-weight: 500;
+  white-space: nowrap;
+}
+.agent-sub { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--label-secondary); min-width: 0; }
+.agent-task { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.agent-row[data-status='offline'] .agent-name { color: var(--label-secondary); }
+.thread-lead { width: 22px; height: 22px; display: grid; place-items: center; flex-shrink: 0; }
+.thread-lead-icon { width: 17px; height: 17px; color: var(--accent); }
+.mono-tile {
+  display: grid; place-items: center; flex-shrink: 0; width: 22px; height: 22px; border-radius: 6px;
+  background: var(--bg-secondary); box-shadow: inset 0 0 0 0.5px var(--hairline-color);
+  font-family: var(--font-stack-num); font-size: 7.5px; font-weight: 700; color: var(--label); overflow: hidden;
+}
+/* A thread row never cuts its name: the time drops under it when both don't fit. */
+.thread-text { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; column-gap: 8px; }
+.thread-title {
+  display: inline-flex; align-items: center; gap: 5px; min-width: 0; max-width: 100%;
+  font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); letter-spacing: var(--tr-subheadline); overflow-wrap: anywhere;
+}
+.thread-title .inst-tok { white-space: normal; }
+.thread-time { font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--label-secondary); white-space: nowrap; }
+.thread-lock { width: 12px; height: 12px; color: var(--label-secondary); flex-shrink: 0; }
+.agent-name .name-short { display: none; }
+@container side (max-width: 220px) {
+  .thread-time { flex-basis: 100%; }
+  .agent-name.has-short .name-full { display: none; }
+  .agent-name.has-short .name-short { display: inline; }
+}
+.side-skel { display: flex; align-items: center; gap: 10px; height: 34px; padding-inline: 8px; }
+
+/* Instrument IDs: the base in full ink, the rest secondary. */
+.inst-tok { font-weight: 600; direction: ltr; unicode-bidi: isolate; white-space: nowrap; }
+.inst-tok .inst-rest { color: var(--label-secondary); }
+
+/* ---- Layout ------------------------------------------------------------- */
+.wr { position: relative; height: 100%; display: flex; min-height: 0; }
+.wr-pane { position: relative; flex: 1; min-width: 0; display: flex; flex-direction: column; min-height: 0; }
+.wr-scroller {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  scroll-padding-block: 24px 140px;
+}
+.wr-scroller:focus-visible { outline: none; box-shadow: inset 0 0 0 3px var(--accent-wash); }
+.wr-column { max-width: calc(var(--feed-max) + 64px); margin: 0 auto; padding-inline: 32px; }
+.wr-pane > .wr-column { padding-block: 18px 148px; overflow-y: auto; flex: 1; width: 100%; }
+.wr-sizer { position: relative; width: 100%; }
+.wr-row { position: absolute; top: 0; inset-inline: 0; }
+
+/* ---- Inspector ---------------------------------------------------------- */
+.inspector {
+  width: var(--inspector-width); flex-shrink: 0; margin-block: 2px 8px; margin-inline: 0 8px;
+  display: flex; flex-direction: column; min-height: 0; overflow: auto;
+  border-radius: var(--radius-panel);
+  background: var(--material-sidebar);
+  -webkit-backdrop-filter: var(--material-filter); backdrop-filter: var(--material-filter);
+  box-shadow: var(--shadow-sidebar), var(--glass-edge), 0 0 0 0.5px var(--hairline-color);
+}
+.insp-head { padding: 18px 18px 14px; display: grid; gap: 4px; }
+.insp-name { overflow-wrap: anywhere; }
+.insp-kind { display: flex; align-items: center; gap: 6px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.insp-kind svg { width: 14px; height: 14px; }
+.insp-sec { padding: 14px 18px; border-top: 0.5px solid var(--separator); display: grid; gap: 10px; }
+.insp-title { font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 600; color: var(--label-secondary); display: flex; justify-content: space-between; align-items: baseline; }
+.insp-facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); }
+.insp-facts dt { color: var(--label-secondary); }
+.insp-facts dd { text-align: end; font-weight: 500; }
+.insp-empty {
+  display: grid; justify-items: center; text-align: center; gap: 6px; padding: 22px 8px 18px; border-radius: 12px;
+  background: var(--fill-4); box-shadow: inset 0 0 0 0.5px var(--hairline-color);
+}
+.insp-empty > svg { width: 22px; height: 22px; color: var(--label-secondary); }
+.insp-empty p { font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); max-width: 26ch; text-wrap: balance; }
+.insp-empty .insp-empty-title { font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); color: var(--label); font-weight: 600; }
+.insp-agent { display: flex; gap: 12px; align-items: center; }
+.insp-role { font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+
+/* ---- Feed: day separators, top of thread, states ------------------------ */
+.wr-day { display: flex; justify-content: center; padding: 22px 0 10px; }
+.wr-day span {
+  display: inline-flex; align-items: center; height: 24px; padding-inline: 10px; border-radius: var(--radius-full);
+  font-size: var(--fs-footnote); font-weight: 600; color: var(--label-secondary); background: var(--fill-4);
+}
+.wr-top { display: grid; justify-items: center; gap: 6px; padding: 8px 0 6px; text-align: center; }
+.wr-top-line { display: inline-flex; align-items: center; gap: 8px; min-height: 20px; font-size: var(--fs-footnote); color: var(--label-secondary); }
+.wr-origin { display: grid; justify-items: center; gap: 8px; padding: 26px 0 8px; text-align: center; }
+.wr-origin .text-headline { margin-top: 4px; }
+.wr-origin p:last-child { font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); max-width: 46ch; text-wrap: balance; }
+.wr-origin-medals { display: flex; }
+.wr-origin-medals .medal { margin-inline-start: -6px; border-radius: 50%; background: var(--bg); }
+.wr-origin-medals .medal:first-child { margin-inline-start: 0; }
+
+.state-block { display: grid; justify-items: center; text-align: center; gap: 10px; padding: 12vh 24px 64px; max-width: 520px; margin: 0 auto; }
+.state-icon {
+  width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; margin-bottom: 6px;
+  background: var(--fill-4); color: var(--label-secondary); box-shadow: inset 0 0 0 0.5px var(--hairline-color);
+}
+.state-icon svg { width: 28px; height: 28px; }
+.state-icon.is-error { background: var(--loss-wash); color: var(--loss-ink); }
+.state-body { max-width: 44ch; text-wrap: balance; font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); color: var(--label-secondary); }
+.state-block button { margin-top: 8px; }
+.state-body .cmd { display: inline-block; padding: 1px 6px; border-radius: 6px; background: var(--fill-3); color: var(--label); direction: ltr; unicode-bidi: isolate; white-space: nowrap; }
+
+/* ---- Messages: shared --------------------------------------------------- */
+.msg {
+  position: relative; display: grid; grid-template-columns: 32px minmax(0, 1fr); column-gap: 12px;
+  padding: 6px 10px; margin-inline: -10px; border-radius: 12px; margin-top: 12px;
+}
+.msg:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.msg.is-cont { margin-top: 0; padding-top: 2px; }
+.msg.is-active { background: var(--fill-4); }
+.msg.is-flash { animation: wr-flash 1.6s var(--ease-out); }
+@keyframes wr-flash { 0%, 30% { background: var(--flash); } 100% { background: transparent; } }
+.msg-gutter { display: flex; justify-content: center; padding-top: 1px; }
+.msg-time-hover { visibility: hidden; font-size: 11px; line-height: 22px; color: var(--label-secondary); }
+.msg.is-cont.is-active .msg-time-hover { visibility: visible; }
+.msg-main { min-width: 0; }
+.msg-head { display: flex; align-items: baseline; gap: 8px; margin-bottom: 1px; }
+.msg-author { font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); letter-spacing: var(--tr-subheadline); font-weight: 600; }
+.msg-time { font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--label-secondary); font-variant-numeric: tabular-nums; cursor: default; }
+
+/* body copy: 15/23, readable line length */
+.md { font-size: var(--fs-message); line-height: var(--lh-message); letter-spacing: var(--tr-message); max-width: 68ch; overflow-wrap: anywhere; }
+.md > * + * { margin-top: 8px; }
+.md strong { font-weight: 600; }
+.md ul, .md ol { padding-inline-start: 22px; display: grid; gap: 3px; }
+.md ul { list-style: disc; }
+.md ol { list-style: decimal; }
+.md li::marker { color: var(--label-secondary); }
+.md code { padding: 1px 5px; border-radius: 5px; background: var(--fill-3); font-family: var(--font-stack-mono); font-size: 0.86em; direction: ltr; unicode-bidi: isolate; }
+.mention {
+  display: inline-block; padding: 0 4px; border-radius: 5px; font-weight: 600; line-height: 1.35;
+  color: var(--agent-ink); background: var(--agent-wash);
+}
+bdi.fig, bdi.tok { white-space: nowrap; }
+.status-tag {
+  display: inline-flex; padding: 0 5px; border-radius: 5px; font-size: 0.8em; font-weight: 700; letter-spacing: 0.01em;
+  background: var(--fill-3); color: var(--label); vertical-align: 1px;
+}
+
+/* reply quote */
+.msg-quote {
+  display: flex; align-items: baseline; gap: 6px; max-width: 100%; margin: 2px 0 5px;
+  padding-block: 1px; padding-inline-start: 10px; border-inline-start: 2px solid var(--quote-rule);
+  font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); text-decoration: none;
+}
+.msg-quote:hover { color: var(--label); text-decoration: none; }
+.msg-quote:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 4px; }
+.msg-quote svg { width: 12px; height: 12px; align-self: center; flex-shrink: 0; }
+[dir='rtl'] .msg-quote .icon-dir { transform: scaleX(-1); }
+.msg-quote b { font-weight: 600; color: var(--label); white-space: nowrap; }
+.msg-quote .excerpt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+/* ---- Owner messages: bubbles at the inline end -------------------------- */
+.msg.is-owner { grid-template-columns: minmax(0, 1fr); justify-items: end; }
+.msg.is-owner.is-active { background: none; }
+.msg.is-owner .msg-main { display: flex; flex-direction: column; align-items: flex-end; min-width: 0; max-width: min(78%, 560px); justify-self: end; }
+.bubble {
+  padding: 8px 14px 9px; border-radius: var(--radius-bubble); border-end-end-radius: 6px;
+  background: var(--bubble-owner); color: var(--bubble-ink); box-shadow: var(--shadow-1);
+  max-width: 100%;
+}
+.msg.is-owner.is-cont .bubble { border-start-end-radius: 6px; }
+.bubble .mention { color: var(--bubble-ink); background: var(--bubble-chip); }
+.bubble code { background: var(--bubble-chip); }
+.bubble .inst-tok, .bubble .inst-tok .inst-rest { color: var(--bubble-ink); }
+.msg-meta { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--label-secondary); min-height: 16px; }
+
+/* ---- System: events and alerts ------------------------------------------ */
+.msg.is-event { grid-template-columns: minmax(0, 1fr); justify-items: center; margin-top: 10px; padding-block: 4px; }
+.event-line { display: inline-flex; align-items: baseline; gap: 6px; max-width: 64ch; text-align: center; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); text-wrap: balance; }
+.event-line svg { width: 14px; height: 14px; align-self: center; flex-shrink: 0; }
+.event-line time { white-space: nowrap; }
+
+.msg.is-alert { grid-template-columns: minmax(0, 1fr); }
+.alert-card {
+  display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; column-gap: 12px; align-items: start;
+  padding: 12px 14px; border-radius: var(--radius-card);
+  background: var(--fill-4); box-shadow: inset 0 0 0 0.5px var(--hairline-color);
+}
+.alert-icon { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: var(--bg-elevated); box-shadow: var(--shadow-1); color: var(--accent); }
+.alert-icon svg { width: 17px; height: 17px; }
+.alert-card.sev-warning { background: var(--warning-wash); }
+.alert-card.sev-warning .alert-icon { color: var(--warning-ink); }
+.alert-card.sev-critical { background: var(--loss-wash); }
+.alert-card.sev-critical .alert-icon { color: var(--loss-ink); }
+.alert-title { font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); font-weight: 600; }
+.alert-body .md { font-size: var(--fs-footnote); line-height: var(--lh-footnote); letter-spacing: normal; color: var(--label-secondary); margin-top: 2px; }
+.alert-meta { font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--label-secondary); white-space: nowrap; padding-top: 2px; }
+
+/* ---- Generic card: any kind without its own card yet -------------------- */
+.kind-card {
+  margin-top: 4px; max-width: 68ch; overflow: hidden;
+  border-radius: var(--radius-card); background: var(--bg-tertiary);
+  box-shadow: 0 0 0 0.5px var(--hairline-color), var(--shadow-1);
+}
+.dark .kind-card { background: var(--bg-secondary); }
+.kind-head { display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-bottom: 0.5px solid var(--separator); }
+.kind-head svg { width: 15px; height: 15px; color: var(--label-secondary); }
+.kind-label { font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 600; }
+.kind-card .md { padding: 11px 14px 13px; }
+
+/* ---- Skeleton feed ------------------------------------------------------- */
+.msg-skel { display: grid; grid-template-columns: 32px minmax(0, 1fr); column-gap: 12px; margin-top: 18px; }
+.msg-skel .skel-round { width: 32px; height: 32px; border-radius: 50%; }
+.msg-skel .lines { display: grid; gap: 8px; padding-top: 2px; }
+.msg-skel.is-owner { grid-template-columns: minmax(0, 1fr); justify-items: end; }
+
+/* ---- Narrow windows ------------------------------------------------------ */
+/* Below 1280 the inspector starts closed and opens over the feed. */
+@media (max-width: 1279px) {
+  .wr .inspector {
+    position: absolute; z-index: 25; inset-block: 2px 8px; inset-inline-end: 0; margin: 0; margin-inline-end: 8px;
+    background: var(--material-popover); box-shadow: var(--shadow-sheet), var(--glass-edge), 0 0 0 0.5px var(--hairline-color);
+    animation: shell-pop-in var(--dur-base) var(--ease-settle);
+  }
+}
+@media (max-width: 1100px) {
+  .wr-column { padding-inline: 24px; }
+}

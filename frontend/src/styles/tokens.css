@@ -587,3 +587,71 @@
 @utility avatar-fill {
   background: var(--ui-avatar-fill);
 }
+
+/* ---- War Room (design v4 "Atlas design system: War Room" §4) -------------
+   Agent rings colour the ring only, never text. Every ring is ≥ 3:1 on the
+   sidebar and the feed in its theme. */
+:root,
+.light {
+  --ring-orchestrator: #5856D6;
+  --ring-market-scout: #1588C0;
+  --ring-news-intelligence: #FF2D55;
+  --ring-historian: #A2845E;
+  --ring-technical-analyst: #007AFF;
+  --ring-derivatives-sentiment: #AF52DE;
+  --ring-strategist: #A88000;
+  --ring-devils-advocate: #D97000;
+  --ring-portfolio-manager: #00968F;
+  --status-offline: rgba(60, 60, 67, 0.45);
+  --dot-cutout: #F4F4F5;
+  --agent-ink: #8944AB;
+  --agent-wash: rgba(175, 82, 222, 0.12);
+  --medal-disc: #FFFFFF;
+  --quote-rule: rgba(60, 60, 67, 0.30);
+  --flash: rgba(0, 122, 255, 0.12);
+  --bubble-ink: #FFFFFF;
+  --bubble-chip: rgba(255, 255, 255, 0.22);
+}
+.dark {
+  --ring-orchestrator: #7D7AFF;
+  --ring-market-scout: #64D2FF;
+  --ring-news-intelligence: #FF375F;
+  --ring-historian: #AC8E68;
+  --ring-technical-analyst: #0A84FF;
+  --ring-derivatives-sentiment: #BF5AF2;
+  --ring-strategist: #FFD60A;
+  --ring-devils-advocate: #FF9F0A;
+  --ring-portfolio-manager: #63E6E2;
+  --status-offline: rgba(235, 235, 245, 0.4);
+  --dot-cutout: #252527;
+  --agent-ink: #DA8FFF;
+  --agent-wash: rgba(191, 90, 242, 0.20);
+  --medal-disc: #2C2C2E;
+  --quote-rule: rgba(235, 235, 245, 0.28);
+  --flash: rgba(10, 132, 255, 0.18);
+  --bubble-ink: #FFFFFF;
+  --bubble-chip: rgba(255, 255, 255, 0.22);
+}
+:root,
+.light,
+.dark {
+  --status-idle: var(--sys-green);
+  --status-thinking: var(--sys-blue);
+  --status-waiting: var(--sys-yellow);
+  --status-degraded: var(--sys-orange);
+  --status-paused: var(--sys-grey);
+  --bubble-owner: var(--accent-solid);
+}
+:root {
+  --fs-message: 0.9375rem;
+  --lh-message: 1.4375rem;
+  --tr-message: -0.012em;
+  --inspector-width: 300px;
+  --feed-max: 720px;
+  --radius-bubble: 18px;
+  --radius-composer: 22px;
+}
+:where(:root:lang(ar), [lang|="ar"]) {
+  --lh-message: 1.6875rem;
+  --tr-message: 0;
+}
