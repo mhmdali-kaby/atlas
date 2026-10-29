@@ -47,7 +47,7 @@ ensure_reverb_secret() {
   local f="$ROOT/backend/.env"
   [[ -f "$f" ]] || { say "backend/.env is missing (copy backend/.env.example)"; exit 1; }
   local current
-  current="$(grep -m1 '^REVERB_APP_SECRET=' "$f" 2>/dev/null | cut -d= -f2-)"
+  current="$(grep -m1 '^REVERB_APP_SECRET=' "$f" 2>/dev/null | cut -d= -f2- || true)"
   current="${current%\"}"; current="${current#\"}"
   if [[ -z "$current" || "${#current}" -lt 32 ]]; then
     command -v openssl >/dev/null || { say "openssl is required to generate REVERB_APP_SECRET"; exit 1; }
