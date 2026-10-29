@@ -3,10 +3,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { toolbarIconButton } from '../../app/shell/toolbarClasses'
+import { useSession } from '../auth/session'
 import { Button, Spinner } from '../../ui'
 import { flattenMessages, useMessages } from './api'
 import { Composer } from './Composer'
-import { Feed, FeedEmpty, FeedError, FeedNotFound, FeedSkeleton } from './Feed'
+import { Feed } from './Feed'
+import { FeedEmpty, FeedError, FeedNotFound, FeedSkeleton } from './FeedStates'
 import { Inspector } from './Inspector'
 import { localMessages, useOutbox } from './live'
 import { useLiveFeed, type BannerState } from './useLiveFeed'
@@ -96,7 +98,12 @@ export function WarRoomPage() {
   const threadName = nameOf(selected)
   const live = useLiveFeed(env, selected?.id)
   const outbox = useOutbox((s) => s.items)
-  const pending = useMemo(() => (selected ? localMessages(outbox, env, selected.id, list, 'owner') : []), [outbox, env, selected, list])
+  // Local bubbles carry the signed-in owner's name, as the stored row will (the shell has the session cached).
+  const ownerName = useSession().data?.name ?? ''
+  const pending = useMemo(
+    () => (selected ? localMessages(outbox, env, selected.id, list, ownerName) : []),
+    [outbox, env, selected, list, ownerName],
+  )
 
   let feed
   if (error) {

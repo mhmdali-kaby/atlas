@@ -34,7 +34,12 @@ live event to the SPA. Builds on `docs/handoff/ATL-39-warroom-screen.md` and `AT
 
 ## What the feed does now
 
-- `Feed` takes `pending?: LocalMessage[]`. New ids newer than what was stored before are
+Files: `Feed.tsx` (virtualiser, pinning, focus), `useArrivals.ts` (what counts as a live arrival,
+the unread count, fresh rows, scroll-to-latest; call it before the feed's pinning effect),
+`JumpToLatest.tsx` (the pill and the round button), `FeedStates.tsx` (loading / error / not found /
+empty, moved out of `Feed.tsx` unchanged).
+
+- `Feed` takes `pending?: LocalMessage[]`; local bubbles carry the signed-in owner's name. New ids newer than what was stored before are
   *arrivals*: they fade and rise 8px over 300ms (motion; none under prefers-reduced-motion), once —
   a row scrolled back into view doesn't animate again.
 - The owner's own local bubble always pins the feed to the bottom. Someone else's arrival keeps the

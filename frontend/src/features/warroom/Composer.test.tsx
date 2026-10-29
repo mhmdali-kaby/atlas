@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import i18n from '../../i18n'
 import type { LiveStatus } from '../../lib/echo'
 import type { WarroomMessage, WarroomThread } from './api'
-import { drafts, useOutbox } from './live'
+import { drafts, localMessages, useOutbox } from './live'
 import warroom from './routes'
 
 /*
@@ -269,6 +269,14 @@ describe('Composer', () => {
     await u.type(input(), '/pause{Enter}')
     await waitFor(() => expect(posts(fetch)).toHaveLength(1))
     expect(JSON.parse(String(posts(fetch)[0]![1]!.body)).content_md).toBe('/pause')
+  })
+})
+
+describe('Local bubbles', () => {
+  it('carry the signed-in owner as author and their send state', () => {
+    const item = { tempId: 'local-1', env: 'demo' as const, threadId: 'main-1', content: 'hi', replyTo: null, state: 'failed' as const, createdAt: '2026-10-29T08:00:00.000Z' }
+    const [m] = localMessages([item, { ...item, tempId: 'local-2', threadId: 'other' }], 'demo', 'main-1', [], 'Mhmd')
+    expect(m).toMatchObject({ id: 'local-1', author_type: 'human', author: 'Mhmd', local: { tempId: 'local-1', state: 'failed' } })
   })
 })
 

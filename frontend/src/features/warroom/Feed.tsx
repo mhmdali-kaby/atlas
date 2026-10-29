@@ -1,16 +1,16 @@
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { ArrowDown, CloudOff, MessagesSquare, ChartCandlestick, RefreshCw, SearchX } from 'lucide-react'
 import { motion, useReducedMotion } from 'motion/react'
-import { Link } from 'react-router'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent, type PointerEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button, Skeleton, Spinner } from '../../ui'
+import { Button, Spinner } from '../../ui'
 import { useLang, useNow } from '../portfolio/hooks'
 import { AGENTS } from './agents'
 import { flattenMessages, type useMessages, type WarroomMessage, type WarroomThread } from './api'
-import { isLocal, type LocalMessage } from './live'
+import { JumpToLatest } from './JumpToLatest'
+import type { LocalMessage } from './live'
 import { Medallion } from './Medallion'
 import { Message } from './Message'
+import { ARRIVE, useArrivals } from './useArrivals'
 import { InstrumentId } from './text'
 import { around } from './tokens'
 import { baghdadDay, dayLabel, formatDate } from './time'
@@ -32,8 +32,6 @@ const LOAD_OLDER_WITHIN = 240
 /** "At the bottom" tolerance (px): new rows keep the feed pinned only from here. */
 const BOTTOM_SLACK = 48
 const FLASH_MS = 1600
-/** A live arrival fades and rises 8px over 300ms (design v4 War Room §10). */
-const ARRIVE = { duration: 0.3, ease: [0.22, 1, 0.36, 1] as const }
 
 function buildRows(messages: WarroomMessage[]): Row[] {
   const rows: Row[] = [{ kind: 'top', key: 'top' }]
@@ -50,107 +48,6 @@ function buildRows(messages: WarroomMessage[]): Row[] {
     prev = m
   }
   return rows
-}
-
-export function FeedSkeleton() {
-  const { t } = useTranslation('warroom')
-  const agent = (w1: number, w2: number) => (
-    <div className="msg-skel">
-      <Skeleton className="skel-round" />
-      <span className="lines">
-        <Skeleton style={{ width: 120, height: 12 }} />
-        <Skeleton style={{ width: `${w1}%`, height: 12 }} />
-        {w2 > 0 && <Skeleton style={{ width: `${w2}%`, height: 12 }} />}
-      </span>
-    </div>
-  )
-  const owner = (w: number) => (
-    <div className="msg-skel is-owner">
-      <Skeleton style={{ width: w, height: 38, borderRadius: 18 }} />
-    </div>
-  )
-  return (
-    <div className="wr-column" aria-busy="true" aria-label={t('loading')} role="status" data-testid="wr-feed-loading">
-      {agent(88, 64)}
-      {agent(76, 40)}
-      {owner(260)}
-      {agent(92, 70)}
-      {agent(58, 0)}
-      {owner(180)}
-      {agent(84, 52)}
-    </div>
-  )
-}
-
-export function FeedError({ onRetry }: { onRetry: () => void }) {
-  const { t } = useTranslation('warroom')
-  return (
-    <div className="wr-column">
-      <div className="state-block" role="alert" data-testid="wr-feed-error">
-        <div className="state-icon is-error">
-          <CloudOff aria-hidden="true" strokeWidth={1.5} />
-        </div>
-        <h2 className="text-title-3">{t('error.title')}</h2>
-        <p className="state-body">
-          {t('error.bodyBefore')}{' '}
-          <code className="cmd" dir="ltr">
-            ./atlas up
-          </code>
-          {t('error.bodyAfter')}
-        </p>
-        <Button variant="secondary" onClick={onRetry}>
-          <RefreshCw aria-hidden="true" strokeWidth={1.5} className="size-4" />
-          <span>{t('tryAgain')}</span>
-        </Button>
-      </div>
-    </div>
-  )
-}
-
-/** A War Room URL whose thread is not in this env's list: stale link, other env or typo. */
-export function FeedNotFound() {
-  const { t } = useTranslation('warroom')
-  return (
-    <div className="wr-column">
-      <div className="state-block" role="alert" data-testid="wr-feed-not-found">
-        <div className="state-icon">
-          <SearchX aria-hidden="true" strokeWidth={1.5} />
-        </div>
-        <h2 className="text-title-3">{t('notFound.title')}</h2>
-        <p className="state-body">{t('notFound.body')}</p>
-        <Button variant="secondary" asChild>
-          <Link to="/warroom">{t('notFound.action')}</Link>
-        </Button>
-      </div>
-    </div>
-  )
-}
-
-export function FeedEmpty({ thread }: { thread: WarroomThread }) {
-  const { t } = useTranslation('warroom')
-  const inst = thread.kind === 'instrument'
-  const Icon = inst ? ChartCandlestick : MessagesSquare
-  return (
-    <div className="wr-column">
-      <div className="state-block" data-testid="wr-feed-empty">
-        <div className="state-icon">
-          <Icon aria-hidden="true" strokeWidth={1.5} />
-        </div>
-        <h2 className="text-title-3">
-          {inst ? (
-            <>
-              {around(t('empty.instTitle', { inst: '\u0000' }))[0]}
-              <InstrumentId id={thread.key} />
-              {around(t('empty.instTitle', { inst: '\u0000' }))[1]}
-            </>
-          ) : (
-            t('empty.title')
-          )}
-        </h2>
-        <p className="state-body">{t(inst ? 'empty.instBody' : 'empty.body')}</p>
-      </div>
-    </div>
-  )
 }
 
 function Origin({ thread, threadName }: { thread: WarroomThread; threadName: string }) {
@@ -218,54 +115,16 @@ export function Feed({ thread, threadName, query, pending = NO_PENDING }: FeedPr
   const initialised = useRef(false)
   const total = virtualizer.getTotalSize()
 
-  // ---- Live arrivals: the pill while scrolled up, the fade-in, the scroll-to-latest button ----
-  const seen = useRef<Set<string> | null>(null)
-  const storedNewest = useRef<string>('')
-  const [unread, setUnread] = useState(0)
-  const [scrolledUp, setScrolledUp] = useState(false)
-  const [fresh, setFresh] = useState<ReadonlySet<string>>(() => new Set())
-
-  useLayoutEffect(() => {
-    const newestStored = (list: WarroomMessage[]) => list.reduce((ts, m) => (!isLocal(m) && m.created_at > ts ? m.created_at : ts), '')
-    if (!seen.current) {
-      // The first render is history, not arrivals.
-      seen.current = new Set(messages.map((m) => m.id))
-      storedNewest.current = newestStored(messages)
-      return
-    }
-    const known = seen.current
-    const since = storedNewest.current
-    // New ids newer than what was stored before: live arrivals and the owner's local bubbles.
-    // An older page is never newer; the stored row that replaces a local bubble is the owner's.
-    const added = messages.filter((m) => !known.has(m.id) && (isLocal(m) || m.created_at >= since))
-    for (const m of messages) known.add(m.id)
-    storedNewest.current = newestStored(messages) || since
-    if (added.length === 0) return
-    if (added.some((m) => isLocal(m))) {
-      // The owner just sent: follow it to the bottom.
-      atBottom.current = true
-      setUnread(0)
-    } else if (!atBottom.current) {
-      const others = added.filter((m) => m.author_type !== 'human').length
-      if (others) setUnread((n) => n + others)
-    }
-    const animate = added.filter((m) => isLocal(m) || m.author_type !== 'human')
-    if (!reduceMotion && animate.length) setFresh((s) => new Set([...s, ...animate.map((m) => m.id)]))
-  }, [messages, reduceMotion])
-
-  // A row animates once; after that a re-mount (scrolling it back into view) draws it still.
-  useEffect(() => {
-    if (fresh.size === 0) return
-    const timer = window.setTimeout(() => setFresh(new Set()), 400)
-    return () => window.clearTimeout(timer)
-  }, [fresh])
-
-  const scrollToLatest = useCallback(() => {
+  // Live arrivals (the fade-in, the pill, scroll-to-latest). Before the pinning effect below.
+  const scrollToEnd = useCallback(
+    (smooth: boolean) => virtualizer.scrollToIndex(rows.length - 1, { align: 'end', behavior: smooth ? 'smooth' : 'auto' }),
+    [rows.length, virtualizer],
+  )
+  const isAtBottom = useCallback(() => atBottom.current, [])
+  const pinToBottom = useCallback(() => {
     atBottom.current = true
-    setUnread(0)
-    setScrolledUp(false)
-    virtualizer.scrollToIndex(rows.length - 1, { align: 'end', behavior: reduceMotion ? 'auto' : 'smooth' })
-  }, [rows.length, virtualizer, reduceMotion])
+  }, [])
+  const arrivals = useArrivals({ messages, isAtBottom, pinToBottom, scrollToEnd, reduceMotion: Boolean(reduceMotion) })
 
   useLayoutEffect(() => {
     const el = scrollRef.current
@@ -295,8 +154,7 @@ export function Feed({ thread, threadName, query, pending = NO_PENDING }: FeedPr
     const el = scrollRef.current
     if (!el) return
     atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight <= BOTTOM_SLACK
-    setScrolledUp(!atBottom.current)
-    if (atBottom.current) setUnread(0)
+    arrivals.onScrolled(atBottom.current)
     maybeLoadOlder()
   }
   // A short first page may not fill the viewport; keep loading until it does.
@@ -435,7 +293,7 @@ export function Feed({ thread, threadName, query, pending = NO_PENDING }: FeedPr
                 </div>
               ) : (
                 <motion.div
-                  initial={fresh.has(row.key) ? { opacity: 0, y: 8 } : false}
+                  initial={arrivals.fresh.has(row.key) ? { opacity: 0, y: 8 } : false}
                   animate={{ opacity: 1, y: 0 }}
                   transition={ARRIVE}
                 >
@@ -457,20 +315,7 @@ export function Feed({ thread, threadName, query, pending = NO_PENDING }: FeedPr
         </div>
       </div>
     </div>
-    {(unread > 0 || scrolledUp) && (
-      <div className="wr-float">
-        {unread > 0 ? (
-          <button type="button" className="wr-pill" onClick={scrollToLatest} data-testid="wr-new-pill">
-            {t('newMessages', { count: unread })}
-            <ArrowDown aria-hidden="true" />
-          </button>
-        ) : (
-          <button type="button" className="wr-latest" onClick={scrollToLatest} aria-label={t('latest')} title={t('latest')} data-testid="wr-latest">
-            <ArrowDown aria-hidden="true" strokeWidth={1.5} />
-          </button>
-        )}
-      </div>
-    )}
+    <JumpToLatest unread={arrivals.unread} scrolledUp={arrivals.scrolledUp} onJump={arrivals.scrollToLatest} />
     </>
   )
 }
