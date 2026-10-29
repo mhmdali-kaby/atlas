@@ -662,4 +662,17 @@ DEFAULTS: Final[dict[str, Any]] = {
             "fng_limit": 10,
         },
     },
+    "quant": {
+        "days_per_year": {
+            "crypto": 365,
+            "stock": 252,
+            "etf": 252,
+            "index": 252,
+            "commodity": 252,
+            "other": 365,
+        },
+        "default_asset_class": "crypto",
+        "atr_window": 14,
+        "hour_table_timezone": "Asia/Baghdad",
+    },
 }
