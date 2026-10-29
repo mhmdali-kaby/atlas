@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Warroom;
 
+use DateTimeImmutable;
 use Illuminate\Pagination\Cursor;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -37,6 +38,15 @@ class ListMessagesRequest extends WarroomRequest
      * the wrong shape, throws UnexpectedValueException deep inside pagination (a 500) instead of
      * failing validation here. Reject it as 422 before the controller ever sees it.
      *
+     * ATL-52 (round 4, low #3 follow-up): strtotime() accepts relative phrases ("+1 week"),
+     * timezone-qualified phrases ("tomorrow noon Europe/Paris"), unix-timestamp syntax
+     * ("@99999999999999") and silently rolls over invalid calendar dates ("2026-02-30"), so all
+     * of those passed this check and reached Postgres as literal timestamps, which rejects them
+     * with SQLSTATE 22008/22007 (a 500). Laravel's cursor paginator always builds created_at with
+     * AbstractCursorPaginator::ensureParameterIsPrimitive(), i.e. Carbon's plain (string) cast
+     * ("Y-m-d H:i:s", see CURSOR_TIMESTAMP_FORMAT) — parse exactly that format, with no rollover
+     * and no trailing data allowed.
+     *
      * @return list<callable(Validator): void>
      */
     public function after(): array
@@ -55,13 +65,35 @@ class ListMessagesRequest extends WarroomRequest
 
                 $valid = $cursor !== null
                     && is_string($id) && Str::isUuid($id)
-                    && is_string($createdAt) && strtotime($createdAt) !== false;
+                    && is_string($createdAt) && self::isStrictCursorTimestamp($createdAt);
 
                 if (! $valid) {
                     $validator->errors()->add('cursor', __('warroom.invalid_cursor'));
                 }
             },
         ];
+    }
+
+    /**
+     * The exact wire format the cursor paginator produces for created_at, e.g.
+     * "2026-10-29 05:43:27". createFromFormat() with the leading "!" resets every field not
+     * present in the format (so there is no inherited "now"), and DateTimeImmutable rejects
+     * trailing or missing characters outright rather than guessing.
+     */
+    private const CURSOR_TIMESTAMP_FORMAT = '!Y-m-d H:i:s';
+
+    private static function isStrictCursorTimestamp(string $value): bool
+    {
+        $date = DateTimeImmutable::createFromFormat(self::CURSOR_TIMESTAMP_FORMAT, $value);
+        if ($date === false) {
+            return false;
+        }
+
+        // createFromFormat() silently rolls 2026-02-30 forward to 2026-03-02 instead of failing;
+        // getLastErrors() is the only signal that the calendar date it accepted was invalid.
+        $errors = DateTimeImmutable::getLastErrors();
+
+        return $errors === false || ($errors['warning_count'] === 0 && $errors['error_count'] === 0);
     }
 
     public function threadId(): string

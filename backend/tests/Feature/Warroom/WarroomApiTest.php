@@ -110,6 +110,12 @@ it('rejects a crafted cursor with 422 instead of a 500 from the paginator', func
     'missing both parameters' => [(new Cursor([], true))->encode()],
     'id not a uuid, created_at missing' => [(new Cursor(['id' => 'not-a-uuid'], true))->encode()],
     'created_at not a timestamp, id missing' => [(new Cursor(['created_at' => 'soon'], true))->encode()],
+    // ATL-52: valid uuid, but created_at is a string strtotime() accepts and Postgres does not
+    // (SQLSTATE 22008/22007), so these reached cursorPaginate() as a 500 before this fix.
+    'created_at is an invalid calendar date' => [(new Cursor(['id' => '11111111-1111-4111-8111-111111111111', 'created_at' => '2026-02-30 00:00:00'], true))->encode()],
+    'created_at is a relative phrase' => [(new Cursor(['id' => '11111111-1111-4111-8111-111111111111', 'created_at' => '+1 week'], true))->encode()],
+    'created_at is a timezone-qualified phrase' => [(new Cursor(['id' => '11111111-1111-4111-8111-111111111111', 'created_at' => 'tomorrow noon Europe/Paris'], true))->encode()],
+    'created_at is a unix-timestamp literal' => [(new Cursor(['id' => '11111111-1111-4111-8111-111111111111', 'created_at' => '@99999999999999'], true))->encode()],
 ]);
 
 it('accepts its own next_cursor back', function (): void {
