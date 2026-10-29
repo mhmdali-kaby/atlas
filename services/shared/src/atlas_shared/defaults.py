@@ -396,6 +396,12 @@ DEFAULTS: Final[dict[str, Any]] = {
         "repaired_issue_days": 7,
         "quality_issue_limit": 500,
     },
+    "data_sources_api": {
+        "poll_seconds_min": 60,
+        "poll_seconds_max": 86400,
+        "api_key_max_length": 255,
+        "writes_per_minute": 20,
+    },
     "news": {
         "failure_threshold": 3,
         "disable_minutes": 30,
