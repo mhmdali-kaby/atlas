@@ -37,6 +37,19 @@ input was. An encoding this module does not decompress itself (anything other th
 ``gzip`` or ``deflate`` value — brotli and zstd are never installed here, so ``httpx`` already left
 those as opaque bytes) is left exactly as the server sent it rather than ever handed to an
 unbounded decompressor.
+
+ATL-75 round-1 review fix: a malformed ``gzip``/``deflate`` body (garbage bytes under a
+``Content-Encoding`` header a feed or article server attached) used to raise ``zlib.error``
+straight out of :func:`read_capped`. No caller catches that — only :class:`CollectError` and
+``httpx.HTTPError`` are handled in ``extract.py``, ``rss.py``'s per-symbol loop and the API
+collectors — so one bad article aborted the whole poll via ``pipeline.py``'s ``asyncio.gather``,
+and three such polls in a row disabled the source. :func:`read_capped` now catches ``zlib.error``
+around every call into the decoder and re-raises it as :class:`CollectError`, the same family the
+old ``httpx``-decoded path raised (``httpx.DecodingError`` is an ``httpx.HTTPError``). It also
+restores the raw-deflate fallback ``httpx.DeflateDecoder`` used to provide: some servers send
+``Content-Encoding: deflate`` as raw DEFLATE (no zlib wrapper) rather than zlib-wrapped DEFLATE:
+:class:`_BoundedZlibDecoder` retries once, on the very first decoded chunk only, with a raw
+(``-zlib.MAX_WBITS``) decompressor before giving up.
 """
 
 from __future__ import annotations
@@ -151,15 +164,38 @@ class _BoundedZlibDecoder:
     before ATL-75, both use — does not: it decompresses everything a chunk yields in one call,
     with no cap, which is how a few hundred KB of attacker-supplied compressed bytes became a
     415 MB resident-memory spike even with the ATL-73 cap already in place.
+
+    ``retry_raw_deflate`` mirrors ``httpx.DeflateDecoder``'s fallback: a server labelled
+    ``Content-Encoding: deflate`` may send either zlib-wrapped DEFLATE (``zlib.MAX_WBITS``, what
+    this decoder is constructed with for ``deflate``) or raw DEFLATE with no zlib header
+    (``-zlib.MAX_WBITS``) — both are "deflate" in the wild, and there is no way to tell which from
+    the header alone. If the very first decode call raises ``zlib.error``, and only then, this
+    rebuilds the decompressor in raw mode and retries that same chunk once; any later failure (a
+    second bad chunk, or a failure after the retry already happened) is never retried again and
+    propagates as ``zlib.error`` for :func:`read_capped` to turn into :class:`CollectError`. gzip
+    has an unambiguous magic header, so it is never retried this way.
     """
 
-    def __init__(self, wbits: int) -> None:
+    def __init__(self, wbits: int, *, retry_raw_deflate: bool = False) -> None:
         self._z = zlib.decompressobj(wbits)
+        self._retry_raw_deflate = retry_raw_deflate
+        self._first_chunk = True
 
     def decode(self, data: bytes) -> Iterator[bytes]:
+        may_retry = self._retry_raw_deflate and self._first_chunk
+        self._first_chunk = False
         pending = data
         while True:
-            out = self._z.decompress(pending, READ_CHUNK_BYTES)
+            try:
+                out = self._z.decompress(pending, READ_CHUNK_BYTES)
+            except zlib.error:
+                if may_retry:
+                    may_retry = False
+                    self._retry_raw_deflate = False
+                    self._z = zlib.decompressobj(-zlib.MAX_WBITS)
+                    pending = data
+                    continue
+                raise
             if out:
                 yield out
             pending = self._z.unconsumed_tail
@@ -180,8 +216,11 @@ def _decoder_for(content_encoding: str) -> _IdentityDecoder | _BoundedZlibDecode
     bytes are left untouched) for anything else, including no header, an unrecognised value, and
     more than one value (chained encodings are not something any of our sources send; refusing to
     guess at a safe way to bound a chain is safer than running one through an unbounded one)."""
-    decoder_cls = _ZLIB_WBITS_BY_ENCODING.get(content_encoding.strip().lower())
-    return _BoundedZlibDecoder(decoder_cls) if decoder_cls is not None else _IdentityDecoder()
+    encoding = content_encoding.strip().lower()
+    wbits = _ZLIB_WBITS_BY_ENCODING.get(encoding)
+    if wbits is None:
+        return _IdentityDecoder()
+    return _BoundedZlibDecoder(wbits, retry_raw_deflate=(encoding == "deflate"))
 
 
 async def read_capped(response: httpx.Response, max_bytes: int = MAX_RESPONSE_BYTES) -> bytes:
@@ -195,8 +234,12 @@ async def read_capped(response: httpx.Response, max_bytes: int = MAX_RESPONSE_BY
     encoded, goes through :class:`_BoundedZlibDecoder` so a single call can never produce more
     than ``READ_CHUNK_BYTES`` of decoded output regardless of the compression ratio ("zip bomb")
     of the chunk fed to it; either cap being passed raises :class:`CollectError` immediately, so
-    neither an unbounded body nor a compression bomb is ever held in memory past the cap. Call
-    inside ``async with ctx.http.stream(...) as response:``.
+    neither an unbounded body nor a compression bomb is ever held in memory past the cap. A body
+    that is simply not valid gzip/deflate under the ``Content-Encoding`` it was served with (a
+    malformed or truncated compressed body, not a bomb) raises ``zlib.error`` from the decoder;
+    that is caught here and re-raised as :class:`CollectError`, the family every caller of this
+    function already handles, instead of escaping uncaught (ATL-75 round-1 review). Call inside
+    ``async with ctx.http.stream(...) as response:``.
     """
     content_length = response.headers.get("content-length")
     if content_length is not None:
@@ -208,18 +251,21 @@ async def read_capped(response: httpx.Response, max_bytes: int = MAX_RESPONSE_BY
     decoder = _decoder_for(response.headers.get("content-encoding", ""))
     body = bytearray()
     raw_total = 0
-    async for raw_chunk in response.aiter_raw(READ_CHUNK_BYTES):
-        raw_total += len(raw_chunk)
-        if raw_total > max_bytes:
-            raise CollectError("response too large")
-        for decoded_chunk in decoder.decode(raw_chunk):
+    try:
+        async for raw_chunk in response.aiter_raw(READ_CHUNK_BYTES):
+            raw_total += len(raw_chunk)
+            if raw_total > max_bytes:
+                raise CollectError("response too large")
+            for decoded_chunk in decoder.decode(raw_chunk):
+                body.extend(decoded_chunk)
+                if len(body) > max_bytes:
+                    raise CollectError("response too large")
+        for decoded_chunk in decoder.flush():
             body.extend(decoded_chunk)
             if len(body) > max_bytes:
                 raise CollectError("response too large")
-    for decoded_chunk in decoder.flush():
-        body.extend(decoded_chunk)
-        if len(body) > max_bytes:
-            raise CollectError("response too large")
+    except zlib.error as exc:
+        raise CollectError("response could not be decoded") from exc
     return bytes(body)
 
 

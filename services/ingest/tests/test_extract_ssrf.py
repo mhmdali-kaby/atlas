@@ -426,3 +426,65 @@ async def test_a_legitimately_gzip_encoded_body_still_decodes_correctly() -> Non
     )
     body = await read_capped(response, max_bytes=1_000_000)
     assert body == article
+
+
+# ---- ATL-75 round-1 review: a malformed encoded body must raise CollectError, not escape as a
+# bare zlib.error -- and a legitimate raw-deflate body must still decode -----------------------
+
+
+async def test_read_capped_raises_collect_error_on_malformed_gzip_body() -> None:
+    """Garbage bytes under ``Content-Encoding: gzip`` used to raise a bare ``zlib.error`` out of
+    ``read_capped``, which no caller catches (only ``CollectError``/``httpx.HTTPError`` are
+    handled). This must come out as ``CollectError`` instead, exactly like the old
+    httpx.DecodingError (an ``httpx.HTTPError``) path did before ATL-75."""
+    response = httpx.Response(
+        200,
+        headers={"content-type": "application/json", "content-encoding": "gzip"},
+        stream=_OneShotStream(b"not actually gzip data, just garbage bytes" * 10),
+    )
+    with pytest.raises(CollectError, match="could not be decoded"):
+        await read_capped(response, max_bytes=1_000_000)
+
+
+async def test_article_text_returns_none_for_malformed_gzip_body() -> None:
+    """The end-to-end path a feed article hits: a gzip-labelled but non-gzip body must make
+    ``article_text`` return ``None``, the same as any other fetch failure -- not raise and abort
+    the whole poll via ``pipeline.py``'s ``asyncio.gather``."""
+
+    async def lying_resolver(_host: str, _port: int) -> Sequence[str]:
+        return [PUBLIC_FAKE_ADDRESS]
+
+    def handle(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/html", "content-encoding": "gzip"},
+            stream=_OneShotStream(b"garbage, not gzip" * 10),
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as http:
+        extractor = Extractor(
+            http=http,
+            timeout_seconds=10,
+            max_bytes=2_000_000,
+            resolve_host=lying_resolver,
+            verify_peer=lambda _response, _allowed: True,
+        )
+        result = await extractor.article_text("http://bad-gzip.example/article", set())
+    assert result is None
+
+
+async def test_read_capped_decodes_a_legitimate_raw_deflate_body() -> None:
+    """Some servers send ``Content-Encoding: deflate`` as raw DEFLATE with no zlib wrapper, which
+    ``httpx``'s own ``DeflateDecoder`` used to fall back to on the first failed decompress.
+    ``_BoundedZlibDecoder`` must retry the same way rather than treating every raw-deflate body as
+    malformed."""
+    article = b"<html><body><article><p>" + b"word " * 60 + b"</p></article></body></html>"
+    raw_deflate = zlib.compressobj(6, zlib.DEFLATED, -zlib.MAX_WBITS)
+    body_bytes = raw_deflate.compress(article) + raw_deflate.flush()
+    response = httpx.Response(
+        200,
+        headers={"content-type": "text/html; charset=utf-8", "content-encoding": "deflate"},
+        stream=_OneShotStream(body_bytes),
+    )
+    body = await read_capped(response, max_bytes=1_000_000)
+    assert body == article
