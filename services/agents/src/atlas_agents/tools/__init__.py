@@ -5,6 +5,7 @@ tool with the same server and name is registered). Modules with real tools are i
 """
 
 from atlas_agents.tools import catalogue as catalogue
+from atlas_agents.tools import history as history
 from atlas_agents.tools.framework import (
     SERVERS,
     NoInput,
@@ -36,6 +37,7 @@ __all__ = [
     "detect_instructions",
     "fq_name",
     "get_tool",
+    "history",
     "registered_tools",
     "untrusted",
 ]

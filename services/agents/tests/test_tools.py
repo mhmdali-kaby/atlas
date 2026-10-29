@@ -176,7 +176,17 @@ async def test_tool_errors_and_crashes_become_error_results() -> None:
     assert "secret detail" not in crashed["message"]
 
 
-@pytest.mark.parametrize(("server", "name"), [(s, n) for s, tools in CATALOGUE.items() for n in tools])
+# Catalogue tools with a real implementation (each has its own test module).
+IMPLEMENTED = {fq_name("history", n) for n in CATALOGUE["history"]}
+STUBS = [(s, n) for s, tools in CATALOGUE.items() for n in tools if fq_name(s, n) not in IMPLEMENTED]
+
+
+def test_implemented_tools_are_registered_for_real() -> None:
+    for name in IMPLEMENTED:
+        assert fw.get_tool(name).implemented is True, name
+
+
+@pytest.mark.parametrize(("server", "name"), STUBS)
 async def test_every_catalogue_tool_is_a_not_implemented_stub(server: str, name: str) -> None:
     tool = fw.get_tool(fq_name(server, name))
     assert tool.implemented is False
@@ -215,8 +225,9 @@ def _minimal_args(schema: dict[str, Any]) -> dict[str, Any]:
 
 
 def test_a_real_tool_replaces_its_stub_and_a_stub_never_replaces_a_real_tool(scratch_registry: None) -> None:
-    name = fq_name("history", "compute_stats")
-    real = fw.atlas_tool("history", "compute_stats", RowsIn, RowsOut)
+    server, stub = STUBS[0]
+    name = fq_name(server, stub)
+    real = fw.atlas_tool(server, stub, RowsIn, RowsOut)
 
     @real
     async def compute_stats(ctx: ToolContext, args: RowsIn) -> ToolResult:
@@ -229,7 +240,7 @@ def test_a_real_tool_replaces_its_stub_and_a_stub_never_replaces_a_real_tool(scr
     register_catalogue()
     assert fw.get_tool(name).implemented is True
     with pytest.raises(ValueError, match="registered twice"):
-        fw.register(_tool(_rows, name="compute_stats"))
+        fw.register(_tool(_rows, name=stub, server=server))
 
 
 def test_registration_rules(scratch_registry: None) -> None:

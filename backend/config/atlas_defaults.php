@@ -776,6 +776,127 @@ return [
             ],
             'portfolio_manager' => [],
         ],
+        'history' => [
+            'compute_stats' => [
+                'bar' => '1D',
+                'lookback_bars' => 365,
+            ],
+            'detect_regime' => [
+                'bar' => '1D',
+                'lookback_bars' => 730,
+            ],
+            'volatility_forecast' => [
+                'bar' => '1H',
+                'lookback_bars' => 2000,
+            ],
+            'drawdown_profile' => [
+                'bar' => '1D',
+                'lookback_bars' => 3650,
+            ],
+            'seasonality' => [
+                'bar' => '1H',
+                'lookback_bars' => 8760,
+            ],
+            'cross_asset_lead_lag' => [
+                'bar' => '1H',
+                'lookback_bars' => 720,
+            ],
+            'find_analogs' => [
+                'bar' => '1H',
+                'window_bars' => 24,
+            ],
+            'event_study' => [
+                'bar' => '1H',
+                'max_instruments' => 10,
+                'max_events' => 200,
+                'event_types' => [
+                    'cpi' => [
+                        'names' => [
+                            '\\bCPI\\b',
+                            'consumer price index',
+                        ],
+                        'countries' => [
+                            'US',
+                            'USD',
+                        ],
+                    ],
+                    'ppi' => [
+                        'names' => [
+                            '\\bPPI\\b',
+                            'producer price index',
+                        ],
+                        'countries' => [
+                            'US',
+                            'USD',
+                        ],
+                    ],
+                    'fomc' => [
+                        'names' => [
+                            '\\bFOMC\\b',
+                            'federal funds rate',
+                            'fed interest rate decision',
+                        ],
+                        'countries' => [
+                            'US',
+                            'USD',
+                        ],
+                    ],
+                    'nfp' => [
+                        'names' => [
+                            'non-?farm',
+                            '\\bNFP\\b',
+                        ],
+                        'countries' => [
+                            'US',
+                            'USD',
+                        ],
+                    ],
+                    'gdp' => [
+                        'names' => [
+                            '\\bGDP\\b',
+                        ],
+                        'countries' => [
+                            'US',
+                            'USD',
+                        ],
+                    ],
+                    'retail_sales' => [
+                        'names' => [
+                            'retail sales',
+                        ],
+                        'countries' => [
+                            'US',
+                            'USD',
+                        ],
+                    ],
+                    'unemployment' => [
+                        'names' => [
+                            'unemployment rate',
+                            'jobless claims',
+                        ],
+                        'countries' => [
+                            'US',
+                            'USD',
+                        ],
+                    ],
+                ],
+                'earnings_hour_utc' => [
+                    'bmo' => 13,
+                    'amc' => 21,
+                    'dmh' => 17,
+                    'default' => 21,
+                ],
+            ],
+            'backtest' => [
+                'bar' => '1H',
+                'lookback_bars' => 8760,
+                'warmup_bars' => 250,
+                'taker_fee_rate' => '0.0005',
+            ],
+            'verdict' => [
+                'min_n' => 20,
+            ],
+        ],
         'tools' => [
             'max_result_tokens' => 4000,
             'chars_per_token' => 4,
