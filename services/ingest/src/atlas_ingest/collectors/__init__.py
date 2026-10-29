@@ -49,7 +49,8 @@ class CollectContext:
     http: httpx.AsyncClient
     now: datetime
     stock_symbols: Callable[[], Awaitable[list[str]]]
-    """Underlying symbols of every stock/ETF perp in ``instruments`` (e.g. ``TSLA``, ``SPY``)."""
+    """Underlying symbols of every live stock/ETF instrument in ``instruments`` for the runner's
+    active env (e.g. ``TSLA``, ``SPY``)."""
 
 
 class Collector(Protocol):
@@ -58,6 +59,24 @@ class Collector(Protocol):
 
 class CollectError(Exception):
     """A failure whose message is safe to store as last_error (short, no secrets, no keyed URL)."""
+
+
+class RateLimited(CollectError):
+    """The provider refused with a rate limit (HTTP 429). Counts as one failure, and the runner
+    does not poll the source again for at least ``retry_after_seconds``."""
+
+    def __init__(self, retry_after_seconds: float, message: str = "rate limited (HTTP 429)") -> None:
+        super().__init__(message)
+        self.retry_after_seconds = max(float(retry_after_seconds), 0.0)
+
+
+def retry_after_seconds(response: httpx.Response, default: float) -> float:
+    """Seconds from a Retry-After header (delta form), never less than ``default``."""
+    value = response.headers.get("retry-after", "").strip()
+    try:
+        return max(float(value), default) if value else default
+    except ValueError:
+        return default
 
 
 C = TypeVar("C")
