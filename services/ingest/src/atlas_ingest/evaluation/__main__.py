@@ -7,6 +7,7 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+from atlas_ingest.embedding import make_embedder, set_default_embedder
 from atlas_ingest.evaluation import registry
 from atlas_ingest.evaluation.fixture import (
     DEFAULT_FIXTURE_PATH,
@@ -82,6 +83,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     rep.add_argument("--linker", help="module:attr, overrides the registered linker")
     rep.add_argument("--classifier", help="module:attr, overrides the registered classifier")
     rep.add_argument("--clusterer", help="module:attr, overrides the registered clusterer")
+    rep.add_argument(
+        "--embedder",
+        choices=("auto", "real", "fake"),
+        default="auto",
+        help="embeddings for clustering: real model (downloaded once), fake hashing, or auto "
+        "(real when the model is already cached)",
+    )
     rep.add_argument("--confusion", action="store_true", help="also print event-type confusions")
     args = parser.parse_args(argv)
 
@@ -91,6 +99,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         if target:
             registry.register_dotted(stage, target)
 
+    embedder = make_embedder(args.embedder)
+    set_default_embedder(embedder)
+    print(f"embedder: {embedder.name}")
     for line in report_lines(load_fixture(args.fixture), confusion=args.confusion):
         print(line)
     return 0

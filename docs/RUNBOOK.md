@@ -17,6 +17,11 @@ patch; it only documents what exists today.
   `./atlas logs ingest` shows one JSON line per poll (`poll ok` with counts, `poll failed` with
   the error and `consecutive_failures`). A source that fails 3 times in a row is skipped for 30
   minutes (`disabled_until` in `news_sources`); it is retried automatically after that.
+- News clustering needs the local embedding model (`paraphrase-multilingual-MiniLM-L12-v2`, about
+  470 MB). It is downloaded once, on first use, into `~/Library/Caches/atlas/models`
+  (`ATLAS_MODEL_CACHE` overrides the folder), and after that it loads offline. To fetch it ahead
+  of time: `cd services && uv run --package atlas-ingest python -m atlas_ingest.evaluation report
+  --embedder real`. Deleting that folder only costs a re-download.
 - `./atlas doctor` — runs `php artisan atlas:doctor`: Postgres, extensions, migrations, Redis,
   trading_core, OKX clock drift, the demo connection, the withdraw-permission rule, free disk
   space, session/debug security, the Reverb secret, and the backup check. Any `✗` line fails the

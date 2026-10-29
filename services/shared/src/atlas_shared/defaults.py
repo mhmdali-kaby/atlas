@@ -557,6 +557,22 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "requires_key": False,
             },
         },
+        "embedding": {
+            "model": "paraphrase-multilingual-MiniLM-L12-v2",
+            "cache_dir": "~/Library/Caches/atlas/models",
+            "device": "cpu",
+        },
+        "clustering": {
+            "window_hours": 12,
+            "join_threshold": "0.8",
+            "title_weight": "0.2",
+            "number_weight": "0.2",
+            "instrument_weight": "0.1",
+            "conflict_penalty": "0.2",
+            "event_type_weight": "0.2",
+            "candidate_limit": 20,
+            "novelty_hours": 72,
+        },
         "importance": {
             "min": 1,
             "max": 5,
