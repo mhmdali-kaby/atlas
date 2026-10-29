@@ -211,4 +211,67 @@ DEFAULTS: Final[dict[str, Any]] = {
     "event_bus": {
         "stream_maxlen": 100000,
     },
+    "warroom": {
+        "page_limit_default": 50,
+        "page_limit_max": 100,
+        "post_per_minute": 30,
+        "content_max_chars": 4000,
+        "agents": {
+            "orchestrator": {
+                "name": "Orchestrator",
+                "handle": "Orch",
+                "aliases": [],
+            },
+            "market_scout": {
+                "name": "Market Scout",
+                "handle": "Scout",
+                "aliases": [],
+            },
+            "news_intelligence": {
+                "name": "News Intelligence",
+                "handle": "News",
+                "aliases": [
+                    "newsintel",
+                ],
+            },
+            "historian": {
+                "name": "Historian",
+                "handle": "Historian",
+                "aliases": [],
+            },
+            "technical_analyst": {
+                "name": "Technical Analyst",
+                "handle": "Technical",
+                "aliases": [
+                    "ta",
+                ],
+            },
+            "derivatives_sentiment": {
+                "name": "Derivatives & Sentiment",
+                "handle": "Derivatives",
+                "aliases": [
+                    "sentiment",
+                ],
+            },
+            "strategist": {
+                "name": "Strategist",
+                "handle": "Strategist",
+                "aliases": [],
+            },
+            "devils_advocate": {
+                "name": "Devil's Advocate",
+                "handle": "Devil",
+                "aliases": [
+                    "da",
+                ],
+            },
+            "portfolio_manager": {
+                "name": "Portfolio Manager",
+                "handle": "PM",
+                "aliases": [
+                    "portfolio",
+                ],
+            },
+        },
+    },
 }
