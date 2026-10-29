@@ -675,6 +675,22 @@ return [
         'default_asset_class' => 'crypto',
         'atr_window' => 14,
         'hour_table_timezone' => 'Asia/Baghdad',
+        'event_study' => [
+            'window_hours' => [
+                -24,
+                72,
+            ],
+            'atr_horizons_hours' => [
+                1,
+                4,
+                24,
+            ],
+        ],
+        'backtest' => [
+            'slippage_bps' => 2,
+            'walk_forward_splits' => 3,
+            'overfit_sharpe_fraction' => '0.5',
+        ],
         'analogs' => [
             'k' => 20,
             'horizons' => [
