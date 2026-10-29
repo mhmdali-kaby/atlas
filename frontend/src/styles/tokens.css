@@ -75,6 +75,8 @@
   --ui-switch-off-border: rgba(60, 60, 67, 0.32);
   --ui-selection: rgba(120, 120, 128, 0.16);
   --ui-segment-thumb: #FFFFFF;
+  --ui-area-thumb: #FFFFFF;  /* sidebar area switcher (design v4 shell.css) */
+  --ui-area-thumb-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   --ui-segment-thumb-shadow: 0 3px 8px rgba(0, 0, 0, 0.12), 0 3px 1px rgba(0, 0, 0, 0.04), 0 0 0 0.5px rgba(0, 0, 0, 0.04);
   --ui-knob-shadow: 0 2px 4px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
   --ui-error-ring: 0 0 0 3px rgba(255, 59, 48, 0.30);
@@ -167,6 +169,8 @@
   --ui-switch-off-border: rgba(235, 235, 245, 0.16);
   --ui-selection: rgba(255, 255, 255, 0.10);
   --ui-segment-thumb: #636366;
+  --ui-area-thumb: rgba(255, 255, 255, 0.14);
+  --ui-area-thumb-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
   --ui-segment-thumb-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
   --ui-knob-shadow: 0 2px 4px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.06);
   --ui-error-ring: 0 0 0 3px rgba(255, 69, 58, 0.30);
@@ -255,6 +259,8 @@
   --selection: var(--ui-selection);
   --segment-thumb: var(--ui-segment-thumb);
   --segment-thumb-shadow: var(--ui-segment-thumb-shadow);
+  --area-thumb: var(--ui-area-thumb);
+  --area-thumb-shadow: var(--ui-area-thumb-shadow);
   --knob-shadow: var(--ui-knob-shadow);
   --error-ring: var(--ui-error-ring);
 

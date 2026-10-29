@@ -61,10 +61,10 @@ afterEach(() => {
 
 describe('Portfolio Holdings', () => {
   it('registers /portfolio/holdings with a Holdings nav entry at order 30', () => {
+    expect(portfolio.area).toBe('portfolio')
     const nav = Array.isArray(portfolio.nav) ? portfolio.nav : [portfolio.nav]
     expect(nav.find((n) => n?.path === '/portfolio/holdings')).toMatchObject({
       labelKey: 'portfolio:nav.holdings',
-      section: 'portfolio',
       order: 30,
     })
   })

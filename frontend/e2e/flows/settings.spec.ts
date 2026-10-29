@@ -21,7 +21,13 @@ test('changing max leverage saves a new version that Activity shows', async ({ p
   const from = Number(before.settings.max_leverage)
   const to = from + 1
 
-  await page.goto('/settings/risk')
+  // Reach Settings → Risk the owner's way: from Portfolio through the sidebar's area switcher (ATL-41).
+  await page.goto('/portfolio')
+  const sidebar = page.getByRole('complementary', { name: 'Sidebar' })
+  await sidebar.getByRole('navigation', { name: 'Areas' }).getByRole('link', { name: 'Settings' }).click()
+  await expect(page).toHaveURL(/\/settings\/connections$/)
+  await sidebar.getByRole('navigation', { name: 'Settings' }).getByRole('link', { name: 'Risk & Autonomy' }).click()
+  await expect(page).toHaveURL(/\/settings\/risk$/)
   const leverage = page.getByRole('textbox', { name: 'Max leverage', exact: true })
   await expect(leverage).toHaveValue(String(from))
   await expect(page.locator('[data-testid="activity"] li').first()).toHaveAttribute('data-version', String(before.version))

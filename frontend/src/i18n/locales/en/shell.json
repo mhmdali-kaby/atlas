@@ -10,6 +10,10 @@
   },
   "nav": {
     "label": "Sidebar",
+    "areas": "Areas"
+  },
+  "area": {
+    "warroom": "War Room",
     "portfolio": "Portfolio",
     "settings": "Settings"
   },
