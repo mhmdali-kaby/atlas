@@ -1,0 +1,1467 @@
+/* ==========================================================================
+   Settings → Data (ATL-49; design v5 css/data.css). The universe map is the
+   page's one bold element: every instrument as one square that fills as its
+   history arrives. Logical properties only; every figure is an LTR island.
+   ========================================================================== */
+
+.dt-page {
+  --cell: 12px;
+  --cell-gap: 4px;
+  --cell-radius: 3px;
+  --meter-h: 4px;
+  --lane-h: 6px;
+  --progress-track: var(--accent-wash);
+  --progress-fill: var(--accent);
+  --progress-paused: var(--sys-grey);
+  --progress-failed: var(--loss);
+  --cell-waiting: var(--fill-1);
+  --gap-tick: var(--warning);
+  display: grid;
+  gap: 32px;
+  padding-block: 12px 24px;
+}
+.shell-content:has(.dt-page) {
+  background: var(--bg-grouped);
+}
+.dt-loading {
+  display: grid;
+  gap: 32px;
+}
+.dt-section {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+}
+
+/* ---- Shared pieces (Phase 0 group, row, notice, panel) ---------------- */
+.dt-group {
+  background: var(--bg-grouped-row);
+  border-radius: var(--radius-card);
+  box-shadow: 0 0 0 0.5px var(--hairline-color);
+  overflow: hidden;
+}
+.dt-group-title {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  font-weight: 600;
+  color: var(--label-secondary);
+}
+.dt-group-title .num {
+  font-weight: 500;
+}
+.dt-group-note {
+  padding: 8px 16px 0;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+.dt-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 10px 16px;
+}
+.dt-row + .dt-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  inset-inline: 56px 0;
+  border-top: 0.5px solid var(--separator);
+}
+.dt-row-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  background: var(--fill-3);
+  color: var(--label-secondary);
+  flex-shrink: 0;
+}
+.dt-row-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.dt-row-main {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+.dt-row-label {
+  font-size: var(--text-subheadline);
+  line-height: var(--lh-subheadline);
+  font-weight: 500;
+}
+.dt-row-sub {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 2px 10px;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+.dt-notice {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-radius: var(--radius-card);
+  background: var(--fill-4);
+  box-shadow: inset 0 0 0 0.5px var(--hairline-color);
+}
+.dt-notice > svg {
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+.dt-notice.is-warning {
+  background: var(--warning-wash);
+}
+.dt-notice.is-warning > svg {
+  color: var(--warning-ink);
+}
+.dt-notice.is-error {
+  background: var(--loss-wash);
+}
+.dt-notice.is-error > svg {
+  color: var(--loss-ink);
+}
+.dt-notice-title {
+  font-size: var(--text-subheadline);
+  line-height: var(--lh-subheadline);
+  font-weight: 600;
+}
+.dt-notice-body {
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+  margin-top: 2px;
+}
+.dt-notice-actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.dt-cmd {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--fill-3);
+  color: var(--label);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  direction: ltr;
+  unicode-bidi: isolate;
+  white-space: nowrap;
+}
+.dt-tip {
+  z-index: 70;
+  max-width: 280px;
+  border-radius: var(--radius-card);
+  padding: 6px 12px;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label);
+  box-shadow: var(--ui-shadow-popover), 0 0 0 0.5px var(--hairline-color);
+}
+.dt-page .fig {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+}
+.dt-spin {
+  width: 14px;
+  height: 14px;
+}
+
+/* Section heads: a title at the start, a figure or controls at the end */
+.dt-sec-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 24px;
+  flex-wrap: wrap;
+  padding-block: 0 10px;
+  padding-inline: 16px 4px;
+}
+.dt-sec-aside {
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+.dt-sec-aside b {
+  color: var(--label);
+  font-weight: 600;
+}
+.dt-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ---- Summary ---------------------------------------------------------- */
+.dt-summary {
+  container: dtsum / inline-size;
+  padding: 20px 20px 16px;
+  display: grid;
+  gap: 18px;
+  overflow: visible;
+}
+.dt-sum-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+}
+.dt-sum-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  background: var(--accent-wash);
+  color: var(--accent-ink);
+}
+.dt-sum-icon svg {
+  width: 22px;
+  height: 22px;
+}
+.dt-sum-icon.is-done {
+  background: var(--profit-wash);
+  color: var(--profit-ink);
+}
+.dt-sum-icon.is-paused {
+  background: var(--fill-3);
+  color: var(--label-secondary);
+}
+.dt-sum-icon.is-warning {
+  background: var(--warning-wash);
+  color: var(--warning-ink);
+}
+.dt-summary.is-celebrating .dt-sum-icon svg {
+  animation: dt-check-in 420ms var(--ease-settle) both;
+}
+@keyframes dt-check-in {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.dt-sum-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.dt-sum-title {
+  font-size: var(--text-title-3);
+  line-height: var(--lh-title-3);
+  letter-spacing: var(--tr-title-3);
+  font-weight: 600;
+}
+.dt-sum-sub {
+  font-size: var(--text-subheadline);
+  line-height: var(--lh-subheadline);
+  letter-spacing: var(--tr-subheadline);
+  color: var(--label-secondary);
+  text-wrap: pretty;
+}
+.dt-sum-sub b {
+  color: var(--label);
+  font-weight: 600;
+}
+.dt-sum-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.dt-summary > .dt-notice {
+  margin-top: -2px;
+}
+
+/* ---- The universe map ------------------------------------------------- */
+.dt-map {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 16px 32px;
+}
+.dt-map-group {
+  display: grid;
+  gap: 7px;
+  max-width: 100%;
+  min-width: 0;
+}
+.dt-map-label {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  font-weight: 600;
+}
+.dt-map-label .num {
+  font-weight: 500;
+  color: var(--label-secondary);
+}
+.dt-cells {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cell-gap);
+}
+.cell {
+  --p: 0;
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  width: var(--cell);
+  height: var(--cell);
+  border-radius: var(--cell-radius);
+  background: var(--cell-waiting);
+  overflow: hidden;
+}
+/* The fill rises from the bottom: direction-free, so it never mirrors */
+.cell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--progress-fill);
+  transform: scaleY(var(--p));
+  transform-origin: 50% 100%;
+  transition:
+    transform 600ms var(--ease-out),
+    background-color var(--dur-base);
+}
+.cell.is-fetching {
+  background: var(--progress-track);
+}
+.cell.is-fetching::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1.5px var(--progress-fill);
+  animation: dt-breathe 1.6s ease-in-out infinite;
+}
+.cell.is-paused::after {
+  background: var(--progress-paused);
+}
+.cell.is-failed {
+  background: var(--loss-wash);
+}
+.cell.is-failed::after {
+  background: var(--progress-failed);
+  opacity: 0.55;
+}
+.cell.is-failed::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1.5px var(--progress-failed);
+}
+.dt-map.is-stalled .cell.is-fetching::before {
+  animation: none;
+  opacity: 0.5;
+}
+@keyframes dt-breathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+.dt-map .cell:hover {
+  box-shadow:
+    0 0 0 2px var(--bg-grouped-row),
+    0 0 0 3.5px var(--label);
+  z-index: 2;
+  overflow: visible;
+}
+.dt-map.is-complete .cell::after {
+  animation: dt-sweep 900ms var(--ease-out) calc(var(--i, 0) * 3ms) both;
+}
+@keyframes dt-sweep {
+  0% {
+    filter: brightness(1);
+  }
+  35% {
+    filter: brightness(1.55) saturate(0.7);
+  }
+  100% {
+    filter: brightness(1);
+  }
+}
+
+.dt-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  margin-top: -6px;
+}
+.dt-key {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding-inline: 8px;
+  border-radius: 8px;
+  font-size: var(--text-footnote);
+  line-height: 1;
+  color: var(--label);
+}
+.dt-key:hover {
+  background: var(--fill-4);
+}
+.dt-key:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.dt-key .num {
+  color: var(--label-secondary);
+}
+.dt-key .cell.is-fetching::before {
+  animation: none;
+}
+.dt-legend-note {
+  margin-inline-start: auto;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+
+/* ---- Fetching now ----------------------------------------------------- */
+.dt-now {
+  border-top: 0.5px solid var(--separator);
+  padding-top: 14px;
+  display: grid;
+  gap: 4px;
+}
+.dt-now-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.dt-now-title {
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  font-weight: 600;
+  color: var(--label-secondary);
+}
+.dt-updated {
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+.dt-now-list {
+  display: grid;
+}
+.dt-now-row {
+  display: grid;
+  align-items: center;
+  gap: 4px 16px;
+  padding-block: 8px;
+  grid-template-columns: minmax(150px, 0.9fr) minmax(112px, 0.7fr) minmax(220px, 2.4fr) minmax(150px, 1fr) 48px;
+}
+.dt-now-row + .dt-now-row {
+  border-top: 0.5px solid var(--separator);
+}
+.dt-now-ds,
+.dt-now-reach {
+  font-size: var(--text-subheadline);
+  line-height: var(--lh-subheadline);
+  color: var(--label-secondary);
+}
+.dt-now-reach {
+  white-space: nowrap;
+}
+.dt-now-pct {
+  text-align: end;
+  font-size: var(--text-subheadline);
+  font-weight: 600;
+}
+.dt-now-more {
+  padding-top: 6px;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+.dt-keeping {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+.dt-keeping svg {
+  width: 15px;
+  height: 15px;
+  color: var(--profit-ink);
+  flex-shrink: 0;
+}
+.dt-keeping.is-paused svg {
+  color: var(--label-secondary);
+}
+@container dtsum (max-width: 820px) {
+  .dt-now-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'inst pct' 'ds reach' 'lane lane';
+  }
+  .dt-now-row > .inst-id {
+    grid-area: inst;
+  }
+  .dt-now-row > .dt-now-ds {
+    grid-area: ds;
+  }
+  .dt-now-row > .dt-lane {
+    grid-area: lane;
+  }
+  .dt-now-row > .dt-now-reach {
+    grid-area: reach;
+    text-align: end;
+  }
+  .dt-now-row > .dt-now-pct {
+    grid-area: pct;
+  }
+}
+@container dtsum (max-width: 560px) {
+  .dt-sum-head {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .dt-sum-actions {
+    grid-column: 1 / -1;
+  }
+  .dt-legend-note {
+    margin-inline-start: 0;
+    flex-basis: 100%;
+    padding-inline: 8px;
+  }
+}
+
+/* ---- History lane: one job drawn in time, "Now" at the inline end ------
+   The backfill walks from the present into the past, so the fill is anchored
+   at Now and grows toward the start (the time axis mirrors in RTL). */
+.dt-lane {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.dt-lane-from,
+.dt-lane-to {
+  font-size: var(--text-caption);
+  line-height: var(--lh-caption);
+  color: var(--label-secondary);
+  white-space: nowrap;
+}
+.dt-lane-bar {
+  position: relative;
+  height: var(--lane-h);
+  border-radius: calc(var(--lane-h) / 2);
+  background: var(--progress-track);
+  overflow: hidden;
+}
+.dt-lane-fill {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-end: 0;
+  width: 100%;
+  background: var(--progress-fill);
+  border-radius: inherit;
+  transform: scaleX(var(--p, 0));
+  transform-origin: 100% 50%;
+  transition: transform 600ms var(--ease-out);
+}
+[dir='rtl'] .dt-lane-fill {
+  transform-origin: 0% 50%;
+}
+.dt-lane.is-failed .dt-lane-bar {
+  background: var(--loss-wash);
+}
+.dt-lane.is-failed .dt-lane-fill {
+  background: var(--progress-failed);
+}
+.dt-lane.is-paused .dt-lane-fill {
+  background: var(--progress-paused);
+}
+.dt-lane.is-waiting .dt-lane-bar,
+.dt-lane.is-open .dt-lane-bar {
+  background: var(--cell-waiting);
+}
+.dt-lane.is-open.is-fetching .dt-lane-fill {
+  transform: none;
+  background: linear-gradient(90deg, transparent, var(--progress-fill), transparent);
+  background-size: 40% 100%;
+  background-repeat: no-repeat;
+  animation: dt-indeterminate 1.6s ease-in-out infinite;
+}
+@keyframes dt-indeterminate {
+  from {
+    background-position: -40% 0;
+  }
+  to {
+    background-position: 140% 0;
+  }
+}
+.dt-gap {
+  position: absolute;
+  z-index: 1;
+  top: -3px;
+  bottom: -3px;
+  width: 2px;
+  border-radius: 1px;
+  background: var(--gap-tick);
+  inset-inline-start: calc(var(--at) * 100%);
+  translate: -1px 0;
+}
+[dir='rtl'] .dt-gap {
+  translate: 1px 0;
+}
+.dt-gap.is-repaired {
+  background: var(--label-tertiary);
+  top: 0;
+  bottom: 0;
+}
+.dt-lane-bar:has(.dt-gap) {
+  overflow: visible;
+}
+
+/* ---- Data quality ----------------------------------------------------- */
+.dt-issue {
+  align-items: flex-start;
+  padding-block: 12px;
+}
+.dt-issue .dt-row-icon {
+  margin-top: 1px;
+}
+.dt-issue .dt-row-icon.is-open {
+  background: var(--warning-wash);
+  color: var(--warning-ink);
+}
+.dt-issue .dt-row-sub .inst-id {
+  font-size: var(--text-footnote);
+  color: var(--label);
+}
+.dt-issue-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+  white-space: nowrap;
+  padding-top: 1px;
+  border-radius: 6px;
+}
+.dt-issue-status:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.dt-issue-status[tabindex] {
+  cursor: help;
+}
+.dt-issue-status svg {
+  width: 15px;
+  height: 15px;
+}
+.dt-issue-status.is-open {
+  color: var(--warning-ink);
+}
+.dt-issue-status.is-repaired svg {
+  color: var(--profit-ink);
+}
+.dt-more {
+  display: flex;
+  justify-content: center;
+  padding: 8px;
+  border-top: 0.5px solid var(--separator);
+}
+.dt-quiet {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+}
+.dt-quiet .dt-row-icon {
+  background: var(--profit-wash);
+  color: var(--profit-ink);
+}
+
+/* ---- What Atlas keeps -------------------------------------------------- */
+.dt-keep-row {
+  position: relative;
+  display: grid;
+  align-items: center;
+  gap: 4px 16px;
+  min-height: 48px;
+  padding: 10px 16px;
+  /* TL (v5 review): the count keeps value and unit on one line, so its column is wider. */
+  grid-template-columns: minmax(170px, 1.3fr) minmax(150px, 1fr) minmax(120px, 1.4fr) 52px minmax(132px, 0.9fr) 76px;
+}
+.dt-keep-row + .dt-keep-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  inset-inline: 16px 0;
+  border-top: 0.5px solid var(--separator);
+}
+.dt-keep-row.is-child {
+  min-height: 40px;
+  padding-block: 7px;
+}
+.dt-keep-row.is-child + .dt-keep-row.is-child::before {
+  inset-inline-start: 56px;
+}
+.dt-keep-name {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  font-size: var(--text-callout);
+  line-height: var(--lh-callout);
+  letter-spacing: var(--tr-callout);
+}
+.dt-keep-row.is-child .dt-keep-name {
+  padding-inline-start: 40px;
+  font-size: var(--text-subheadline);
+  line-height: var(--lh-subheadline);
+}
+.dt-keep-name small {
+  display: block;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+  letter-spacing: var(--tr-footnote);
+}
+.dt-keep-depth {
+  font-size: var(--text-subheadline);
+  line-height: var(--lh-subheadline);
+  color: var(--label-secondary);
+}
+.dt-keep-pct {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  font-size: var(--text-subheadline);
+  font-weight: 600;
+}
+.dt-keep-pct svg {
+  color: var(--profit-ink);
+  width: 16px;
+  height: 16px;
+  stroke-width: 2;
+}
+.dt-keep-pct .dt-spin {
+  color: var(--accent-ink);
+}
+.dt-keep-count {
+  display: grid;
+  justify-items: end;
+  font-size: var(--text-subheadline);
+  color: var(--label-secondary);
+  white-space: nowrap;
+}
+.dt-keep-fail {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--loss-ink);
+  font-weight: 600;
+}
+.dt-keep-fail svg {
+  width: 12px;
+  height: 12px;
+  stroke-width: 2;
+}
+.dt-keep-size {
+  text-align: end;
+  font-size: var(--text-subheadline);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.dt-keep-size.is-quiet {
+  font-weight: 400;
+  color: var(--label-secondary);
+}
+.dt-keep-off {
+  grid-column: 2 / 6;
+  font-size: var(--text-subheadline);
+  color: var(--label-secondary);
+}
+
+/* An aggregate meter fills from the inline start: an aggregate is not a point in time. */
+.dt-meter {
+  position: relative;
+  display: block;
+  height: var(--meter-h);
+  border-radius: calc(var(--meter-h) / 2);
+  background: var(--progress-track);
+  overflow: hidden;
+}
+.dt-meter > i {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  width: 100%;
+  border-radius: inherit;
+  background: var(--progress-fill);
+  transform: scaleX(var(--p, 0));
+  transform-origin: 0% 50%;
+  transition: transform 600ms var(--ease-out);
+}
+[dir='rtl'] .dt-meter > i {
+  transform-origin: 100% 50%;
+}
+.dt-meter.is-paused > i {
+  background: var(--progress-paused);
+}
+.dt-meter.is-failed {
+  background: var(--loss-wash);
+}
+.dt-meter.is-failed > i {
+  background: var(--progress-failed);
+}
+.dt-meter.is-waiting {
+  background: var(--cell-waiting);
+}
+.dt-meter.is-indeterminate > i {
+  transform: none;
+  background: linear-gradient(90deg, transparent, var(--progress-fill), transparent);
+  background-size: 45% 100%;
+  background-repeat: no-repeat;
+  animation: dt-indeterminate 1.6s ease-in-out infinite;
+}
+.dt-keep-row .dt-meter {
+  height: 6px;
+}
+
+/* ---- Instruments ------------------------------------------------------ */
+.dt-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.dt-search > svg {
+  position: absolute;
+  inset-inline-start: 9px;
+  width: 15px;
+  height: 15px;
+  color: var(--label-secondary);
+  pointer-events: none;
+}
+.dt-input {
+  width: 220px;
+  height: 30px;
+  padding-inline: 30px 10px;
+  border-radius: 8px;
+  font-size: var(--text-subheadline);
+  background: var(--field-bg);
+  border: 1px solid var(--field-border);
+  color: var(--label);
+  transition:
+    border-color var(--dur-fast),
+    box-shadow var(--dur-fast);
+}
+.dt-input::placeholder {
+  color: var(--label-tertiary);
+}
+.dt-input:hover {
+  border-color: var(--field-border-hover);
+}
+.dt-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: var(--focus-ring);
+}
+.dt-input::-webkit-search-cancel-button {
+  display: none;
+}
+.dt-search-clear {
+  position: absolute;
+  inset-inline-end: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  color: var(--label-secondary);
+}
+.dt-search-clear:hover {
+  background: var(--fill-3);
+  color: var(--label);
+}
+.dt-search-clear svg {
+  width: 13px;
+  height: 13px;
+}
+
+.dt-panel {
+  --panel-bg: var(--bg);
+  background: var(--panel-bg);
+  border-radius: var(--radius-panel);
+  box-shadow:
+    0 0 0 0.5px var(--hairline-color),
+    var(--shadow-2);
+}
+.dark .dt-panel {
+  --panel-bg: var(--bg-secondary);
+}
+.dt-matrix-panel {
+  overflow: clip;
+}
+.dt-matrix {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--text-subheadline);
+  line-height: var(--lh-subheadline);
+}
+.dt-matrix col.c-inst {
+  width: 212px;
+}
+.dt-matrix col.c-ds {
+  width: 68px;
+}
+.dt-matrix col.c-total {
+  width: 104px;
+}
+.dt-matrix col.c-act {
+  width: 64px;
+}
+.dt-matrix th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 10px 8px;
+  text-align: start;
+  vertical-align: bottom;
+  white-space: normal;
+  line-height: 1.15;
+  font-size: var(--text-footnote);
+  font-weight: 500;
+  color: var(--label-secondary);
+  background: var(--panel-bg);
+  border-bottom: 0.5px solid var(--separator);
+}
+.dt-matrix th.is-num {
+  text-align: end;
+}
+.dt-matrix th .fig {
+  font-weight: 600;
+  color: var(--label);
+}
+.dt-matrix th[title] {
+  cursor: help;
+}
+.dt-matrix th:first-child {
+  border-start-start-radius: var(--radius-panel);
+}
+.dt-matrix th:last-child {
+  border-start-end-radius: var(--radius-panel);
+}
+.dt-matrix td {
+  padding: 9px 8px;
+  border-bottom: 0.5px solid var(--separator);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.dt-matrix tbody tr:last-child td {
+  border-bottom: 0;
+}
+.dt-matrix tbody tr {
+  transition: background-color var(--dur-fast);
+}
+.dt-matrix tbody tr:hover {
+  background: var(--fill-4);
+}
+.dt-matrix th:first-child,
+.dt-matrix td:first-child {
+  padding-inline-start: 16px;
+}
+.dt-matrix th:last-child,
+.dt-matrix td:last-child {
+  padding-inline-end: 16px;
+}
+
+.dt-inst-btn {
+  display: grid;
+  gap: 1px;
+  text-align: start;
+  width: 100%;
+  padding: 4px 6px;
+  margin: -4px -6px;
+  border-radius: 8px;
+  color: var(--label);
+}
+.dt-inst-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.dt-inst-btn:hover .inst-base {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
+.dt-inst-btn .inst-cls {
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+.dt-page .inst-id,
+.dt-sheet .inst-id {
+  direction: ltr;
+  unicode-bidi: isolate;
+  justify-self: start;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.dt-page .inst-id {
+  font-size: var(--text-subheadline);
+  line-height: var(--lh-subheadline);
+}
+.dt-page .inst-rest,
+.dt-sheet .inst-rest {
+  color: var(--label-secondary);
+  font-weight: 500;
+}
+.dt-sheet [data-sheet-title] .inst-id,
+.dt-sheet h2 .inst-id {
+  font-size: inherit;
+  line-height: inherit;
+}
+
+.dt-cell {
+  text-align: end;
+}
+.dt-cell-val {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  font-family: var(--font-num);
+  color: var(--label-secondary);
+  white-space: nowrap;
+}
+.dt-cell-val svg {
+  width: 12px;
+  height: 12px;
+}
+.dt-cell .dt-meter {
+  margin-top: 5px;
+  margin-inline-start: auto;
+  width: 44px;
+}
+.dt-cell.is-done .dt-cell-val,
+.dt-cell.is-none .dt-cell-val {
+  padding-bottom: 9px;
+}
+.dt-cell.is-none .dt-cell-val {
+  color: var(--label-tertiary);
+}
+.dt-cell.is-fetching .dt-cell-val {
+  color: var(--label);
+  font-weight: 600;
+}
+.dt-cell.is-waiting .dt-cell-val {
+  color: var(--label-tertiary);
+}
+.dt-cell.is-failed .dt-cell-val {
+  color: var(--loss-ink);
+  font-weight: 600;
+}
+
+.dt-total {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+}
+.dt-total-pct {
+  font-size: var(--text-subheadline);
+  line-height: var(--lh-subheadline);
+  font-weight: 600;
+}
+.dt-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+  white-space: nowrap;
+}
+.dt-status svg {
+  width: 13px;
+  height: 13px;
+}
+.dt-status .dt-spin {
+  width: 12px;
+  height: 12px;
+  color: var(--accent-ink);
+}
+.dt-status.is-done svg {
+  color: var(--profit-ink);
+}
+.dt-status.is-fetching {
+  color: var(--accent-ink);
+}
+.dt-status.is-failed {
+  color: var(--loss-ink);
+  font-weight: 600;
+}
+.dt-act {
+  text-align: end;
+}
+.dt-icon-btn {
+  width: 28px;
+  height: 28px;
+  display: inline-grid;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--label-secondary);
+}
+.dt-icon-btn svg {
+  width: 16px;
+  height: 16px;
+}
+.dt-icon-btn:hover {
+  color: var(--label);
+  background: var(--fill-3);
+}
+.dt-icon-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.dt-table-note {
+  padding: 8px 16px 0;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+.dt-noresults td {
+  height: auto;
+}
+.dt-state-block {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 40px 24px 44px;
+  text-align: center;
+  white-space: normal;
+}
+.dt-state-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 4px;
+  background: var(--fill-3);
+  color: var(--label-secondary);
+}
+.dt-state-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+/* ---- Instrument sheet ------------------------------------------------- */
+.dt-sheet {
+  width: min(640px, calc(100vw - 32px));
+}
+.dt-sh-body {
+  display: grid;
+  gap: 14px;
+}
+.dt-sh-body > .dt-status {
+  justify-self: start;
+}
+.dt-lanes {
+  display: grid;
+  border-top: 0.5px solid var(--separator);
+}
+.dt-lane-row {
+  display: grid;
+  grid-template-columns: 148px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px 16px;
+  padding-block: 10px;
+  border-bottom: 0.5px solid var(--separator);
+}
+.dt-lane-name {
+  display: grid;
+  font-size: var(--text-subheadline);
+  line-height: var(--lh-subheadline);
+  font-weight: 600;
+}
+.dt-lane-name small {
+  font-weight: 400;
+  color: var(--label-secondary);
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+}
+.dt-lane-meta {
+  display: grid;
+  justify-items: end;
+  gap: 1px;
+  white-space: nowrap;
+  min-width: 124px;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+  text-align: end;
+}
+.dt-lane-row > .dt-lane-error {
+  grid-column: 2 / -1;
+}
+.dt-lane.is-stacked {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'bar bar' 'from to';
+  gap: 5px 8px;
+}
+.dt-lane.is-stacked .dt-lane-bar {
+  grid-area: bar;
+}
+.dt-lane.is-stacked .dt-lane-from {
+  grid-area: from;
+}
+.dt-lane.is-stacked .dt-lane-to {
+  grid-area: to;
+}
+.dt-lane-error {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--loss-wash);
+}
+.dt-lane-error p {
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--loss-ink);
+  font-weight: 600;
+}
+.dt-lane-error code {
+  font-family: var(--font-mono);
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label);
+  direction: ltr;
+  unicode-bidi: isolate;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+.dt-sh-key {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  font-size: var(--text-caption);
+  line-height: var(--lh-caption);
+  color: var(--label-secondary);
+}
+.dt-sh-key span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.dt-sh-key i {
+  display: block;
+  width: 2px;
+  height: 11px;
+  border-radius: 1px;
+  background: var(--gap-tick);
+}
+.dt-sh-key i.is-repaired {
+  background: var(--label-tertiary);
+  height: 7px;
+}
+.dt-sh-issues {
+  display: grid;
+  gap: 8px;
+}
+.dt-sh-issues h3 {
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  font-weight: 600;
+  color: var(--label-secondary);
+}
+.dt-sh-issues .dt-group {
+  box-shadow: 0 0 0 0.5px var(--hairline-color);
+  background: var(--fill-4);
+}
+.dt-sh-issues .dt-row {
+  padding-inline: 12px;
+}
+.dt-sh-none {
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+.dt-sheet {
+  --cell-waiting: var(--fill-1);
+  --progress-track: var(--accent-wash);
+  --progress-fill: var(--accent);
+  --progress-paused: var(--sys-grey);
+  --progress-failed: var(--loss);
+  --gap-tick: var(--warning);
+  --lane-h: 6px;
+}
+@media (max-width: 640px) {
+  .dt-lane-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .dt-lane-row > .dt-lane {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+  .dt-lane-row > .dt-lane-error {
+    grid-column: 1 / -1;
+  }
+}
+
+/* ---- Not started, loading, error -------------------------------------- */
+.dt-empty {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 10px;
+  padding: 44px 32px 36px;
+}
+.dt-empty .st-empty-icon {
+  background: var(--accent-wash);
+  color: var(--accent-ink);
+}
+.dt-empty > button {
+  margin-top: 8px;
+}
+.dt-empty-notice {
+  width: min(520px, 100%);
+  text-align: start;
+}
+.dt-plan {
+  display: grid;
+  width: min(520px, 100%);
+  margin-top: 18px;
+  text-align: start;
+  border-top: 0.5px solid var(--separator);
+}
+.dt-plan-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 9px 2px;
+  border-bottom: 0.5px solid var(--separator);
+  font-size: var(--text-subheadline);
+  line-height: var(--lh-subheadline);
+}
+.dt-plan-row span:last-child {
+  color: var(--label-secondary);
+  text-align: end;
+}
+.dt-sk-line {
+  height: 14px;
+  border-radius: 7px;
+}
+.dt-sk-map {
+  height: 132px;
+  border-radius: 10px;
+}
+.dt-sk-rows > * {
+  display: block;
+  height: 18px;
+  margin: 15px 16px;
+}
+
+@media (max-width: 1100px) {
+  .dt-keep-row {
+    grid-template-columns: minmax(150px, 1.2fr) minmax(120px, 1fr) minmax(90px, 1fr) 48px minmax(120px, 0.9fr) 68px;
+    gap: 4px 12px;
+  }
+}
+@media (max-width: 1279px) {
+  .dt-matrix-panel {
+    overflow-x: auto;
+  }
+  .dt-matrix {
+    width: 920px;
+  }
+  .dt-matrix th:first-child,
+  .dt-matrix td:first-child {
+    position: sticky;
+    inset-inline-start: 0;
+    z-index: 1;
+    background: var(--panel-bg);
+  }
+}
+@media (max-width: 760px) {
+  .dt-keep-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: 'name size' 'depth pct' 'meter meter' 'count count';
+  }
+  .dt-keep-row > :nth-child(1) {
+    grid-area: name;
+  }
+  .dt-keep-row > :nth-child(2) {
+    grid-area: depth;
+  }
+  .dt-keep-row > :nth-child(3) {
+    grid-area: meter;
+  }
+  .dt-keep-row > :nth-child(4) {
+    grid-area: pct;
+  }
+  .dt-keep-row > :nth-child(5) {
+    grid-area: count;
+    justify-items: start;
+  }
+  .dt-keep-row > :nth-child(6) {
+    grid-area: size;
+  }
+  .dt-keep-row.is-child .dt-keep-name {
+    padding-inline-start: 0;
+  }
+  .dt-keep-off {
+    grid-area: depth / depth / pct / pct;
+  }
+  .dt-input,
+  .dt-tools,
+  .dt-search {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cell.is-fetching::before,
+  .dt-map.is-complete .cell::after {
+    animation: none;
+  }
+  .dt-lane.is-open.is-fetching .dt-lane-fill,
+  .dt-meter.is-indeterminate > i {
+    animation: none;
+    background: var(--progress-fill);
+    opacity: 0.45;
+  }
+}

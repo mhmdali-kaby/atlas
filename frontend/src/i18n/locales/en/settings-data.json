@@ -1,0 +1,220 @@
+{
+  "nav": { "data": "Data" },
+  "intro": "The market history Atlas keeps on this Mac for its agents: candles, funding and open interest from OKX.",
+  "title": {
+    "running": "Backfilling market history",
+    "done": "Market history is up to date",
+    "paused": "Backfill paused",
+    "stalled": "The backfill has stopped moving"
+  },
+  "sub": {
+    "running": "<b><f>{{pct}}</f></b> done: <f>{{written}}</f> of <f>{{expected}}</f> bars.",
+    "eta": "About {{eta}} left.",
+    "done": "<f>{{n}}</f> instruments, <f>{{bars}}</f> bars and <f>{{size}}</f> on this Mac.",
+    "paused": "Paused at <b><f>{{pct}}</f></b>: <f>{{written}}</f> of <f>{{expected}}</f> bars. Resume picks up where it stopped.",
+    "stalled": "No new bars for <f>{{mins}}</f> minutes. The trading service may have stopped; check it with <cmd>./atlas status</cmd>."
+  },
+  "eta": {
+    "lessThanMinute": "less than a minute",
+    "h": "{{count}} h",
+    "m": "{{count}} min",
+    "join": " "
+  },
+  "pause": "Pause",
+  "pausing": "Pausing…",
+  "resume": "Resume",
+  "resuming": "Resuming…",
+  "resync": "Re-sync now",
+  "resyncing": "Starting…",
+  "resyncTip": "Fetches anything missing since the last run, and the history of newly listed instruments.",
+  "start": "Start backfill",
+  "starting": "Starting…",
+  "retry": "Try again",
+  "close": "Close",
+  "st": {
+    "done": "Done",
+    "fetching": "Fetching",
+    "waiting": "Waiting",
+    "paused": "Paused",
+    "failed": "Failed",
+    "none": "Not collected"
+  },
+  "mapLabel": "Backfill progress for {{n}} instruments: {{parts}}.",
+  "legendNote": "One square per instrument. It fills as its history arrives.",
+  "now": {
+    "title": "Fetching now",
+    "backTo": "back to {{when}}",
+    "more": "and {{n}} more",
+    "lane": "Now"
+  },
+  "updated": "Updated <f>{{time}}</f>",
+  "keeping": "Atlas adds each new bar as it closes and checks recent bars every 15 minutes.",
+  "pausedNote": "Nothing is being fetched. Bars that close while paused are fetched when you resume.",
+  "failed": {
+    "title_one": "One job failed",
+    "title_other": "{{count}} jobs failed",
+    "body": "OKX returned errors for {{list}}. Atlas stopped those jobs; the rest carry on.",
+    "and": " and ",
+    "show": "Show failed",
+    "retry": "Retry failed"
+  },
+  "limited": {
+    "title": "Re-sync already requested",
+    "body": "Atlas takes one re-sync a minute. Try again shortly."
+  },
+  "down": {
+    "title": "Couldn’t reach the trading service",
+    "body": "Nothing started. Check that Atlas is running with <cmd>./atlas up</cmd>, then try again.",
+    "plain": "Nothing started. Check that Atlas is running with ./atlas up, then try again."
+  },
+  "toast": {
+    "resync": "Re-sync started",
+    "resyncBody": "Atlas is fetching anything missing.",
+    "resyncOne": "Re-sync started for {{inst}}",
+    "retryOne": "Retrying {{inst}}",
+    "paused": "Backfill paused",
+    "pausedBody": "Resume picks up where it stopped.",
+    "resumed": "Backfill resumed",
+    "started": "Backfill started",
+    "startedBody": "Atlas is fetching history for every instrument.",
+    "limited": "Re-sync already requested. Try again shortly."
+  },
+  "class": {
+    "crypto": "Crypto",
+    "stock": "Stocks",
+    "etf": "ETFs",
+    "index": "Indices",
+    "commodity": "Commodities",
+    "other": "Other"
+  },
+  "class1": {
+    "crypto": "Crypto",
+    "stock": "Stock",
+    "etf": "ETF",
+    "index": "Index",
+    "commodity": "Commodity",
+    "other": "Other"
+  },
+  "ds": {
+    "candles_1D": "1-day bars",
+    "candles_4H": "4-hour bars",
+    "candles_1H": "1-hour bars",
+    "candles_15m": "15-minute bars",
+    "candles_5m": "5-minute bars",
+    "candles_1m": "1-minute bars",
+    "funding": "Funding rates",
+    "open_interest": "Open interest"
+  },
+  "bar": {
+    "candles_1D": "1-day",
+    "candles_4H": "4-hour",
+    "candles_1H": "1-hour",
+    "candles_15m": "15-minute",
+    "candles_5m": "5-minute",
+    "candles_1m": "1-minute"
+  },
+  "col": { "funding": "Funding", "open_interest": "Open interest" },
+  "depth": {
+    "full": "Full history",
+    "open": "As far back as OKX goes",
+    "years_one": "1 year",
+    "years_other": "{{count}} years",
+    "days_one": "1 day",
+    "days_other": "{{count}} days",
+    "since": "since {{date}}"
+  },
+  "bars_one": "<f>{{n}}</f> bar",
+  "bars_other": "<f>{{n}}</f> bars",
+  "ofBars": "<f>{{w}}</f> of <f>{{e}}</f> bars",
+  "records_one": "<f>{{n}}</f> record",
+  "records_other": "<f>{{n}}</f> records",
+  "recordsPlain_one": "{{n}} record",
+  "recordsPlain_other": "{{n}} records",
+  "soFar": "<f>{{n}}</f> so far",
+  "q": {
+    "title": "Data quality",
+    "open": "Open",
+    "repaired": "Repaired this week",
+    "note": "Atlas checks recent bars every 15 minutes and fetches missing bars again from OKX. Outliers and zero-volume bars are logged and kept exactly as OKX reported them.",
+    "gap_one": "1 missing {{bar}} bar",
+    "gap_other": "<f>{{n}}</f> missing {{bar}} bars",
+    "duplicate_one": "Duplicate {{bar}} bar",
+    "duplicate_other": "<f>{{n}}</f> duplicate {{bar}} bars",
+    "zero_volume_one": "1 zero-volume {{bar}} bar",
+    "zero_volume_other": "<f>{{n}}</f> zero-volume {{bar}} bars",
+    "outlier": "<f>{{sigma}}</f> move in one {{bar}} bar",
+    "outlierPlain": "Outlier in one {{bar}} bar",
+    "found": "found {{when}}",
+    "notRepaired": "Not repaired yet",
+    "notRepairedTip": "Atlas asks OKX again on every check. If OKX has no bars for this window, the gap stays open.",
+    "repairedAt": "Repaired {{when}}",
+    "logged": "Logged",
+    "duplicateTip": "Atlas keeps one bar for each time and logs the extra copy.",
+    "keptOne": "Logged, bar kept",
+    "keptMany": "Logged, bars kept",
+    "outlierTip": "Atlas never deletes an outlier. The bar stays exactly as OKX reported it.",
+    "zeroTip": "Stock perps trade thinly outside US hours, so bars with no trades are expected.",
+    "more": "Show all <f>{{n}}</f>",
+    "fewer": "Show fewer",
+    "noneOpen": "No open issues. The last check found nothing to fix.",
+    "noneRepaired": "Nothing needed repairing this week."
+  },
+  "k": {
+    "title": "What Atlas keeps",
+    "onMac": "<b><f>{{size}}</f></b> on this Mac",
+    "candles": "Candles",
+    "candlesSub": "Six bar sizes for every instrument",
+    "ls": "Long/short ratio",
+    "taker": "Taker volume",
+    "off": "Not collected yet",
+    "failed": "<f>{{n}}</f> failed"
+  },
+  "i": {
+    "title": "Instruments",
+    "search": "Search instruments",
+    "clear": "Clear search",
+    "all": "All",
+    "progress": "In progress",
+    "failed": "Failed",
+    "done": "Done",
+    "col": "Instrument",
+    "total": "Total",
+    "actions": "Actions",
+    "resync": "Re-sync {{inst}}",
+    "retry": "Retry",
+    "retryLabel": "Retry {{inst}}",
+    "open": "Show the history of {{inst}}",
+    "order": "Same order as the map: by asset class, then instrument ID.",
+    "none": "No instruments match “{{q}}”",
+    "noneBody": "Search by instrument ID, for example BTC-USDT-SWAP.",
+    "noneFilter": "No instruments in this view",
+    "noneFilterBody": "Choose All to see every instrument.",
+    "filterLabel": "Show instruments"
+  },
+  "sh": {
+    "label": "Market history of {{inst}}",
+    "sub": "{{cls}}. <f>{{pct}}</f> of its history is in.",
+    "subDone": "{{cls}}. All of its history is in.",
+    "error": "OKX error after 3 tries",
+    "issues": "Issues on this instrument",
+    "noIssues": "No issues found on this instrument.",
+    "keyGap": "Missing bars",
+    "keyRepaired": "Repaired gap",
+    "resync": "Re-sync this instrument"
+  },
+  "empty": {
+    "title": "No market history yet",
+    "body": "Atlas fetches candles, funding and open interest for every instrument in the OKX demo universe, so its agents can work from history. The first run can take a few hours, and you can pause it at any time.",
+    "plan": {
+      "1D": "1-day bars",
+      "1H": "4-hour and 1-hour bars",
+      "15m": "15-minute and 5-minute bars",
+      "1m": "1-minute bars",
+      "open": "Funding rates and open interest"
+    }
+  },
+  "error": {
+    "title": "Couldn’t load the data status",
+    "body": "Atlas’s server didn’t answer. Check that Atlas is running with <cmd>./atlas up</cmd>, then try again."
+  }
+}

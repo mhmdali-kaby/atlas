@@ -4,6 +4,8 @@ import arPortfolio from '../../src/i18n/locales/ar/portfolio.json' with { type: 
 import enPortfolio from '../../src/i18n/locales/en/portfolio.json' with { type: 'json' }
 import arSettings from '../../src/i18n/locales/ar/settings.json' with { type: 'json' }
 import enSettings from '../../src/i18n/locales/en/settings.json' with { type: 'json' }
+import arData from '../../src/i18n/locales/ar/settings-data.json' with { type: 'json' }
+import enData from '../../src/i18n/locales/en/settings-data.json' with { type: 'json' }
 import arShell from '../../src/i18n/locales/ar/shell.json' with { type: 'json' }
 import enShell from '../../src/i18n/locales/en/shell.json' with { type: 'json' }
 import { EVIDENCE_DIR } from '../support/stack'
@@ -15,8 +17,8 @@ import { expect, test } from './appearance'
  */
 const SHOTS = path.join(EVIDENCE_DIR, 'ATL-41')
 const T = {
-  en: { shell: enShell, portfolio: enPortfolio, settings: enSettings },
-  ar: { shell: arShell, portfolio: arPortfolio, settings: arSettings },
+  en: { shell: enShell, portfolio: enPortfolio, settings: enSettings, data: enData },
+  ar: { shell: arShell, portfolio: arPortfolio, settings: arSettings, data: arData },
 }
 
 test.use({ viewport: { width: 1440, height: 900 } })
@@ -52,7 +54,7 @@ test('on /portfolio the switcher selects Portfolio and lists only its pages; Set
   await expect(page).toHaveURL(/\/settings\/connections$/)
   await expect(switcher.getByRole('link', { name: t.shell.area.settings })).toHaveAttribute('aria-current', 'true')
   const settingsList = sidebar.getByRole('navigation', { name: t.shell.area.settings })
-  await expect(settingsList.getByRole('link')).toHaveText([t.settings.nav.connections, t.settings.nav.risk])
+  await expect(settingsList.getByRole('link')).toHaveText([t.settings.nav.connections, t.settings.nav.risk, t.data.nav.data])
   await expect(sidebar.getByRole('link', { name: t.portfolio.nav.overview })).toHaveCount(0)
   expect(await page.evaluate(() => (window as unknown as { atlasNoReload?: boolean }).atlasNoReload)).toBe(true)
   await page.screenshot({ path: `${SHOTS}/${info.project.name}-settings.png` })
