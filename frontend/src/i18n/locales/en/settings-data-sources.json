@@ -130,5 +130,60 @@
     "forexfactory_calendar": "ForexFactory calendar",
     "finnhub_earnings": "Finnhub earnings",
     "alternative_me_fng": "Crypto Fear & Greed Index"
+  },
+  "keys": {
+    "title": "Keys",
+    "note": "Keys are encrypted on this Mac. Atlas shows only their last four characters and never passes them to the agents.",
+    "sub": {
+      "cryptopanic": "Crypto headlines collected from many outlets.",
+      "finnhub": "Company news for stock perps, the economic calendar and earnings."
+    },
+    "add": "Add key",
+    "addMany": "Add keys",
+    "replace": "Replace…",
+    "remove": "Remove…",
+    "masked": "Key ending {{last4}}",
+    "replaceKey": "Replace key…"
+  },
+  "ks": {
+    "addTitle": "Add your {{provider}} key",
+    "replaceTitle": "Replace your {{provider}} key",
+    "text": {
+      "cryptopanic": "CryptoPanic adds crypto headlines collected from many outlets. Its free plan is enough.",
+      "finnhub": "Finnhub gives Atlas company news for your stock perps, the economic calendar and earnings dates. Its free plan is enough."
+    },
+    "where": {
+      "cryptopanic": "Sign in at cryptopanic.com, open the developer page and copy your API key.",
+      "finnhub": "Sign up at finnhub.io and copy the API key from your dashboard."
+    },
+    "open": "Open {{site}}",
+    "field": "API key",
+    "hint": "Atlas encrypts it on this Mac and shows only the last four characters.",
+    "save": "Save key",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "invalid": "That doesn’t look like a {{provider}} key. Paste only the key, with no spaces.",
+    "limited": {
+      "title": "Too many changes",
+      "body": "Try again in a minute."
+    },
+    "down": {
+      "title": "Couldn’t save the key",
+      "body": "Atlas’s server didn’t answer. Try again."
+    },
+    "saved": "{{provider}} key saved",
+    "savedBody": "Atlas checks {{provider}} with it {{within}}."
+  },
+  "rm": {
+    "title": "Remove the {{provider}} key?",
+    "text": {
+      "cryptopanic": "CryptoPanic stops. Your other crypto news sources carry on.",
+      "finnhub": "Finnhub news, the Finnhub economic calendar and Finnhub earnings stop. ForexFactory takes over the economic calendar."
+    },
+    "again": "You can add the key again at any time.",
+    "do": "Remove key",
+    "removing": "Removing…",
+    "toast": "{{provider}} key removed",
+    "failed": "Couldn’t remove the key"
   }
 }

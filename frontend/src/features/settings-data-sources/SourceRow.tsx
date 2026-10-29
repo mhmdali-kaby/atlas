@@ -1,6 +1,6 @@
 import { CircleCheck, CircleMinus, CirclePause, Clock, KeyRound, RotateCcw, TriangleAlert } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Spinner, Toggle } from '../../ui'
+import { Button, Spinner, Toggle } from '../../ui'
 import {
   disabledUntil,
   isFeed,
@@ -82,6 +82,7 @@ export function SourceRow({
   now,
   stale,
   onToggle,
+  onKey,
 }: {
   s: ApiSource
   st: RowStatus
@@ -89,6 +90,8 @@ export function SourceRow({
   /** The summary says the collector has stopped. */
   stale: boolean
   onToggle: (s: ApiSource, enabled: boolean) => void
+  /** Opens the provider's key sheet (ATL-69): add on a Needs a key row, replace from the error line. */
+  onKey: (provider: string, replace: boolean) => void
 }) {
   const { t } = useTranslation(NS)
   const nameOf = useSourceName()
@@ -131,10 +134,22 @@ export function SourceRow({
                 {s.last_error}
               </bdi>
             </Tip>
+            {s.requires_key && s.has_key && (
+              <Button size="sm" variant="plain" className="src-error-key" data-testid="src-replace-key" onClick={() => onKey(s.provider, true)}>
+                {t('keys.replaceKey')}
+              </Button>
+            )}
           </span>
         )}
       </span>
-      <span className="src-yield">{showStrip && <Strip s={s} st={st} now={now} />}</span>
+      <span className="src-yield">
+        {showStrip && <Strip s={s} st={st} now={now} />}
+        {locked && (
+          <Button size="sm" variant="secondary" icon={<KeyRound strokeWidth={1.5} />} data-testid="src-add-key" onClick={() => onKey(s.provider, false)}>
+            {t('keys.add')}
+          </Button>
+        )}
+      </span>
       <Toggle
         className="src-switch"
         checked={s.enabled && !locked}

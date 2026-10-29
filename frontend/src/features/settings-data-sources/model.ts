@@ -144,6 +144,11 @@ export function groups(rows: ApiSource[]): { cat: Category; rows: ApiSource[] }[
 export const PROVIDER_NAMES: Readonly<Record<string, string>> = { cryptopanic: 'CryptoPanic', finnhub: 'Finnhub' }
 /** Where a free key comes from, shown on a Needs a key row. */
 export const PROVIDER_SITES: Readonly<Record<string, string>> = { cryptopanic: 'cryptopanic.com', finnhub: 'finnhub.io' }
+/** Where the key sheet's "Open <site>" link goes (design v6 prototype). */
+export const PROVIDER_KEY_URLS: Readonly<Record<string, string>> = {
+  cryptopanic: 'https://cryptopanic.com/developers/api/',
+  finnhub: 'https://finnhub.io/register',
+}
 
 const MONOGRAMS: Readonly<Record<string, string>> = {
   okx: 'OKX',
@@ -329,4 +334,59 @@ export function usSessions(now: number): { start: number; end: number }[] {
     if (s1 > s0) out.push({ start: (s0 - from) / HOUR, end: (s1 - from) / HOUR })
   }
   return out
+}
+
+/* ---- keys (ATL-69): one key per provider, written to all of its keyed sources ---- */
+
+export interface KeyProvider {
+  provider: string
+  hasKey: boolean
+  last4: string | null
+  /** The provider's keyed sources, in API order. */
+  sources: ApiSource[]
+}
+
+/** Providers that own a keyed source, in first-seen order (design §5.6 Keys group). */
+export function keyProviders(rows: ApiSource[]): KeyProvider[] {
+  const out: KeyProvider[] = []
+  for (const s of rows) {
+    if (!s.requires_key) continue
+    let p = out.find((x) => x.provider === s.provider)
+    if (!p) out.push((p = { provider: s.provider, hasKey: false, last4: null, sources: [] }))
+    p.sources.push(s)
+    if (s.has_key) {
+      p.hasKey = true
+      p.last4 = p.last4 ?? s.key_last4
+    }
+  }
+  return out
+}
+
+/**
+ * The cache edit after a key PUT (last4 set) or DELETE (last4 null), mirroring ATL-71: every keyed
+ * source of the provider gets the key; a PUT also clears its failure columns. Removing a key
+ * releases the sources a now-keyless source covered (ForexFactory leaves Standing by).
+ */
+export function withKey(report: SourcesReport, provider: string, last4: string | null, now: number): SourcesReport {
+  const owned = new Set(report.data.filter((s) => s.requires_key && s.provider === provider).map((s) => s.key))
+  const data = report.data.map((s) => {
+    if (owned.has(s.key)) {
+      const next =
+        last4 === null
+          ? { ...s, has_key: false, key_last4: null }
+          : { ...s, has_key: true, key_last4: last4, consecutive_failures: 0, disabled_until: null, last_error: null }
+      return { ...next, status: apiStatus(next, now) }
+    }
+    if (last4 === null && s.covered_by && owned.has(s.covered_by)) return { ...s, covered_by: null }
+    return s
+  })
+  return { data, summary: summarise(data) }
+}
+
+/** Keys that show Starting after a key change: the provider's enabled sources on a save, the sources it covered on a removal. */
+export function keyStartedBy(report: SourcesReport, provider: string, set: boolean): string[] {
+  const owned = report.data.filter((s) => s.requires_key && s.provider === provider)
+  if (set) return owned.filter((s) => s.enabled).map((s) => s.key)
+  const ownedKeys = new Set(owned.map((s) => s.key))
+  return report.data.filter((s) => s.enabled && s.covered_by !== null && ownedKeys.has(s.covered_by)).map((s) => s.key)
 }

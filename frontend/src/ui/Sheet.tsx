@@ -21,6 +21,10 @@ export interface SheetProps {
   /** Buttons, at the inline end. Put the destructive one last. */
   actions?: ReactNode
   className?: string
+  /** Called when focus would return to the trigger on close; preventDefault to send it elsewhere. */
+  onCloseAutoFocus?: (event: Event) => void
+  /** Called when the sheet would focus its first control on open; preventDefault to focus another. */
+  onOpenAutoFocus?: (event: Event) => void
 }
 
 /**
@@ -40,6 +44,8 @@ export function Sheet({
   children,
   actions,
   className,
+  onCloseAutoFocus,
+  onOpenAutoFocus,
 }: SheetProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen)
   const isOpen = open ?? uncontrolledOpen
@@ -64,7 +70,13 @@ export function Sheet({
                   transition={FADE}
                 />
               </Dialog.Overlay>
-              <Dialog.Content asChild forceMount {...(description ? {} : { 'aria-describedby': undefined })}>
+              <Dialog.Content
+                asChild
+                forceMount
+                onCloseAutoFocus={onCloseAutoFocus}
+                onOpenAutoFocus={onOpenAutoFocus}
+                {...(description ? {} : { 'aria-describedby': undefined })}
+              >
                 <motion.div
                   data-sheet=""
                   className={cx(
