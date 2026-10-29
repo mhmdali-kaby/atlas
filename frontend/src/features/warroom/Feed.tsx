@@ -81,11 +81,13 @@ export interface FeedProps {
   query: ReturnType<typeof useMessages>
   /** The owner's messages that are sending or failed, drawn after the stored ones. */
   pending?: LocalMessage[]
+  /** Starts a reply to a message: the ReplyChip appears above the composer (ATL-42). */
+  onReply: (message: WarroomMessage) => void
 }
 
 const NO_PENDING: LocalMessage[] = []
 
-export function Feed({ thread, threadName, query, pending = NO_PENDING }: FeedProps) {
+export function Feed({ thread, threadName, query, pending = NO_PENDING, onReply }: FeedProps) {
   const { t } = useTranslation('warroom')
   const lang = useLang()
   const now = useNow(60_000)
@@ -182,6 +184,49 @@ export function Feed({ thread, threadName, query, pending = NO_PENDING }: FeedPr
   const pendingFocus = useRef<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
   const lastPointer = useRef<{ x: number; y: number } | null>(null)
+  // While a message's context menu is open, it stays active no matter what else moves or
+  // focuses (design v4 War Room §7, MessageActions). Two id refs pin against the "latest input
+  // wins" rule below; `trySetActive` is the only setter that respects them.
+  const menuOpenId = useRef<string | null>(null)
+
+  const activatable = useCallback((el: Element | null) => {
+    const node = el?.closest<HTMLElement>('[data-msg-id]')
+    return node && (node.dataset.shape === 'agent' || node.dataset.shape === 'owner') ? node.dataset.msgId! : null
+  }, [])
+
+  /** The message whose own action bar or menu currently holds visible keyboard focus, if any. */
+  const barFocusedId = useCallback(() => {
+    const el = document.activeElement
+    if (!el || !scrollRef.current?.contains(el) || !el.matches(':focus-visible')) return null
+    return el.closest('.msg-actions, .msg-menu') ? activatable(el) : null
+  }, [activatable])
+
+  const trySetActive = useCallback(
+    (id: string | null) => {
+      if (menuOpenId.current && id !== menuOpenId.current) return
+      setActiveId(id)
+    },
+    [],
+  )
+
+  /** Recomputes activeId from the current focus, e.g. after a pointer leaves or a menu closes. */
+  const recomputeActive = useCallback(() => {
+    const focused = document.activeElement
+    trySetActive(focused && scrollRef.current?.contains(focused) && focused.matches(':focus-visible') ? activatable(focused) : null)
+  }, [activatable, trySetActive])
+
+  const onMenuChange = useCallback(
+    (id: string, open: boolean) => {
+      if (open) {
+        menuOpenId.current = id
+        setActiveId(id)
+      } else {
+        menuOpenId.current = null
+        recomputeActive()
+      }
+    },
+    [recomputeActive],
+  )
 
   useEffect(() => {
     const id = pendingFocus.current
@@ -207,13 +252,8 @@ export function Feed({ thread, threadName, query, pending = NO_PENDING }: FeedPr
     e.preventDefault()
     virtualizer.scrollToIndex(rowIndex, { align: 'auto' })
     setFocusId(id)
-    setActiveId(id)
+    trySetActive(id)
     pendingFocus.current = id
-  }
-
-  const activatable = (el: Element | null) => {
-    const node = el?.closest<HTMLElement>('[data-msg-id]')
-    return node && (node.dataset.shape === 'agent' || node.dataset.shape === 'owner') ? node.dataset.msgId! : null
   }
 
   function onPointerMove(e: PointerEvent<HTMLDivElement>) {
@@ -221,19 +261,20 @@ export function Feed({ thread, threadName, query, pending = NO_PENDING }: FeedPr
     const last = lastPointer.current
     if (last && last.x === e.clientX && last.y === e.clientY) return
     lastPointer.current = { x: e.clientX, y: e.clientY }
-    setActiveId(activatable(e.target as Element))
+    // Keyboard focus on a bar's own button holds the bar until focus leaves it.
+    if (barFocusedId()) return
+    trySetActive(activatable(e.target as Element))
   }
 
   function onPointerLeave() {
     lastPointer.current = null
-    const focused = document.activeElement
-    setActiveId(focused && scrollRef.current?.contains(focused) && focused.matches(':focus-visible') ? activatable(focused) : null)
+    recomputeActive()
   }
 
   function onFocus(e: FocusEvent<HTMLDivElement>) {
     const id = (e.target as HTMLElement).closest<HTMLElement>('[data-msg-id]')?.dataset.msgId
     if (id) setFocusId(id)
-    if ((e.target as HTMLElement).matches(':focus-visible')) setActiveId(activatable(e.target as Element))
+    if ((e.target as HTMLElement).matches(':focus-visible')) trySetActive(activatable(e.target as Element))
   }
 
   const items = virtualizer.getVirtualItems()
@@ -306,6 +347,8 @@ export function Feed({ thread, threadName, query, pending = NO_PENDING }: FeedPr
                     tabbable={tabbableId === row.key}
                     flash={flashId === row.key}
                     onJump={onJump}
+                    onReply={onReply}
+                    onMenuChange={(open) => onMenuChange(row.key, open)}
                   />
                 </motion.div>
               )}

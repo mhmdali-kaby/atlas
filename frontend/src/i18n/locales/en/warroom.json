@@ -70,6 +70,11 @@
   "atlas": "Atlas",
   "messageLabel": "{{name}}, {{time}}",
   "jumpTo": "Show the message {{name}} wrote",
+  "actions": {
+    "reply": "Reply",
+    "copy": "Copy text",
+    "copied": "Copied"
+  },
   "loading": "Loading messages",
   "loadingOlder": "Loading earlier messages",
   "olderError": "Couldn’t load earlier messages.",
@@ -138,6 +143,10 @@
     "pickerLabel": "Mention",
     "pickerSub": "{{status}}, {{role}}",
     "pickerNone": "No agent called “{{q}}”"
+  },
+  "replyChip": {
+    "title": "Replying to {{name}}",
+    "cancel": "Cancel reply"
   },
   "send": {
     "sending": "Sending…",

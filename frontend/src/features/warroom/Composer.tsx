@@ -1,22 +1,54 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { ArrowUp, AtSign } from 'lucide-react'
+import { ArrowUp, AtSign, CornerUpLeft, X } from 'lucide-react'
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { formatFixed } from '../../lib/format'
 import type { TradingEnv } from '../../app/shell/tradingEnv'
 import { useLang } from '../portfolio/hooks'
 import { agentStatus, filterAgents, type AgentDef } from './agents'
-import type { WarroomThread } from './api'
+import type { WarroomMessage, WarroomThread } from './api'
 import { drafts, sendMessage } from './live'
 import { Medallion } from './Medallion'
+import { useAuthorName } from './shape'
+import { Excerpt } from './text'
 
 /*
- * The composer (design v4 War Room §7 Composer, MentionPicker): a floating glass capsule over the
- * feed's bottom edge. Return sends, Shift-Return adds a line, Return while an IME is composing does
- * not send. "@" at the start of a word opens the agent picker; focus stays in the textarea
- * (aria-activedescendant). `/` is plain text in patch 5. The 4,000-character limit is the API's
- * (counted in characters, as Laravel's max: rule does); pasted text is never cut.
+ * The composer (design v4 War Room §7 Composer, MentionPicker, ReplyChip): a floating glass
+ * capsule over the feed's bottom edge. Return sends, Shift-Return adds a line, Return while an IME
+ * is composing does not send. "@" at the start of a word opens the agent picker; focus stays in
+ * the textarea (aria-activedescendant). `/` is plain text in patch 5. The 4,000-character limit is
+ * the API's (counted in characters, as Laravel's max: rule does); pasted text is never cut.
+ *
+ * ATL-42: a ReplyChip above the text sets `reply_to` on send. Esc cancels, but closes the picker
+ * first when both are open (it stops propagation on its own branch below).
  */
+
+/** The ReplyChip (design v4 War Room §7): the parent's author, its excerpt, and a cancel button. */
+function ReplyChip({ message, onCancel }: { message: WarroomMessage; onCancel: () => void }) {
+  const { t } = useTranslation('warroom')
+  const authorName = useAuthorName()
+  return (
+    <div className="composer-reply" data-testid="wr-reply-chip">
+      <CornerUpLeft aria-hidden="true" strokeWidth={1.5} className="icon-dir" />
+      <div className="composer-reply-text">
+        <b>{t('replyChip.title', { name: authorName(message) })}</b>
+        <span className="excerpt" dir="auto">
+          <Excerpt text={message.content_md} />
+        </span>
+      </div>
+      <button
+        type="button"
+        className="composer-reply-cancel"
+        aria-label={t('replyChip.cancel')}
+        title={t('replyChip.cancel')}
+        onClick={onCancel}
+        data-testid="wr-reply-cancel"
+      >
+        <X aria-hidden="true" strokeWidth={1.5} />
+      </button>
+    </div>
+  )
+}
 
 const MAX_CHARS = 4000
 const COUNT_FROM = 3500
@@ -42,9 +74,12 @@ export interface ComposerProps {
   threadName: string
   /** The thread failed to load or is still loading. */
   disabled: boolean
+  /** The message being replied to (ATL-42), or null for a plain message. */
+  replyTo: WarroomMessage | null
+  onCancelReply: () => void
 }
 
-export function Composer({ env, thread, threadName, disabled }: ComposerProps) {
+export function Composer({ env, thread, threadName, disabled, replyTo, onCancelReply }: ComposerProps) {
   const { t } = useTranslation('warroom')
   const lang = useLang()
   const qc = useQueryClient()
@@ -82,6 +117,11 @@ export function Composer({ env, thread, threadName, disabled }: ComposerProps) {
     const lh = parseFloat(getComputedStyle(ta).lineHeight) || 23
     ta.style.height = `${Math.min(ta.scrollHeight, lh * MAX_LINES + 14)}px`
   }, [value])
+
+  // Reply puts the ReplyChip in the composer and focuses it (design v4 War Room §7).
+  useEffect(() => {
+    if (replyTo) ref.current?.focus()
+  }, [replyTo])
 
   // A click outside the composer closes the picker.
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -147,10 +187,12 @@ export function Composer({ env, thread, threadName, disabled }: ComposerProps) {
   function send() {
     if (!canSend || !thread) return
     const content = value.trim()
+    const replyToId = replyTo?.id ?? null
     setValue('')
     drafts.delete(draftKey)
     setPicker(null)
-    void sendMessage(qc, { env, threadId: thread.id, content })
+    onCancelReply()
+    void sendMessage(qc, { env, threadId: thread.id, content, replyTo: replyToId })
     ref.current?.focus()
   }
 
@@ -179,6 +221,12 @@ export function Composer({ env, thread, threadName, disabled }: ComposerProps) {
         setPicker(null)
         return
       }
+    }
+    // Esc cancels a reply once the picker (handled above) is out of the way.
+    if (e.key === 'Escape' && replyTo) {
+      e.preventDefault()
+      onCancelReply()
+      return
     }
     if (e.key === 'Enter' && !e.shiftKey && !composing) {
       e.preventDefault()
@@ -236,6 +284,7 @@ export function Composer({ env, thread, threadName, disabled }: ComposerProps) {
             )}
           </div>
         )}
+        {replyTo && <ReplyChip message={replyTo} onCancel={onCancelReply} />}
         <div className="composer-row">
           <textarea
             ref={ref}

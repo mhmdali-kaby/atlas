@@ -118,13 +118,14 @@ function fakeBackend(b: Backend) {
       const status = b.posts[Math.min(n, b.posts.length - 1)]!
       n += 1
       if (status !== 201) return reply(status, { message: 'Server Error' })
-      const body = JSON.parse(String(init.body)) as { content_md: string; thread_id: string }
+      const body = JSON.parse(String(init.body)) as { content_md: string; thread_id: string; reply_to: string | null }
       const row = msg({
         id: `srv-${n}`,
         thread_id: body.thread_id,
         author_type: 'human',
         author: 'Mhmd',
         content_md: body.content_md.trim(),
+        reply_to: body.reply_to ?? null,
         mentions: /@Historian\b/.test(body.content_md) ? ['historian'] : [],
         created_at: `2026-10-29T07:59:${String(10 + n).padStart(2, '0')}.000000Z`,
       })
@@ -269,6 +270,78 @@ describe('Composer', () => {
     await u.type(input(), '/pause{Enter}')
     await waitFor(() => expect(posts(fetch)).toHaveLength(1))
     expect(JSON.parse(String(posts(fetch)[0]![1]!.body)).content_md).toBe('/pause')
+  })
+})
+
+/*
+ * ATL-42: choosing Reply (from the hover action bar, here revealed the same way the pointer does
+ * in the browser) puts the ReplyChip above the composer and posts `reply_to`; Esc and the chip's
+ * × both clear it. The full keyboard path (focus a message, Tab into its actions, visible focus
+ * ring) and the Arabic mirroring are e2e (warroom-reply.appearance.spec.ts) — jsdom doesn't
+ * evaluate :focus-visible the way a real browser does.
+ */
+describe('Reply', () => {
+  async function hoverAndOpenReply(feed: HTMLElement) {
+    const target = within(feed).getByText('History weakly supports it.').closest('[data-msg-id]') as HTMLElement
+    fireEvent.pointerMove(target, { clientX: 10, clientY: 10 })
+    const replyButton = await within(feed).findByTestId('wr-action-reply')
+    fireEvent.click(replyButton)
+  }
+
+  it('shows the quoted chip; sending "agreed" posts reply_to and renders with the quoted parent', async () => {
+    const b: Backend = { stored: [msg({})], posts: [201] }
+    const fetch = fakeBackend(b)
+    renderWarRoom()
+    const u = user()
+    await waitFor(() => expect(input()).not.toBeDisabled())
+    const feed = screen.getByTestId('wr-feed')
+
+    await hoverAndOpenReply(feed)
+    const chip = screen.getByTestId('wr-reply-chip')
+    expect(chip).toHaveTextContent('Replying to Historian')
+    expect(chip).toHaveTextContent('History weakly supports it.')
+    expect(input()).toHaveFocus()
+
+    await u.type(input(), 'agreed{Enter}')
+    await waitFor(() => expect(posts(fetch)).toHaveLength(1))
+    expect(JSON.parse(String(posts(fetch)[0]![1]!.body))).toMatchObject({ content_md: 'agreed', reply_to: 'm-1' })
+    expect(screen.queryByTestId('wr-reply-chip')).toBeNull()
+
+    const mine = within(feed).getByText('agreed').closest('[data-msg-id]') as HTMLElement
+    expect(within(mine).getByText('History weakly supports it.')).toBeInTheDocument()
+  })
+
+  it('Esc clears the reply: the next message posts with no reply_to', async () => {
+    const fetch = fakeBackend({ stored: [msg({})], posts: [201] })
+    renderWarRoom()
+    const u = user()
+    await waitFor(() => expect(input()).not.toBeDisabled())
+    const feed = screen.getByTestId('wr-feed')
+
+    await hoverAndOpenReply(feed)
+    expect(screen.getByTestId('wr-reply-chip')).toBeInTheDocument()
+    await u.keyboard('{Escape}')
+    expect(screen.queryByTestId('wr-reply-chip')).toBeNull()
+
+    await u.type(input(), 'no reply here{Enter}')
+    await waitFor(() => expect(posts(fetch)).toHaveLength(1))
+    expect(JSON.parse(String(posts(fetch)[0]![1]!.body))).toMatchObject({ reply_to: null })
+  })
+
+  it("the chip's × clears the reply: the next message posts with no reply_to", async () => {
+    const fetch = fakeBackend({ stored: [msg({})], posts: [201] })
+    renderWarRoom()
+    const u = user()
+    await waitFor(() => expect(input()).not.toBeDisabled())
+    const feed = screen.getByTestId('wr-feed')
+
+    await hoverAndOpenReply(feed)
+    fireEvent.click(screen.getByTestId('wr-reply-cancel'))
+    expect(screen.queryByTestId('wr-reply-chip')).toBeNull()
+
+    await u.type(input(), 'still no reply{Enter}')
+    await waitFor(() => expect(posts(fetch)).toHaveLength(1))
+    expect(JSON.parse(String(posts(fetch)[0]![1]!.body))).toMatchObject({ reply_to: null })
   })
 })
 

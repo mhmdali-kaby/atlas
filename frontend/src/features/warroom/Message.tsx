@@ -16,12 +16,13 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
-import type { MouseEvent } from 'react'
+import { useState, type MouseEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Lang } from '../../lib/format'
 import { Button, Spinner } from '../../ui'
 import type { WarroomMessage } from './api'
 import { discardMessage, isLocal, retryMessage, type LocalMessage } from './live'
+import { MessageActions, MessageMenu } from './MessageActions'
 import { Medallion, SystemMedallion } from './Medallion'
 import { Excerpt, Inline, Markdown } from './text'
 import { continues, shapeOf, useAuthorName } from './shape'
@@ -112,9 +113,16 @@ export interface MessageProps {
   tabbable: boolean
   flash: boolean
   onJump: (id: string) => void
+  /** Starts a reply to this message: the ReplyChip appears above the composer. */
+  onReply: (message: WarroomMessage) => void
+  /** While this message's context menu is open, it stays active (Feed pins it). */
+  onMenuChange: (open: boolean) => void
 }
 
-export function Message({ message: m, prev, parent, lang, active, tabbable, flash, onJump }: MessageProps) {
+/** How far the menu stays clear of the viewport edge, so it never renders off-screen. */
+const MENU_MARGIN = { x: 200, y: 90 }
+
+export function Message({ message: m, prev, parent, lang, active, tabbable, flash, onJump, onReply, onMenuChange }: MessageProps) {
   const { t } = useTranslation('warroom')
   const authorName = useAuthorName()
   const shape = shapeOf(m)
@@ -128,6 +136,24 @@ export function Message({ message: m, prev, parent, lang, active, tabbable, flas
   }
   const cls = (...extra: Array<string | false>) =>
     ['msg', `is-${shape}`, active && shape !== 'event' && shape !== 'alert' && 'is-active', flash && 'is-flash', ...extra].filter(Boolean).join(' ')
+
+  // MessageActions (design v4 War Room §7): Reply and Copy text, on agent and owner messages that
+  // are not still sending or failed. The context menu is the same two items, opened by right-click,
+  // the context-menu key or Shift-F10 (all of which the browser turns into a native "contextmenu"
+  // event on the focused element) — so one handler on the article covers all three.
+  const canAct = (shape === 'agent' || shape === 'owner') && !isLocal(m)
+  const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null)
+  const closeMenu = () => {
+    setMenuAt(null)
+    onMenuChange(false)
+  }
+  const onContextMenu = canAct
+    ? (e: MouseEvent) => {
+        e.preventDefault()
+        setMenuAt({ x: Math.min(e.clientX, window.innerWidth - MENU_MARGIN.x), y: Math.min(e.clientY, window.innerHeight - MENU_MARGIN.y) })
+        onMenuChange(true)
+      }
+    : undefined
 
   if (shape === 'event') {
     return (
@@ -180,6 +206,7 @@ export function Message({ message: m, prev, parent, lang, active, tabbable, flas
         {...common}
         data-local={local?.local.state}
         aria-busy={local?.local.state === 'sending' || undefined}
+        onContextMenu={onContextMenu}
       >
         <div className="msg-main">
           {parent && <ReplyQuote parent={parent} onJump={onJump} />}
@@ -192,6 +219,8 @@ export function Message({ message: m, prev, parent, lang, active, tabbable, flas
             </p>
           )}
         </div>
+        {active && canAct && <MessageActions message={m} onReply={() => onReply(m)} />}
+        {menuAt && <MessageMenu message={m} label={label} x={menuAt.x} y={menuAt.y} onReply={() => onReply(m)} onClose={closeMenu} />}
       </article>
     )
   }
@@ -199,7 +228,7 @@ export function Message({ message: m, prev, parent, lang, active, tabbable, flas
   const KindIcon = KIND_ICON[m.kind] ?? FileText
   const kindLabel = t(`kind.${m.kind}`, { defaultValue: m.kind })
   return (
-    <article className={cls(cont && 'is-cont')} {...common}>
+    <article className={cls(cont && 'is-cont')} {...common} onContextMenu={onContextMenu}>
       <div className="msg-gutter">
         {cont ? (
           <span className="msg-time-hover num">{time}</span>
@@ -229,6 +258,8 @@ export function Message({ message: m, prev, parent, lang, active, tabbable, flas
           </div>
         )}
       </div>
+      {active && canAct && <MessageActions message={m} onReply={() => onReply(m)} />}
+      {menuAt && <MessageMenu message={m} label={label} x={menuAt.x} y={menuAt.y} onReply={() => onReply(m)} onClose={closeMenu} />}
     </article>
   )
 }

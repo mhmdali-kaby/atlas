@@ -1,11 +1,11 @@
 import { CircleCheck, PanelRight, WifiOff } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { toolbarIconButton } from '../../app/shell/toolbarClasses'
 import { useSession } from '../auth/session'
 import { Button, Spinner } from '../../ui'
-import { flattenMessages, useMessages } from './api'
+import { flattenMessages, useMessages, type WarroomMessage } from './api'
 import { Composer } from './Composer'
 import { Feed } from './Feed'
 import { FeedEmpty, FeedError, FeedNotFound, FeedSkeleton } from './FeedStates'
@@ -105,6 +105,17 @@ export function WarRoomPage() {
     [outbox, env, selected, list, ownerName],
   )
 
+  // The message being replied to (ATL-42): the ReplyChip above the composer. A thread switch
+  // leaves it behind — the composer below belongs to the new thread. Reset during render (React's
+  // "adjusting state when a prop changes" pattern), not an effect: it must apply before this
+  // render commits, not after.
+  const [replyTo, setReplyTo] = useState<WarroomMessage | null>(null)
+  const lastThreadId = useRef(selected?.id)
+  if (lastThreadId.current !== selected?.id) {
+    lastThreadId.current = selected?.id
+    setReplyTo(null)
+  }
+
   let feed
   if (error) {
     feed = <FeedError onRetry={() => void (threads.isError ? threads.refetch() : messages.refetch())} />
@@ -117,7 +128,7 @@ export function WarRoomPage() {
     feed = <FeedEmpty thread={selected} />
   } else {
     // Keyed by thread so a new thread starts at its own bottom with fresh scroll state.
-    feed = <Feed key={selected.id} thread={selected} threadName={threadName} query={messages} pending={pending} />
+    feed = <Feed key={selected.id} thread={selected} threadName={threadName} query={messages} pending={pending} onReply={setReplyTo} />
   }
 
   return (
@@ -131,6 +142,8 @@ export function WarRoomPage() {
           thread={selected}
           threadName={threadName}
           disabled={error || loading || !selected}
+          replyTo={replyTo}
+          onCancelReply={() => setReplyTo(null)}
         />
         <div className="sr-only" aria-live="polite" data-testid="wr-live">
           {live.announcement}
