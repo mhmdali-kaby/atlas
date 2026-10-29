@@ -84,6 +84,11 @@
     "instTitle": "Nothing about {{inst}} yet",
     "instBody": "Agents open a thread for each instrument they watch. Write below to start this one."
   },
+  "notFound": {
+    "title": "This thread isn’t here",
+    "body": "The link may be old, from the other environment, or mistyped. Main has everything the team is saying now.",
+    "action": "Go to Main"
+  },
   "error": {
     "title": "Couldn’t load messages",
     "bodyBefore": "Atlas’s server didn’t answer. Check that Atlas is running with",

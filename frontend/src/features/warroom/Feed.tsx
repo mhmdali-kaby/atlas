@@ -1,5 +1,6 @@
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { CloudOff, MessagesSquare, ChartCandlestick, RefreshCw } from 'lucide-react'
+import { CloudOff, MessagesSquare, ChartCandlestick, RefreshCw, SearchX } from 'lucide-react'
+import { Link } from 'react-router'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent, type PointerEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Skeleton, Spinner } from '../../ui'
@@ -96,6 +97,25 @@ export function FeedError({ onRetry }: { onRetry: () => void }) {
         <Button variant="secondary" onClick={onRetry}>
           <RefreshCw aria-hidden="true" strokeWidth={1.5} className="size-4" />
           <span>{t('tryAgain')}</span>
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+/** A War Room URL whose thread is not in this env's list: stale link, other env or typo. */
+export function FeedNotFound() {
+  const { t } = useTranslation('warroom')
+  return (
+    <div className="wr-column">
+      <div className="state-block" role="alert" data-testid="wr-feed-not-found">
+        <div className="state-icon">
+          <SearchX aria-hidden="true" strokeWidth={1.5} />
+        </div>
+        <h2 className="text-title-3">{t('notFound.title')}</h2>
+        <p className="state-body">{t('notFound.body')}</p>
+        <Button variant="secondary" asChild>
+          <Link to="/warroom">{t('notFound.action')}</Link>
         </Button>
       </div>
     </div>

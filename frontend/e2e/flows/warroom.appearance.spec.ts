@@ -115,3 +115,20 @@ test('no colour-contrast failures in the War Room (axe)', async ({ page }) => {
   const failures = results.violations.flatMap((v) => v.nodes.map((n) => `${n.target.join(' ')}: ${n.failureSummary ?? ''}`))
   expect(failures).toEqual([])
 })
+
+test('a thread id that is not in the list shows "not here" with a way back to Main', async ({ page, lang }, info) => {
+  await page.goto('/warroom/threads/00000000-0000-0000-0000-000000000000')
+  const notFound = page.getByTestId('wr-feed-not-found')
+  await expect(notFound).toBeVisible()
+  await expect(notFound.getByRole('heading')).toHaveText(T[lang].wr.notFound.title)
+  await expect(page.getByTestId('wr-feed-loading')).toHaveCount(0)
+  mkdirSync(SHOTS, { recursive: true })
+  await page.screenshot({ path: `${SHOTS}/${info.project.name}-unknown-thread.png` })
+
+  const contrast = await new AxeBuilder({ page }).include('.shell-app').withRules(['color-contrast']).analyze()
+  expect(contrast.violations.flatMap((v) => v.nodes.map((n) => n.target.join(' ')))).toEqual([])
+
+  await notFound.getByRole('link', { name: T[lang].wr.notFound.action }).click()
+  await expect(page).toHaveURL(/\/warroom$/)
+  await expect(feedOf(page).getByText(LAST_OWNER_TEXT)).toBeVisible()
+})
