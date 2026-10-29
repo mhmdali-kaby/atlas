@@ -34,6 +34,9 @@ asyncio_mode = "auto"
 addopts = "--import-mode=importlib"
 # services/trading_core shares its name with the trading_core package; without this pytest shadows it.
 consider_namespace_packages = true
+markers = [
+  "model: needs a locally cached embedding model (ATL-64); skipped when the cache is absent",
+]
 
 [tool.ruff]
 line-length = 110

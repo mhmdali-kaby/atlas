@@ -65,4 +65,6 @@ def test_module_runs_as_cli() -> None:
     )
     # ATL-62 registers its linker through the entry point, so the CLI scores it.
     assert "linking: precision=" in proc.stdout
-    assert "clustering: not registered" in proc.stdout
+    # ATL-64's clusterer arrives through its entry point; without a cached model it runs on the fake
+    # embedder, so this never downloads anything.
+    assert "clustering: pairwise_f1=" in proc.stdout
