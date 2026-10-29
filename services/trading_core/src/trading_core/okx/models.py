@@ -9,9 +9,9 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
-from typing import Annotated, Any
+from typing import Annotated, Any, ClassVar
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, model_validator
 from pydantic.alias_generators import to_camel
 
 
@@ -292,6 +292,134 @@ class WithdrawalRecord(OkxModel):
     ts: MsRequired
 
 
+# ---- market data (ATL-45) ----------------------------------------------------------------------
+
+
+class _ArrayRow(OkxModel):
+    """A model OKX sends as a positional array (``["1730000000000", "1.2", ...]``).
+
+    ``_columns`` names the positions in the documented order; extra trailing positions are ignored, so
+    a column OKX appends later does not break parsing. A dict row is also accepted.
+    """
+
+    _columns: ClassVar[tuple[str, ...]] = ()
+
+    @model_validator(mode="before")
+    @classmethod
+    def _from_array(cls, value: Any) -> Any:
+        if isinstance(value, list | tuple):
+            if len(value) < len(cls._columns):
+                raise ValueError(f"{cls.__name__} row has {len(value)} columns, expected {len(cls._columns)}")
+            return dict(zip(cls._columns, value, strict=False))
+        return value
+
+
+def _confirm(value: Any) -> Any:
+    if isinstance(value, str):
+        if value not in ("0", "1"):
+            raise ValueError(f"candle confirm must be '0' or '1', got {value!r}")
+        return value == "1"
+    return value
+
+
+class Candle(_ArrayRow):
+    """``market/candles`` and ``market/history-candles``: one bar, opening at ``ts`` (UTC).
+
+    ``vol`` is in contracts for derivatives (base currency for spot), ``vol_ccy`` in base currency,
+    ``vol_ccy_quote`` in quote currency. ``confirm`` is False while the bar is still forming.
+    """
+
+    _columns = ("ts", "o", "h", "l", "c", "vol", "vol_ccy", "vol_ccy_quote", "confirm")
+    ts: MsRequired
+    o: Dec
+    h: Dec
+    l: Dec  # noqa: E741 - OKX's own name
+    c: Dec
+    vol: Dec = None
+    vol_ccy: Dec = None
+    vol_ccy_quote: Dec = None
+    confirm: Annotated[bool, BeforeValidator(_confirm)]
+
+
+class FundingRate(OkxModel):
+    """``public/funding-rate``: the current period's rate and the next settlement time."""
+
+    inst_type: str
+    inst_id: str
+    funding_rate: Dec = None
+    next_funding_rate: Dec = None
+    funding_time: Ms = None
+    next_funding_time: Ms = None
+    min_funding_rate: Dec = None
+    max_funding_rate: Dec = None
+    sett_funding_rate: Dec = None
+    sett_state: Str = None
+    premium: Dec = None
+    interest_rate: Dec = None
+    impact_value: Dec = None
+    method: Str = None
+    formula_type: Str = None
+    ts: Ms = None
+
+
+class FundingRateHistory(OkxModel):
+    """``public/funding-rate-history``: one settled funding period."""
+
+    inst_type: str
+    inst_id: str
+    funding_rate: Dec = None
+    realized_rate: Dec = None
+    funding_time: MsRequired
+    method: Str = None
+    formula_type: Str = None
+
+
+class OpenInterest(OkxModel):
+    """``public/open-interest``: ``oi`` in contracts, ``oi_ccy`` in coin, ``oi_usd`` in USD."""
+
+    inst_type: str
+    inst_id: str
+    oi: Dec = None
+    oi_ccy: Dec = None
+    oi_usd: Dec = None
+    ts: MsRequired
+
+
+class OpenInterestVolume(_ArrayRow):
+    """``rubik/stat/contracts/open-interest-volume``: per-currency OI and volume, both in USD."""
+
+    _columns = ("ts", "oi", "vol")
+    ts: MsRequired
+    oi: Dec = None
+    vol: Dec = None
+
+
+class LongShortRatio(_ArrayRow):
+    """``rubik/stat/contracts/long-short-account-ratio``: accounts long / accounts short."""
+
+    _columns = ("ts", "ratio")
+    ts: MsRequired
+    ratio: Dec = None
+
+
+class TakerVolume(_ArrayRow):
+    """``rubik/stat/taker-volume``: taker sell and buy volume, in the unit OKX documents for the instType."""
+
+    _columns = ("ts", "sell_vol", "buy_vol")
+    ts: MsRequired
+    sell_vol: Dec = None
+    buy_vol: Dec = None
+
+
+class MarkPrice(OkxModel):
+    """``public/mark-price``."""
+
+    inst_type: str
+    inst_id: str
+    mark_px: Dec = None
+    ts: MsRequired
+
+
 ALL_MODELS: tuple[type[OkxModel], ...] = (
     ServerTime,
     Instrument,
@@ -306,4 +434,12 @@ ALL_MODELS: tuple[type[OkxModel], ...] = (
     AssetBalance,
     DepositRecord,
     WithdrawalRecord,
+    Candle,
+    FundingRate,
+    FundingRateHistory,
+    OpenInterest,
+    OpenInterestVolume,
+    LongShortRatio,
+    TakerVolume,
+    MarkPrice,
 )
