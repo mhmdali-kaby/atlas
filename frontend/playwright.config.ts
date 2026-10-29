@@ -17,6 +17,16 @@ const appearance = [
   { name: 'rtl-dark', lang: 'ar', theme: 'dark' },
 ] as const
 
+// ATL-42: warroom-reply.spec.ts posts into the seeded Main thread (like warroom.live.spec.ts), so
+// it cannot share the `.appearance.spec.ts` projects above, which read Main and assert on its
+// seeded content in parallel. It gets its own projects for just the lang/theme combinations its
+// tests use: en-light for the main flow and keyboard checks, ar-light/ar-dark for the RTL mirror.
+const warroomReply = [
+  { name: 'warroom-reply-en-light', lang: 'en', theme: 'light' },
+  { name: 'warroom-reply-ar-light', lang: 'ar', theme: 'light' },
+  { name: 'warroom-reply-ar-dark', lang: 'ar', theme: 'dark' },
+] as const
+
 export default defineConfig<AppearanceOptions>({
   testDir: './e2e',
   outputDir: '../../evidence/playwright/test-results',
@@ -48,12 +58,21 @@ export default defineConfig<AppearanceOptions>({
       dependencies: ['onboarding'],
       use: { ...desktop, baseURL: SPA_URL, storageState: STORAGE_STATE, lang: a.lang, theme: a.theme },
     })),
+    // ATL-42: posts replies into Main, so it waits for the read-only appearance flows above and
+    // runs before warroom-live, which also posts into Main.
+    ...warroomReply.map((v) => ({
+      name: v.name,
+      testMatch: /flows\/warroom-reply\.spec\.ts/,
+      dependencies: appearance.map((a) => a.name),
+      use: { ...desktop, baseURL: SPA_URL, storageState: STORAGE_STATE, lang: v.lang, theme: v.theme },
+    })),
     // ATL-40: posts to Main and runs its own Reverb and atlas:bridge, so it waits for the
-    // appearance flows, which read the seeded Main thread as it was.
+    // appearance flows (which read the seeded Main thread as it was) and for warroom-reply
+    // (which also posts into Main).
     {
       name: 'warroom-live',
       testMatch: /flows\/warroom\.live\.spec\.ts/,
-      dependencies: appearance.map((a) => a.name),
+      dependencies: [...appearance.map((a) => a.name), ...warroomReply.map((v) => v.name)],
       use: { ...desktop, baseURL: SPA_URL, storageState: STORAGE_STATE },
     },
   ],

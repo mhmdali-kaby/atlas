@@ -10,6 +10,11 @@ import { expect, test } from './appearance'
  * ATL-42: Reply from the feed. WarroomDemoSeeder's demo Main thread ends with an owner message
  * ("Hold new entries until CPI at 15:30…"), which is the target here — it is on screen without
  * scrolling and, being the owner's own bubble, also exercises MessageActions on `is-owner`.
+ *
+ * This posts into Main, so (unlike the `.appearance.spec.ts` specs, which only read it) it is not
+ * matched by that glob: it runs in its own `warroom-reply-*` projects in playwright.config.ts,
+ * after the read-only appearance projects and before warroom.live.spec.ts, which also posts into
+ * Main (see the dependency comment there).
  */
 const SHOTS = path.join(EVIDENCE_DIR, 'ATL-42')
 const T = { en: enWarroom, ar: arWarroom }
