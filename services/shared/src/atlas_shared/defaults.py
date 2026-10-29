@@ -127,6 +127,39 @@ DEFAULTS: Final[dict[str, Any]] = {
         "batch_rows": 2000,
         "last_error_max_chars": 500,
     },
+    "candle_poller": {
+        "tick_seconds": 1,
+        "close_delay_seconds": 3,
+        "concurrency": 4,
+        "bars": [
+            "1m",
+            "5m",
+            "15m",
+            "1H",
+            "4H",
+            "1D",
+        ],
+        "page_limit": 100,
+    },
+    "candle_grid": {
+        "offset_minutes": {
+            "1m": 0,
+            "5m": 0,
+            "15m": 0,
+            "1H": 0,
+            "4H": 0,
+            "1D": 960,
+        },
+    },
+    "quality": {
+        "interval_seconds": 900,
+        "window_bars": 500,
+        "outlier_sigma": 8,
+        "outlier_window": 100,
+        "outlier_min_samples": 30,
+        "repair_page_limit": 100,
+        "max_repair_attempts": 3,
+    },
     "internal_api": {
         "max_body_bytes": 1048576,
     },
@@ -346,7 +379,7 @@ DEFAULTS: Final[dict[str, Any]] = {
     "backfill": {
         "depth_days": {
             "candles:1m": 30,
-            "candles:5m": 30,
+            "candles:5m": 180,
             "candles:15m": 180,
             "candles:1H": 730,
             "candles:4H": 730,

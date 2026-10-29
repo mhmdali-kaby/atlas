@@ -34,8 +34,8 @@ dated futures and options are off; SWAPs with `asset_class = other` have no togg
 | --- | --- | --- | --- | --- |
 | `candles:1D` | every instrument | instId | market/history-candles, 100/page | null = full history |
 | `candles:1H`, `candles:4H` | every instrument | instId | " | 730 |
-| `candles:15m` | every instrument | instId | " | 180 |
-| `candles:5m`, `candles:1m` | every instrument | instId | " | 30 |
+| `candles:15m`, `candles:5m` | every instrument | instId | " | 180 (5m raised from 30 by ATL-47) |
+| `candles:1m` | every instrument | instId | " | 30 |
 | `funding` | SWAP | instId | public/funding-rate-history, `after` cursor, 100/page | null |
 | `open_interest` | crypto SWAP/FUTURES | **bare ccy** (`BTC`) | rubik open-interest-volume, `period=1D`, `end` = cursor − 1 ms | null |
 

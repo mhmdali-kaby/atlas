@@ -25,8 +25,14 @@ from trading_core.backfill.runner import backfill_job
 from trading_core.config import Settings
 from trading_core.connection_test import router as connection_test_router
 from trading_core.logs import AccessLogMiddleware
+from trading_core.marketdata.api import router as quality_router
+from trading_core.marketdata.poller import JOB as CANDLE_POLLER_JOB
+from trading_core.marketdata.poller import candle_poller_job
+from trading_core.marketdata.quality import JOB as QUALITY_JOB
+from trading_core.marketdata.quality import quality_job
 from trading_core.okx.client import OkxClient
 from trading_core.okx.errors import OkxClientError, OkxError, OkxNetworkError
+from trading_core.okx.ratelimit import RateLimiter
 from trading_core.scheduler import Scheduler
 from trading_core.security import PROTECTED_PREFIX, InternalSignatureMiddleware
 from trading_core.sync.account import STREAM as ACCOUNT_JOB
@@ -176,10 +182,26 @@ def default_scheduler(settings: Settings, engine: Engine | None = None) -> Sched
         DEFAULTS["sync"]["bills_interval_seconds"],
         bills_job(settings.env, engine, settings.app_key),
     )
+    # Public OKX limits are per IP: the backfill, the candle poller and the gap repair share one limiter.
+    limiter = RateLimiter()
+
+    def market_client(env: str) -> OkxClient:
+        return OkxClient(env, rate_limiter=limiter)
+
     scheduler.add(
         BACKFILL_JOB,
         DEFAULTS["backfill_runner"]["interval_seconds"],
-        backfill_job(settings.env, engine),
+        backfill_job(settings.env, engine, client_factory=market_client),
+    )
+    scheduler.add(
+        CANDLE_POLLER_JOB,
+        DEFAULTS["candle_poller"]["tick_seconds"],
+        candle_poller_job(settings.env, engine, client_factory=market_client),
+    )
+    scheduler.add(
+        QUALITY_JOB,
+        DEFAULTS["quality"]["interval_seconds"],
+        quality_job(settings.env, engine, client_factory=market_client),
     )
     return scheduler
 
@@ -225,6 +247,7 @@ def create_app(
     application.include_router(internal_router)
     application.include_router(connection_test_router)
     application.include_router(backfill_router)
+    application.include_router(quality_router)
     if extra_internal is not None:
         application.include_router(extra_internal)
     # Last added runs first: the access log wraps the signature check, so rejected calls are logged too.

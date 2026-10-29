@@ -119,6 +119,39 @@ backfill_runner:
   batch_rows: 2000
   last_error_max_chars: 500
 
+# ATL-47, brief §7.3 + decision #242: closed bars stay fresh by REST polling (no WebSocket feed in
+# Phase 1). After each bar closes, the poller waits close_delay_seconds (OKX confirms a bar a moment
+# after its close), then fetches the bars newer than the newest stored one for every instrument whose
+# candles:<bar> backfill job is done. The job ticks every tick_seconds, so a closed bar is written
+# within close_delay_seconds + tick_seconds plus the rate limiter's wait. Requests share one OKX client
+# (one token bucket for market/candles), `concurrency` at a time, smallest bar first.
+# Bar grids: OKX aligns 4H and 1D to UTC+8, so 1D bars open at 16:00 UTC (offset in minutes from 00:00 UTC).
+candle_poller:
+  tick_seconds: 1
+  close_delay_seconds: 3
+  concurrency: 4
+  bars: ["1m", "5m", "15m", "1H", "4H", "1D"]
+  page_limit: 100
+candle_grid:
+  offset_minutes: { "1m": 0, "5m": 0, "15m": 0, "1H": 0, "4H": 0, "1D": 960 }
+
+# ATL-47, brief §7.3 data-quality checks, every interval_seconds and on demand
+# (POST /internal/quality/check). Each run looks at the last window_bars bars of every candle series
+# whose backfill is done. Gaps = missing ts in the bar grid (re-fetched from REST; repaired_at when
+# every missing bar exists). Duplicates = two or more rows in one grid slot (an off-grid ts).
+# Zero-volume runs are logged, never "repaired" (stock perps have quiet hours). Outliers = a
+# close-to-close log return beyond outlier_sigma standard deviations of the previous
+# outlier_window returns (needs outlier_min_samples of them); outliers are logged, never deleted.
+quality:
+  interval_seconds: 900
+  window_bars: 500
+  outlier_sigma: 8
+  outlier_window: 100
+  outlier_min_samples: 30
+  repair_page_limit: 100
+  # A gap OKX itself never had (maintenance) stays open after this many REST attempts, not re-fetched forever.
+  max_repair_attempts: 3
+
 # ATL-35: InternalSignatureMiddleware rejects any /internal request body larger than this (by
 # Content-Length, and by a running total while reading chunked bodies) before it is ever handed
 # to the MAC check, so an unsigned caller cannot force trading_core to buffer an unbounded body.
@@ -236,7 +269,7 @@ warroom:
 backfill:
   depth_days:
     "candles:1m": 30
-    "candles:5m": 30
+    "candles:5m": 180
     "candles:15m": 180
     "candles:1H": 730
     "candles:4H": 730
