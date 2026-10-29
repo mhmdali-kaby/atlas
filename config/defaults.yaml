@@ -100,6 +100,25 @@ sync:
   account_interval_seconds: 60
   bills_interval_seconds: 300
 
+# ATL-46, brief §7.3: the resumable history backfill in trading_core. How far back each dataset
+# goes is backfill.depth_days (below, shared with the Data API); null depths walk back to
+# full_history_floor, i.e. until OKX returns no older data. Datasets are created and claimed in
+# dataset_order (daily and hourly bars before the 1m bars). One rate limiter is shared by all
+# `concurrency` workers, so OKX's per-endpoint limits hold whatever the concurrency.
+backfill_runner:
+  interval_seconds: 300
+  concurrency: 4
+  # Brief §14.5 market toggles that are on by default; dated futures and options stay off.
+  enabled_markets: [spot, crypto_perp, stock_perp, commodity_perp]
+  dataset_order: ["candles:1D", "candles:1H", "candles:4H", funding, open_interest, "candles:15m", "candles:5m", "candles:1m"]
+  # Open interest history is OKX rubik's per-currency series (crypto only); 1D goes back furthest.
+  open_interest_period: 1D
+  full_history_floor: "2009-01-01T00:00:00Z"
+  # Postgres accepts at most 65535 bind parameters per statement; batches are also capped at batch_rows.
+  max_bind_params: 65535
+  batch_rows: 2000
+  last_error_max_chars: 500
+
 # ATL-35: InternalSignatureMiddleware rejects any /internal request body larger than this (by
 # Content-Length, and by a running total while reading chunked bodies) before it is ever handed
 # to the MAC check, so an unsigned caller cannot force trading_core to buffer an unbounded body.
