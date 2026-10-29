@@ -319,4 +319,24 @@ return [
             ],
         ],
     ],
+    'backfill' => [
+        'depth_days' => [
+            'candles:1m' => 30,
+            'candles:5m' => 30,
+            'candles:15m' => 180,
+            'candles:1H' => 730,
+            'candles:4H' => 730,
+            'candles:1D' => null,
+            'funding' => null,
+            'open_interest' => null,
+            'long_short_ratio' => null,
+            'taker_volume' => null,
+        ],
+    ],
+    'data_api' => [
+        'resync_per_minute' => 1,
+        'pause_per_minute' => 5,
+        'repaired_issue_days' => 7,
+        'quality_issue_limit' => 500,
+    ],
 ];

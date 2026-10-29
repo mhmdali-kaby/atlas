@@ -318,4 +318,24 @@ DEFAULTS: Final[dict[str, Any]] = {
             },
         },
     },
+    "backfill": {
+        "depth_days": {
+            "candles:1m": 30,
+            "candles:5m": 30,
+            "candles:15m": 180,
+            "candles:1H": 730,
+            "candles:4H": 730,
+            "candles:1D": None,
+            "funding": None,
+            "open_interest": None,
+            "long_short_ratio": None,
+            "taker_volume": None,
+        },
+    },
+    "data_api": {
+        "resync_per_minute": 1,
+        "pause_per_minute": 5,
+        "repaired_issue_days": 7,
+        "quality_issue_limit": 500,
+    },
 }
