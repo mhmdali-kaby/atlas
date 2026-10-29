@@ -499,6 +499,22 @@ quant:
   atr_window: 14
   # Intraday-by-hour tables are given in UTC and in this display timezone.
   hour_table_timezone: Asia/Baghdad
+  # ATL-81: find_analogs. Distance² = sum of weight * mean squared z-difference per feature group
+  # (each feature column is z-normalised over the eligible windows only, so nothing after as_of
+  # enters the scaling). Chosen neighbours never overlap each other or the query window.
+  analogs:
+    k: 20
+    horizons: ["1h", "4h", "24h", "72h"]
+    weights:
+      returns_path: "1"
+      realised_vol: "1"
+      volume_z: "1"
+      funding: "1"
+  # ATL-81: seasonality. The funding buckets are the hours from -window to +window - 1 around the
+  # nearest settlement time (UTC); every other bar falls in the "outside" bucket.
+  seasonality:
+    funding_hours_utc: [0, 8, 16]
+    funding_window_hours: 2
   # ATL-80: detect_regime. A Gaussian HMM (seeded) on [log return %, ln(rolling vol %)]; a state whose
   # mean rolling vol is >= high_vol_ratio x the calmest state's is high_vol, the calmest state is
   # low_vol when some state clears that ratio, other states are trend_up/trend_down when the t-statistic
