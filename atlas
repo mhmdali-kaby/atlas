@@ -38,6 +38,31 @@ load_app_key() {
   fi
 }
 
+ensure_reverb_secret() {
+  # ATL-50 (security round 4, finding 1): an empty secret lets any web page forge a private-
+  # channel subscription with HMAC(key=""). Generated the same way as APP_KEY (a random value
+  # written into backend/.env on first run), before any process that reads it starts. Runs
+  # before load_backend_env so the freshly written value, not an empty one, is what gets
+  # exported and handed to every child process.
+  local f="$ROOT/backend/.env"
+  [[ -f "$f" ]] || { say "backend/.env is missing (copy backend/.env.example)"; exit 1; }
+  local current
+  current="$(grep -m1 '^REVERB_APP_SECRET=' "$f" 2>/dev/null | cut -d= -f2- || true)"
+  current="${current%\"}"; current="${current#\"}"
+  if [[ -z "$current" || "${#current}" -lt 32 ]]; then
+    command -v openssl >/dev/null || { say "openssl is required to generate REVERB_APP_SECRET"; exit 1; }
+    local secret tmp; secret="$(openssl rand -hex 32)"; tmp="$f.tmp.$$"
+    if grep -q '^REVERB_APP_SECRET=' "$f"; then
+      awk -v s="REVERB_APP_SECRET=$secret" '$0 ~ /^REVERB_APP_SECRET=/ { print s; next } { print }' "$f" >"$tmp" && mv "$tmp" "$f"
+    else
+      cp "$f" "$tmp" && printf 'REVERB_APP_SECRET=%s\n' "$secret" >>"$tmp" && mv "$tmp" "$f"
+    fi
+    say "generated REVERB_APP_SECRET in backend/.env (rotate: docs/RUNBOOK.md)"
+    current="$(grep -m1 '^REVERB_APP_SECRET=' "$f" | cut -d= -f2-)"
+  fi
+  [[ "${#current}" -ge 32 ]] || { say "REVERB_APP_SECRET is still empty or under 32 chars in backend/.env"; exit 1; }
+}
+
 infra_up() {
   if port_open 5433 && port_open 6380; then
     say "Postgres :5433 and Redis :6380 already running"
@@ -110,6 +135,7 @@ stop_proc() {
 
 cmd_up() {
   load_app_key
+  ensure_reverb_secret
   load_backend_env
   infra_up
   sync_deps

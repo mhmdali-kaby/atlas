@@ -18,8 +18,11 @@ const ATL13_FULL_UID = '4471029384756123';
 
 const ATL13_CHECKS = [
     'postgres', 'postgres_extensions', 'migrations', 'redis', 'trading_core', 'okx_clock',
-    'demo_connection', 'withdraw_permission', 'disk_space', 'security', 'backup',
+    'demo_connection', 'withdraw_permission', 'disk_space', 'security', 'reverb_secret', 'backup',
 ];
+
+/** A valid 64-char Reverb secret, test-only (never the owner's real one). */
+const ATL50_REVERB_SECRET = 'atl50-test-only-reverb-secret-0123456789abcdef0123456789abcdef';
 
 /**
  * @param  array<string, mixed>  $test  overrides for trading_core's connection-test body
@@ -83,6 +86,7 @@ beforeEach(function (): void {
         'services.trading_core.url' => ATL13_CORE,
         'services.trading_core.secret' => ATL13_SECRET,
         'atlas_defaults.doctor.min_free_disk_gb' => 0,
+        'reverb.apps.apps.0.secret' => ATL50_REVERB_SECRET,
     ]);
     $this->connection = Connection::query()->create([
         'exchange' => 'okx', 'env' => 'demo', 'label' => 'OKX Demo',
@@ -246,6 +250,36 @@ it('fails security when debug is on even though APP_ENV is local', function (): 
 
     expect($code)->not->toBe(0);
     expect(lineFor($output, 'security'))->toStartWith('✗')->toContain('local');
+});
+
+it('fails on an empty REVERB_APP_SECRET', function (): void {
+    config(['reverb.apps.apps.0.secret' => '']);
+    fakeCore();
+
+    [$code, $output] = doctor();
+
+    expect($code)->not->toBe(0);
+    expect(lineFor($output, 'reverb_secret'))->toStartWith('✗')->toContain('REVERB_APP_SECRET is empty');
+});
+
+it('fails on a REVERB_APP_SECRET under 32 characters', function (): void {
+    config(['reverb.apps.apps.0.secret' => str_repeat('a', 31)]);
+    fakeCore();
+
+    [$code, $output] = doctor();
+
+    expect($code)->not->toBe(0);
+    expect(lineFor($output, 'reverb_secret'))->toStartWith('✗')->toContain('31 chars');
+});
+
+it('passes with a REVERB_APP_SECRET of exactly 32 characters', function (): void {
+    config(['reverb.apps.apps.0.secret' => str_repeat('a', 32)]);
+    fakeCore();
+
+    [$code, $output] = doctor();
+
+    expect($code)->toBe(0);
+    expect(lineFor($output, 'reverb_secret'))->toStartWith('✓');
 });
 
 it('prints one JSON object per check with name, ok and detail', function (): void {
