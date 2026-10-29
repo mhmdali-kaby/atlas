@@ -20,7 +20,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from atlas_ingest import calendar as cal
-from atlas_ingest.collectors import CollectContext, CollectError, SourceConfig, register
+from atlas_ingest.collectors import CollectContext, CollectError, SourceConfig, read_capped, register
 from atlas_ingest.items import RawItem
 
 logger = logging.getLogger("atlas_ingest.collectors.forexfactory")
@@ -75,10 +75,11 @@ class ForexFactoryCollector:
         if await asyncio.to_thread(cal.finnhub_calendar_active, ctx.engine, ctx.now):
             logger.debug("finnhub.calendar is active; skipping", extra={"source": source.key})
             return []
-        r = await ctx.http.get(source.url or "", headers={"Accept": "application/json"})
-        r.raise_for_status()
+        async with ctx.http.stream("GET", source.url or "", headers={"Accept": "application/json"}) as r:
+            r.raise_for_status()
+            raw = await read_capped(r)
         try:
-            body = cal.json_decimal(r.content)
+            body = cal.json_decimal(raw)
         except ValueError as exc:
             raise CollectError("response is not JSON") from exc
         rows = parse_week(body)

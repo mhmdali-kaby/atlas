@@ -30,6 +30,7 @@ from atlas_ingest.collectors import (
     CollectError,
     RateLimited,
     SourceConfig,
+    read_capped,
     register,
     retry_after_seconds,
 )
@@ -89,13 +90,16 @@ class FinnhubEarningsCollector:
             "from": (day - timedelta(days=int(cfg["days_back"]))).isoformat(),
             "to": (day + timedelta(days=int(cfg["days_ahead"]))).isoformat(),
         }
-        r = await ctx.http.get(source.url or "", params=params, headers={"X-Finnhub-Token": source.api_key})
-        if r.status_code == 429:
-            window = float(DEFAULTS["news"]["collectors"]["finnhub"]["rate_limit_window_seconds"])
-            raise RateLimited(retry_after_seconds(r, window))
-        r.raise_for_status()
+        async with ctx.http.stream(
+            "GET", source.url or "", params=params, headers={"X-Finnhub-Token": source.api_key}
+        ) as r:
+            if r.status_code == 429:
+                window = float(DEFAULTS["news"]["collectors"]["finnhub"]["rate_limit_window_seconds"])
+                raise RateLimited(retry_after_seconds(r, window))
+            r.raise_for_status()
+            raw = await read_capped(r)
         try:
-            body = cal.json_decimal(r.content)
+            body = cal.json_decimal(raw)
         except ValueError as exc:
             raise CollectError("response is not JSON") from exc
         rows = parse_earnings(body, symbols)

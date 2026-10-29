@@ -18,6 +18,7 @@ announcements web pages.
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from typing import Any
 
@@ -27,6 +28,7 @@ from atlas_ingest.collectors import (
     CollectContext,
     CollectError,
     SourceConfig,
+    read_capped,
     register,
 )
 from atlas_ingest.items import RawItem
@@ -77,13 +79,15 @@ class OkxAnnouncementsCollector:
         self.language = str(conf["language"])
 
     async def collect(self, source: SourceConfig, ctx: CollectContext) -> list[RawItem]:
-        response = await ctx.http.get(
+        async with ctx.http.stream(
+            "GET",
             source.url or DEFAULT_URL,
             headers={"Accept": "application/json", "Accept-Language": self.language},
-        )
-        response.raise_for_status()
+        ) as response:
+            response.raise_for_status()
+            raw = await read_capped(response)
         try:
-            body = response.json()
+            body = json.loads(raw)
         except ValueError as exc:
             raise CollectError("response is not JSON") from exc
         return parse_announcements(body)

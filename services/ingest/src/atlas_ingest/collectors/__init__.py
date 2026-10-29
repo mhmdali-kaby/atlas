@@ -16,6 +16,10 @@ prefers a collector registered for the source's exact key, then one registered f
 Raise :class:`CollectError` (its message is stored in ``news_sources.last_error``, so keep it short
 and never put a key or a keyed URL in it) or let an ``httpx`` error propagate; the runner turns
 either into a failure. Returning an empty list is a success.
+
+ATL-73: fetch every source response with :func:`read_capped` instead of ``ctx.http.get(...)``/
+``response.content``, so a feed or a provider that answers with (or is tricked into sending) an
+unbounded body cannot grow this process's memory without limit.
 """
 
 from __future__ import annotations
@@ -28,9 +32,13 @@ from datetime import datetime
 from typing import Protocol, TypeVar
 
 import httpx
+from atlas_shared.defaults import DEFAULTS
 from sqlalchemy import Engine
 
 from atlas_ingest.items import RawItem
+
+MAX_RESPONSE_BYTES: int = int(DEFAULTS["news"]["max_response_bytes"])
+READ_CHUNK_BYTES = 65536
 
 
 @dataclass(frozen=True)
@@ -96,6 +104,28 @@ def retry_after_seconds(response: httpx.Response, default: float) -> float:
         return max(float(value), default) if value else default
     except ValueError:
         return default
+
+
+async def read_capped(response: httpx.Response, max_bytes: int = MAX_RESPONSE_BYTES) -> bytes:
+    """The full decoded body of a streamed ``response``, read in bounded chunks (ATL-73).
+
+    A declared ``Content-Length`` over ``max_bytes`` is rejected before any read; an unbounded or
+    understated body raises :class:`CollectError` the moment the cap is passed, so a 500 MB
+    response is never held in memory. Call inside ``async with ctx.http.stream(...) as response:``.
+    """
+    content_length = response.headers.get("content-length")
+    if content_length is not None:
+        try:
+            if int(content_length) > max_bytes:
+                raise CollectError("response too large")
+        except ValueError:
+            pass
+    body = bytearray()
+    async for chunk in response.aiter_bytes(READ_CHUNK_BYTES):
+        body.extend(chunk)
+        if len(body) > max_bytes:
+            raise CollectError("response too large")
+    return bytes(body)
 
 
 C = TypeVar("C")
