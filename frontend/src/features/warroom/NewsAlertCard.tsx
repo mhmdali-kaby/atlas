@@ -3,6 +3,7 @@ import { Fragment, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { formatDecimal, formatFixed, type Lang } from '../../lib/format'
 import type { NewsAlert } from './newsAlert'
+import { InstrumentId } from './text'
 import { formatFullTime, formatTime } from './time'
 
 /*
@@ -31,19 +32,6 @@ function fill(template: string, nodes: Record<string, ReactNode>): ReactNode[] {
   }
   if (last < template.length) out.push(<Fragment key={`t${last}`}>{template.slice(last)}</Fragment>)
   return out
-}
-
-/** A family ("TSLA-USDT") or instId, base in 600 and the rest secondary, as an LTR island. */
-function InstChip({ id }: { id: string }) {
-  const cut = id.indexOf('-')
-  return (
-    <li className="news-inst">
-      <bdi dir="ltr" className="inst-tok">
-        <span className="inst-base">{cut < 0 ? id : id.slice(0, cut)}</span>
-        {cut >= 0 && <span className="inst-rest">{id.slice(cut)}</span>}
-      </bdi>
-    </li>
-  )
 }
 
 /** Sentiment as a signed value: sign + arrow + a spoken word, never colour alone; |s| < 0.05 is neutral. */
@@ -102,7 +90,9 @@ export function NewsAlertCard({ alert: a, lang }: { alert: NewsAlert; lang: Lang
           {a.instIds.length > 0 && (
             <ul className="news-insts" aria-label={t('news.instruments')}>
               {a.instIds.map((id) => (
-                <InstChip key={id} id={id} />
+                <li key={id} className="news-inst">
+                  <InstrumentId id={id} />
+                </li>
               ))}
             </ul>
           )}
@@ -135,7 +125,7 @@ export function NewsAlertCard({ alert: a, lang }: { alert: NewsAlert; lang: Lang
                 ),
               })}
             </span>
-            <ExternalLink aria-hidden="true" strokeWidth={1.5} className="icon-dir" />
+            <ExternalLink aria-hidden="true" strokeWidth={1.5} />
           </a>
         )}
       </div>

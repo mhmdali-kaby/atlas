@@ -140,6 +140,17 @@ describe('NewsAlertCard', () => {
     expect(container.textContent).not.toMatch(/NaN/)
   })
 
+  it('renders instrument chips with the shared InstrumentId token, including an id with no dash', () => {
+    const { container } = draw(fromBridge({ inst_ids: ['TSLA-USDT', 'XAU'] }))
+    const chips = container.querySelectorAll('.news-inst > bdi.inst-tok')
+    expect(chips).toHaveLength(2)
+    expect(chips[0]!.querySelector('.inst-base')).toHaveTextContent('TSLA')
+    expect(chips[0]!.querySelector('.inst-rest')).toHaveTextContent('-USDT')
+    expect(chips[1]!.querySelector('.inst-base')).toHaveTextContent('XAU')
+    expect(chips[1]!.querySelector('.inst-rest')).toBeNull()
+    expect(chips[1]).toHaveAttribute('dir', 'ltr')
+  })
+
   it('falls back to the GenericCard when the card has no headline', () => {
     const { container } = draw({ ...fromBridge(), card: null, content_md: 'Old alert' })
     expect(screen.queryByTestId('news-card')).toBeNull()

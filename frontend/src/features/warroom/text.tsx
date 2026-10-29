@@ -4,12 +4,13 @@ import { excerptSource, parseBlocks, tokenize, type Piece, type Token } from './
 
 /* Renders free text with its bidi islands (tokens.ts, design v4 War Room §9). */
 
+/** "BTC-USDT-SWAP" as base + rest; an id with no "-" is all base. */
 export function InstrumentId({ id }: { id: string }) {
   const cut = id.indexOf('-')
   return (
     <bdi dir="ltr" className="inst-tok">
-      <span className="inst-base">{id.slice(0, cut)}</span>
-      <span className="inst-rest">{id.slice(cut)}</span>
+      <span className="inst-base">{cut < 0 ? id : id.slice(0, cut)}</span>
+      {cut >= 0 && <span className="inst-rest">{id.slice(cut)}</span>}
     </bdi>
   )
 }

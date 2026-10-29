@@ -348,7 +348,7 @@ bdi.fig, bdi.tok { white-space: nowrap; }
 .news-senti .signed.is-profit { color: var(--profit-ink); }
 .news-senti .signed.is-loss { color: var(--loss-ink); }
 .news-senti .signed.is-zero { color: var(--label); }
-[dir='rtl'] .news-senti .icon-dir, [dir='rtl'] .news-link .icon-dir { transform: scaleX(-1); }
+[dir='rtl'] .news-senti .icon-dir { transform: scaleX(-1); }
 .news-foot {
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px;
   margin-inline: -14px; padding: 8px 14px 9px; border-top: 0.5px solid var(--separator);
