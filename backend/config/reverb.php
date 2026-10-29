@@ -29,7 +29,9 @@ return [
     'servers' => [
 
         'reverb' => [
-            'host' => env('REVERB_SERVER_HOST', '0.0.0.0'),
+            // Brief §18: every service binds to 127.0.0.1 only; no public tunnel by default
+            // (ATL-50, security round 4 finding 1).
+            'host' => env('REVERB_SERVER_HOST', '127.0.0.1'),
             'port' => env('REVERB_SERVER_PORT', 8080),
             'path' => env('REVERB_SERVER_PATH', ''),
             'hostname' => env('REVERB_HOST'),
@@ -82,12 +84,22 @@ return [
                     'scheme' => env('REVERB_SCHEME', 'https'),
                     'useTLS' => env('REVERB_SCHEME', 'https') === 'https',
                 ],
-                'allowed_origins' => ['*'],
+                // ATL-50 (security round 4, finding 1): only the SPA's own origin may open a
+                // channel. '*' let any web page the owner visited forge a private-channel
+                // subscription. parse_url(...) keeps this to a bare host, matched against the
+                // WebSocket Origin header by Laravel\Reverb's verifyOrigin(). An unset or
+                // unparsable FRONTEND_URL yields an empty list, which fails closed (every
+                // origin refused) rather than open.
+                'allowed_origins' => array_values(array_filter([
+                    parse_url((string) env('FRONTEND_URL', 'http://localhost:3000'), PHP_URL_HOST),
+                ])),
                 'ping_interval' => env('REVERB_APP_PING_INTERVAL', 60),
                 'activity_timeout' => env('REVERB_APP_ACTIVITY_TIMEOUT', 30),
                 'max_connections' => env('REVERB_APP_MAX_CONNECTIONS'),
                 'max_message_size' => env('REVERB_APP_MAX_MESSAGE_SIZE', 10_000),
-                'accept_client_events_from' => env('REVERB_APP_ACCEPT_CLIENT_EVENTS_FROM', 'members'),
+                // The SPA never sends a client event; 'none' rejects every client-* event
+                // outright (ATL-50) instead of rebroadcasting it to other subscribers.
+                'accept_client_events_from' => env('REVERB_APP_ACCEPT_CLIENT_EVENTS_FROM', 'none'),
                 'rate_limiting' => [
                     'enabled' => env('REVERB_APP_RATE_LIMITING_ENABLED', false),
                     'max_attempts' => env('REVERB_APP_RATE_LIMIT_MAX_ATTEMPTS', 60),
