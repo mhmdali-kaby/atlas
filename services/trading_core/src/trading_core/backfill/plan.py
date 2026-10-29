@@ -200,10 +200,20 @@ def ensure_jobs(
 
 
 def pause_jobs(engine: Engine, env: str, *, inst_id: str | None = None, now: datetime | None = None) -> int:
-    """Mark pending/running jobs ``paused``; a worker stops before writing its next page."""
+    """Mark pending/running jobs ``paused``; a worker stops before writing its next page.
+
+    With an ``inst_id``, that instrument's jobs and its currency's open-interest job (``BTC`` for
+    ``BTC-USDT-SWAP``) are paused, the same set ``start`` creates for it."""
     clock = now or datetime.now(UTC)
     stmt = update(BackfillJob).where(BackfillJob.env == env, BackfillJob.status.in_((PENDING, RUNNING)))
     if inst_id is not None:
-        stmt = stmt.where(BackfillJob.inst_id == inst_id)
+        keys = {inst_id}
+        with engine.connect() as conn:
+            inst = conn.execute(
+                select(Instrument).where(Instrument.env == env, Instrument.inst_id == inst_id)
+            ).first()
+        if inst is not None:
+            keys |= {s.inst_id for s in datasets_for(inst, [OPEN_INTEREST])}
+        stmt = stmt.where(BackfillJob.inst_id.in_(keys))
     with engine.begin() as conn:
         return conn.execute(stmt.values(status=PAUSED, updated_at=clock)).rowcount or 0
