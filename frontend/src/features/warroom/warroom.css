@@ -342,7 +342,10 @@ bdi.fig, bdi.tok { white-space: nowrap; }
 .wr-banner.is-back { padding-inline-end: 14px; }
 .wr-banner button { border-radius: var(--radius-full); }
 
-.wr-float { position: absolute; z-index: 6; inset-inline: 0; bottom: 104px; display: flex; justify-content: center; pointer-events: none; }
+/* --wr-composer-h (Composer.tsx, ATL-42): the composer's own rendered height, which grows when a
+   ReplyChip is open; the fallback matches its default (no chip) height so nothing shifts before
+   the observer's first measurement. */
+.wr-float { position: absolute; z-index: 6; inset-inline: 0; bottom: var(--wr-composer-h, 104px); display: flex; justify-content: center; pointer-events: none; transition: bottom var(--dur-fast) var(--ease-out); }
 .wr-float > * { pointer-events: auto; }
 .wr-pill {
   display: inline-flex; align-items: center; gap: 6px; height: 32px; padding-inline: 14px 12px; border-radius: var(--radius-full);
