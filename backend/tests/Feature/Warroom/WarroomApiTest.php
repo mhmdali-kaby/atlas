@@ -9,6 +9,7 @@ use App\Models\WarroomThread;
 use App\Support\Events\EventBus;
 use App\Support\Warroom\MentionParser;
 use Carbon\CarbonImmutable;
+use Illuminate\Pagination\Cursor;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Redis;
 
@@ -96,6 +97,31 @@ it('caps limit at 100 and requires a thread of the env', function (): void {
     $live = atl38Thread('live');
     $this->getJson('/api/warroom/messages?thread_id='.$live->id)->assertStatus(422);
     $this->getJson('/api/warroom/messages?env=live&thread_id='.$live->id)->assertOk();
+});
+
+it('rejects a crafted cursor with 422 instead of a 500 from the paginator', function (string $cursor): void {
+    $this->getJson('/api/warroom/messages?thread_id='.$this->thread->id.'&cursor='.$cursor)
+        ->assertStatus(422)
+        ->assertJsonValidationErrors('cursor');
+})->with([
+    // security-audit-round-4 #3: base64 of {"id":"1' or 1=1--","_pointsToNextItems":true}, no created_at.
+    'audit repro' => ['eyJpZCI6IjEnIG9yIDE9MS0tIiwiX3BvaW50c1RvTmV4dEl0ZW1zIjp0cnVlfQ'],
+    'not base64/json at all' => ['not-a-real-cursor'],
+    'missing both parameters' => [(new Cursor([], true))->encode()],
+    'id not a uuid, created_at missing' => [(new Cursor(['id' => 'not-a-uuid'], true))->encode()],
+    'created_at not a timestamp, id missing' => [(new Cursor(['created_at' => 'soon'], true))->encode()],
+]);
+
+it('accepts its own next_cursor back', function (): void {
+    atl38Message($this->thread, CarbonImmutable::now(), 'a');
+    atl38Message($this->thread, CarbonImmutable::now(), 'b');
+
+    $first = $this->getJson('/api/warroom/messages?thread_id='.$this->thread->id.'&limit=1')->assertOk();
+    $cursor = $first->json('meta.next_cursor');
+    expect($cursor)->not->toBeNull();
+
+    $this->getJson('/api/warroom/messages?thread_id='.$this->thread->id.'&limit=1&cursor='.$cursor)
+        ->assertOk();
 });
 
 it('stores an owner message, parses mentions, audits it and publishes one envelope', function (): void {

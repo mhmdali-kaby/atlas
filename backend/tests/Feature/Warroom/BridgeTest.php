@@ -381,3 +381,38 @@ it('refuses unknown private channels to a signed-in owner', function (): void {
         ->post('/broadcasting/auth', ['channel_name' => 'private-proposals', 'socket_id' => '1234.5678'])
         ->assertForbidden();
 });
+
+/**
+ * security-audit-round-4 #4: Laravel's own Broadcast::routes() always exempts /broadcasting/auth
+ * from CSRF, which is wrong for our cookie-session SPA. routes/web.php now registers it itself,
+ * inside the plain "web" group, so PreventRequestForgery applies like on every other session route.
+ *
+ * Pest disables that middleware's check while running (PreventRequestForgery::runningUnitTests()
+ * is true for any CLI-run test), so these two prove the real behaviour by overriding the
+ * container's "env" away from "testing" for the one request, the only thing that check reads.
+ */
+it('refuses /broadcasting/auth without a CSRF token, with the real middleware active', function (): void {
+    useReverbBroadcaster();
+    app()->instance('env', 'production');
+
+    $this->actingAs(User::factory()->create())
+        ->postJson('/broadcasting/auth', ['channel_name' => 'private-warroom', 'socket_id' => '1234.5678'])
+        ->assertStatus(419);
+});
+
+it('authorises /broadcasting/auth with a valid X-XSRF-TOKEN, with the real middleware active', function (): void {
+    useReverbBroadcaster();
+    $this->actingAs(User::factory()->create());
+    app()->instance('env', 'production');
+
+    $csrf = $this->get('/sanctum/csrf-cookie')->assertNoContent();
+    $xsrfCookie = collect($csrf->headers->getCookies())->sole(fn ($cookie) => $cookie->getName() === 'XSRF-TOKEN');
+    foreach ($csrf->headers->getCookies() as $cookie) {
+        $this->withUnencryptedCookie($cookie->getName(), (string) $cookie->getValue());
+    }
+
+    $this->withHeaders(['X-XSRF-TOKEN' => rawurldecode($xsrfCookie->getValue())])
+        ->postJson('/broadcasting/auth', ['channel_name' => 'private-warroom', 'socket_id' => '1234.5678'])
+        ->assertOk()
+        ->assertJsonStructure(['auth']);
+});

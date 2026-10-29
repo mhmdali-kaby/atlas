@@ -29,6 +29,14 @@ class SecurityHeaders
             $response->headers->set('Content-Security-Policy', self::API_CSP);
         }
 
+        // security-audit-round-4 #4: PHP sends this itself (expose_php in php.ini) before any
+        // framework code runs. header_remove() operates on PHP's real pending header list, not
+        // Symfony's Response object, so it is the one way to drop it short of an ini change.
+        if (! headers_sent()) {
+            header_remove('X-Powered-By');
+        }
+        $response->headers->remove('X-Powered-By');
+
         return $response;
     }
 }
