@@ -30,7 +30,9 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Final
 
+from atlas_shared import bus
 from atlas_shared.defaults import DEFAULTS
+from atlas_shared.events import EventEnvelope
 from claude_agent_sdk import McpServerConfig, SdkMcpTool, create_sdk_mcp_server
 from pydantic import BaseModel, ConfigDict, ValidationError
 from sqlalchemy import ColumnElement, true
@@ -59,6 +61,11 @@ def _utcnow() -> datetime:
     return datetime.now(UTC)
 
 
+def _bus_publish(stream: str, envelope: EventEnvelope) -> object:
+    """The real publisher: XADD to Redis through atlas_shared.bus."""
+    return bus.publish(stream, envelope)
+
+
 @dataclass(frozen=True)
 class ToolContext:
     """What every tool call gets besides its arguments. One per agent session.
@@ -73,6 +80,9 @@ class ToolContext:
     correlation_id: str | None = None
     replay_as_of: datetime | None = None
     clock: Callable[[], datetime] = _utcnow
+    publish: Callable[[str, EventEnvelope], object] = _bus_publish
+    """How a tool puts an event on the bus (e.g. the untrusted-text War Room alert). Tests pass a
+    recorder or a publisher bound to the test Redis DB."""
 
     def __post_init__(self) -> None:
         if self.replay_as_of is not None and self.replay_as_of.utcoffset() is None:

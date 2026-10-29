@@ -176,21 +176,33 @@ async def test_tool_errors_and_crashes_become_error_results() -> None:
     assert "secret detail" not in crashed["message"]
 
 
-# Servers whose catalogue tools have real implementations (ATL-85: okx_market, atlas_data).
-IMPLEMENTED_SERVERS = {"okx_market", "atlas_data"}
-STUB_TOOLS = [(s, n) for s, tools in CATALOGUE.items() if s not in IMPLEMENTED_SERVERS for n in tools]
+# Catalogue tools with a real implementation; each has its own tests
+# (ATL-85: okx_market, atlas_data; ATL-86: news, memory).
+IMPLEMENTED = {
+    *(("okx_market", n) for n in CATALOGUE["okx_market"]),
+    *(("atlas_data", n) for n in CATALOGUE["atlas_data"]),
+    *(("news", n) for n in CATALOGUE["news"] if n != "web_search"),
+    *(("memory", n) for n in CATALOGUE["memory"]),
+}
 
 
-def test_implemented_servers_have_no_stub_left() -> None:
-    for server in IMPLEMENTED_SERVERS:
-        for name in CATALOGUE[server]:
-            tool = fw.get_tool(fq_name(server, name))
-            assert tool.implemented is True, tool.fq_name
-            assert tool.input_model is CATALOGUE[server][name], tool.fq_name
+def test_implemented_tools_are_exactly_the_built_ones() -> None:
+    built = {(t.server, t.name) for t in fw.registered_tools().values() if t.implemented}
+    catalogue = {(s, n) for s, tools in CATALOGUE.items() for n in tools}
+    assert built & catalogue == IMPLEMENTED
 
 
-@pytest.mark.parametrize(("server", "name"), STUB_TOOLS)
-async def test_every_unimplemented_catalogue_tool_is_a_not_implemented_stub(server: str, name: str) -> None:
+def test_implemented_tools_keep_their_catalogue_input_model() -> None:
+    for server, name in IMPLEMENTED:
+        tool = fw.get_tool(fq_name(server, name))
+        assert tool.input_model is CATALOGUE[server][name], tool.fq_name
+
+
+@pytest.mark.parametrize(
+    ("server", "name"),
+    [(s, n) for s, tools in CATALOGUE.items() for n in tools if (s, n) not in IMPLEMENTED],
+)
+async def test_every_catalogue_tool_is_a_not_implemented_stub(server: str, name: str) -> None:
     tool = fw.get_tool(fq_name(server, name))
     assert tool.implemented is False
     schema = tool.input_schema()
