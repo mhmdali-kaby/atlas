@@ -612,6 +612,9 @@
   --flash: rgba(0, 122, 255, 0.12);
   --bubble-ink: #FFFFFF;
   --bubble-chip: rgba(255, 255, 255, 0.22);
+  /* ATL-40: white secondary text on the accent (picker selection), the composer's float shadow */
+  --on-accent-secondary: rgba(255, 255, 255, 0.82);
+  --composer-shadow: 0 6px 24px rgba(0, 0, 0, 0.08);
 }
 .dark {
   --ring-orchestrator: #7D7AFF;
@@ -632,6 +635,8 @@
   --flash: rgba(10, 132, 255, 0.18);
   --bubble-ink: #FFFFFF;
   --bubble-chip: rgba(255, 255, 255, 0.22);
+  --on-accent-secondary: rgba(255, 255, 255, 0.82);
+  --composer-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
 }
 :root,
 .light,

@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
 import type { AppearanceOptions } from './e2e/flows/appearance'
-import { BACKEND_DIR, BACKEND_ENV, CORE_ENV, CORE_URL, API_URL, PORTS, SERVICES_DIR, SPA_URL, STORAGE_STATE, withEnv } from './e2e/support/stack'
+import { BACKEND_DIR, BACKEND_ENV, CORE_ENV, CORE_URL, API_URL, PORTS, SERVICES_DIR, SPA_URL, SPA_VARS, STORAGE_STATE, withEnv } from './e2e/support/stack'
 
 /**
  * Two suites:
@@ -48,6 +48,14 @@ export default defineConfig<AppearanceOptions>({
       dependencies: ['onboarding'],
       use: { ...desktop, baseURL: SPA_URL, storageState: STORAGE_STATE, lang: a.lang, theme: a.theme },
     })),
+    // ATL-40: posts to Main and runs its own Reverb and atlas:bridge, so it waits for the
+    // appearance flows, which read the seeded Main thread as it was.
+    {
+      name: 'warroom-live',
+      testMatch: /flows\/warroom\.live\.spec\.ts/,
+      dependencies: appearance.map((a) => a.name),
+      use: { ...desktop, baseURL: SPA_URL, storageState: STORAGE_STATE },
+    },
   ],
   webServer: [
     {
@@ -59,7 +67,7 @@ export default defineConfig<AppearanceOptions>({
     {
       command: `npx vite --host 127.0.0.1 --port ${PORTS.spa} --strictPort`,
       url: SPA_URL,
-      env: withEnv({ VITE_API_URL: API_URL }),
+      env: withEnv(SPA_VARS),
       reuseExistingServer: false,
       timeout: 60_000,
     },

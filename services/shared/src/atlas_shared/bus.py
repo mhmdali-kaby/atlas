@@ -5,8 +5,10 @@ Same layout as Laravel's ``App\\Support\\Events\\EventBus``: each stream entry h
 stream to about ``event_bus.stream_maxlen`` entries (``MAXLEN ~``); Postgres is the record.
 """
 
+import argparse
 import os
-from collections.abc import Mapping
+import sys
+from collections.abc import Mapping, Sequence
 from typing import Final
 
 import redis
@@ -60,3 +62,56 @@ def publish(stream: str, envelope: EventEnvelope, *, client: "redis.Redis | None
         approximate=True,
     )
     return entry_id if isinstance(entry_id, str) else bytes(entry_id).decode()
+
+
+def demo_message(text: str, *, env: str = "demo", author: str | None = None) -> EventEnvelope:
+    """A ``warroom.message`` for the env's Main thread: a system event line, or an agent's text."""
+    return EventEnvelope.model_validate(
+        {
+            "type": "warroom.message",
+            "env": env,
+            "source": f"agent:{author}" if author else "system:demo",
+            "payload": {
+                "thread": {"kind": "main", "key": "main"},
+                "author_type": "agent" if author else "system",
+                "author": author or "atlas",
+                "kind": "text",
+                "content_md": text,
+                "card": None,
+                "reply_to": None,
+                "mentions": [],
+                "reasoning_md": None,
+                "tool_calls": None,
+                "tokens_in": None,
+                "tokens_out": None,
+                "cost_usd": None,
+            },
+        }
+    )
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    """``python -m atlas_shared.bus --demo-system-message [--text …]``: publish one War Room message.
+
+    For checking the live path by hand and from Playwright: the bridge stores it in Main and
+    broadcasts ``.warroom.message`` on ``private-warroom``. Prints the envelope id.
+    """
+    parser = argparse.ArgumentParser(prog="python -m atlas_shared.bus")
+    parser.add_argument(
+        "--demo-system-message",
+        action="store_true",
+        required=True,
+        help="publish one warroom.message to the Main thread",
+    )
+    parser.add_argument("--text", default="Demo system message from atlas_shared.bus")
+    parser.add_argument("--env", choices=("demo", "live"), default="demo")
+    parser.add_argument("--author", default=None, help="an agent slug; omitted = a system event line")
+    args = parser.parse_args(argv)
+    envelope = demo_message(args.text, env=args.env, author=args.author)
+    publish("atlas.warroom", envelope)
+    sys.stdout.write(f"{envelope.id}\n")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
