@@ -133,14 +133,25 @@ class WebSearchInput(ToolInput):
 # -- history -----------------------------------------------------------------------------------------
 
 
-class StatsInput(InstIdInput):
-    bar: Bar = "1D"
-    lookback: int = Field(default=365, ge=2, le=20000, description="bars")
+class HistorySeriesInput(InstIdInput):
+    """One candle series ending at as_of. Omitted bar/lookback come from agents.history.<tool>."""
+
+    bar: Bar | None = None
+    lookback: int | None = Field(default=None, ge=2, le=20000, description="bars")
+
+
+class StatsInput(HistorySeriesInput):
+    pass
 
 
 class FindAnalogsInput(InstIdInput):
-    pattern_spec: dict[str, Any] = Field(default_factory=dict)
+    # ATL-87: explicit fields replace ATL-84's free-form pattern_spec.
+    bar: Bar | None = None
+    window: int | None = Field(default=None, ge=2, le=500, description="bars in the pattern window")
+    k: int | None = Field(default=None, ge=1, le=100)
+    horizons: list[str] | None = Field(default=None, max_length=8, description='e.g. ["1h","4h","24h"]')
     lookback_years: float = Field(default=3, gt=0, le=20)
+    include_funding: bool = True
 
 
 class EventStudyInput(ToolInput):
@@ -148,20 +159,24 @@ class EventStudyInput(ToolInput):
     asset_class: str | None = None
     event_type: str
     window: tuple[int, int] = Field(default=(-24, 72), description="hours before/after the event")
+    bar: Bar | None = None
+    lookback_years: float = Field(default=2, gt=0, le=20)
 
 
-class SeasonalityInput(InstIdInput):
+class SeasonalityInput(HistorySeriesInput):
     by: Literal["hour", "weekday", "month", "funding"] = "hour"
 
 
 class BacktestRuleInput(ToolInput):
-    rule_spec: dict[str, Any]
+    rule_spec: dict[str, Any] = Field(description="atlas_quant RuleSpec: name, side, indicators, entry, exit")
     inst_ids: list[str] = Field(min_length=1, max_length=20)
-    period: tuple[Date, Date] | None = None
-    costs: dict[str, float] = Field(default_factory=dict)
+    period: tuple[Date, Date] | None = Field(default=None, description="UTC dates, end inclusive")
+    costs: dict[str, float] = Field(default_factory=dict, description="taker_fee_rate, slippage_bps")
+    bar: Bar | None = None
+    splits: int | None = Field(default=None, ge=1, le=10)
 
 
-class VolForecastInput(InstIdInput):
+class VolForecastInput(HistorySeriesInput):
     horizon: int = Field(default=24, ge=1, le=720, description="hours")
 
 
@@ -169,6 +184,8 @@ class LeadLagInput(ToolInput):
     a: str
     b: str
     max_lag: int = Field(default=24, ge=1, le=500, description="bars")
+    bar: Bar | None = None
+    lookback: int | None = Field(default=None, ge=10, le=20000, description="bars")
 
 
 # -- warroom -----------------------------------------------------------------------------------------
@@ -297,13 +314,13 @@ CATALOGUE: Final[dict[str, dict[str, type[ToolInput]]]] = {
     },
     "history": {
         "compute_stats": StatsInput,
-        "detect_regime": InstIdInput,
+        "detect_regime": HistorySeriesInput,
         "find_analogs": FindAnalogsInput,
         "event_study": EventStudyInput,
         "seasonality": SeasonalityInput,
         "backtest_rule": BacktestRuleInput,
         "volatility_forecast": VolForecastInput,
-        "drawdown_profile": InstIdInput,
+        "drawdown_profile": HistorySeriesInput,
         "cross_asset_lead_lag": LeadLagInput,
     },
     "warroom": {
