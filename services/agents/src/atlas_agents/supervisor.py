@@ -9,13 +9,16 @@ from __future__ import annotations
 import logging
 import uuid
 from collections.abc import Callable, Mapping
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import Engine
+from sqlalchemy.orm import sessionmaker
 
-from atlas_agents import events
+from atlas_agents import access, events
 from atlas_agents.registry import REGISTRY, AgentSpec, enabled_agents
 from atlas_agents.session import AgentSession, ClientFactory, RunResult, Trigger, default_client_factory
+from atlas_agents.tools import ToolContext
 
 log = logging.getLogger(__name__)
 
@@ -36,10 +39,20 @@ class Supervisor:
         client_factory: ClientFactory = default_client_factory,
         publisher: events.Publisher = events.bus_publisher,
         session_builder: SessionBuilder | None = None,
+        replay_as_of: datetime | None = None,
     ) -> None:
+        sessions = sessionmaker(bind=engine)
+
         def build(spec: AgentSpec) -> AgentSession:
+            # Tools come only from the §7.10 matrix (atlas_agents.access); replay bounds every query.
+            ctx = ToolContext(env=env, session_factory=sessions, agent=spec.slug, replay_as_of=replay_as_of)
             return AgentSession(
-                spec, env=env, engine=engine, client_factory=client_factory, publisher=publisher
+                spec,
+                env=env,
+                engine=engine,
+                options=access.options_for(spec.slug, ctx),
+                client_factory=client_factory,
+                publisher=publisher,
             )
 
         make = session_builder or build

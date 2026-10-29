@@ -562,3 +562,28 @@ agents:
     strategist: { model: strong }
     devils_advocate: { model: strong }
     portfolio_manager: {}
+  # ATL-84, brief §6.2/§7.11 and rule 7: the agents' tool layer (atlas_agents.tools).
+  #   max_result_tokens: a tool result whose JSON is estimated (chars / chars_per_token) above this
+  #     is trimmed by code: every list is cut to trim_rows rows, then the longest list is halved
+  #     until it fits; the result is marked truncated: true.
+  #   injection_patterns: case-insensitive regexes; text passed through untrusted() that matches
+  #     any of them is flagged as instruction-like so the caller can raise a War Room alert.
+  tools:
+    max_result_tokens: 4000
+    chars_per_token: 4
+    trim_rows: 50
+    injection_patterns:
+      - '\bignore\s+(?:all\s+|any\s+|the\s+)?(?:previous|prior|above|earlier)\b'
+      - '\bdisregard\s+(?:all\s+|any\s+|the\s+)?(?:previous|prior|above|earlier|your)\b'
+      - '\bforget\s+(?:all\s+|everything\s+|your\s+)?(?:previous|prior|instructions|rules)\b'
+      - '\byou\s+are\s+now\b'
+      - '\bpretend\s+(?:to\s+be|you\s+are)\b'
+      - '\bsystem\s+prompt\b'
+      - '\bnew\s+instructions?\b'
+      - '\boverride\s+(?:your|the|all)\s+(?:instructions|rules|limits|settings)\b'
+      - '\bdeveloper\s+mode\b'
+      - '\bjailbreak\b'
+      - '<\s*/?\s*(?:system|assistant|user|untrusted_source|function_calls|invoke|tool_use)\b'
+      - '\bmcp__\w+'
+      - '"(?:tool_use|tool_call|function_call)"'
+      - '\b(?:submit_proposal|cast_vote|post_message|place_order)\s*\('
