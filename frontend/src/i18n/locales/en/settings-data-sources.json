@@ -1,0 +1,134 @@
+{
+  "nav": "Data sources",
+  "intro": "The news feeds, calendars and sentiment Atlas reads, and whether each one is working.",
+  "cat": {
+    "exchange": "Exchange",
+    "crypto_news": "Crypto news",
+    "markets_news": "Markets news",
+    "calendar": "Economic calendar",
+    "earnings": "Earnings",
+    "sentiment": "Sentiment"
+  },
+  "note": {
+    "exchange": "Listings, delistings and maintenance notices from OKX.",
+    "crypto_news": "Atlas links each headline to the coins it mentions.",
+    "markets_news": "Company and macro news for stock, ETF and commodity perps.",
+    "calendar": "Releases scheduled for the next 48 hours. ForexFactory is the default; Finnhub replaces it while its key works.",
+    "earnings": "Report dates and results for the companies behind your stock perps.",
+    "sentiment": "The Crypto Fear & Greed Index, once an hour."
+  },
+  "last24": "Last 24 hours",
+  "sep": ", ",
+  "justNow": "just now",
+  "st": {
+    "working": "Working",
+    "standby": "Standing by",
+    "retrying": "Retrying at <f>{{time}}</f>",
+    "starting": "Starting",
+    "failing": "Last check failed",
+    "needs_key": "Needs a key",
+    "off": "Off",
+    "never_run": "Not run yet"
+  },
+  "d": {
+    "checked": "checked {{ago}}",
+    "standby": "<n>{{provider}}</n> provides the calendar while its key works",
+    "failed_one": "after <f>{{count}}</f> failed check",
+    "failed_other": "after <f>{{count}}</f> failed checks",
+    "next": "next check {{within}}",
+    "first": "first check {{within}}",
+    "free": "free from <f>{{site}}</f>"
+  },
+  "within": {
+    "min_one": "within a minute",
+    "min_other": "within {{count}} min",
+    "hour": "within an hour",
+    "day": "within a day"
+  },
+  "error": "Last error:",
+  "headlines_one": "{{count}} headline",
+  "headlines_other": "{{count}} headlines",
+  "strip": {
+    "label": "{{headlines}} in the last 24 hours, the newest at {{time}}.",
+    "none": "No headlines in the last 24 hours."
+  },
+  "sum": {
+    "healthy": "Every source is working",
+    "trouble_one": "<f>{{count}}</f> source is having trouble",
+    "trouble_other": "<f>{{count}}</f> sources are having trouble",
+    "noneWorking": "No source is working",
+    "firstRun": "Atlas hasn’t checked any source yet",
+    "stalled": "The news collector has stopped",
+    "allOff": "Every source is off"
+  },
+  "sub": {
+    "newest": "The newest headline arrived {{ago}}.",
+    "noHeadlines": "No headlines in the last 24 hours.",
+    "retrying": "<n>{{name}}</n> is retrying at <f>{{time}}</f>.",
+    "failing": "<n>{{name}}</n> failed its last check.",
+    "more_one": "And <f>{{count}}</f> more below.",
+    "more_other": "And <f>{{count}}</f> more below.",
+    "firstRun": "The first checks run within 2 minutes of Atlas starting.",
+    "stalled": "No source has been checked for {{mins}}. Check that Atlas is running with <cmd>./atlas up</cmd>.",
+    "allOff": "Atlas isn’t reading any news. Turn on the sources you want below.",
+    "keyOne": "{{name}} needs a free key.",
+    "keyMany": "{{names}} need a free key."
+  },
+  "mins_one": "<f>{{count}}</f> minute",
+  "mins_other": "<f>{{count}}</f> minutes",
+  "updated": "Updated <f>{{time}}</f>",
+  "chart": {
+    "title": "Headlines in the last 24 hours",
+    "now": "Now",
+    "empty": "Headlines appear here as they arrive.",
+    "label": "Headlines per hour over the last 24 hours. Use the arrow keys to read each hour.",
+    "hour": "Hour",
+    "soFar": "{{headlines}} so far",
+    "us": "US market hours"
+  },
+  "down": {
+    "crypto_news": "No crypto news is coming in",
+    "markets_news": "No markets news is coming in",
+    "calendar": "Atlas has no economic calendar",
+    "p": {
+      "retrying_one": "{{count}} is retrying",
+      "retrying_other": "{{count}} are retrying",
+      "needs_key_one": "{{count}} needs a key",
+      "needs_key_other": "{{count}} need a key",
+      "off_one": "{{count}} is off",
+      "off_other": "{{count}} are off"
+    },
+    "next": "The next try is at {{time}}.",
+    "until": {
+      "crypto_news": "Until one works, Atlas has no crypto headlines.",
+      "markets_news": "Until one works, Atlas has no markets headlines.",
+      "calendar": "Until one works, Atlas can’t see scheduled releases."
+    },
+    "show": "Show sources"
+  },
+  "sw": {
+    "label": "Use {{name}}",
+    "needsKey": "Add a key to turn on {{name}}",
+    "failOff": "Couldn’t turn off {{name}}",
+    "failOn": "Couldn’t turn on {{name}}",
+    "failBody": "Atlas’s server didn’t answer, so nothing changed. Try again."
+  },
+  "limitedToast": "Too many changes. Try again in a minute.",
+  "loadError": {
+    "title": "Couldn’t load the data sources",
+    "body": "Atlas’s server didn’t answer. Check that Atlas is running with <cmd>./atlas up</cmd>, then try again."
+  },
+  "empty": {
+    "title": "No data sources yet",
+    "body": "Atlas adds its news, calendar and sentiment sources the first time it starts. Restart Atlas with <cmd>./atlas up</cmd>, then try again."
+  },
+  "retry": "Try again",
+  "name": {
+    "okx_announcements": "OKX announcements",
+    "finnhub_news": "Finnhub news",
+    "finnhub_calendar": "Finnhub economic calendar",
+    "forexfactory_calendar": "ForexFactory calendar",
+    "finnhub_earnings": "Finnhub earnings",
+    "alternative_me_fng": "Crypto Fear & Greed Index"
+  }
+}
