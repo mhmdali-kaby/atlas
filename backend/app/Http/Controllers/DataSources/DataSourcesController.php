@@ -10,10 +10,15 @@ use App\Http\Requests\DataSources\UpdateDataSourceRequest;
 use App\Http\Resources\NewsSourceResource;
 use App\Models\NewsSource;
 use App\Support\Auditable;
+use App\Support\DataSources\HourlyCounts;
+use App\Support\DataSources\SourceCoverage;
 use App\Support\DataSources\SourceStatus;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -29,13 +34,17 @@ class DataSourcesController extends Controller
 
     public function __construct(private readonly Auditable $audit) {}
 
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
         $sources = NewsSource::query()->orderBy('category')->orderBy('name')->get();
+        $now = CarbonImmutable::now();
 
-        return NewsSourceResource::collection($sources)
-            ->additional(['summary' => SourceStatus::summary($sources, CarbonImmutable::now())])
-            ->response();
+        return response()->json([
+            'data' => $this->present($sources, $sources, $now)
+                ->map(fn (NewsSourceResource $r): array => $r->resolve($request))
+                ->all(),
+            'summary' => SourceStatus::summary($sources, $now),
+        ]);
     }
 
     public function update(UpdateDataSourceRequest $request, NewsSource $source): NewsSourceResource
@@ -59,33 +68,46 @@ class DataSourcesController extends Controller
             );
         });
 
-        return new NewsSourceResource($source->refresh());
+        return $this->one($source);
     }
 
+    /**
+     * The key belongs to the provider (ATL-71): one ciphertext is written to every keyed source of
+     * $source's provider, and their failure columns are reset, in one transaction with one audit row.
+     */
     public function setKey(SetDataSourceKeyRequest $request, NewsSource $source): NewsSourceResource
     {
         $this->ensureKeyed($source);
-        $apiKey = $request->apiKey();
+        $ciphertext = Crypt::encryptString($request->apiKey());
 
-        DB::transaction(function () use ($source, $apiKey): void {
-            $hadKey = $source->getRawOriginal('api_key') !== null;
-            $source->forceFill([
-                'api_key' => $apiKey,
+        DB::transaction(function () use ($source, $ciphertext): void {
+            $siblings = $this->providerSources($source);
+            $hadKey = $siblings->filter(fn (NewsSource $s): bool => $s->getRawOriginal('api_key') !== null);
+            $keys = $siblings->pluck('key')->values()->all();
+
+            NewsSource::query()->whereIn('id', $siblings->pluck('id'))->update([
+                'api_key' => $ciphertext,
                 // A new key gets a fresh start: the old key's failures no longer apply.
                 'consecutive_failures' => 0,
                 'disabled_until' => null,
                 'last_error' => null,
-            ])->save();
+                'updated_at' => CarbonImmutable::now(),
+            ]);
             $this->audit->record(
                 action: 'news_source.key_set',
                 subjectType: self::SUBJECT,
                 subjectId: $source->id,
-                before: ['source' => $source->key, 'api_key' => $hadKey ? 'key_set' : null],
-                after: ['source' => $source->key, 'api_key' => 'key_set'],
+                before: [
+                    'source' => $source->key,
+                    'provider' => $source->provider,
+                    'sources' => $keys,
+                    'api_key' => $hadKey->isEmpty() ? null : 'key_set',
+                ],
+                after: ['source' => $source->key, 'provider' => $source->provider, 'sources' => $keys, 'api_key' => 'key_set'],
             );
         });
 
-        return new NewsSourceResource($source->refresh());
+        return $this->one($source->refresh());
     }
 
     public function removeKey(NewsSource $source): Response
@@ -93,20 +115,67 @@ class DataSourcesController extends Controller
         $this->ensureKeyed($source);
 
         DB::transaction(function () use ($source): void {
-            if ($source->getRawOriginal('api_key') === null) {
+            $keyed = $this->providerSources($source)
+                ->filter(fn (NewsSource $s): bool => $s->getRawOriginal('api_key') !== null);
+            if ($keyed->isEmpty()) {
                 return;
             }
-            $source->forceFill(['api_key' => null])->save();
+            $keys = $keyed->pluck('key')->values()->all();
+            NewsSource::query()->whereIn('id', $keyed->pluck('id'))->update([
+                'api_key' => null,
+                'updated_at' => CarbonImmutable::now(),
+            ]);
             $this->audit->record(
                 action: 'news_source.key_removed',
                 subjectType: self::SUBJECT,
                 subjectId: $source->id,
-                before: ['source' => $source->key, 'api_key' => 'key_set'],
-                after: ['source' => $source->key, 'api_key' => 'key_removed'],
+                before: ['source' => $source->key, 'provider' => $source->provider, 'sources' => $keys, 'api_key' => 'key_set'],
+                after: ['source' => $source->key, 'provider' => $source->provider, 'sources' => $keys, 'api_key' => 'key_removed'],
             );
         });
 
         return response()->noContent();
+    }
+
+    /**
+     * Every source sharing $source's provider that takes a key, locked for the write.
+     *
+     * @return Collection<int, NewsSource>
+     */
+    private function providerSources(NewsSource $source): Collection
+    {
+        return NewsSource::query()
+            ->where('provider', $source->provider)
+            ->where('requires_key', true)
+            ->orderBy('key')
+            ->lockForUpdate()
+            ->get();
+    }
+
+    private function one(NewsSource $source): NewsSourceResource
+    {
+        $all = NewsSource::query()->get();
+
+        /** @var NewsSourceResource */
+        return $this->present(collect([$source]), $all, CarbonImmutable::now())->first();
+    }
+
+    /**
+     * @param  Collection<int, NewsSource>  $sources  rows to render
+     * @param  Collection<int, NewsSource>  $all  every source, for covered_by
+     * @return Collection<int, NewsSourceResource>
+     */
+    private function present(Collection $sources, Collection $all, CarbonImmutable $now): Collection
+    {
+        /** @var list<string> $keys */
+        $keys = $sources->pluck('key')->values()->all();
+        $hourly = HourlyCounts::forSources($keys, $now);
+        $coveredBy = SourceCoverage::coveredBy($all);
+
+        return $sources->values()->map(
+            fn (NewsSource $s): NewsSourceResource => (new NewsSourceResource($s))
+                ->withStats($hourly[$s->key], $coveredBy[$s->key] ?? null),
+        );
     }
 
     private function ensureKeyed(NewsSource $source): void

@@ -110,6 +110,7 @@ def add_source(engine: Engine, key: str, kind: str, url: str, **values: Any) -> 
     row = {
         "id": uuid.uuid4(),
         "key": key,
+        "provider": key.split(".")[0],
         "kind": kind,
         "category": {"calendar": "calendar", "earnings": "earnings", "sentiment": "sentiment"}[kind],
         "name": key,

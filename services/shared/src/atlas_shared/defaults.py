@@ -428,6 +428,7 @@ DEFAULTS: Final[dict[str, Any]] = {
         },
         "sources": {
             "okx.announcements": {
+                "provider": "okx",
                 "kind": "api",
                 "category": "exchange",
                 "name": "OKX announcements",
@@ -436,6 +437,7 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "requires_key": False,
             },
             "cryptopanic": {
+                "provider": "cryptopanic",
                 "kind": "api",
                 "category": "crypto_news",
                 "name": "CryptoPanic",
@@ -444,6 +446,7 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "requires_key": True,
             },
             "rss.coindesk": {
+                "provider": "coindesk",
                 "kind": "rss",
                 "category": "crypto_news",
                 "name": "CoinDesk",
@@ -452,6 +455,7 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "requires_key": False,
             },
             "rss.cointelegraph": {
+                "provider": "cointelegraph",
                 "kind": "rss",
                 "category": "crypto_news",
                 "name": "Cointelegraph",
@@ -460,6 +464,7 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "requires_key": False,
             },
             "rss.theblock": {
+                "provider": "theblock",
                 "kind": "rss",
                 "category": "crypto_news",
                 "name": "The Block",
@@ -468,6 +473,7 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "requires_key": False,
             },
             "rss.decrypt": {
+                "provider": "decrypt",
                 "kind": "rss",
                 "category": "crypto_news",
                 "name": "Decrypt",
@@ -476,6 +482,7 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "requires_key": False,
             },
             "rss.cnbc": {
+                "provider": "cnbc",
                 "kind": "rss",
                 "category": "markets_news",
                 "name": "CNBC Top News",
@@ -484,6 +491,7 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "requires_key": False,
             },
             "rss.marketwatch": {
+                "provider": "marketwatch",
                 "kind": "rss",
                 "category": "markets_news",
                 "name": "MarketWatch Top Stories",
@@ -492,6 +500,7 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "requires_key": False,
             },
             "rss.yahoo": {
+                "provider": "yahoo",
                 "kind": "rss",
                 "category": "markets_news",
                 "name": "Yahoo Finance (per symbol)",
@@ -500,6 +509,7 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "requires_key": False,
             },
             "finnhub.news": {
+                "provider": "finnhub",
                 "kind": "api",
                 "category": "markets_news",
                 "name": "Finnhub news",
@@ -508,14 +518,19 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "requires_key": True,
             },
             "finnhub.calendar": {
+                "provider": "finnhub",
                 "kind": "calendar",
                 "category": "calendar",
                 "name": "Finnhub economic calendar",
                 "url": "https://finnhub.io/api/v1/calendar/economic",
                 "poll_seconds": 900,
                 "requires_key": True,
+                "covers": [
+                    "forexfactory.calendar",
+                ],
             },
             "finnhub.earnings": {
+                "provider": "finnhub",
                 "kind": "earnings",
                 "category": "earnings",
                 "name": "Finnhub earnings calendar",
@@ -524,6 +539,7 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "requires_key": True,
             },
             "forexfactory.calendar": {
+                "provider": "forexfactory",
                 "kind": "calendar",
                 "category": "calendar",
                 "name": "ForexFactory weekly calendar",
@@ -532,6 +548,7 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "requires_key": False,
             },
             "alternative_me.fng": {
+                "provider": "alternative_me",
                 "kind": "sentiment",
                 "category": "sentiment",
                 "name": "Crypto Fear & Greed Index",

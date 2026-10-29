@@ -138,6 +138,7 @@ def add_source(engine: Engine, key: str, url: str, *, api_key: str | None = None
     row = {
         "id": uuid.uuid4(),
         "key": key,
+        "provider": key.split(".")[0],
         "kind": "api",
         "category": "crypto_news",
         "name": key,
