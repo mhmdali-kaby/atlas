@@ -17,19 +17,22 @@ dev = [
   "atlas-trading-core",
   "atlas-agents",
   "atlas-ingest",
+  "atlas-quant",
+  "pandas-stubs>=2.2",
 ]
 
 [tool.uv.workspace]
-members = ["shared", "trading_core", "agents", "ingest"]
+members = ["shared", "trading_core", "agents", "ingest", "quant"]
 
 [tool.uv.sources]
 atlas-shared = { workspace = true }
 atlas-trading-core = { workspace = true }
 atlas-agents = { workspace = true }
 atlas-ingest = { workspace = true }
+atlas-quant = { workspace = true }
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "shared/tests", "trading_core/tests", "agents/tests", "ingest/tests"]
+testpaths = ["tests", "shared/tests", "trading_core/tests", "agents/tests", "ingest/tests", "quant/tests"]
 asyncio_mode = "auto"
 addopts = "--import-mode=importlib"
 # services/trading_core shares its name with the trading_core package; without this pytest shadows it.
@@ -49,7 +52,7 @@ ignore = ["S101"]
 [tool.mypy]
 strict = true
 # Bare `uv run mypy` checks every workspace package's source.
-files = ["shared/src", "trading_core/src", "agents/src", "ingest/src"]
+files = ["shared/src", "trading_core/src", "agents/src", "ingest/src", "quant/src"]
 python_version = "3.12"
 plugins = ["pydantic.mypy"]
 

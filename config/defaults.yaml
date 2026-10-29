@@ -481,3 +481,21 @@ news:
   sentiment:
     fng_index_key: crypto_fng
     fng_limit: 10
+
+# ATL-79, brief §7.3: atlas_quant statistics (Historian, Risk Engine). Annualisation multiplies a
+# per-bar statistic by sqrt(days_per_year[asset_class] * 86400 / bar_seconds): OKX perps trade
+# around the clock, so a stock or commodity perp's bar count per day is the same as crypto's and only
+# the day count differs. Unknown asset classes use days_per_year.other.
+quant:
+  days_per_year:
+    crypto: 365
+    stock: 252
+    etf: 252
+    index: 252
+    commodity: 252
+    other: 365
+  default_asset_class: crypto
+  # Wilder ATR: seed = mean of the first atr_window true ranges, then (prev * (w - 1) + TR) / w.
+  atr_window: 14
+  # Intraday-by-hour tables are given in UTC and in this display timezone.
+  hour_table_timezone: Asia/Baghdad
