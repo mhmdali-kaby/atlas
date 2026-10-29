@@ -28,6 +28,8 @@ export const PORTS = {
   spa: num('E2E_FLOW_PORT', 3141),
   api: num('E2E_API_PORT', 8140),
   core: num('E2E_CORE_PORT', 8141),
+  /** Reverb for the live War Room flow (ATL-40); the spec starts and stops it itself. */
+  reverb: num('E2E_REVERB_PORT', 8142),
 }
 
 export const SPA_URL = `http://127.0.0.1:${PORTS.spa}`
@@ -41,6 +43,10 @@ export const DATABASE =
 /** Test-only values for a throwaway database; never the owner's application key or shared secret. */
 const E2E_APP_KEY = `base64:${digest('atlas-e2e-app-key').toString('base64')}`
 const E2E_INTERNAL_SECRET = digest('atlas-e2e-internal-secret').toString('hex')
+const E2E_REVERB_SECRET = digest('atlas-e2e-reverb-secret').toString('hex')
+
+/** The e2e Reverb app: Laravel signs channel auth with it, the SPA's Echo connects with its key. */
+export const REVERB = { id: 'atlas-e2e', key: 'atlas-e2e-key', host: '127.0.0.1', port: PORTS.reverb, scheme: 'http' }
 
 const db = {
   DB_CONNECTION: 'pgsql',
@@ -63,7 +69,16 @@ export const BACKEND_ENV: Record<string, string> = {
   SESSION_DOMAIN: 'null',
   CACHE_STORE: 'database',
   QUEUE_CONNECTION: 'sync',
-  BROADCAST_CONNECTION: 'log',
+  // Channel auth (/broadcasting/auth) signs with the Reverb app; nothing in the API broadcasts.
+  BROADCAST_CONNECTION: 'reverb',
+  REVERB_APP_ID: REVERB.id,
+  REVERB_APP_KEY: REVERB.key,
+  REVERB_APP_SECRET: E2E_REVERB_SECRET,
+  REVERB_HOST: REVERB.host,
+  REVERB_PORT: String(REVERB.port),
+  REVERB_SCHEME: REVERB.scheme,
+  REVERB_SERVER_HOST: REVERB.host,
+  REVERB_SERVER_PORT: String(REVERB.port),
   LOG_CHANNEL: 'single',
   LOG_LEVEL: 'warning',
   REDIS_CLIENT: 'predis',
@@ -88,6 +103,15 @@ export const CORE_ENV: Record<string, string> = {
   // Recorded OKX JSON instead of OKX, and no background sync over the seeded Portfolio data.
   ATLAS_OKX_FIXTURES: '1',
   TRADING_CORE_SCHEDULER: '0',
+}
+
+/** The flows' Vite: the real Laravel and the e2e Reverb. */
+export const SPA_VARS: Record<string, string> = {
+  VITE_API_URL: API_URL,
+  VITE_REVERB_APP_KEY: REVERB.key,
+  VITE_REVERB_HOST: REVERB.host,
+  VITE_REVERB_PORT: String(REVERB.port),
+  VITE_REVERB_SCHEME: REVERB.scheme,
 }
 
 /** process.env plus overrides, typed for child_process and Playwright's webServer.env. */
