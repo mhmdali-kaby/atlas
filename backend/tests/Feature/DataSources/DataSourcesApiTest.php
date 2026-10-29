@@ -61,7 +61,7 @@ it('lists every seeded source with the documented fields', function (): void {
 
     expect($rows['rss.coindesk'])->toMatchArray([
         'kind' => 'rss', 'category' => 'crypto_news', 'enabled' => true, 'requires_key' => false,
-        'has_key' => false, 'key_last4' => null, 'status' => 'never_run', 'poll_seconds' => 180,
+        'has_key' => false, 'key_last4' => null, 'status' => 'never_run', 'poll_seconds' => 60,
     ]);
 
     expect(array_keys($response->json('summary')))->toEqualCanonicalizing(NewsSource::CATEGORIES);
@@ -242,8 +242,8 @@ it('writes one audit row per write naming the source and action', function (): v
 
     [$updated, $set, $replaced, $removed] = $rows->all();
     expect($updated->subject_id)->toBe(atl66Source('rss.coindesk')->id)
-        ->and($updated->before)->toBe(['source' => 'rss.coindesk', 'enabled' => true, 'poll_seconds' => 180])
-        ->and($updated->after)->toBe(['source' => 'rss.coindesk', 'enabled' => false, 'poll_seconds' => 180])
+        ->and($updated->before)->toBe(['source' => 'rss.coindesk', 'enabled' => true, 'poll_seconds' => 60])
+        ->and($updated->after)->toBe(['source' => 'rss.coindesk', 'enabled' => false, 'poll_seconds' => 60])
         ->and($updated->user_id)->toBe($this->owner->id)
         ->and($set->after)->toBe(['source' => 'cryptopanic', 'api_key' => 'key_set'])
         ->and($set->before)->toBe(['source' => 'cryptopanic', 'api_key' => null])

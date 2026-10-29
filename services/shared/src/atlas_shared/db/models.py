@@ -378,6 +378,8 @@ class NewsCluster(_Stamped, Base):
     item_count: Mapped[int] = mapped_column(Integer, default=0)
     max_importance: Mapped[int] = mapped_column(SmallInteger, default=1)
     instruments: Mapped[list[str]] = mapped_column(_text_array(), default=list)
+    alerted_at: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
+    """When ingest published this story's news.alert (ATL-65); NULL = never alerted."""
 
 
 class NewsItem(_Stamped, Base):

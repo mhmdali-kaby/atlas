@@ -449,7 +449,7 @@ return [
                 'category' => 'crypto_news',
                 'name' => 'CoinDesk',
                 'url' => 'https://www.coindesk.com/arc/outboundfeeds/rss',
-                'poll_seconds' => 180,
+                'poll_seconds' => 60,
                 'requires_key' => false,
             ],
             'rss.cointelegraph' => [
@@ -457,7 +457,7 @@ return [
                 'category' => 'crypto_news',
                 'name' => 'Cointelegraph',
                 'url' => 'https://cointelegraph.com/rss',
-                'poll_seconds' => 180,
+                'poll_seconds' => 60,
                 'requires_key' => false,
             ],
             'rss.theblock' => [
@@ -465,7 +465,7 @@ return [
                 'category' => 'crypto_news',
                 'name' => 'The Block',
                 'url' => 'https://www.theblock.co/rss.xml',
-                'poll_seconds' => 300,
+                'poll_seconds' => 60,
                 'requires_key' => false,
             ],
             'rss.decrypt' => [
@@ -473,7 +473,7 @@ return [
                 'category' => 'crypto_news',
                 'name' => 'Decrypt',
                 'url' => 'https://decrypt.co/feed',
-                'poll_seconds' => 300,
+                'poll_seconds' => 60,
                 'requires_key' => false,
             ],
             'rss.cnbc' => [
@@ -481,7 +481,7 @@ return [
                 'category' => 'markets_news',
                 'name' => 'CNBC Top News',
                 'url' => 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114',
-                'poll_seconds' => 180,
+                'poll_seconds' => 60,
                 'requires_key' => false,
             ],
             'rss.marketwatch' => [
@@ -489,7 +489,7 @@ return [
                 'category' => 'markets_news',
                 'name' => 'MarketWatch Top Stories',
                 'url' => 'https://feeds.content.dowjones.io/public/rss/mw_topstories',
-                'poll_seconds' => 180,
+                'poll_seconds' => 60,
                 'requires_key' => false,
             ],
             'rss.yahoo' => [
@@ -556,6 +556,11 @@ return [
             'event_type_weight' => '0.2',
             'candidate_limit' => 20,
             'novelty_hours' => 72,
+        ],
+        'alerts' => [
+            'importance' => 5,
+            'held_importance' => 4,
+            'alias_resync_seconds' => 60,
         ],
         'importance' => [
             'min' => 1,

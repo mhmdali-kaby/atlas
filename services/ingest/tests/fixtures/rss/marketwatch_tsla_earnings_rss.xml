@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ATL-65: a documented-shape MarketWatch "Top Stories" RSS 2.0 feed
+     (feeds.content.dowjones.io/public/rss/mw_topstories), not a recording: the same Tesla earnings
+     story as cnbc_tsla_earnings_rss.xml, told by a second source. -->
+<rss xmlns:dc="http://purl.org/dc/elements/1.1/" version="2.0">
+  <channel>
+    <title>MarketWatch.com - Top Stories</title>
+    <link>https://www.marketwatch.com</link>
+    <description>MarketWatch.com - Top Stories</description>
+    <language>en-US</language>
+    <item>
+      <title>Tesla third-quarter earnings report released</title>
+      <link>https://www.marketwatch.com/story/tesla-third-quarter-earnings-report-released-11730000</link>
+      <description>Tesla released its quarterly results on Thursday.</description>
+      <dc:creator>MarketWatch</dc:creator>
+      <pubDate>Thu, 29 Oct 2026 12:02:00 GMT</pubDate>
+      <guid isPermaLink="false">SB11730000</guid>
+    </item>
+  </channel>
+</rss>
