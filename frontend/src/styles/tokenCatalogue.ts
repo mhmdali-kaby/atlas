@@ -77,6 +77,7 @@ export const SEMANTIC_GROUPS: readonly TokenGroup[] = [
       '--switch-off-border',
       '--knob',
       '--selection',
+      '--area-thumb',
       '--scrim',
     ],
   },

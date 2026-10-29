@@ -14,16 +14,22 @@ import { API_URL, resetCsrfForTests } from '../lib/api'
 import { THEME_STORAGE_KEY } from '../theme/theme'
 import { initTheme, useTheme } from '../theme/useTheme'
 import { AppShell } from './AppShell'
-import { activeNavEntry, collectNavEntries, type NavEntry } from './feature'
+import { activeNavEntry, buildShellRegistry, collectNavEntries, type FeatureModule, type NavEntry } from './feature'
 import { RiskFooter } from './shell/RiskFooter'
 
 const OWNER = { id: '01a18376-1d35-70c2-ad01-6d1d2cd870ad', name: 'Mohammed Ali', email: 'owner@atlas.test', locale: 'en', theme: 'system' }
 
-const NAV: NavEntry[] = [
-  { path: '/portfolio', labelKey: 'shell:test.overview', order: 10, section: 'portfolio', icon: Briefcase },
-  { path: '/portfolio/positions', labelKey: 'shell:test.positions', order: 20, section: 'portfolio' },
-  { path: '/settings/connections', labelKey: 'shell:test.connections', order: 100, section: 'settings', icon: Plug },
+const PORTFOLIO_NAV: NavEntry[] = [
+  { path: '/portfolio', labelKey: 'shell:test.overview', order: 10, icon: Briefcase },
+  { path: '/portfolio/positions', labelKey: 'shell:test.positions', order: 20 },
 ]
+const SETTINGS_NAV: NavEntry = { path: '/settings/connections', labelKey: 'shell:test.connections', order: 100, icon: Plug }
+const FEATURES: FeatureModule[] = [
+  { routes: [], area: 'portfolio', nav: PORTFOLIO_NAV },
+  { routes: [], area: 'settings', nav: SETTINGS_NAV },
+]
+const SHELL = buildShellRegistry(FEATURES)
+const NAV = SHELL.navEntries
 
 i18n.addResourceBundle('en', 'shell', { test: { overview: 'Overview', positions: 'Positions', connections: 'Connections' } }, true, false)
 i18n.addResourceBundle('ar', 'shell', { test: { overview: 'نظرة عامة', positions: 'المراكز', connections: 'الاتصالات' } }, true, false)
@@ -77,7 +83,7 @@ function renderShell(initialEntries: string[]) {
       path: '/',
       element: (
         <RequireAuth>
-          <AppShell nav={NAV} />
+          <AppShell shell={SHELL} />
         </RequireAuth>
       ),
       children: [
@@ -131,38 +137,85 @@ describe('risk footer', () => {
 })
 
 describe('sidebar', () => {
-  it('lists the registered entries under Portfolio and Settings and marks the current page', async () => {
+  it('shows the area switcher and only the current area\'s pages, marking the current page', async () => {
     fakeBackend()
     renderShell(['/portfolio/positions'])
     const sidebar = await screen.findByRole('complementary', { name: 'Sidebar' })
 
-    const portfolio = within(sidebar).getByRole('group', { name: 'Portfolio' })
-    const settings = within(sidebar).getByRole('group', { name: 'Settings' })
-    expect(within(portfolio).getAllByRole('link').map((a) => a.textContent)).toEqual(['Overview', 'Positions'])
-    expect(within(settings).getAllByRole('link').map((a) => a.textContent)).toEqual(['Connections'])
+    const areas = within(sidebar).getByRole('navigation', { name: 'Areas' })
+    expect(within(areas).getAllByRole('link').map((a) => a.textContent)).toEqual(['Portfolio', 'Settings'])
+    expect(within(areas).getByRole('link', { name: 'Portfolio' })).toHaveAttribute('aria-current', 'true')
+    expect(within(areas).getByRole('link', { name: 'Settings' })).not.toHaveAttribute('aria-current')
+
+    const list = within(sidebar).getByRole('navigation', { name: 'Portfolio' })
+    expect(within(list).getAllByRole('link').map((a) => a.textContent)).toEqual(['Overview', 'Positions'])
+    expect(within(sidebar).queryByRole('link', { name: 'Connections' })).toBeNull()
 
     // The longest matching path wins: Positions, not Overview.
-    expect(within(sidebar).getByRole('link', { name: 'Positions' })).toHaveAttribute('aria-current', 'page')
-    expect(within(sidebar).getByRole('link', { name: 'Overview' })).not.toHaveAttribute('aria-current')
+    expect(within(list).getByRole('link', { name: 'Positions' })).toHaveAttribute('aria-current', 'page')
+    expect(within(list).getByRole('link', { name: 'Overview' })).not.toHaveAttribute('aria-current')
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Positions')
   })
 
-  it('moves between items with Tab and the arrow keys, and navigates on Enter', async () => {
+  it('switches area by click and remembers the last page opened in each', async () => {
+    fakeBackend()
+    const user = userEvent.setup()
+    const router = renderShell(['/portfolio/positions'])
+    const sidebar = await screen.findByRole('complementary', { name: 'Sidebar' })
+    const areas = within(sidebar).getByRole('navigation', { name: 'Areas' })
+
+    await user.click(within(areas).getByRole('link', { name: 'Settings' }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/settings/connections'))
+    expect(within(areas).getByRole('link', { name: 'Settings' })).toHaveAttribute('aria-current', 'true')
+    const list = within(sidebar).getByRole('navigation', { name: 'Settings' })
+    expect(within(list).getAllByRole('link').map((a) => a.textContent)).toEqual(['Connections'])
+
+    // Back to Portfolio returns to Positions, the page last open there.
+    await user.click(within(areas).getByRole('link', { name: 'Portfolio' }))
+    await waitFor(() => expect(router.state.location.pathname).toBe('/portfolio/positions'))
+  })
+
+  it('the switcher is one Tab stop; arrows move inside it and Enter or Space opens the area', async () => {
     fakeBackend()
     const user = userEvent.setup()
     const router = renderShell(['/portfolio'])
     const sidebar = await screen.findByRole('complementary', { name: 'Sidebar' })
-    const [overview, positions, connections] = within(sidebar).getAllByRole('link') as [HTMLElement, HTMLElement, HTMLElement]
+    const areas = within(sidebar).getByRole('navigation', { name: 'Areas' })
+    const [portfolio, settings] = within(areas).getAllByRole('link') as [HTMLElement, HTMLElement]
+    expect(portfolio).toHaveAttribute('tabindex', '0')
+    expect(settings).toHaveAttribute('tabindex', '-1')
+
+    portfolio.focus()
+    await user.keyboard('{ArrowDown}')
+    expect(settings).toHaveFocus()
+    await user.keyboard('{ArrowDown}')
+    expect(portfolio).toHaveFocus()
+    await user.keyboard('{ArrowUp}')
+    expect(settings).toHaveFocus()
+    await user.keyboard(' ')
+    await waitFor(() => expect(router.state.location.pathname).toBe('/settings/connections'))
+
+    const nowPortfolio = within(areas).getByRole('link', { name: 'Portfolio' })
+    nowPortfolio.focus()
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(router.state.location.pathname).toBe('/portfolio'))
+  })
+
+  it('moves between page links with the arrow keys, and navigates on Enter', async () => {
+    fakeBackend()
+    const user = userEvent.setup()
+    const router = renderShell(['/portfolio'])
+    const sidebar = await screen.findByRole('complementary', { name: 'Sidebar' })
+    const list = within(sidebar).getByRole('navigation', { name: 'Portfolio' })
+    const [overview, positions] = within(list).getAllByRole('link') as [HTMLElement, HTMLElement]
 
     overview.focus()
     await user.keyboard('{ArrowDown}')
     expect(positions).toHaveFocus()
     await user.keyboard('{ArrowDown}')
-    expect(connections).toHaveFocus()
-    await user.keyboard('{ArrowDown}')
     expect(overview).toHaveFocus()
     await user.keyboard('{ArrowUp}')
-    expect(connections).toHaveFocus()
+    expect(positions).toHaveFocus()
     await user.keyboard('{Home}')
     expect(overview).toHaveFocus()
     await user.tab()
@@ -270,9 +323,13 @@ describe('sign out', () => {
 })
 
 describe('nav helpers', () => {
-  it('collects single and multiple entries in order', () => {
-    const [a, b, c] = NAV as [NavEntry, NavEntry, NavEntry]
-    expect(collectNavEntries([{ routes: [], nav: c }, { routes: [], nav: [b, a] }, { routes: [] }])).toEqual([a, b, c])
+  it('collects single and multiple entries in order, tagged with their feature\'s area', () => {
+    const [a, b] = PORTFOLIO_NAV as [NavEntry, NavEntry]
+    expect(collectNavEntries([{ routes: [], area: 'settings', nav: SETTINGS_NAV }, { routes: [], area: 'portfolio', nav: [b, a] }, { routes: [] }])).toEqual([
+      { ...a, area: 'portfolio' },
+      { ...b, area: 'portfolio' },
+      { ...SETTINGS_NAV, area: 'settings' },
+    ])
   })
 
   it('picks the longest matching path, never a sibling prefix', () => {

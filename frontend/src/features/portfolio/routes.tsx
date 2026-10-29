@@ -11,6 +11,7 @@ import { PositionsPage } from './PositionsPage'
  * below wins over the shell's "first nav entry" fallback (docs/handoff/ATL-17-app-shell.md).
  */
 const portfolio: FeatureModule = {
+  area: 'portfolio',
   routes: [
     { index: true, element: <Navigate to="/portfolio" replace /> },
     { path: 'portfolio', element: <OverviewPage /> },
@@ -19,10 +20,10 @@ const portfolio: FeatureModule = {
     { path: 'portfolio/cashflows', element: <CashflowsPage /> },
   ],
   nav: [
-    { path: '/portfolio', labelKey: 'portfolio:nav.overview', order: 10, section: 'portfolio', icon: ChartSpline },
-    { path: '/portfolio/positions', labelKey: 'portfolio:nav.positions', order: 20, section: 'portfolio', icon: Layers },
-    { path: '/portfolio/holdings', labelKey: 'portfolio:nav.holdings', order: 30, section: 'portfolio', icon: Wallet },
-    { path: '/portfolio/cashflows', labelKey: 'portfolio:nav.cashflows', order: 40, section: 'portfolio', icon: ArrowLeftRight },
+    { path: '/portfolio', labelKey: 'portfolio:nav.overview', order: 10, icon: ChartSpline },
+    { path: '/portfolio/positions', labelKey: 'portfolio:nav.positions', order: 20, icon: Layers },
+    { path: '/portfolio/holdings', labelKey: 'portfolio:nav.holdings', order: 30, icon: Wallet },
+    { path: '/portfolio/cashflows', labelKey: 'portfolio:nav.cashflows', order: 40, icon: ArrowLeftRight },
   ],
 }
 

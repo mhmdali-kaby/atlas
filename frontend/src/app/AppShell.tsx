@@ -6,8 +6,8 @@ import { Navigate, Outlet, useLocation } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { SIGNED_OUT_KEY, useLogout, useSession } from '../features/auth/session'
 import { toast } from '../ui'
-import { activeNavEntry, type NavEntry } from './feature'
-import { navEntries as registeredNavEntries } from './registry'
+import { activeArea, activeNavEntry, areaHome, type AreaId, type ShellRegistry } from './feature'
+import { shellRegistry as registeredShell } from './registry'
 import { EnvBadge } from './shell/EnvBadge'
 import { AccountMenu, LanguageButton, ThemeMenu, ToolbarGroup } from './shell/Prefs'
 import { toolbarIconButton } from './shell/toolbarClasses'
@@ -21,14 +21,24 @@ const NARROW_QUERY = '(max-width: 760px)'
  * from the features' nav entries, a unified toolbar (title, Demo badge, language,
  * appearance, account) and the permanent risk footer. Rendered inside RequireAuth.
  */
-export function AppShell({ nav = registeredNavEntries }: { nav?: readonly NavEntry[] }) {
+export function AppShell({ shell = registeredShell }: { shell?: ShellRegistry }) {
   const { t } = useTranslation(['shell', 'common'])
   const location = useLocation()
   const client = useQueryClient()
   const session = useSession()
   const logout = useLogout()
-  const active = activeNavEntry(nav, location.pathname)
-  const title = active ? t(active.labelKey) : t('common:appName')
+  const active = activeNavEntry(shell.navEntries, location.pathname)
+  const area = activeArea(shell, location.pathname)
+  const title = active ? t(active.labelKey) : area ? t(area.labelKey) : t('common:appName')
+
+  // Each area remembers the last page opened in it (design v4: Shell, "Areas").
+  // Only other areas' links read it, and those were stored on an earlier page, so a ref is enough.
+  const lastByArea = useRef<Partial<Record<AreaId, string>>>({})
+  useEffect(() => {
+    if (area) lastByArea.current[area.id] = location.pathname + location.search
+  }, [area, location.pathname, location.search])
+  const areaHref = (id: AreaId) =>
+    id === area?.id ? location.pathname + location.search : (lastByArea.current[id] ?? areaHome(shell, id))
 
   const [sidebarHidden, setSidebarHidden] = useState(false)
   const [narrowOpen, setNarrowOpen] = useState(false)
@@ -46,8 +56,8 @@ export function AppShell({ nav = registeredNavEntries }: { nav?: readonly NavEnt
   }, [location.pathname])
 
   useEffect(() => {
-    document.title = active ? `${title} · ${t('common:appName')}` : t('common:appName')
-  }, [active, title, t])
+    document.title = active || area ? `${title} · ${t('common:appName')}` : t('common:appName')
+  }, [active, area, title, t])
 
   function toggleSidebar() {
     if (window.matchMedia?.(NARROW_QUERY).matches) setNarrowOpen((open) => !open)
@@ -69,7 +79,7 @@ export function AppShell({ nav = registeredNavEntries }: { nav?: readonly NavEnt
     <MotionConfig reducedMotion="user">
       <div className="shell-wash" aria-hidden="true" />
       <div className="shell-app" data-sidebar={sidebarHidden ? 'hidden' : 'shown'} data-narrow-open={narrowOpen}>
-        <Sidebar entries={nav} active={active} onNavigate={() => setNarrowOpen(false)} />
+        <Sidebar registry={shell} area={area} active={active} areaHref={areaHref} onNavigate={() => setNarrowOpen(false)} />
         <div className="shell-main">
           <header className="shell-toolbar" data-scrolled={scrolled} aria-label={t('toolbar')}>
             <button
@@ -112,8 +122,8 @@ export function AppShell({ nav = registeredNavEntries }: { nav?: readonly NavEnt
 }
 
 /** Signed in at "/": open the first page a feature registered. */
-export function HomeRedirect({ nav = registeredNavEntries }: { nav?: readonly NavEntry[] }) {
-  const first = nav[0]
+export function HomeRedirect({ shell = registeredShell }: { shell?: ShellRegistry }) {
+  const first = shell.navEntries[0]
   return first ? <Navigate to={first.path} replace /> : <NotFound />
 }
 

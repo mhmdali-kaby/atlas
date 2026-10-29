@@ -95,7 +95,8 @@ describe('Portfolio Positions', () => {
   it('registers /portfolio/positions and a Positions nav entry after Overview', () => {
     const nav = Array.isArray(portfolio.nav) ? portfolio.nav : [portfolio.nav]
     expect(nav.map((n) => n?.path).slice(0, 2)).toEqual(['/portfolio', '/portfolio/positions'])
-    expect(nav[1]).toMatchObject({ labelKey: 'portfolio:nav.positions', section: 'portfolio', order: 20 })
+    expect(nav[1]).toMatchObject({ labelKey: 'portfolio:nav.positions', order: 20 })
+    expect(portfolio.area).toBe('portfolio')
   })
 
   it('shows every column for the seeded BTC long and XAU short, matching the API', async () => {
