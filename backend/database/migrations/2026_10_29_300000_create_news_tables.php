@@ -18,6 +18,9 @@ return new class extends Migration
 {
     public const SOURCE_KINDS = ['rss', 'api', 'calendar', 'earnings', 'sentiment'];
 
+    /** Topic the Data sources screen groups by; kind is the transport. */
+    public const SOURCE_CATEGORIES = ['exchange', 'crypto_news', 'markets_news', 'calendar', 'earnings', 'sentiment'];
+
     /** Brief §7.2 step 4. */
     public const EVENT_TYPES = [
         'earnings', 'guidance', 'macro_release', 'central_bank', 'regulation', 'hack_exploit',
@@ -33,6 +36,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->string('key', 64)->unique();
             $table->enum('kind', self::SOURCE_KINDS);
+            $table->enum('category', self::SOURCE_CATEGORIES);
             $table->string('name', 100);
             $table->text('url')->nullable();
             $table->boolean('enabled')->default(true);

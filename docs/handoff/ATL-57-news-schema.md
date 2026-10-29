@@ -38,7 +38,8 @@ Every table: `id uuid` PK, `created_at`/`updated_at` timestamptz(6) (nullable, s
 | column | type | notes |
 |---|---|---|
 | key | varchar(64) UNIQUE | source key, see list below |
-| kind | enum rss\|api\|calendar\|earnings\|sentiment | |
+| kind | enum rss\|api\|calendar\|earnings\|sentiment | transport |
+| category | enum exchange\|crypto_news\|markets_news\|calendar\|earnings\|sentiment, NOT NULL | topic the Data sources screen groups by and the "all sources for a class are down" banner keys on |
 | name | varchar(100) | display name |
 | url | text null | endpoint/feed URL |
 | enabled | bool default true | owner toggle |
@@ -102,21 +103,21 @@ table wholesale.
 
 ## Source keys (seeded)
 
-| key | kind | poll_seconds | requires_key |
-|---|---|---|---|
-| okx.announcements | api | 120 | no |
-| cryptopanic | api | 180 | yes |
-| rss.coindesk | rss | 180 | no |
-| rss.cointelegraph | rss | 180 | no |
-| rss.theblock | rss | 300 | no |
-| rss.decrypt | rss | 300 | no |
-| rss.cnbc | rss | 180 | no |
-| rss.marketwatch | rss | 180 | no |
-| finnhub.news | api | 180 | yes |
-| finnhub.calendar | calendar | 900 | yes |
-| finnhub.earnings | earnings | 86400 | yes |
-| forexfactory.calendar | calendar | 900 | no |
-| alternative_me.fng | sentiment | 3600 | no |
+| key | kind | category | poll_seconds | requires_key |
+|---|---|---|---|---|
+| okx.announcements | api | exchange | 120 | no |
+| cryptopanic | api | crypto_news | 180 | yes |
+| rss.coindesk | rss | crypto_news | 180 | no |
+| rss.cointelegraph | rss | crypto_news | 180 | no |
+| rss.theblock | rss | crypto_news | 300 | no |
+| rss.decrypt | rss | crypto_news | 300 | no |
+| rss.cnbc | rss | markets_news | 180 | no |
+| rss.marketwatch | rss | markets_news | 180 | no |
+| finnhub.news | api | markets_news | 180 | yes |
+| finnhub.calendar | calendar | calendar | 900 | yes |
+| finnhub.earnings | earnings | earnings | 86400 | yes |
+| forexfactory.calendar | calendar | calendar | 900 | no |
+| alternative_me.fng | sentiment | sentiment | 3600 | no |
 
 URLs are in `config/defaults.yaml`. They were **not** checked against the live feeds (no network
 in the build sandbox) — verify when the collectors are recorded on a networked run. Not seeded:

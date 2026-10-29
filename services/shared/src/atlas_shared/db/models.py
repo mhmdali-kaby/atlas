@@ -343,7 +343,8 @@ class _Stamped:
 
 
 class NewsSource(_Stamped, Base):
-    """One ingest source (ATL-57, decision #243). kind is rss|api|calendar|earnings|sentiment.
+    """One ingest source (ATL-57, decision #243). kind is the transport (rss|api|calendar|earnings|sentiment);
+    category is the topic (exchange|crypto_news|markets_news|calendar|earnings|sentiment).
     api_key is Laravel ``encrypted``-cast ciphertext: decrypt with atlas_shared.laravel_crypt and
     never log it. Ingest writes only the health columns (failures, disabled_until, last_*)."""
 
@@ -352,6 +353,7 @@ class NewsSource(_Stamped, Base):
 
     key: Mapped[str] = mapped_column(String(64))
     kind: Mapped[str] = mapped_column(String(255))
+    category: Mapped[str] = mapped_column(String(255))
     name: Mapped[str] = mapped_column(String(100))
     url: Mapped[str | None] = mapped_column(Text, nullable=True)
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)

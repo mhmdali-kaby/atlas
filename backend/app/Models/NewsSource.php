@@ -18,7 +18,8 @@ use Illuminate\Support\Carbon;
  *
  * @property string $id UUID
  * @property string $key e.g. rss.coindesk, cryptopanic, finnhub.news
- * @property 'rss'|'api'|'calendar'|'earnings'|'sentiment' $kind
+ * @property 'rss'|'api'|'calendar'|'earnings'|'sentiment' $kind transport
+ * @property 'exchange'|'crypto_news'|'markets_news'|'calendar'|'earnings'|'sentiment' $category topic the UI groups by
  * @property string $name
  * @property string|null $url
  * @property bool $enabled
@@ -34,13 +35,15 @@ use Illuminate\Support\Carbon;
  * @property Carbon $updated_at
  */
 #[Table(name: 'news_sources')]
-#[Fillable(['key', 'kind', 'name', 'url', 'enabled', 'poll_seconds', 'requires_key', 'api_key'])]
+#[Fillable(['key', 'kind', 'category', 'name', 'url', 'enabled', 'poll_seconds', 'requires_key', 'api_key'])]
 #[Hidden(['api_key'])]
 class NewsSource extends Model
 {
     use HasUuids;
 
     public const KINDS = ['rss', 'api', 'calendar', 'earnings', 'sentiment'];
+
+    public const CATEGORIES = ['exchange', 'crypto_news', 'markets_news', 'calendar', 'earnings', 'sentiment'];
 
     protected $dateFormat = 'Y-m-d H:i:s.uP';
 

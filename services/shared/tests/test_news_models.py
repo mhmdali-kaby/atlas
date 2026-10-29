@@ -184,7 +184,12 @@ def test_calendar_sentiment_alias_and_source_models_round_trip(session: Session)
                 priority=10,
             ),
             NewsSource(
-                key=f"test.{RUN}", kind="rss", name="Test feed", url="https://x.test/rss", poll_seconds=180
+                key=f"test.{RUN}",
+                kind="rss",
+                category="crypto_news",
+                name="Test feed",
+                url="https://x.test/rss",
+                poll_seconds=180,
             ),
         ]
     )
@@ -202,6 +207,7 @@ def test_calendar_sentiment_alias_and_source_models_round_trip(session: Session)
     ).one()
     assert (alias.target_kind, alias.target, alias.priority) == ("instrument_family", "TSLA-USDT", 10)
     source = session.scalars(select(NewsSource).where(NewsSource.key == f"test.{RUN}")).one()
+    assert source.category == "crypto_news"
     assert (source.enabled, source.requires_key, source.consecutive_failures, source.api_key) == (
         True,
         False,
@@ -232,7 +238,8 @@ def test_python_decrypts_an_api_key_written_by_laravel(session: Session) -> None
     }
     php = (
         "App\\Models\\NewsSource::query()->create(["
-        f"'key' => '{key}', 'kind' => 'api', 'name' => 'Keyed', 'poll_seconds' => 180,"
+        f"'key' => '{key}', 'kind' => 'api', 'category' => 'crypto_news',"
+        "'name' => 'Keyed', 'poll_seconds' => 180,"
         f"'requires_key' => true, 'api_key' => '{plaintext}']);"
     )
     php_bin = shutil.which("php")

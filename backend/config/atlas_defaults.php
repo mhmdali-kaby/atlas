@@ -403,6 +403,7 @@ return [
         'sources' => [
             'okx.announcements' => [
                 'kind' => 'api',
+                'category' => 'exchange',
                 'name' => 'OKX announcements',
                 'url' => 'https://www.okx.com/api/v5/support/announcements',
                 'poll_seconds' => 120,
@@ -410,6 +411,7 @@ return [
             ],
             'cryptopanic' => [
                 'kind' => 'api',
+                'category' => 'crypto_news',
                 'name' => 'CryptoPanic',
                 'url' => 'https://cryptopanic.com/api/v1/posts/',
                 'poll_seconds' => 180,
@@ -417,6 +419,7 @@ return [
             ],
             'rss.coindesk' => [
                 'kind' => 'rss',
+                'category' => 'crypto_news',
                 'name' => 'CoinDesk',
                 'url' => 'https://www.coindesk.com/arc/outboundfeeds/rss/',
                 'poll_seconds' => 180,
@@ -424,6 +427,7 @@ return [
             ],
             'rss.cointelegraph' => [
                 'kind' => 'rss',
+                'category' => 'crypto_news',
                 'name' => 'Cointelegraph',
                 'url' => 'https://cointelegraph.com/rss',
                 'poll_seconds' => 180,
@@ -431,6 +435,7 @@ return [
             ],
             'rss.theblock' => [
                 'kind' => 'rss',
+                'category' => 'crypto_news',
                 'name' => 'The Block',
                 'url' => 'https://www.theblock.co/rss.xml',
                 'poll_seconds' => 300,
@@ -438,6 +443,7 @@ return [
             ],
             'rss.decrypt' => [
                 'kind' => 'rss',
+                'category' => 'crypto_news',
                 'name' => 'Decrypt',
                 'url' => 'https://decrypt.co/feed',
                 'poll_seconds' => 300,
@@ -445,6 +451,7 @@ return [
             ],
             'rss.cnbc' => [
                 'kind' => 'rss',
+                'category' => 'markets_news',
                 'name' => 'CNBC Top News',
                 'url' => 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114',
                 'poll_seconds' => 180,
@@ -452,6 +459,7 @@ return [
             ],
             'rss.marketwatch' => [
                 'kind' => 'rss',
+                'category' => 'markets_news',
                 'name' => 'MarketWatch Top Stories',
                 'url' => 'https://feeds.content.dowjones.io/public/rss/mw_topstories',
                 'poll_seconds' => 180,
@@ -459,6 +467,7 @@ return [
             ],
             'finnhub.news' => [
                 'kind' => 'api',
+                'category' => 'markets_news',
                 'name' => 'Finnhub news',
                 'url' => 'https://finnhub.io/api/v1/news',
                 'poll_seconds' => 180,
@@ -466,6 +475,7 @@ return [
             ],
             'finnhub.calendar' => [
                 'kind' => 'calendar',
+                'category' => 'calendar',
                 'name' => 'Finnhub economic calendar',
                 'url' => 'https://finnhub.io/api/v1/calendar/economic',
                 'poll_seconds' => 900,
@@ -473,6 +483,7 @@ return [
             ],
             'finnhub.earnings' => [
                 'kind' => 'earnings',
+                'category' => 'earnings',
                 'name' => 'Finnhub earnings calendar',
                 'url' => 'https://finnhub.io/api/v1/calendar/earnings',
                 'poll_seconds' => 86400,
@@ -480,6 +491,7 @@ return [
             ],
             'forexfactory.calendar' => [
                 'kind' => 'calendar',
+                'category' => 'calendar',
                 'name' => 'ForexFactory weekly calendar',
                 'url' => 'https://nfs.faireconomy.media/ff_calendar_thisweek.json',
                 'poll_seconds' => 900,
@@ -487,6 +499,7 @@ return [
             ],
             'alternative_me.fng' => [
                 'kind' => 'sentiment',
+                'category' => 'sentiment',
                 'name' => 'Crypto Fear & Greed Index',
                 'url' => 'https://api.alternative.me/fng/',
                 'poll_seconds' => 3600,

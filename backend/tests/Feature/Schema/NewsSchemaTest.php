@@ -87,6 +87,29 @@ it('seeds exactly one row per configured source key, idempotently', function ():
         ->and($cryptopanic->poll_seconds)->toBe(180);
 });
 
+it('gives every seeded source one of the six categories', function (): void {
+    $this->seed(NewsSourcesSeeder::class);
+
+    $counts = collect(DB::select('SELECT category, count(*) AS n FROM news_sources GROUP BY category'))
+        ->pluck('n', 'category');
+
+    expect($counts->keys()->sort()->values()->all())
+        ->toEqual(collect(NewsSource::CATEGORIES)->sort()->values()->all())
+        ->and($counts->sum())->toBe(NewsSource::query()->count())
+        ->and(NewsSource::query()->where('key', 'okx.announcements')->value('category'))->toBe('exchange')
+        ->and(NewsSource::query()->where('key', 'finnhub.news')->value('category'))->toBe('markets_news');
+
+    $nullable = DB::selectOne("SELECT is_nullable FROM information_schema.columns WHERE table_name = 'news_sources' AND column_name = 'category'");
+    expect($nullable->is_nullable)->toBe('NO');
+});
+
+it('rejects a news_sources category outside the six', function (): void {
+    expect(fn () => DB::table('news_sources')->insert([
+        'id' => (string) Str::uuid(), 'key' => 'x.bad', 'kind' => 'rss', 'category' => 'weather',
+        'name' => 'Bad', 'poll_seconds' => 60,
+    ]))->toThrow(QueryException::class);
+});
+
 it('stores news_sources.api_key as ciphertext and returns the plaintext', function (): void {
     $this->seed(NewsSourcesSeeder::class);
     $source = NewsSource::query()->where('key', 'finnhub.news')->firstOrFail();
