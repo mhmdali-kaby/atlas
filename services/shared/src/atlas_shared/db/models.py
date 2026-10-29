@@ -13,6 +13,7 @@ from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
+    CHAR,
     BigInteger,
     Boolean,
     Computed,
@@ -26,6 +27,8 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     Uuid,
+    func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import ARRAY, BYTEA, JSONB, TIMESTAMP
 from sqlalchemy.dialects.postgresql.base import ischema_names
@@ -476,3 +479,136 @@ class InstrumentAlias(_Stamped, Base):
     target_kind: Mapped[str] = mapped_column(String(255))
     target: Mapped[str] = mapped_column(String(64))
     priority: Mapped[int] = mapped_column(SmallInteger, default=0)
+
+
+# --- Agent runtime (ATL-78, decision #245). `agent` is a warroom.agents slug from defaults.yaml.
+
+
+def _jsonb_obj() -> Any:
+    """jsonb NOT NULL DEFAULT '{}': omit it on insert and Postgres fills ``{}``."""
+    return mapped_column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+
+
+class PromptVersion(_Stamped, Base):
+    """One stored prompt body per (agent, version); sha256 is the hex digest of body."""
+
+    __tablename__ = "prompt_versions"
+    __table_args__ = (UniqueConstraint("agent", "version"), UniqueConstraint("agent", "sha256"))
+
+    agent: Mapped[str] = mapped_column(String(64))
+    version: Mapped[int] = mapped_column(Integer)
+    sha256: Mapped[str] = mapped_column(CHAR(64))
+    body: Mapped[str] = mapped_column(Text)
+
+
+class AgentRun(_Row, Base):
+    """One agent session turn. trigger: mention|schedule|eval|manual.
+    status: running|ok|error|degraded|rate_limited|over_budget. cost_usd_notional is display-only."""
+
+    __tablename__ = "agent_runs"
+
+    agent: Mapped[str] = mapped_column(String(64))
+    trigger: Mapped[str] = mapped_column(String(255))
+    correlation_id: Mapped[str | None] = mapped_column(String(191), nullable=True)
+    started_at: Mapped[datetime] = mapped_column(_tz())
+    ended_at: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
+    status: Mapped[str] = mapped_column(String(255), default="running")
+    model: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    prompt_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    tokens_in: Mapped[int] = mapped_column(BigInteger, default=0)
+    tokens_out: Mapped[int] = mapped_column(BigInteger, default=0)
+    turns: Mapped[int] = mapped_column(Integer, default=0)
+    cost_usd_notional: Mapped[Decimal] = mapped_column(Numeric(18, 6, asdecimal=True), default=Decimal(0))
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class AgentUsageDaily(_Stamped, Base):
+    """Per agent, env and Asia/Baghdad day. Write only through atlas_shared.db.agents.add_usage,
+    which accumulates with ON CONFLICT (agent, env, day)."""
+
+    __tablename__ = "agent_usage_daily"
+    __table_args__ = (UniqueConstraint("agent", "env", "day"),)
+
+    agent: Mapped[str] = mapped_column(String(64))
+    env: Mapped[str] = mapped_column(String(255))
+    day: Mapped[date] = mapped_column(Date)
+    tokens_in: Mapped[int] = mapped_column(BigInteger, default=0)
+    tokens_out: Mapped[int] = mapped_column(BigInteger, default=0)
+    turns: Mapped[int] = mapped_column(Integer, default=0)
+    runs: Mapped[int] = mapped_column(Integer, default=0)
+
+
+class AgentState(_Stamped, Base):
+    """Live status per (agent, env). state: idle|thinking|waiting|degraded|rate_limited|paused|disabled."""
+
+    __tablename__ = "agent_states"
+    __table_args__ = (UniqueConstraint("agent", "env"),)
+
+    agent: Mapped[str] = mapped_column(String(64))
+    env: Mapped[str] = mapped_column(String(255))
+    state: Mapped[str] = mapped_column(String(255), default="idle")
+    current_task: Mapped[str | None] = mapped_column(Text, nullable=True)
+    state_since: Mapped[datetime] = mapped_column(_tz(), server_default=func.now())
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class ResearchReport(_Row, Base):
+    """Brief §5 research_reports. confidence is CHECKed to 0..1."""
+
+    __tablename__ = "research_reports"
+
+    agent: Mapped[str] = mapped_column(String(64))
+    agent_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("agent_runs.id", ondelete="SET NULL"), nullable=True
+    )
+    inst_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    kind: Mapped[str] = mapped_column(String(64))
+    content_md: Mapped[str] = mapped_column(Text)
+    data: Mapped[Any] = _jsonb_obj()
+    confidence: Mapped[Decimal | None] = mapped_column(Numeric(6, 4, asdecimal=True), nullable=True)
+    valid_until: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
+
+
+class AgentNotebookEntry(_Row, Base):
+    """One note on the shared daily notebook; day is the Asia/Baghdad date."""
+
+    __tablename__ = "agent_notebook"
+
+    day: Mapped[date] = mapped_column(Date)
+    agent: Mapped[str] = mapped_column(String(64))
+    note_md: Mapped[str] = mapped_column(Text)
+    data: Mapped[Any] = _jsonb_obj()
+
+
+class JournalEntry(_Row, Base):
+    """Post-mortem / lesson (brief §5, §7.8). proposal_id gets its FK when proposals exist (Phase 2)."""
+
+    __tablename__ = "journal_entries"
+
+    agent: Mapped[str] = mapped_column(String(64))
+    inst_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    proposal_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    title: Mapped[str] = mapped_column(String(255))
+    expected_md: Mapped[str | None] = mapped_column(Text, nullable=True)
+    actual_md: Mapped[str | None] = mapped_column(Text, nullable=True)
+    lessons_md: Mapped[str | None] = mapped_column(Text, nullable=True)
+    data: Mapped[Any] = _jsonb_obj()
+    tags: Mapped[list[str]] = mapped_column(
+        _text_array(), nullable=False, server_default=text("'{}'::text[]")
+    )
+
+
+class AgentScore(_Row, Base):
+    """Per agent, env and Asia/Baghdad day. hit_rate and brier_score are CHECKed to 0..1."""
+
+    __tablename__ = "agent_scores"
+    __table_args__ = (UniqueConstraint("agent", "env", "day"),)
+
+    agent: Mapped[str] = mapped_column(String(64))
+    day: Mapped[date] = mapped_column(Date)
+    n: Mapped[int] = mapped_column(Integer, default=0)
+    hit_rate: Mapped[Decimal | None] = mapped_column(Numeric(6, 4, asdecimal=True), nullable=True)
+    brier_score: Mapped[Decimal | None] = mapped_column(Numeric(8, 6, asdecimal=True), nullable=True)
+    calibration: Mapped[Any] = _jsonb_obj()
+    pnl_attributed_usd: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    data: Mapped[Any] = _jsonb_obj()
