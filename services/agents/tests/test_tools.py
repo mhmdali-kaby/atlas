@@ -176,14 +176,30 @@ async def test_tool_errors_and_crashes_become_error_results() -> None:
     assert "secret detail" not in crashed["message"]
 
 
-# Catalogue tools with a real implementation (each has its own test module).
-IMPLEMENTED = {fq_name("history", n) for n in CATALOGUE["history"]}
-STUBS = [(s, n) for s, tools in CATALOGUE.items() for n in tools if fq_name(s, n) not in IMPLEMENTED]
+# Catalogue tools with a real implementation; each has its own tests
+# (ATL-85: okx_market, atlas_data; ATL-86: news, memory; ATL-87: history).
+IMPLEMENTED = {
+    *(("okx_market", n) for n in CATALOGUE["okx_market"]),
+    *(("atlas_data", n) for n in CATALOGUE["atlas_data"]),
+    *(("news", n) for n in CATALOGUE["news"] if n != "web_search"),
+    *(("memory", n) for n in CATALOGUE["memory"]),
+    *(("history", n) for n in CATALOGUE["history"]),
+}
 
 
-def test_implemented_tools_are_registered_for_real() -> None:
-    for name in IMPLEMENTED:
-        assert fw.get_tool(name).implemented is True, name
+def test_implemented_tools_are_exactly_the_built_ones() -> None:
+    built = {(t.server, t.name) for t in fw.registered_tools().values() if t.implemented}
+    catalogue = {(s, n) for s, tools in CATALOGUE.items() for n in tools}
+    assert built & catalogue == IMPLEMENTED
+
+
+def test_implemented_tools_keep_their_catalogue_input_model() -> None:
+    for server, name in IMPLEMENTED:
+        tool = fw.get_tool(fq_name(server, name))
+        assert tool.input_model is CATALOGUE[server][name], tool.fq_name
+
+
+STUBS = [(s, n) for s, tools in CATALOGUE.items() for n in tools if (s, n) not in IMPLEMENTED]
 
 
 @pytest.mark.parametrize(("server", "name"), STUBS)

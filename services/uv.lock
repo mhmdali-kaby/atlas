@@ -141,16 +141,20 @@ name = "atlas-agents"
 version = "0.0.0"
 source = { editable = "agents" }
 dependencies = [
+    { name = "atlas-ingest" },
     { name = "atlas-quant" },
     { name = "atlas-shared" },
     { name = "claude-agent-sdk" },
+    { name = "httpx" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "atlas-ingest", editable = "ingest" },
     { name = "atlas-quant", editable = "quant" },
     { name = "atlas-shared", editable = "shared" },
     { name = "claude-agent-sdk", specifier = ">=0.1" },
+    { name = "httpx", specifier = ">=0.27" },
 ]
 
 [[package]]

@@ -897,6 +897,13 @@ return [
                 'min_n' => 20,
             ],
         ],
+        'market_tools' => [
+            'ticker_bar' => '1H',
+            'ticker_window_hours' => 24,
+            'mark_price_bar' => '1m',
+            'series_limit' => 200,
+            'min_correlation_obs' => 3,
+        ],
         'tools' => [
             'max_result_tokens' => 4000,
             'chars_per_token' => 4,
