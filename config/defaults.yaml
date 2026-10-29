@@ -323,3 +323,49 @@ news:
     finnhub.earnings: { kind: earnings, category: earnings, name: Finnhub earnings calendar, url: "https://finnhub.io/api/v1/calendar/earnings", poll_seconds: 86400, requires_key: true }
     forexfactory.calendar: { kind: calendar, category: calendar, name: ForexFactory weekly calendar, url: "https://nfs.faireconomy.media/ff_calendar_thisweek.json", poll_seconds: 900, requires_key: false }
     alternative_me.fng: { kind: sentiment, category: sentiment, name: Crypto Fear & Greed Index, url: "https://api.alternative.me/fng/", poll_seconds: 3600, requires_key: false }
+
+  # ATL-63: rule-based headline importance (brief §7.2 step 4, decision #243), read by
+  # atlas_ingest.classify.importance:
+  #   score = base[event_type] (default_base when unlisted)
+  #         + tier1_bonus           when the source is in tier1_sources (case-insensitive name or key)
+  #         + strong_sentiment_bonus when |sentiment| >= strong_sentiment
+  #         + multi_instrument_bonus when linked_count >= multi_instrument_min
+  #         - unlinked_penalty      when linked_count == 0 and the type is not a market-wide one
+  #                                 (macro_release, central_bank, geopolitics)
+  #         + high_novelty_bonus    when novelty is known and >= high_novelty
+  #         - low_novelty_penalty   when novelty is known and < low_novelty (a rehash of known news)
+  #   clamped to 1..5.
+  importance:
+    min: 1
+    max: 5
+    default_base: 2
+    base:
+      hack_exploit: 4
+      central_bank: 4
+      macro_release: 4
+      delisting: 4
+      regulation: 3
+      earnings: 3
+      guidance: 3
+      listing: 3
+      ETF_flow: 3
+      "M&A": 3
+      lawsuit: 3
+      token_unlock: 3
+      geopolitics: 3
+      supply_shock: 3
+      product: 2
+      partnership: 2
+      other: 1
+    market_wide_types: [macro_release, central_bank, geopolitics]
+    tier1_bonus: 1
+    tier1_sources: [reuters, bloomberg, associated press, ap, financial times, wall street journal, wsj, okx announcements, okx.announcements]
+    strong_sentiment: "0.6"
+    strong_sentiment_bonus: 1
+    multi_instrument_min: 3
+    multi_instrument_bonus: 1
+    unlinked_penalty: 1
+    high_novelty: "0.6"
+    high_novelty_bonus: 1
+    low_novelty: "0.15"
+    low_novelty_penalty: 1
