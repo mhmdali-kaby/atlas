@@ -13,6 +13,10 @@ from atlas_shared.defaults import DEFAULTS
 Sleep = Callable[[float], Awaitable[None]]
 Clock = Callable[[], float]
 
+_EPSILON = 1e-9
+"""Float refills can land a hair under one token after the exact wait; without this tolerance the
+bucket would spin on ever-smaller sleeps that a clock can no longer resolve."""
+
 
 @dataclass(frozen=True)
 class RateLimit:
@@ -53,8 +57,8 @@ class TokenBucket:
         async with self._lock:
             while True:
                 self._refill()
-                if self._tokens >= 1:
-                    self._tokens -= 1
+                if self._tokens >= 1 - _EPSILON:
+                    self._tokens = max(0.0, self._tokens - 1)
                     return
                 await self._sleep((1 - self._tokens) / self.limit.rate)
 
