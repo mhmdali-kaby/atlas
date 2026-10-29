@@ -88,7 +88,7 @@ export function WarRoomPage() {
         {feed}
       </section>
       {inspector.shown && (
-        <Inspector thread={selected} threadName={threadName} loading={loading} lastMessageAt={list[list.length - 1]?.created_at ?? null} />
+        <Inspector env={env} thread={selected} threadName={threadName} loading={loading} lastMessageAt={list[list.length - 1]?.created_at ?? null} />
       )}
       {toolbarSlot &&
         createPortal(

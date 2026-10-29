@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildShellRegistry } from '../../app/feature'
 import { HomeRedirect } from '../../app/AppShell'
 import i18n from '../../i18n'
+import type { Position, PositionsPayload } from '../portfolio/api'
 import portfolio from '../portfolio/routes'
 import type { WarroomMessage, WarroomThread } from './api'
 import warroom from './routes'
@@ -44,10 +45,50 @@ const OWNER_MSG: WarroomMessage = {
 
 type Messages = WarroomMessage[] | 'fail' | 'hang'
 
+/* The ATL-12 handoff's /api/portfolio/positions example: PortfolioDemoSeeder's two positions. */
+const BTC_POSITION: Position = {
+  id: '809d7f30',
+  inst_id: 'BTC-USDT-SWAP',
+  side: 'long',
+  pos_side: 'net',
+  size: '25',
+  leverage: '5',
+  entry: '67250.5',
+  mark: '68120.3',
+  liq_px: '54112.8',
+  margin: '3362.525',
+  settle_ccy: 'USDT',
+  upl_usd: '217.45',
+  upl_pct: '6.466866',
+  margin_mode: 'isolated',
+  opened_at: '2026-10-28T08:36:00.000000Z',
+  stop: null,
+  take_profits: null,
+  agent: null,
+  proposal_id: null,
+}
+const XAU_POSITION: Position = {
+  ...BTC_POSITION,
+  id: '85242c4a',
+  inst_id: 'XAU-USDT-SWAP',
+  side: 'short',
+  size: '400',
+  leverage: '3',
+  entry: '2741.8',
+  mark: '2728.4',
+  liq_px: '3618.9',
+  margin: '3655.733333',
+  upl_usd: '-53.6',
+  upl_pct: '-1.46619',
+  margin_mode: 'cross',
+  opened_at: '2026-10-27T14:36:00.000000Z',
+}
+
 const reply = (status: number, body?: unknown) =>
   new Response(body === undefined ? null : JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
-function fakeBackend(messages: Messages[]) {
+/** `positions` defaults to the two seeded positions; pass [] / 'fail' to test the other states. */
+function fakeBackend(messages: Messages[], positions: PositionsPayload | 'fail' = { taken_at: '2026-10-28T17:36:00.000000Z', items: [BTC_POSITION, XAU_POSITION] }) {
   const queue = [...messages]
   const fetch = vi.fn(async (input: RequestInfo | URL) => {
     const url = new URL(String(input))
@@ -58,6 +99,9 @@ function fakeBackend(messages: Messages[]) {
       if (next === 'fail') return reply(500, { message: 'Server Error' })
       return reply(200, { data: [...next].reverse(), meta: { next_cursor: null } })
     }
+    if (url.pathname === '/api/portfolio/positions') {
+      return positions === 'fail' ? reply(500, { message: 'Server Error' }) : reply(200, { data: positions })
+    }
     return reply(404, { message: 'Not found' })
   })
   vi.stubGlobal('fetch', fetch)
@@ -66,6 +110,8 @@ function fakeBackend(messages: Messages[]) {
 
 const messageCalls = (fetch: ReturnType<typeof fakeBackend>) =>
   fetch.mock.calls.filter(([input]) => new URL(String(input)).pathname === '/api/warroom/messages')
+const positionCalls = (fetch: ReturnType<typeof fakeBackend>) =>
+  fetch.mock.calls.filter(([input]) => new URL(String(input)).pathname === '/api/portfolio/positions')
 
 function renderWarRoom(path = '/warroom') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -227,5 +273,57 @@ describe('War Room', () => {
     expect(localStorage.getItem('atlas.wr.inspector')).toBe('closed')
     await user.click(toggle)
     expect(screen.getByTestId('wr-inspector')).toBeInTheDocument()
+  })
+})
+
+describe('Inspector positions (ATL-43)', () => {
+  it('lists the seeded positions with the same side, size, entry, mark and unrealised PnL as Portfolio → Positions', async () => {
+    fakeBackend([[]])
+    renderWarRoom()
+    const rows = await screen.findAllByTestId('wr-position-row')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toHaveAttribute('data-inst', 'BTC-USDT-SWAP')
+    expect(rows[0]).toHaveTextContent('BTC-USDT-SWAP')
+    expect(rows[0]).toHaveTextContent('+$217.45')
+    expect(rows[0]).toHaveTextContent('Long')
+    expect(rows[0]).toHaveTextContent('5×')
+    expect(rows[0]).toHaveTextContent('25')
+    expect(rows[0]).toHaveTextContent('Entry')
+    expect(rows[0]).toHaveTextContent('67,250.5')
+    expect(rows[0]).toHaveTextContent('68,120.3')
+
+    expect(rows[1]).toHaveAttribute('data-inst', 'XAU-USDT-SWAP')
+    expect(rows[1]).toHaveTextContent('Short')
+    expect(rows[1]).toHaveTextContent('−$53.60')
+    expect(within(screen.getByTestId('wr-positions')).getByRole('link', { name: 'Positions' })).toHaveAttribute('href', '/portfolio/positions')
+  })
+
+  it('puts the selected instrument thread’s own position first, highlighted', async () => {
+    fakeBackend([[]])
+    renderWarRoom('/warroom/threads/btc-1')
+    const rows = await screen.findAllByTestId('wr-position-row')
+    expect(rows[0]).toHaveAttribute('data-inst', 'BTC-USDT-SWAP')
+    expect(rows[0]).toHaveClass('is-here')
+    expect(rows[1]).not.toHaveClass('is-here')
+  })
+
+  it('shows "No open positions" when the account has none', async () => {
+    fakeBackend([[]], { taken_at: '2026-10-28T17:36:00.000000Z', items: [] })
+    renderWarRoom()
+    expect(await screen.findByTestId('wr-positions-empty')).toHaveTextContent('No open positions')
+    expect(screen.queryByTestId('wr-position-row')).not.toBeInTheDocument()
+  })
+
+  it('shows an error with Retry that refetches on failure', async () => {
+    const fetch = fakeBackend([[]], 'fail')
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    renderWarRoom()
+    const error = await screen.findByTestId('wr-positions-error')
+    expect(error).toHaveAttribute('role', 'alert')
+    expect(error).toHaveTextContent('Couldn’t load positions')
+    const before = positionCalls(fetch).length
+
+    await user.click(within(error).getByRole('button', { name: 'Try again' }))
+    expect(positionCalls(fetch).length).toBeGreaterThan(before)
   })
 })

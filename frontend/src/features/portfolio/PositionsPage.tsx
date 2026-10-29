@@ -1,7 +1,7 @@
 import { ArrowDownRight, ArrowUpRight, Layers } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTradingEnv } from '../../app/shell/tradingEnv'
-import { formatDecimal, NO_VALUE, type Lang } from '../../lib/format'
+import { formatDecimal, formatPrice, NO_VALUE, type Lang } from '../../lib/format'
 import { SignedValue } from '../../ui'
 import { POLL_MS, usePositions, useSummary, type Position } from './api'
 import { useLang, useNow } from './hooks'
@@ -18,15 +18,6 @@ import './portfolio.css'
 const COLUMNS = ['instrument', 'side', 'size', 'leverage', 'mgnMode', 'entry', 'mark', 'liq', 'upl', 'time'] as const
 type Column = (typeof COLUMNS)[number]
 const NUMERIC = new Set<Column>(['size', 'leverage', 'entry', 'mark', 'liq', 'upl', 'time'])
-
-/** Display precision only (design priceDecimals); the value itself stays a string. */
-function priceDecimals(value: string | null): number {
-  return value !== null && Math.abs(Number(value)) >= 10_000 ? 1 : 2
-}
-
-function price(value: string | null, lang: Lang): string {
-  return formatDecimal(value, lang, priceDecimals(value))
-}
 
 /** OKX instrument ID verbatim: the base asset carries the row, the rest recedes. */
 function InstId({ id }: { id: string }) {
@@ -70,13 +61,13 @@ function PositionRow({ p, lang, now }: { p: Position; lang: Lang; now: number })
       </td>
       <td data-col="mgnMode">{mode}</td>
       <td data-col="entry" className="is-num fig">
-        {price(p.entry, lang)}
+        {formatPrice(p.entry, lang)}
       </td>
       <td data-col="mark" className="is-num fig">
-        {price(p.mark, lang)}
+        {formatPrice(p.mark, lang)}
       </td>
       <td data-col="liq" className="is-num fig text-label-secondary">
-        {price(p.liq_px, lang)}
+        {formatPrice(p.liq_px, lang)}
       </td>
       <td data-col="upl" className="is-num">
         <span className="flex justify-end">
