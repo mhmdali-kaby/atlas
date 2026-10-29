@@ -134,6 +134,24 @@ export function Composer({ env, thread, threadName, disabled, replyTo, onCancelR
     return () => document.removeEventListener('pointerdown', onDown)
   }, [picker])
 
+  // The ReplyChip grows .composer-wrap, so the floating jump-to-latest/new-messages row (ATL-39,
+  // a sibling under .wr-pane, positioned from its own bottom edge) must track that height rather
+  // than assume a fixed one, or it lands on top of the chip's × (ATL-42 QA). --wr-composer-h is
+  // read by .wr-float in warroom.css; its fallback matches .composer-wrap's own default height.
+  useLayoutEffect(() => {
+    const wrap = wrapRef.current
+    const pane = wrap?.closest<HTMLElement>('.wr-pane')
+    if (!wrap || !pane || typeof ResizeObserver === 'undefined') return
+    const set = (h: number) => pane.style.setProperty('--wr-composer-h', `${h}px`)
+    set(wrap.getBoundingClientRect().height)
+    // Reads the size the browser already computed for this notification (borderBoxSize) rather
+    // than calling getBoundingClientRect() again inside the callback, which forces a fresh
+    // layout and can trigger the browser's "ResizeObserver loop" warning.
+    const ro = new ResizeObserver(([entry]) => set(entry?.borderBoxSize?.[0]?.blockSize ?? wrap.getBoundingClientRect().height))
+    ro.observe(wrap)
+    return () => ro.disconnect()
+  }, [])
+
   function update(next: string, caret: number) {
     setValue(next)
     if (draftKey) drafts.set(draftKey, next)

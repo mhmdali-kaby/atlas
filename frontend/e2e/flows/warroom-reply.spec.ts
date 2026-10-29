@@ -43,6 +43,9 @@ async function postedReplyTo(page: Page, text: string): Promise<string | null> {
   return body.data.reply_to
 }
 
+type Box = { x: number; y: number; width: number; height: number }
+const overlaps = (a: Box, b: Box) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height
+
 test('choosing Reply shows the quoted chip; sending "agreed" posts reply_to and renders with the quoted parent', async ({ page, lang, theme }) => {
   test.skip(theme === 'dark', 'the reply flow does not depend on theme; the light project covers it in both languages')
   const t = T[lang]
@@ -119,6 +122,39 @@ test('Reply is reachable by keyboard: focusing the message and its actions shows
   await page.keyboard.press('Enter')
   await expect(page.getByTestId('wr-reply-chip')).toBeVisible()
   await expect(input(page)).toBeFocused()
+})
+
+test('replying to an older message while scrolled up: the jump-to-latest float clears the chip’s ×', async ({ page, theme }, info) => {
+  test.skip(theme === 'dark', 'the overlap is a layout bug, independent of theme; the light project covers both languages')
+  await openWarRoom(page)
+
+  // QA repro: scroll the feed well up into the seeded history, past "Check 480" (Historian),
+  // then Reply from there. .wr-float (the jump-to-latest button) must grow with the composer,
+  // which the ReplyChip makes taller, instead of landing on the chip's × at a fixed offset.
+  await feedOf(page).evaluate((el) => el.scrollBy({ top: -1500 }))
+  const older = feedOf(page).locator('[data-msg-id]').filter({ hasText: 'Check 480:' })
+  await expect(older).toBeVisible()
+  const latest = page.getByTestId('wr-latest')
+  await expect(latest).toBeVisible()
+
+  await older.hover()
+  await older.getByTestId('wr-action-reply').click()
+  const cancel = page.getByTestId('wr-reply-cancel')
+  await expect(cancel).toBeVisible()
+
+  // .wr-float's `bottom` transitions to its new, taller-composer offset (150ms); poll past that
+  // so this checks the settled position, not a mid-animation frame.
+  await expect
+    .poll(async () => {
+      const [cancelBox, latestBox] = [await cancel.boundingBox(), await latest.boundingBox()]
+      return cancelBox && latestBox ? overlaps(cancelBox, latestBox) : null
+    })
+    .toBe(false)
+
+  mkdirSync(SHOTS, { recursive: true })
+  await page.screenshot({ path: `${SHOTS}/${info.project.name}-chip-scrolled-up.png` })
+
+  await cancel.click()
 })
 
 test('Arabic: the chip and the quote mirror correctly', async ({ page, lang }, info) => {
