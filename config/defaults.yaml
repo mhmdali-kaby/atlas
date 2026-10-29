@@ -287,6 +287,14 @@ data_api:
   repaired_issue_days: 7
   quality_issue_limit: 500
 
+# ATL-66: Settings → Data sources API. The owner may set a source's poll interval only inside
+# these bounds; writes (toggle, poll, set/remove key) are throttled per user.
+data_sources_api:
+  poll_seconds_min: 60
+  poll_seconds_max: 86400
+  api_key_max_length: 255
+  writes_per_minute: 20
+
 # ATL-57: news and calendar ingest (brief §7.2, decision #243). kind = transport
 # (rss|api|calendar|earnings|sentiment); category = topic the UI groups by (exchange|crypto_news|
 # markets_news|calendar|earnings|sentiment). NewsSourcesSeeder inserts one
