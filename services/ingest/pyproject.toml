@@ -11,10 +11,13 @@ dependencies = [
   "sqlalchemy>=2",
   "trafilatura>=2",
   "langdetect>=1.0.9",
+  "sentence-transformers>=5.1",
+  "rapidfuzz>=3",
 ]
 
 [project.entry-points."atlas_ingest.evaluation"]
 classifier = "atlas_ingest.classify:classify_headline"
+clusterer = "atlas_ingest.clustering:cluster_rows"
 
 [build-system]
 requires = ["hatchling"]
