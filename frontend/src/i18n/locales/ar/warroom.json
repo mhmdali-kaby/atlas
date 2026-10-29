@@ -162,5 +162,24 @@
   "newMessages_many": "{{count}} رسالة جديدة",
   "newMessages_other": "{{count}} رسالة جديدة",
   "latest": "الانتقال إلى أحدث رسالة",
-  "liveAnnounce": "{{name}}: {{text}}"
+  "liveAnnounce": "{{name}}: {{text}}",
+  "positions": {
+    "title": "المراكز المفتوحة",
+    "view": "المراكز",
+    "empty": {
+      "title": "لا مراكز مفتوحة",
+      "body": "تظهر هنا مراكز حساب OKX التجريبي فور مزامنتها في أطلس."
+    },
+    "error": {
+      "title": "تعذّر تحميل المراكز",
+      "body": "لم يستجب خادم أطلس. أعد المحاولة بعد لحظة."
+    },
+    "side": {
+      "long": "شراء",
+      "short": "بيع"
+    },
+    "terms": "{{side}} <lever>{{lever}}×</lever>، <n>{{contracts}}</n> عقد",
+    "entry": "سعر الدخول",
+    "mark": "سعر العلامة"
+  }
 }

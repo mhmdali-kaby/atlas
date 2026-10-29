@@ -138,6 +138,22 @@
 .insp-empty .insp-empty-title { font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); color: var(--label); font-weight: 600; }
 .insp-agent { display: flex; gap: 12px; align-items: center; }
 .insp-role { font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.insp-empty.is-error svg { color: var(--loss-ink); }
+
+/* ---- Inspector: open positions ------------------------------------------ */
+.insp-pos { display: grid; gap: 2px; margin-inline: -8px; }
+.pos-row { display: grid; gap: 1px; padding: 7px 8px; border-radius: 8px; color: var(--label); text-decoration: none; }
+.pos-row:hover { background: var(--fill-4); text-decoration: none; }
+.pos-row:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.pos-row.is-here { background: var(--accent-wash); }
+.pos-l1 { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.pos-l1 .inst-tok { font-size: var(--fs-footnote); line-height: var(--lh-footnote); }
+.pos-l1 [data-sign] { font-size: var(--fs-footnote); font-weight: 600; }
+.pos-l2, .pos-l3 { display: flex; align-items: center; gap: 4px; font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--label-secondary); }
+.pos-l2 svg { width: 11px; height: 11px; flex-shrink: 0; }
+.pos-l3 { gap: 2px 12px; flex-wrap: wrap; }
+.pos-l3 > span { white-space: nowrap; }
+.pos-skel { display: grid; gap: 6px; padding: 9px 8px; }
 
 /* ---- Feed: day separators, top of thread, states ------------------------ */
 .wr-day { display: flex; justify-content: center; padding: 22px 0 10px; }

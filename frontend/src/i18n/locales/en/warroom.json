@@ -154,5 +154,24 @@
   "newMessages_one": "{{count}} new message",
   "newMessages_other": "{{count}} new messages",
   "latest": "Scroll to the latest message",
-  "liveAnnounce": "{{name}}: {{text}}"
+  "liveAnnounce": "{{name}}: {{text}}",
+  "positions": {
+    "title": "Open positions",
+    "view": "Positions",
+    "empty": {
+      "title": "No open positions",
+      "body": "Positions on the OKX demo account appear here as soon as Atlas syncs them."
+    },
+    "error": {
+      "title": "Couldn’t load positions",
+      "body": "Atlas’s server didn’t answer. Try again in a moment."
+    },
+    "side": {
+      "long": "Long",
+      "short": "Short"
+    },
+    "terms": "{{side}} <lever>{{lever}}×</lever>, <n>{{contracts}}</n> contracts",
+    "entry": "Entry",
+    "mark": "Mark"
+  }
 }

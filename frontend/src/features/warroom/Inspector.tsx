@@ -1,9 +1,11 @@
 import { ChartCandlestick, Lock, UsersRound } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import type { TradingEnv } from '../../app/shell/tradingEnv'
 import { Skeleton } from '../../ui'
 import { useLang, useNow } from '../portfolio/hooks'
 import { agentBySlug, agentStatus } from './agents'
 import type { WarroomThread } from './api'
+import { InspectorPositions } from './InspectorPositions'
 import { Medallion } from './Medallion'
 import { InstrumentId } from './text'
 import { around } from './tokens'
@@ -15,11 +17,13 @@ import { dayOrTime, formatDate } from './time'
  * Open positions (ATL-43) slot in above the thread facts.
  */
 export function Inspector({
+  env,
   thread,
   threadName,
   lastMessageAt,
   loading,
 }: {
+  env: TradingEnv
   thread: WarroomThread | undefined
   threadName: string
   /** The newest loaded message's time, so the facts agree with the feed; null when empty. */
@@ -120,6 +124,7 @@ export function Inspector({
     <aside className="inspector" id="wr-inspector" aria-label={t('inspector')} data-testid="wr-inspector">
       <header className="insp-head">{head}</header>
       {body}
+      <InspectorPositions env={env} thread={thread} />
       <section className="insp-sec" aria-labelledby="wr-insp-facts">
         <h3 className="insp-title" id="wr-insp-facts">
           <span>{t('facts')}</span>
