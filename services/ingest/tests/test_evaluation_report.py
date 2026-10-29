@@ -52,7 +52,8 @@ def test_cli_override_registers_dotted_callable(
     assert main(["report", "--linker", "atl58_fake_linker:link"]) == 0
     out = capsys.readouterr().out
     assert "linking: precision=1.0000" in out
-    assert "event_type: not registered" in out
+    # ATL-63's classifier arrives through its entry point alongside the CLI override.
+    assert "event_type: accuracy=" in out
 
 
 def test_module_runs_as_cli() -> None:
