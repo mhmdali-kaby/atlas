@@ -216,6 +216,7 @@ test('the empty state (no jobs) shows its message and Start backfill', async ({ 
   await expect(empty).toContainText(str(s, 'empty.body'))
   await expect(page.getByTestId('dt-start')).toHaveText(str(s, 'start'))
   mkdirSync(SHOTS, { recursive: true })
+  await page.waitForTimeout(400)
   await page.screenshot({ path: `${SHOTS}/${info.project.name}-empty.png` })
 })
 
@@ -229,6 +230,7 @@ test('the error state (API 500) shows its message and Try again', async ({ page,
   await expect(error).toContainText(plain(str(s, 'error.body')))
   await expect(error.getByRole('button', { name: str(s, 'retry') })).toBeVisible()
   mkdirSync(SHOTS, { recursive: true })
+  await page.waitForTimeout(400)
   await page.screenshot({ path: `${SHOTS}/${info.project.name}-error.png` })
 })
 
