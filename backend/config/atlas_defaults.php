@@ -618,5 +618,27 @@ return [
             'earnings_amc_time' => '16:00',
             'default_sentiment_index' => 'crypto_fng',
         ],
+        'calendar_importance' => [
+            'High' => 5,
+            'Medium' => 3,
+            'Low' => 1,
+            'Holiday' => 0,
+        ],
+        'calendar' => [
+            'unmapped_importance' => 1,
+            'fast_poll_seconds' => 60,
+            'fast_window_minutes' => 10,
+            'fast_min_importance' => 1,
+            'finnhub_days_back' => 1,
+            'finnhub_days_ahead' => 7,
+        ],
+        'earnings' => [
+            'days_back' => 3,
+            'days_ahead' => 14,
+        ],
+        'sentiment' => [
+            'fng_index_key' => 'crypto_fng',
+            'fng_limit' => 10,
+        ],
     ],
 ];
