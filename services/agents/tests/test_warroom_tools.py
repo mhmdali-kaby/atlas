@@ -10,11 +10,11 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import pytest
+from atlas_agents.schemas import HistoryVerdict, RegimeTable, enforce_verdict_rules
 from atlas_agents.tools import framework as fw
 from atlas_agents.tools.framework import ToolContext, fq_name
 from atlas_agents.tools.warroom import AGENT_KINDS
 from atlas_shared.defaults import DEFAULTS
-from atlas_shared.schemas import HistoryVerdict, RegimeTable
 from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -109,7 +109,7 @@ async def test_historian_post_message_publishes_one_envelope_with_a_valid_card()
     ("over", "needle"),
     [
         ({"verdict": "supports", "n": 12}, "weakly_supports"),
-        ({"bar": "2H"}, "bar"),
+        ({"verdict": "strongly_supports"}, "verdict"),
         ({"distribution": {"24h": {"median": 0.1, "p10": 0.2, "p90": 0.3, "pct_positive": 50}}}, "p10"),
         ({"regime": {"label": "trend", "probability": 1.4, "days_in_regime": 3}}, "regime.probability"),
         ({"data_as_of": "2026-10-29T08:00:00"}, "data_as_of"),
@@ -129,6 +129,34 @@ async def test_an_invalid_history_verdict_is_refused_with_the_validation_errors(
     assert body["error"] == "invalid_card"
     assert needle in body["message"]
     assert rec.events == []
+
+
+async def test_a_verdict_built_by_enforce_verdict_rules_posts_as_a_card() -> None:
+    # ATL-87's one HistoryVerdict: an asset-class event study has no inst_id/bar/period, and a
+    # horizon distribution may carry its own n. The verdict the Historian builds and corrects must post.
+    built = HistoryVerdict.model_validate(
+        _verdict(
+            inst_id=None,
+            bar=None,
+            period=None,
+            n=12,
+            distribution={"24h": {"median": 0.004, "p10": -0.01, "p90": 0.02, "pct_positive": 60, "n": 40}},
+            regime={"label": "trend", "probability": None, "days_in_regime": 2.5},
+        )
+    )
+    fixed, corrections = enforce_verdict_rules(built)
+    assert [c.rule for c in corrections] == ["small_sample"]
+    rec = Recorder()
+    error, body = await _call(
+        _ctx("historian", recorder=rec),
+        "post_message",
+        {"kind": "research_report", "content_md": "Weak evidence.", "card": fixed.model_dump(mode="json")},
+    )
+    assert error is False, body
+    card = rec.events[0][1].payload["card"]
+    assert card["type"] == "history_verdict"
+    assert card["inst_id"] is None and card["distribution"]["24h"]["n"] == 40
+    assert HistoryVerdict.model_validate(card) == fixed
 
 
 async def test_a_missing_required_field_is_named() -> None:

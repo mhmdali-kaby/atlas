@@ -2,7 +2,8 @@
 
 Modules: `services/agents/src/atlas_agents/tools/warroom.py` (MCP tools),
 `services/agents/src/atlas_agents/streaming.py` (`ThinkingPublisher`),
-`services/shared/src/atlas_shared/schemas.py` (`HistoryVerdict`, `RegimeTable`, `CARD_TYPES`).
+`services/agents/src/atlas_agents/schemas.py` (ATL-87's single `HistoryVerdict`, plus `RegimeTable`,
+`CARD_TYPES`, `card_rule_violations`).
 Tests: `agents/tests/test_warroom_tools.py`, `agents/tests/test_streaming.py`.
 
 ## The two-minute version
@@ -47,19 +48,21 @@ For a reply, `thread` is `{"thread_id": "<uuid>"}`.
 
 ### Cards
 
-If `card.type` names a schema in `atlas_shared.schemas.CARD_TYPES`, the card must validate against
+If `card.type` names a schema in `atlas_agents.schemas.CARD_TYPES`, the card must validate against
 it and its kind must allow that type (`KIND_CARD_TYPES`). Today `research_report` allows
 `history_verdict` and `regime_table`. Validation errors go back to the agent as `invalid_card`,
 each one written `loc: msg`. A card with no `type`, or a type that is not registered, is stored
 as given. Register TechnicalSetup and the other schemas there when they exist.
 
-- `history_verdict` (brief §7.3): `question, inst_id, bar (1m|5m|15m|1H|4H|1D), period, n,
-  distribution{horizon: {median,p10,p90,pct_positive 0-100}}, base_rate{same}, regime?{label,
-  probability 0-1, days_in_regime}, stop_noise_check?{stop_distance_atr, median_4h_range_atr,
+- `history_verdict` (brief §7.3, the same model ATL-87's tools and `enforce_verdict_rules` use):
+  `question, inst_id|null, bar|null, period|null, n, distribution{horizon: {median,p10,p90,
+  pct_positive 0-100, n?}}, base_rate{same}, regime?{label, probability 0-1|null,
+  days_in_regime|null}, stop_noise_check?{stop_distance_atr, median_4h_range_atr,
   verdict ok|inside_noise}, overfit_warning, verdict (supports|weakly_supports|does_not_support|
   contradicts), key_stat, data_quality_notes[], data_as_of (tz-aware)`. Extra keys are refused,
-  p10 ≤ median ≤ p90 must hold, and **n < 20 with verdict `supports` is refused**.
-- `regime_table`: `rows[] (≥1) of {inst_id, label, probability 0-1, days_in_regime ≥0, data_as_of}`.
+  p10 ≤ median ≤ p90 must hold, and a card that `enforce_verdict_rules` would still correct is
+  refused (e.g. **n < `agents.history.verdict.min_n` with `supports`**), so run it before posting.
+- `regime_table`: `rows[] (≥1) of {inst_id, label, probability 0-1|null, days_in_regime ≥0|null, data_as_of}`.
 
 ## `warroom.message` from an agent (exact envelope)
 

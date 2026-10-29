@@ -5,7 +5,7 @@ with source ``agent:<ctx.agent>`` and author ``ctx.agent``; ``atlas:bridge`` che
 match, stores the row and broadcasts it. The tools never write Postgres themselves.
 
 * ``post_message`` takes only the kinds an agent may author (``AGENT_KINDS``). A card whose
-  ``type`` names a registered schema (``atlas_shared.schemas.CARD_TYPES``) must validate against
+  ``type`` names a registered schema (``atlas_agents.schemas.CARD_TYPES``) must validate against
   it and be allowed for the message kind; the validation errors go back to the agent.
 * ``reply`` posts into the parent's thread with ``reply_to`` set to the parent's row id. The parent
   may be named by its row id or by the envelope id ``post_message`` returned.
@@ -26,10 +26,10 @@ from typing import Any, Final, get_args
 
 from atlas_shared.defaults import DEFAULTS
 from atlas_shared.events import EventEnvelope
-from atlas_shared.schemas import CARD_TYPES
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import column, or_, select, table
 
+from atlas_agents.schemas import CARD_TYPES, card_rule_violations
 from atlas_agents.tools import framework
 from atlas_agents.tools.catalogue import (
     AgentKind,
@@ -123,6 +123,9 @@ def validate_card(kind: str, card: Mapping[str, Any] | None) -> dict[str, Any] |
             f"{'.'.join(str(p) for p in err['loc']) or '(root)'}: {err['msg']}" for err in exc.errors()
         )
         raise ToolError("invalid_card", f"{card_type} card failed validation: {errors}") from exc
+    violations = card_rule_violations(model)
+    if violations:
+        raise ToolError("invalid_card", f"{card_type} card breaks a verdict rule: {'; '.join(violations)}")
     dumped: dict[str, Any] = model.model_dump(mode="json")
     return dumped
 
