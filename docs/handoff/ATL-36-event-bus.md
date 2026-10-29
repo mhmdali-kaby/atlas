@@ -153,7 +153,7 @@ The payload is the message to persist, in the column names, minus what the bridg
 - Optional keys may be omitted: `card`, `reply_to`, `reasoning_md`, `tool_calls`, `tokens_*`,
   `cost_usd` → null; `mentions` → `[]`.
 - `cost_usd` is a decimal string, never a float.
-- This shape is a proposal from ATL-36; ATL-37 owns the bridge and may tighten it — update this file if so.
+- ATL-37 tightened the validation rules for this shape: see `docs/handoff/ATL-37-bridge.md`.
 
 ## `WarroomMessageResource` JSON
 
