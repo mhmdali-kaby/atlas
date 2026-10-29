@@ -109,6 +109,7 @@ dependencies = [
     { name = "atlas-shared" },
     { name = "feedparser" },
     { name = "httpx" },
+    { name = "pydantic" },
 ]
 
 [package.metadata]
@@ -116,6 +117,7 @@ requires-dist = [
     { name = "atlas-shared", editable = "shared" },
     { name = "feedparser", specifier = ">=6" },
     { name = "httpx", specifier = ">=0.27" },
+    { name = "pydantic", specifier = ">=2.9" },
 ]
 
 [[package]]
