@@ -413,6 +413,7 @@ return [
             'max_bytes' => 2000000,
             'max_per_poll' => 25,
         ],
+        'max_response_bytes' => 10000000,
         'collectors' => [
             'finnhub' => [
                 'max_calls_per_poll' => 20,

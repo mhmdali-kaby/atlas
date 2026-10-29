@@ -19,7 +19,7 @@ from typing import Any
 from atlas_shared.defaults import DEFAULTS
 
 from atlas_ingest import calendar as cal
-from atlas_ingest.collectors import CollectContext, CollectError, SourceConfig, register
+from atlas_ingest.collectors import CollectContext, CollectError, SourceConfig, read_capped, register
 from atlas_ingest.items import RawItem
 
 
@@ -53,10 +53,13 @@ class FearGreedCollector:
         if ctx.engine is None:
             raise CollectError("no database engine")
         cfg: dict[str, Any] = DEFAULTS["news"]["sentiment"]
-        r = await ctx.http.get(source.url or "", params={"limit": str(int(cfg["fng_limit"]))})
-        r.raise_for_status()
+        async with ctx.http.stream(
+            "GET", source.url or "", params={"limit": str(int(cfg["fng_limit"]))}
+        ) as r:
+            r.raise_for_status()
+            raw = await read_capped(r)
         try:
-            body = cal.json_decimal(r.content)
+            body = cal.json_decimal(raw)
         except ValueError as exc:
             raise CollectError("response is not JSON") from exc
         rows = parse_fng(body, str(cfg["fng_index_key"]))

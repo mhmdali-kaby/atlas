@@ -20,7 +20,7 @@ from urllib.parse import quote
 import feedparser
 import httpx
 
-from atlas_ingest.collectors import CollectContext, CollectError, SourceConfig, register
+from atlas_ingest.collectors import CollectContext, CollectError, SourceConfig, read_capped, register
 from atlas_ingest.items import RawItem
 
 logger = logging.getLogger("atlas_ingest.collectors.rss")
@@ -101,9 +101,10 @@ def parse_feed(document: bytes, *, symbol: str | None = None) -> list[RawItem]:
 @register(kinds=("rss",))
 class RssCollector:
     async def _fetch(self, http: httpx.AsyncClient, url: str, symbol: str | None) -> list[RawItem]:
-        response = await http.get(url, headers={"Accept": ACCEPT})
-        response.raise_for_status()
-        return parse_feed(response.content, symbol=symbol)
+        async with http.stream("GET", url, headers={"Accept": ACCEPT}) as response:
+            response.raise_for_status()
+            body = await read_capped(response)
+        return parse_feed(body, symbol=symbol)
 
     async def collect(self, source: SourceConfig, ctx: CollectContext) -> list[RawItem]:
         if not source.url:

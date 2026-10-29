@@ -30,6 +30,7 @@ The article link is ``original_url`` when the plan provides it, else CryptoPanic
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime
 from typing import Any
 
@@ -40,6 +41,7 @@ from atlas_ingest.collectors import (
     CollectError,
     RateLimited,
     SourceConfig,
+    read_capped,
     register,
     retry_after_seconds,
 )
@@ -104,16 +106,18 @@ class CryptoPanicCollector:
     async def collect(self, source: SourceConfig, ctx: CollectContext) -> list[RawItem]:
         if not source.api_key:
             raise CollectError("api key missing")
-        response = await ctx.http.get(
+        async with ctx.http.stream(
+            "GET",
             source.url or DEFAULT_URL,
             params={"auth_token": source.api_key, "public": "true", "kind": "news"},
             headers={"Accept": "application/json"},
-        )
-        if response.status_code == 429:
-            raise RateLimited(retry_after_seconds(response, self.rate_limit_window))
-        response.raise_for_status()
+        ) as response:
+            if response.status_code == 429:
+                raise RateLimited(retry_after_seconds(response, self.rate_limit_window))
+            response.raise_for_status()
+            raw = await read_capped(response)
         try:
-            body = response.json()
+            body = json.loads(raw)
         except ValueError as exc:
             raise CollectError("response is not JSON") from exc
         return parse_posts(body)

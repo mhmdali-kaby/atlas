@@ -27,6 +27,7 @@ Response (documented shape, both endpoints)::
 from __future__ import annotations
 
 import asyncio
+import json
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
@@ -39,6 +40,7 @@ from atlas_ingest.collectors import (
     CollectError,
     RateLimited,
     SourceConfig,
+    read_capped,
     register,
     retry_after_seconds,
 )
@@ -103,14 +105,15 @@ class FinnhubNewsCollector:
         return batch
 
     async def _get(self, ctx: CollectContext, url: str, params: dict[str, str], key: str) -> Any:
-        response = await ctx.http.get(
-            url, params=params, headers={"X-Finnhub-Token": key, "Accept": "application/json"}
-        )
-        if response.status_code == 429:
-            raise RateLimited(retry_after_seconds(response, self.rate_limit_window))
-        response.raise_for_status()
+        async with ctx.http.stream(
+            "GET", url, params=params, headers={"X-Finnhub-Token": key, "Accept": "application/json"}
+        ) as response:
+            if response.status_code == 429:
+                raise RateLimited(retry_after_seconds(response, self.rate_limit_window))
+            response.raise_for_status()
+            raw = await read_capped(response)
         try:
-            return response.json()
+            return json.loads(raw)
         except ValueError as exc:
             raise CollectError("response is not JSON") from exc
 
