@@ -14,6 +14,7 @@ dependencies = [
 ]
 
 [project.entry-points."atlas_ingest.evaluation"]
+linker = "atlas_ingest.evaluation.linking_stage:link_headline"
 classifier = "atlas_ingest.classify:classify_headline"
 
 [build-system]
