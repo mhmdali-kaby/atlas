@@ -130,6 +130,7 @@ def add_source(engine: Engine, key: str, url: str, name: str, category: str = "m
             NewsSource.__table__.insert().values(
                 id=uuid.uuid4(),
                 key=key,
+                provider=key.split(".")[-1],
                 kind="rss",
                 category=category,
                 name=name,

@@ -346,12 +346,15 @@ class NewsSource(_Stamped, Base):
     """One ingest source (ATL-57, decision #243). kind is the transport (rss|api|calendar|earnings|sentiment);
     category is the topic (exchange|crypto_news|markets_news|calendar|earnings|sentiment).
     api_key is Laravel ``encrypted``-cast ciphertext: decrypt with atlas_shared.laravel_crypt and
-    never log it. Ingest writes only the health columns (failures, disabled_until, last_*)."""
+    never log it. Ingest writes only the health columns (failures, disabled_until, last_*).
+    provider (ATL-71) is the vendor that owns the key; every keyed source of one provider holds the
+    same ciphertext."""
 
     __tablename__ = "news_sources"
     __table_args__ = (UniqueConstraint("key"),)
 
     key: Mapped[str] = mapped_column(String(64))
+    provider: Mapped[str] = mapped_column(String(64))
     kind: Mapped[str] = mapped_column(String(255))
     category: Mapped[str] = mapped_column(String(255))
     name: Mapped[str] = mapped_column(String(100))

@@ -18,6 +18,7 @@ use Illuminate\Support\Carbon;
  *
  * @property string $id UUID
  * @property string $key e.g. rss.coindesk, cryptopanic, finnhub.news
+ * @property string $provider vendor that owns the API key, e.g. finnhub (ATL-71); shared by its sources
  * @property 'rss'|'api'|'calendar'|'earnings'|'sentiment' $kind transport
  * @property 'exchange'|'crypto_news'|'markets_news'|'calendar'|'earnings'|'sentiment' $category topic the UI groups by
  * @property string $name
@@ -35,7 +36,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon $updated_at
  */
 #[Table(name: 'news_sources')]
-#[Fillable(['key', 'kind', 'category', 'name', 'url', 'enabled', 'poll_seconds', 'requires_key', 'api_key'])]
+#[Fillable(['key', 'provider', 'kind', 'category', 'name', 'url', 'enabled', 'poll_seconds', 'requires_key', 'api_key'])]
 #[Hidden(['api_key'])]
 class NewsSource extends Model
 {

@@ -16,13 +16,14 @@ class NewsSourcesSeeder extends Seeder
 {
     public function run(): void
     {
-        /** @var array<string, array{kind: string, category: string, name: string, url: string|null, poll_seconds: int, requires_key: bool}> $sources */
+        /** @var array<string, array{provider: string, kind: string, category: string, name: string, url: string|null, poll_seconds: int, requires_key: bool}> $sources */
         $sources = config('atlas_defaults.news.sources');
 
         foreach ($sources as $key => $source) {
             NewsSource::query()->firstOrCreate(
                 ['key' => $key],
                 [
+                    'provider' => $source['provider'],
                     'kind' => $source['kind'],
                     'category' => $source['category'],
                     'name' => $source['name'],
