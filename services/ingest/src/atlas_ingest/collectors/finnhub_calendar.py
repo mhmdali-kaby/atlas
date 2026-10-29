@@ -10,6 +10,9 @@
 actual - estimate. Free tier: 60 calls/min per key, shared with finnhub.news/earnings; this source
 makes one call per poll. When this source is enabled, keyed and not degraded, forexfactory.calendar
 stands down (see forexfactory.py).
+
+A 429 raises ATL-60's ``RateLimited`` (the same ``news.collectors.finnhub.rate_limit_window_seconds``
+default as finnhub.news), so it is one failure and the next poll waits at least ``Retry-After``.
 """
 
 from __future__ import annotations
@@ -22,7 +25,14 @@ from typing import Any
 from atlas_shared.defaults import DEFAULTS
 
 from atlas_ingest import calendar as cal
-from atlas_ingest.collectors import CollectContext, CollectError, SourceConfig, register
+from atlas_ingest.collectors import (
+    CollectContext,
+    CollectError,
+    RateLimited,
+    SourceConfig,
+    register,
+    retry_after_seconds,
+)
 from atlas_ingest.items import RawItem
 
 
@@ -89,6 +99,9 @@ class FinnhubCalendarCollector:
             "to": (day + timedelta(days=int(cfg["finnhub_days_ahead"]))).isoformat(),
         }
         r = await ctx.http.get(source.url or "", params=params, headers={"X-Finnhub-Token": source.api_key})
+        if r.status_code == 429:
+            window = float(DEFAULTS["news"]["collectors"]["finnhub"]["rate_limit_window_seconds"])
+            raise RateLimited(retry_after_seconds(r, window))
         r.raise_for_status()
         try:
             body = cal.json_decimal(r.content)
