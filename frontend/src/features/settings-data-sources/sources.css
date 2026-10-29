@@ -726,3 +726,39 @@
     transition: none;
   }
 }
+
+/* ---- Keys (ATL-69, design §5.6) -------------------------------------- */
+.src-key-sub {
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+.src-key-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.src-key-mask {
+  margin-inline-end: 4px;
+  font-size: var(--text-subheadline);
+  line-height: var(--lh-subheadline);
+  color: var(--label-secondary);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.src-error-key,
+.src-sum-keys-btn {
+  flex: none;
+}
+@media (max-width: 640px) {
+  .src-key-row {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+  .src-key-actions {
+    flex-basis: calc(100% - 40px);
+    margin-inline-start: 40px;
+    flex-wrap: wrap;
+  }
+}

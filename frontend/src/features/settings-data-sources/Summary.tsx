@@ -30,7 +30,7 @@ const TILE: Record<SummaryState, [typeof CircleCheck, string]> = {
 const listFormat = (items: string[], lang: string) =>
   new Intl.ListFormat(lang === 'ar' ? 'ar' : 'en', { type: 'conjunction' }).format(items)
 
-function SummaryText({ sm, now }: { sm: SummaryModel; now: number }) {
+function SummaryText({ sm, now, onKeys }: { sm: SummaryModel; now: number; onKeys: (providers: string[]) => void }) {
   const { t } = useTranslation(NS)
   const lang = useLang()
   const time = useTimes(now)
@@ -87,6 +87,9 @@ function SummaryText({ sm, now }: { sm: SummaryModel; now: number }) {
           <span>
             {names.length === 1 ? t('sub.keyOne', { name: names[0] }) : t('sub.keyMany', { names: listFormat(names, lang) })}
           </span>
+          <Button size="sm" variant="plain" className="src-sum-keys-btn" data-testid="src-sum-add-key" onClick={() => onKeys(sm.missingKeys)}>
+            {t(names.length === 1 ? 'keys.add' : 'keys.addMany')}
+          </Button>
         </p>
       )}
     </>
@@ -294,12 +297,15 @@ export function Summary({
   now,
   updatedAt,
   onShow,
+  onKeys,
 }: {
   sm: SummaryModel
   rows: ApiSource[]
   now: number
   updatedAt: number
   onShow: (cat: NoticeCategory) => void
+  /** The missing-keys line's Add key (one provider) or Add keys (several). */
+  onKeys: (providers: string[]) => void
 }) {
   const time = useTimes(now)
   const [Icon, tone] = TILE[sm.state]
@@ -310,7 +316,7 @@ export function Summary({
           <Icon strokeWidth={2} />
         </span>
         <div className="src-sum-text" aria-live="polite">
-          <SummaryText sm={sm} now={now} />
+          <SummaryText sm={sm} now={now} onKeys={onKeys} />
         </div>
         <span className="src-updated">
           <Tr k="updated" values={{ time: time.clock(updatedAt, true) }} />
