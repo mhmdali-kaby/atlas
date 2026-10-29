@@ -5,6 +5,13 @@ analysis, never money or order sizes.
 """
 
 from atlas_quant.data import Candles, DataQuality, GapRange, load_candles
+from atlas_quant.drawdown import (
+    CurrentDrawdown,
+    DrawdownEpisode,
+    DrawdownProfile,
+    drawdown_profile,
+)
+from atlas_quant.regime import RegimeParams, RegimeResult, RegimeState, detect_regime
 from atlas_quant.stats import (
     DrawdownSummary,
     HourBucket,
@@ -13,16 +20,28 @@ from atlas_quant.stats import (
     WeekdayBucket,
     compute_stats,
 )
+from atlas_quant.volatility import VolForecast, VolParams, volatility_forecast
 
 __all__ = [
     "Candles",
+    "CurrentDrawdown",
     "DataQuality",
+    "DrawdownEpisode",
+    "DrawdownProfile",
     "DrawdownSummary",
     "GapRange",
     "HourBucket",
+    "RegimeParams",
+    "RegimeResult",
+    "RegimeState",
     "ReturnsSummary",
     "StatsResult",
+    "VolForecast",
+    "VolParams",
     "WeekdayBucket",
     "compute_stats",
+    "detect_regime",
+    "drawdown_profile",
     "load_candles",
+    "volatility_forecast",
 ]
