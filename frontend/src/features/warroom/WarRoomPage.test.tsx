@@ -11,6 +11,14 @@ import type { WarroomMessage, WarroomThread } from './api'
 import warroom from './routes'
 import { AgentList, ThreadList } from './SidebarSections'
 
+// No socket in these tests: the live side is covered by Composer.test.tsx and the e2e flow.
+vi.mock('../../lib/echo', () => ({
+  getEcho: () => ({ private: () => ({ listen: () => {}, stopListening: () => {} }) }),
+  hasConnected: () => true,
+  reconnectEcho: () => {},
+  useLiveStatus: () => 'connected',
+}))
+
 /* The ATL-38 handoff's shapes: Main, one instrument thread, one private agent thread. */
 const NOW = Date.parse('2026-10-29T08:00:00Z')
 const MAIN: WarroomThread = {

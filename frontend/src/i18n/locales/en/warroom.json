@@ -123,5 +123,36 @@
     "position_update": "Position update",
     "post_mortem": "Post-mortem",
     "system_alert": "System alert"
-  }
+  },
+  "composer": {
+    "label": "Message",
+    "placeholder": "Message the team",
+    "placeholderInstrument": "Message about {{inst}}",
+    "placeholderAgent": "Message {{name}} privately",
+    "mention": "Mention an agent",
+    "send": "Send",
+    "hint": "<k>Return</k> to send, <k>Shift</k>-<k>Return</k> for a new line",
+    "count": "{{n}} / {{max}}",
+    "over": "{{n}} over the {{max}} limit",
+    "cantSend": "You can write here once the thread loads.",
+    "pickerLabel": "Mention",
+    "pickerSub": "{{status}}, {{role}}",
+    "pickerNone": "No agent called “{{q}}”"
+  },
+  "send": {
+    "sending": "Sending…",
+    "notSent": "Not sent",
+    "delete": "Delete"
+  },
+  "live": {
+    "down": "Live updates paused. Reconnecting…",
+    "reconnect": "Reconnect now",
+    "back": "Live again.",
+    "backMissed_one": "Live again. {{count}} missed message caught up.",
+    "backMissed_other": "Live again. {{count}} missed messages caught up."
+  },
+  "newMessages_one": "{{count}} new message",
+  "newMessages_other": "{{count}} new messages",
+  "latest": "Scroll to the latest message",
+  "liveAnnounce": "{{name}}: {{text}}"
 }

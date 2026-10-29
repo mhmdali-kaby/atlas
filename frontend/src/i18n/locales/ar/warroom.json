@@ -123,5 +123,44 @@
     "position_update": "تحديث مركز",
     "post_mortem": "مراجعة بعد الإغلاق",
     "system_alert": "تنبيه النظام"
-  }
+  },
+  "composer": {
+    "label": "الرسالة",
+    "placeholder": "اكتب رسالة للفريق",
+    "placeholderInstrument": "اكتب عن {{inst}}",
+    "placeholderAgent": "اكتب إلى {{name}} على انفراد",
+    "mention": "الإشارة إلى وكيل",
+    "send": "إرسال",
+    "hint": "<k>Return</k> للإرسال، و<k>Shift</k>+<k>Return</k> لسطر جديد",
+    "count": "{{n}} / {{max}}",
+    "over": "تجاوزت حد {{max}} حرف بـ {{n}}",
+    "cantSend": "يمكنك الكتابة هنا عندما تُحمَّل المحادثة.",
+    "pickerLabel": "إشارة",
+    "pickerSub": "{{status}}، {{role}}",
+    "pickerNone": "لا يوجد وكيل باسم «{{q}}»"
+  },
+  "send": {
+    "sending": "جارٍ الإرسال…",
+    "notSent": "لم تُرسل",
+    "delete": "حذف"
+  },
+  "live": {
+    "down": "توقّف التحديث المباشر. جارٍ إعادة الاتصال…",
+    "reconnect": "إعادة الاتصال الآن",
+    "back": "عاد الاتصال.",
+    "backMissed_zero": "عاد الاتصال.",
+    "backMissed_one": "عاد الاتصال. وصلت رسالة فاتتك.",
+    "backMissed_two": "عاد الاتصال. وصلت رسالتان فاتتاك.",
+    "backMissed_few": "عاد الاتصال. وصلت {{count}} رسائل فاتتك.",
+    "backMissed_many": "عاد الاتصال. وصلت {{count}} رسالة فاتتك.",
+    "backMissed_other": "عاد الاتصال. وصلت {{count}} رسالة فاتتك."
+  },
+  "newMessages_zero": "لا رسائل جديدة",
+  "newMessages_one": "رسالة جديدة",
+  "newMessages_two": "رسالتان جديدتان",
+  "newMessages_few": "{{count}} رسائل جديدة",
+  "newMessages_many": "{{count}} رسالة جديدة",
+  "newMessages_other": "{{count}} رسالة جديدة",
+  "latest": "الانتقال إلى أحدث رسالة",
+  "liveAnnounce": "{{name}}: {{text}}"
 }

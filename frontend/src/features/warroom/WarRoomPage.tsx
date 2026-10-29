@@ -1,19 +1,47 @@
-import { PanelRight } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { CircleCheck, PanelRight, WifiOff } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { toolbarIconButton } from '../../app/shell/toolbarClasses'
+import { Button, Spinner } from '../../ui'
 import { flattenMessages, useMessages } from './api'
+import { Composer } from './Composer'
 import { Feed, FeedEmpty, FeedError, FeedNotFound, FeedSkeleton } from './Feed'
 import { Inspector } from './Inspector'
+import { localMessages, useOutbox } from './live'
+import { useLiveFeed, type BannerState } from './useLiveFeed'
 import { useSelectedThread } from './selection'
 import { useThreadName } from './shape'
 import './warroom.css'
 
 /*
  * The War Room (brief §12, design v4 War Room §6): the feed in a centred column and the
- * inspector at the inline end. The composer (ATL-40) floats over the feed's bottom edge.
+ * inspector at the inline end. The composer (ATL-40) floats over the feed's bottom edge, the
+ * connection banner over its top, and a polite live region announces arrivals.
  */
+
+function ConnectionBanner({ banner, onReconnect }: { banner: BannerState; onReconnect: () => void }) {
+  const { t } = useTranslation('warroom')
+  if (!banner) return null
+  if (banner.kind === 'down') {
+    return (
+      <div className="wr-banner is-down" role="status" data-testid="wr-banner-down">
+        <WifiOff aria-hidden="true" strokeWidth={1.5} className="icon" />
+        <span>{t('live.down')}</span>
+        <Spinner />
+        <Button variant="secondary" size="sm" onClick={onReconnect}>
+          {t('live.reconnect')}
+        </Button>
+      </div>
+    )
+  }
+  return (
+    <div className="wr-banner is-back" role="status" data-testid="wr-banner-back">
+      <CircleCheck aria-hidden="true" strokeWidth={1.5} className="icon" />
+      <span>{banner.missed > 0 ? t('live.backMissed', { count: banner.missed }) : t('live.back')}</span>
+    </div>
+  )
+}
 
 const INSPECTOR_KEY = 'atlas.wr.inspector'
 const WIDE_QUERY = '(min-width: 1280px)'
@@ -64,8 +92,11 @@ export function WarRoomPage() {
   const loading = threads.isPending || (Boolean(selected) && messages.isPending)
   // A failed older page keeps the feed (the top row says so); only a feed with nothing to show is an error.
   const error = (threads.isError && !threads.data) || (messages.isError && !messages.data)
-  const list = flattenMessages(messages.data)
+  const list = useMemo(() => flattenMessages(messages.data), [messages.data])
   const threadName = nameOf(selected)
+  const live = useLiveFeed(env, selected?.id)
+  const outbox = useOutbox((s) => s.items)
+  const pending = useMemo(() => (selected ? localMessages(outbox, env, selected.id, list, 'owner') : []), [outbox, env, selected, list])
 
   let feed
   if (error) {
@@ -75,17 +106,28 @@ export function WarRoomPage() {
   } else if (!selected) {
     // Threads have loaded and the URL's thread (or Main) is not among them.
     feed = <FeedNotFound />
-  } else if (list.length === 0) {
+  } else if (list.length === 0 && pending.length === 0) {
     feed = <FeedEmpty thread={selected} />
   } else {
     // Keyed by thread so a new thread starts at its own bottom with fresh scroll state.
-    feed = <Feed key={selected.id} thread={selected} threadName={threadName} query={messages} />
+    feed = <Feed key={selected.id} thread={selected} threadName={threadName} query={messages} pending={pending} />
   }
 
   return (
     <div ref={findSlot} className="wr" data-inspector={inspector.shown ? 'open' : 'closed'} data-overlay={inspector.overlay || undefined}>
       <section className="wr-pane" aria-label={threadName ? t('feed', { thread: threadName }) : undefined}>
+        <ConnectionBanner banner={live.banner} onReconnect={live.reconnect} />
         {feed}
+        <Composer
+          key={`${env}:${selected?.id ?? ''}`}
+          env={env}
+          thread={selected}
+          threadName={threadName}
+          disabled={error || loading || !selected}
+        />
+        <div className="sr-only" aria-live="polite" data-testid="wr-live">
+          {live.announcement}
+        </div>
       </section>
       {inspector.shown && (
         <Inspector thread={selected} threadName={threadName} loading={loading} lastMessageAt={list[list.length - 1]?.created_at ?? null} />

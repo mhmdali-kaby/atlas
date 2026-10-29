@@ -15,10 +15,13 @@ import {
   UsersRound,
   type LucideIcon,
 } from 'lucide-react'
+import { useQueryClient } from '@tanstack/react-query'
 import type { MouseEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Lang } from '../../lib/format'
+import { Button, Spinner } from '../../ui'
 import type { WarroomMessage } from './api'
+import { discardMessage, isLocal, retryMessage, type LocalMessage } from './live'
 import { Medallion, SystemMedallion } from './Medallion'
 import { Excerpt, Inline, Markdown } from './text'
 import { continues, shapeOf, useAuthorName } from './shape'
@@ -67,6 +70,35 @@ function ReplyQuote({ parent, onJump }: { parent: WarroomMessage; onJump: (id: s
         <Excerpt text={parent.content_md} />
       </span>
     </a>
+  )
+}
+
+/** The owner's message while it is sending, or after it failed (design v4 War Room §8, Owner send). */
+function SendMeta({ message }: { message: LocalMessage }) {
+  const { t } = useTranslation('warroom')
+  const qc = useQueryClient()
+  const { tempId, state } = message.local
+  if (state === 'sending') {
+    return (
+      <p className="msg-meta" data-testid="wr-sending">
+        <Spinner className="msg-spinner" />
+        <span>{t('send.sending')}</span>
+      </p>
+    )
+  }
+  return (
+    <p className="msg-meta" role="alert" data-testid="wr-failed">
+      <span className="is-fail">
+        <CircleAlert aria-hidden="true" strokeWidth={1.5} />
+        {t('send.notSent')}
+      </span>
+      <Button variant="plain" size="sm" onClick={() => void retryMessage(qc, tempId)} data-testid="wr-retry">
+        {t('tryAgain')}
+      </Button>
+      <Button variant="plain-destructive" size="sm" onClick={() => discardMessage(tempId)}>
+        {t('send.delete')}
+      </Button>
+    </p>
   )
 }
 
@@ -141,14 +173,24 @@ export function Message({ message: m, prev, parent, lang, active, tabbable, flas
   const cont = continues(m, prev)
 
   if (shape === 'owner') {
+    const local = isLocal(m) ? m : null
     return (
-      <article className={cls(cont && 'is-cont')} {...common}>
+      <article
+        className={cls(cont && 'is-cont', local?.local.state === 'failed' && 'is-failed')}
+        {...common}
+        data-local={local?.local.state}
+        aria-busy={local?.local.state === 'sending' || undefined}
+      >
         <div className="msg-main">
           {parent && <ReplyQuote parent={parent} onJump={onJump} />}
           <Markdown text={m.content_md} className="bubble" />
-          <p className="msg-meta">
-            <Time ts={m.created_at} lang={lang} />
-          </p>
+          {local ? (
+            <SendMeta message={local} />
+          ) : (
+            <p className="msg-meta">
+              <Time ts={m.created_at} lang={lang} />
+            </p>
+          )}
         </div>
       </article>
     )

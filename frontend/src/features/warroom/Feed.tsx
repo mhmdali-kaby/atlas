@@ -1,5 +1,6 @@
 import { useVirtualizer } from '@tanstack/react-virtual'
-import { CloudOff, MessagesSquare, ChartCandlestick, RefreshCw, SearchX } from 'lucide-react'
+import { ArrowDown, CloudOff, MessagesSquare, ChartCandlestick, RefreshCw, SearchX } from 'lucide-react'
+import { motion, useReducedMotion } from 'motion/react'
 import { Link } from 'react-router'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent, type PointerEvent } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -7,6 +8,7 @@ import { Button, Skeleton, Spinner } from '../../ui'
 import { useLang, useNow } from '../portfolio/hooks'
 import { AGENTS } from './agents'
 import { flattenMessages, type useMessages, type WarroomMessage, type WarroomThread } from './api'
+import { isLocal, type LocalMessage } from './live'
 import { Medallion } from './Medallion'
 import { Message } from './Message'
 import { InstrumentId } from './text'
@@ -30,6 +32,8 @@ const LOAD_OLDER_WITHIN = 240
 /** "At the bottom" tolerance (px): new rows keep the feed pinned only from here. */
 const BOTTOM_SLACK = 48
 const FLASH_MS = 1600
+/** A live arrival fades and rises 8px over 300ms (design v4 War Room §10). */
+const ARRIVE = { duration: 0.3, ease: [0.22, 1, 0.36, 1] as const }
 
 function buildRows(messages: WarroomMessage[]): Row[] {
   const rows: Row[] = [{ kind: 'top', key: 'top' }]
@@ -178,13 +182,18 @@ export interface FeedProps {
   thread: WarroomThread
   threadName: string
   query: ReturnType<typeof useMessages>
+  /** The owner's messages that are sending or failed, drawn after the stored ones. */
+  pending?: LocalMessage[]
 }
 
-export function Feed({ thread, threadName, query }: FeedProps) {
+const NO_PENDING: LocalMessage[] = []
+
+export function Feed({ thread, threadName, query, pending = NO_PENDING }: FeedProps) {
   const { t } = useTranslation('warroom')
   const lang = useLang()
   const now = useNow(60_000)
-  const messages = useMemo(() => flattenMessages(query.data), [query.data])
+  const reduceMotion = useReducedMotion()
+  const messages = useMemo<WarroomMessage[]>(() => [...flattenMessages(query.data), ...pending], [query.data, pending])
   const rows = useMemo(() => buildRows(messages), [messages])
   const byId = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages])
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -208,6 +217,55 @@ export function Feed({ thread, threadName, query }: FeedProps) {
   const lastTotal = useRef(0)
   const initialised = useRef(false)
   const total = virtualizer.getTotalSize()
+
+  // ---- Live arrivals: the pill while scrolled up, the fade-in, the scroll-to-latest button ----
+  const seen = useRef<Set<string> | null>(null)
+  const storedNewest = useRef<string>('')
+  const [unread, setUnread] = useState(0)
+  const [scrolledUp, setScrolledUp] = useState(false)
+  const [fresh, setFresh] = useState<ReadonlySet<string>>(() => new Set())
+
+  useLayoutEffect(() => {
+    const newestStored = (list: WarroomMessage[]) => list.reduce((ts, m) => (!isLocal(m) && m.created_at > ts ? m.created_at : ts), '')
+    if (!seen.current) {
+      // The first render is history, not arrivals.
+      seen.current = new Set(messages.map((m) => m.id))
+      storedNewest.current = newestStored(messages)
+      return
+    }
+    const known = seen.current
+    const since = storedNewest.current
+    // New ids newer than what was stored before: live arrivals and the owner's local bubbles.
+    // An older page is never newer; the stored row that replaces a local bubble is the owner's.
+    const added = messages.filter((m) => !known.has(m.id) && (isLocal(m) || m.created_at >= since))
+    for (const m of messages) known.add(m.id)
+    storedNewest.current = newestStored(messages) || since
+    if (added.length === 0) return
+    if (added.some((m) => isLocal(m))) {
+      // The owner just sent: follow it to the bottom.
+      atBottom.current = true
+      setUnread(0)
+    } else if (!atBottom.current) {
+      const others = added.filter((m) => m.author_type !== 'human').length
+      if (others) setUnread((n) => n + others)
+    }
+    const animate = added.filter((m) => isLocal(m) || m.author_type !== 'human')
+    if (!reduceMotion && animate.length) setFresh((s) => new Set([...s, ...animate.map((m) => m.id)]))
+  }, [messages, reduceMotion])
+
+  // A row animates once; after that a re-mount (scrolling it back into view) draws it still.
+  useEffect(() => {
+    if (fresh.size === 0) return
+    const timer = window.setTimeout(() => setFresh(new Set()), 400)
+    return () => window.clearTimeout(timer)
+  }, [fresh])
+
+  const scrollToLatest = useCallback(() => {
+    atBottom.current = true
+    setUnread(0)
+    setScrolledUp(false)
+    virtualizer.scrollToIndex(rows.length - 1, { align: 'end', behavior: reduceMotion ? 'auto' : 'smooth' })
+  }, [rows.length, virtualizer, reduceMotion])
 
   useLayoutEffect(() => {
     const el = scrollRef.current
@@ -237,6 +295,8 @@ export function Feed({ thread, threadName, query }: FeedProps) {
     const el = scrollRef.current
     if (!el) return
     atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight <= BOTTOM_SLACK
+    setScrolledUp(!atBottom.current)
+    if (atBottom.current) setUnread(0)
     maybeLoadOlder()
   }
   // A short first page may not fill the viewport; keep loading until it does.
@@ -321,6 +381,7 @@ export function Feed({ thread, threadName, query }: FeedProps) {
   const items = virtualizer.getVirtualItems()
 
   return (
+    <>
     <div
       ref={scrollRef}
       className="wr-scroller"
@@ -373,16 +434,22 @@ export function Feed({ thread, threadName, query }: FeedProps) {
                   <span>{dayLabel(row.ts, lang, now, { today: t('today'), yesterday: t('yesterday') })}</span>
                 </div>
               ) : (
-                <Message
-                  message={row.message}
-                  prev={row.prev}
-                  parent={row.message.reply_to ? byId.get(row.message.reply_to) : undefined}
-                  lang={lang}
-                  active={activeId === row.key}
-                  tabbable={tabbableId === row.key}
-                  flash={flashId === row.key}
-                  onJump={onJump}
-                />
+                <motion.div
+                  initial={fresh.has(row.key) ? { opacity: 0, y: 8 } : false}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={ARRIVE}
+                >
+                  <Message
+                    message={row.message}
+                    prev={row.prev}
+                    parent={row.message.reply_to ? byId.get(row.message.reply_to) : undefined}
+                    lang={lang}
+                    active={activeId === row.key}
+                    tabbable={tabbableId === row.key}
+                    flash={flashId === row.key}
+                    onJump={onJump}
+                  />
+                </motion.div>
               )}
             </div>
           )
@@ -390,6 +457,21 @@ export function Feed({ thread, threadName, query }: FeedProps) {
         </div>
       </div>
     </div>
+    {(unread > 0 || scrolledUp) && (
+      <div className="wr-float">
+        {unread > 0 ? (
+          <button type="button" className="wr-pill" onClick={scrollToLatest} data-testid="wr-new-pill">
+            {t('newMessages', { count: unread })}
+            <ArrowDown aria-hidden="true" />
+          </button>
+        ) : (
+          <button type="button" className="wr-latest" onClick={scrollToLatest} aria-label={t('latest')} title={t('latest')} data-testid="wr-latest">
+            <ArrowDown aria-hidden="true" strokeWidth={1.5} />
+          </button>
+        )}
+      </div>
+    )}
+    </>
   )
 }
 
