@@ -57,6 +57,7 @@ python_version = "3.12"
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-# atlas_ingest's feed parser and language detector ship no type information.
-module = ["feedparser", "feedparser.*", "langdetect", "langdetect.*"]
+# atlas_ingest's feed parser and language detector, and atlas_quant's vectorbt, ship no type
+# information.
+module = ["feedparser", "feedparser.*", "langdetect", "langdetect.*", "vectorbt", "vectorbt.*"]
 ignore_missing_imports = true

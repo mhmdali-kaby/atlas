@@ -499,6 +499,19 @@ quant:
   atr_window: 14
   # Intraday-by-hour tables are given in UTC and in this display timezone.
   hour_table_timezone: Asia/Baghdad
+  # ATL-82: event_study. Window in hours around each event; ATR-unit moves are reported for these
+  # horizons (hours), using Wilder ATR(atr_window) of the bars closed by the event time.
+  event_study:
+    window_hours: [-24, 72]
+    atr_horizons_hours: [1, 4, 24]
+  # ATL-82: backtest_rule. Default slippage per fill (bps of price) when the caller passes none;
+  # the period is cut into walk_forward_splits + 1 equal blocks (anchored walk-forward: fold j is
+  # in-sample on blocks 0..j-1 and out-of-sample on block j). overfit_warning is raised when the
+  # mean OOS Sharpe < overfit_sharpe_fraction x the mean IS Sharpe (IS Sharpe > 0).
+  backtest:
+    slippage_bps: 2
+    walk_forward_splits: 3
+    overfit_sharpe_fraction: "0.5"
 
 # ATL-83, decisions #242/#245: the agent runtime (services/agents). Agents run on the owner's
 # logged-in Claude Code CLI (subscription), never an API key, so budgets are tokens and turns per
