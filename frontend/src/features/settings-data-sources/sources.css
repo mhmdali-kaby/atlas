@@ -1,0 +1,728 @@
+/* ==========================================================================
+   Settings → Data sources (ATL-68; design v6 css/sources.css). The summary
+   with "the wire" (headlines per hour, every feed together), then one inset
+   group per kind of source. Tokens only; logical properties only; every
+   figure is an LTR island.
+   ========================================================================== */
+
+.src-page {
+  gap: 32px;
+}
+.src-page .fig {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+}
+.src-loading {
+  display: grid;
+  gap: 32px;
+}
+.src-section {
+  display: grid;
+  align-content: start;
+  min-width: 0;
+}
+.src-group {
+  background: var(--bg-grouped-row);
+  border-radius: var(--radius-card);
+  box-shadow: 0 0 0 0.5px var(--hairline-color);
+  overflow: hidden;
+}
+.src-group-title {
+  padding-inline: 16px;
+  padding-bottom: 8px;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  font-weight: 600;
+  color: var(--label-secondary);
+  outline: none;
+}
+.src-group-note {
+  padding: 8px 16px 0;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+.src-cmd {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: var(--fill-3);
+  color: var(--label);
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+  direction: ltr;
+  unicode-bidi: isolate;
+  white-space: nowrap;
+}
+.src-pop {
+  z-index: 70;
+  max-width: 320px;
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label);
+  overflow-wrap: anywhere;
+  box-shadow: var(--shadow-popover), 0 0 0 0.5px var(--hairline-color);
+}
+.src-spin {
+  width: 13px;
+  height: 13px;
+}
+
+/* ---- Summary ---------------------------------------------------------- */
+.src-summary {
+  padding: 20px 20px 16px;
+  display: grid;
+  gap: 16px;
+  overflow: visible;
+}
+.src-sum-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 14px;
+}
+.src-sum-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  display: grid;
+  place-items: center;
+  background: var(--fill-3);
+  color: var(--label-secondary);
+}
+.src-sum-icon svg {
+  width: 22px;
+  height: 22px;
+}
+.src-sum-icon.is-ok {
+  background: var(--profit-wash);
+  color: var(--profit-ink);
+}
+.src-sum-icon.is-warning {
+  background: var(--warning-wash);
+  color: var(--warning-ink);
+}
+.src-sum-icon.is-error {
+  background: var(--loss-wash);
+  color: var(--loss-ink);
+}
+.src-sum-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding-top: 1px;
+}
+.src-sum-title {
+  font-size: var(--text-title-3);
+  line-height: var(--lh-title-3);
+  font-weight: 600;
+}
+.src-sum-sub {
+  font-size: var(--text-subheadline);
+  line-height: var(--lh-subheadline);
+  color: var(--label-secondary);
+  text-wrap: pretty;
+}
+.src-sum-keys {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px 6px;
+  margin-top: 6px;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+.src-sum-keys > svg {
+  width: 14px;
+  height: 14px;
+  color: var(--accent-ink);
+}
+.src-updated {
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+  white-space: nowrap;
+  padding-top: 3px;
+}
+.src-notices {
+  display: grid;
+  gap: 8px;
+}
+.src-notice {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px 16px;
+  border-radius: var(--radius-card);
+  background: var(--fill-4);
+  box-shadow: inset 0 0 0 0.5px var(--hairline-color);
+}
+.src-notice > svg {
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+.src-notice.is-error {
+  background: var(--loss-wash);
+}
+.src-notice.is-error > svg {
+  color: var(--loss-ink);
+}
+.src-notice-title {
+  font-size: var(--text-subheadline);
+  line-height: var(--lh-subheadline);
+  font-weight: 600;
+}
+.src-notice-body {
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+  margin-top: 2px;
+}
+.src-notice-actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+/* ---- The wire --------------------------------------------------------- */
+.src-wire {
+  display: grid;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 0.5px solid var(--separator);
+}
+.src-wire-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.src-wire-title {
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  font-weight: 600;
+  color: var(--label-secondary);
+}
+.src-wire-total {
+  font-size: var(--text-title-3);
+  line-height: var(--lh-title-3);
+  font-weight: 600;
+}
+.src-wire.is-empty .src-wire-total {
+  color: var(--label-secondary);
+}
+.src-chart {
+  position: relative;
+  display: grid;
+  gap: 6px;
+  border-radius: 10px;
+  outline: none;
+}
+.src-chart:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+/* the y tick takes a 28px column at the inline end; the bars take the rest */
+.src-plot {
+  position: relative;
+  height: 104px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px;
+}
+.src-plot.has-session {
+  margin-top: 22px;
+}
+.src-gridline {
+  position: absolute;
+  inset-inline: 0;
+  height: 0;
+  border-top: 1px solid var(--chart-grid);
+  pointer-events: none;
+}
+.src-gridline.is-max {
+  top: 0;
+}
+.src-gridline.is-base {
+  bottom: 0;
+  border-top-color: var(--separator);
+}
+.src-tick {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+  justify-self: end;
+  padding-inline-start: 6px;
+  font-size: var(--text-caption);
+  line-height: 1;
+  color: var(--chart-axis);
+  transform: translateY(4px);
+}
+.src-bars {
+  position: relative;
+  grid-column: 1;
+  grid-row: 1;
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  height: 100%;
+}
+/* NYSE regular hours, from the New York calendar: explains the evening rise in markets news */
+.src-session {
+  position: absolute;
+  top: -22px;
+  bottom: 0;
+  pointer-events: none;
+  background: var(--fill-4);
+  border-start-start-radius: 6px;
+  border-start-end-radius: 6px;
+}
+/* the label rides in its own lane above the bars, so no bar can cover it */
+.src-session > span {
+  position: absolute;
+  top: 3px;
+  inset-inline-start: 8px;
+  white-space: nowrap;
+  font-size: var(--text-caption);
+  line-height: var(--lh-caption);
+  color: var(--label-secondary);
+}
+.src-col {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 100%;
+  overflow: hidden;
+}
+.src-col::before {
+  content: '';
+  position: absolute;
+  inset: 0 1px;
+  border-radius: 6px;
+  background: transparent;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+.src-col.is-active::before {
+  background: var(--fill-4);
+}
+.src-col i {
+  position: relative;
+  display: block;
+  width: min(16px, 62%);
+  height: calc(var(--h) * 100%);
+  background: var(--accent);
+  border-radius: 4px 4px 0 0;
+  transform-origin: bottom center;
+}
+.src-col.has-v i {
+  min-height: 3px;
+}
+.src-col.is-now i {
+  background: color-mix(in srgb, var(--accent) 45%, var(--bg-grouped-row));
+}
+.src-col.is-active i {
+  background: var(--accent-solid-hover);
+}
+.src-col.is-now.is-active i {
+  background: color-mix(in srgb, var(--accent) 60%, var(--bg-grouped-row));
+}
+.src-wire.is-entering .src-col i {
+  animation: src-rise 560ms var(--ease-out) both;
+  animation-delay: calc(var(--i) * 14ms);
+}
+@keyframes src-rise {
+  from {
+    transform: translateY(100%);
+  }
+}
+.src-chart-empty {
+  position: absolute;
+  inset-block: 0;
+  inset-inline: 0 28px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+.src-axis {
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr)) 28px;
+  font-size: var(--text-caption);
+  line-height: var(--lh-caption);
+  color: var(--chart-axis);
+}
+.src-axis > span {
+  grid-row: 1;
+  justify-self: center;
+  white-space: nowrap;
+}
+.src-axis > .is-first {
+  justify-self: start;
+}
+.src-axis > .is-now {
+  color: var(--label-secondary);
+  font-weight: 600;
+}
+.src-tip {
+  position: absolute;
+  z-index: 5;
+  top: 50%;
+  transform: translateY(-50%);
+  min-width: 148px;
+  padding: 8px 10px 9px;
+  border-radius: 10px;
+  background: var(--material-popover);
+  backdrop-filter: var(--material-filter);
+  box-shadow: var(--shadow-popover), 0 0 0 0.5px var(--hairline-color);
+  pointer-events: none;
+  display: grid;
+  gap: 2px;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  white-space: nowrap;
+}
+.src-tip-v {
+  font-weight: 600;
+  color: var(--label);
+}
+.src-tip-t {
+  color: var(--label-secondary);
+}
+.src-tip-rows {
+  display: grid;
+  gap: 1px;
+  margin-top: 4px;
+  padding-top: 5px;
+  border-top: 0.5px solid var(--separator);
+}
+.src-tip-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  color: var(--label-secondary);
+}
+.src-tip-row .fig {
+  color: var(--label);
+  font-weight: 500;
+}
+.src-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 20px;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+/* the gap sits on the label: the figure is an LTR island, so its own inline-start would be its left in Arabic too */
+.src-cat-total > span:first-child {
+  margin-inline-end: 6px;
+}
+.src-cat-total .fig {
+  color: var(--label);
+  font-weight: 600;
+}
+
+/* ---- Groups and source rows ------------------------------------------ */
+/* the caption sits over the strip column: row padding 16 + switch 42 + gap 12 + 4 from the inline end */
+.src-group-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding-inline-end: 74px;
+}
+.src-col-cap {
+  width: 136px;
+  padding-bottom: 8px;
+  text-align: end;
+  font-size: var(--text-caption);
+  line-height: var(--lh-caption);
+  color: var(--label-secondary);
+}
+.src-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 11px 16px;
+}
+.src-row + .src-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  inset-inline: 56px 0;
+  border-top: 0.5px solid var(--separator);
+}
+.src-mono {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: var(--fill-3);
+  box-shadow: inset 0 0 0 0.5px var(--hairline-color);
+  color: var(--label-secondary);
+  font-family: var(--font-num);
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  direction: ltr;
+}
+.src-mono.is-long {
+  font-size: 9px;
+  letter-spacing: -0.01em;
+}
+.src-main {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+.src-name {
+  font-size: var(--text-callout);
+  line-height: var(--lh-callout);
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.src-sub {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+.src-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  white-space: nowrap;
+}
+.src-status svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+}
+.src-status.is-working svg {
+  color: var(--profit-ink);
+}
+.src-status.is-working svg.is-stale {
+  color: var(--label-secondary);
+}
+.src-status.is-retrying,
+.src-status.is-failing {
+  color: var(--warning-ink);
+  font-weight: 600;
+}
+.src-status.is-needs_key {
+  color: var(--accent-ink);
+  font-weight: 600;
+}
+.src-status.is-off svg {
+  color: var(--label-tertiary);
+}
+.src-detail {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.src-error {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin-top: 1px;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+.src-error-lead {
+  flex: none;
+}
+.src-error-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--label);
+  border-radius: 4px;
+  outline: none;
+}
+.src-error-text:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+.src-yield {
+  flex: none;
+  width: 136px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.src-strip {
+  display: grid;
+  grid-template-columns: repeat(24, 3px);
+  column-gap: 1px;
+  align-items: end;
+  height: 20px;
+  flex: none;
+}
+.src-strip i {
+  display: block;
+  height: max(2px, calc(var(--h) * 100%));
+  background: var(--accent);
+  border-radius: 1px 1px 0 0;
+}
+.src-strip i.is-zero {
+  height: 1px;
+  background: var(--fill-1);
+  border-radius: 0;
+}
+.src-strip i.is-now:not(.is-zero) {
+  background: color-mix(in srgb, var(--accent) 45%, var(--bg-grouped-row));
+}
+.src-strip.is-muted i:not(.is-zero) {
+  background: var(--label-tertiary);
+}
+.src-count {
+  min-width: 30px;
+  text-align: end;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  font-weight: 500;
+  color: var(--label-secondary);
+}
+/* Off: the owner's choice, so the row steps back */
+.src-row.is-off .src-name {
+  color: var(--label-secondary);
+}
+.src-row.is-off .src-mono {
+  /* the tile fades (design: 55%), its letters keep label-secondary so they still pass AA contrast */
+  background: color-mix(in srgb, var(--fill-3) 55%, transparent);
+  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--hairline-color) 55%, transparent);
+}
+
+/* ---- Loading ---------------------------------------------------------- */
+.src-sk-chart {
+  height: 150px;
+  border-radius: 10px;
+  margin-top: 4px;
+}
+.src-sk-title {
+  width: 128px;
+  height: 13px;
+  margin: 0 16px 10px;
+}
+.src-sk-rows {
+  display: grid;
+}
+.src-sk-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+}
+.src-sk-row + .src-sk-row {
+  border-top: 0.5px solid var(--separator);
+}
+.src-sk-mono {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  flex: none;
+}
+.src-sk-lines {
+  flex: 1;
+  display: grid;
+  gap: 8px;
+}
+.src-sk-lines .ui-skeleton {
+  height: 13px;
+}
+.src-sk-strip {
+  width: 120px;
+  height: 18px;
+  flex: none;
+}
+.src-sk-switch {
+  width: 42px;
+  height: 26px;
+  border-radius: 13px;
+  flex: none;
+}
+
+/* ---- Narrow windows and phones ---------------------------------------- */
+@media (max-width: 640px) {
+  .src-sum-head {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .src-updated {
+    grid-column: 2;
+    padding-top: 0;
+  }
+  .src-group-head {
+    padding-inline-end: 0;
+  }
+  .src-col-cap {
+    display: none;
+  }
+  .src-row {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+  .src-row .src-switch {
+    order: 2;
+  }
+  .src-yield {
+    order: 3;
+    width: auto;
+    flex-basis: calc(100% - 40px);
+    margin-inline-start: 40px;
+    justify-content: flex-start;
+  }
+  .src-yield:empty {
+    display: none;
+  }
+  /* TL (design v6 review): at phone width the detail and the error wrap to two lines, not an ellipsis */
+  .src-sub {
+    flex-wrap: wrap;
+  }
+  .src-detail,
+  .src-error-text {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    overflow-wrap: anywhere;
+  }
+  .src-error {
+    align-items: flex-start;
+  }
+  .src-sk-strip {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .src-wire.is-entering .src-col i {
+    animation: none;
+  }
+  .src-col::before {
+    transition: none;
+  }
+}
