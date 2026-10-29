@@ -924,5 +924,12 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "\\b(?:submit_proposal|cast_vote|post_message|place_order)\\s*\\(",
             ],
         },
+        "numguard": {
+            "rel_tolerance": "0.005",
+            "abs_floor": "0.0001",
+            "rounding_aware": True,
+            "derive_pairs": True,
+            "max_pair_leaves": 200,
+        },
     },
 }
