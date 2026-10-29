@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { toolbarIconButton } from '../../app/shell/toolbarClasses'
 import { flattenMessages, useMessages } from './api'
-import { Feed, FeedEmpty, FeedError, FeedSkeleton } from './Feed'
+import { Feed, FeedEmpty, FeedError, FeedNotFound, FeedSkeleton } from './Feed'
 import { Inspector } from './Inspector'
 import { useSelectedThread } from './selection'
 import { useThreadName } from './shape'
@@ -70,8 +70,11 @@ export function WarRoomPage() {
   let feed
   if (error) {
     feed = <FeedError onRetry={() => void (threads.isError ? threads.refetch() : messages.refetch())} />
-  } else if (loading || !selected) {
+  } else if (loading) {
     feed = <FeedSkeleton />
+  } else if (!selected) {
+    // Threads have loaded and the URL's thread (or Main) is not among them.
+    feed = <FeedNotFound />
   } else if (list.length === 0) {
     feed = <FeedEmpty thread={selected} />
   } else {

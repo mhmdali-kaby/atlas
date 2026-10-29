@@ -181,6 +181,24 @@ describe('War Room', () => {
     expect(within(screen.getByTestId('wr-threads')).getByRole('link', { current: 'page' })).toHaveTextContent('BTC-USDT-SWAP')
   })
 
+  it('shows a not-found state with a way back to Main for a thread id that is not in the list', async () => {
+    const fetch = fakeBackend([[]])
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const router = renderWarRoom('/warroom/threads/00000000-0000-0000-0000-000000000000')
+    const notFound = await screen.findByTestId('wr-feed-not-found')
+    expect(screen.queryByTestId('wr-feed-loading')).not.toBeInTheDocument()
+    expect(within(notFound).getByRole('heading', { name: 'This thread isn’t here' })).toBeInTheDocument()
+    expect(messageCalls(fetch)).toHaveLength(0)
+    // The inspector agrees instead of showing loading placeholders.
+    const inspector = screen.getByTestId('wr-inspector')
+    expect(within(inspector).getByRole('heading', { name: 'This thread isn’t here' })).toBeInTheDocument()
+    expect(inspector.querySelector('[aria-busy]')).toBeNull()
+
+    await user.click(within(notFound).getByRole('link', { name: 'Go to Main' }))
+    await screen.findByTestId('wr-feed-empty')
+    expect(router.state.location.pathname).toBe('/warroom')
+  })
+
   it('shows the error state with a retry that reloads the thread', async () => {
     const fetch = fakeBackend(['fail', []])
     const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })

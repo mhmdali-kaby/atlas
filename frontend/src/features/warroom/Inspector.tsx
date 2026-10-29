@@ -95,6 +95,15 @@ export function Inspector({
         <p className="insp-role">{t(`agents.${agent.slug}.role`)}</p>
       </section>
     )
+  } else if (!thread && !loading) {
+    // The URL's thread is not in the list; the feed says so, and there are no facts to show.
+    return (
+      <aside className="inspector" id="wr-inspector" aria-label={t('inspector')} data-testid="wr-inspector">
+        <header className="insp-head">
+          <h2 className="text-title-3 insp-name">{t('notFound.title')}</h2>
+        </header>
+      </aside>
+    )
   } else {
     head = (
       <>
