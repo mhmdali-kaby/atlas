@@ -207,9 +207,15 @@ class IngestRunner:
                 http=self.http,
                 now=now,
                 stock_symbols=lambda: asyncio.to_thread(db.stock_symbols, self.engine, self.env),
+                engine=self.engine,
             )
             items = await collector.collect(source, ctx)
             result = await self.pipeline.process(row.key, items, now)
+            next_poll = getattr(collector, "next_poll_seconds", None)
+            if next_poll is not None:
+                delay = await next_poll(source, ctx)
+                if delay is not None:
+                    self._next_due[key] = now + timedelta(seconds=max(float(delay), 1.0))
         except Exception as exc:
             error = short_error(exc, secret)
             if isinstance(exc, RateLimited):
@@ -238,7 +244,8 @@ class IngestRunner:
                 },
             )
             return
-        await asyncio.to_thread(db.record_success, self.engine, key, now, inserted=result.inserted)
+        written = result.inserted + ctx.stats.written
+        await asyncio.to_thread(db.record_success, self.engine, key, now, inserted=written)
         logger.info(
             "poll ok",
             extra={
@@ -246,6 +253,7 @@ class IngestRunner:
                 "fetched": result.fetched,
                 "new": result.new,
                 "inserted": result.inserted,
+                "written": ctx.stats.written,
                 "duration_ms": round((time.perf_counter() - started) * 1000, 1),
             },
         )

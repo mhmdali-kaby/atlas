@@ -1,0 +1,10 @@
+[{"title":"Bank Holiday","country":"NZD","date":"2026-10-26T00:00:00-04:00","impact":"Holiday","forecast":"","previous":""},
+{"title":"German ifo Business Climate","country":"EUR","date":"2026-10-27T04:00:00-04:00","impact":"Medium","forecast":"87.9","previous":"87.7"},
+{"title":"CB Consumer Confidence","country":"USD","date":"2026-10-27T10:00:00-04:00","impact":"High","forecast":"93.9","previous":"94.2"},
+{"title":"Crude Oil Inventories","country":"USD","date":"2026-10-28T10:30:00-04:00","impact":"Medium","forecast":"-1.2M","previous":"-0.9M"},
+{"title":"Federal Funds Rate","country":"USD","date":"2026-10-28T14:00:00-04:00","impact":"High","forecast":"3.75%","previous":"4.00%"},
+{"title":"BOJ Policy Rate","country":"JPY","date":"2026-10-29T23:00:00-04:00","impact":"High","forecast":"0.50%","previous":"0.50%"},
+{"title":"Advance GDP q/q","country":"USD","date":"2026-10-30T08:30:00-04:00","impact":"High","forecast":"1.8%","previous":"3.8%"},
+{"title":"Unemployment Claims","country":"USD","date":"2026-10-30T08:30:00-04:00","impact":"High","forecast":"231K","previous":"229K"},
+{"title":"Core PCE Price Index m/m","country":"USD","date":"2026-10-31T08:30:00-04:00","impact":"High","forecast":"0.2%","previous":"0.2%"},
+{"title":"Chicago PMI","country":"USD","date":"2026-10-31T09:45:00-04:00","impact":"Low","forecast":"42.3","previous":"40.6"}]
