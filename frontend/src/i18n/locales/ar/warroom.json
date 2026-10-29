@@ -70,6 +70,11 @@
   "atlas": "أطلس",
   "messageLabel": "{{name}}، {{time}}",
   "jumpTo": "عرض رسالة {{name}}",
+  "actions": {
+    "reply": "رد",
+    "copy": "نسخ النص",
+    "copied": "تم النسخ"
+  },
   "loading": "جارٍ تحميل الرسائل",
   "loadingOlder": "جارٍ تحميل الرسائل الأقدم",
   "olderError": "تعذّر تحميل الرسائل الأقدم.",
@@ -138,6 +143,10 @@
     "pickerLabel": "إشارة",
     "pickerSub": "{{status}}، {{role}}",
     "pickerNone": "لا يوجد وكيل باسم «{{q}}»"
+  },
+  "replyChip": {
+    "title": "ردًّا على {{name}}",
+    "cancel": "إلغاء الرد"
   },
   "send": {
     "sending": "جارٍ الإرسال…",

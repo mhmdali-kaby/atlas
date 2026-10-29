@@ -231,6 +231,38 @@ bdi.fig, bdi.tok { white-space: nowrap; }
 .msg-quote b { font-weight: 600; color: var(--label); white-space: nowrap; }
 .msg-quote .excerpt { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 
+/* ---- MessageActions and its context menu (ATL-42) ----------------------- */
+.msg-actions {
+  position: absolute; top: -6px; inset-inline-end: 8px; z-index: 2;
+  display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: var(--radius-full);
+  background: var(--material-popover); -webkit-backdrop-filter: var(--material-filter); backdrop-filter: var(--material-filter);
+  box-shadow: var(--shadow-popover), 0 0 0 0.5px var(--hairline-color);
+}
+.msg-action {
+  width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; color: var(--label-secondary); flex-shrink: 0;
+}
+.msg-action svg { width: 15px; height: 15px; }
+[dir='rtl'] .msg-action .icon-dir { transform: scaleX(-1); }
+.msg-action:hover { background: var(--fill-3); color: var(--label); }
+.msg-action:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.msg.is-owner .msg-actions { inset-inline-end: 0; top: -14px; }
+
+.msg-menu {
+  position: fixed; z-index: 30; width: 200px; padding: 5px;
+  border-radius: var(--radius-card);
+  background: var(--material-popover); -webkit-backdrop-filter: var(--material-filter); backdrop-filter: var(--material-filter);
+  box-shadow: var(--shadow-popover), 0 0 0 0.5px var(--hairline-color);
+  animation: shell-pop-in var(--dur-base) var(--ease-settle);
+}
+.msg-menu-item {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 7px 10px; border-radius: 8px;
+  text-align: start; font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); color: var(--label);
+}
+.msg-menu-item svg { width: 15px; height: 15px; color: var(--label-secondary); flex-shrink: 0; }
+[dir='rtl'] .msg-menu-item .icon-dir { transform: scaleX(-1); }
+.msg-menu-item:hover { background: var(--fill-4); }
+.msg-menu-item:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
 /* ---- Owner messages: bubbles at the inline end -------------------------- */
 .msg.is-owner { grid-template-columns: minmax(0, 1fr); justify-items: end; }
 .msg.is-owner.is-active { background: none; }
@@ -347,6 +379,27 @@ bdi.fig, bdi.tok { white-space: nowrap; }
 .composer:focus-within { box-shadow: var(--composer-shadow), 0 0 0 1px var(--accent), var(--focus-ring); }
 .composer.is-over, .composer.is-over:focus-within { box-shadow: var(--composer-shadow), 0 0 0 1px var(--loss); }
 .composer.is-disabled { opacity: 0.55; }
+/* ---- ReplyChip (ATL-42) -------------------------------------------------- */
+.composer-reply {
+  display: flex; align-items: flex-start; gap: 8px; margin: 6px 6px 0; padding: 7px 10px;
+  border-start-start-radius: 16px; border-start-end-radius: 16px; border-end-start-radius: 8px; border-end-end-radius: 8px;
+  background: var(--fill-4);
+}
+.composer-reply > svg { width: 14px; height: 14px; flex-shrink: 0; margin-top: 3px; color: var(--label-secondary); }
+[dir='rtl'] .composer-reply > svg.icon-dir { transform: scaleX(-1); }
+.composer-reply-text { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.composer-reply-text b { font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 600; }
+.composer-reply-text .excerpt {
+  font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block;
+}
+.composer-reply-cancel {
+  width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; flex-shrink: 0; color: var(--label-secondary);
+}
+.composer-reply-cancel svg { width: 14px; height: 14px; }
+.composer-reply-cancel:hover { background: var(--fill-3); color: var(--label); }
+.composer-reply-cancel:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
 .composer-row { display: flex; align-items: flex-end; gap: 4px; padding-block: 5px; padding-inline: 16px 6px; }
 .composer textarea {
   flex: 1; min-width: 0; resize: none; border: 0; outline: none; background: transparent; color: var(--label);
