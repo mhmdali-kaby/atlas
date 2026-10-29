@@ -176,7 +176,23 @@ async def test_tool_errors_and_crashes_become_error_results() -> None:
     assert "secret detail" not in crashed["message"]
 
 
-@pytest.mark.parametrize(("server", "name"), [(s, n) for s, tools in CATALOGUE.items() for n in tools])
+# Catalogue tools with a real implementation; each has its own tests (ATL-86: news, memory).
+IMPLEMENTED = {
+    *(("news", n) for n in CATALOGUE["news"] if n != "web_search"),
+    *(("memory", n) for n in CATALOGUE["memory"]),
+}
+
+
+def test_implemented_tools_are_exactly_the_built_ones() -> None:
+    built = {(t.server, t.name) for t in fw.registered_tools().values() if t.implemented}
+    catalogue = {(s, n) for s, tools in CATALOGUE.items() for n in tools}
+    assert built & catalogue == IMPLEMENTED
+
+
+@pytest.mark.parametrize(
+    ("server", "name"),
+    [(s, n) for s, tools in CATALOGUE.items() for n in tools if (s, n) not in IMPLEMENTED],
+)
 async def test_every_catalogue_tool_is_a_not_implemented_stub(server: str, name: str) -> None:
     tool = fw.get_tool(fq_name(server, name))
     assert tool.implemented is False
