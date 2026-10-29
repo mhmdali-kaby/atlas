@@ -591,12 +591,64 @@ agents:
     strategist: { model: strong }
     devils_advocate: { model: strong }
     portfolio_manager: {}
+  # ATL-87, brief §7.3: the history tools (atlas_agents.tools.history) and the Historian's
+  # verdict rules (atlas_agents.schemas.enforce_verdict_rules).
+  #   <tool>.bar / lookback_bars: the series each tool loads when the caller gives no bar/lookback,
+  #     always ending at as_of (replay_as_of in replay, else now).
+  #   backtest.taker_fee_rate: fraction (0.0005 = 0.05 %) used until a stored trade-fee read exists;
+  #     a caller's costs.taker_fee_rate overrides it. warmup_bars load before the period to warm the
+  #     indicators. slippage comes from quant.backtest.slippage_bps unless the caller passes one.
+  #   event_study.event_types: event_type -> name regexes (case-insensitive) matched against
+  #     economic_events.name, optionally limited to countries. "earnings" reads earnings_events for
+  #     the instrument's base currency; earnings_hour_utc maps Finnhub's time field to an hour
+  #     (approximate: US open/close in UTC, ignoring DST).
+  #   verdict.min_n: below this many cases a verdict cannot be stronger than weakly_supports.
+  history:
+    compute_stats: { bar: 1D, lookback_bars: 365 }
+    detect_regime: { bar: 1D, lookback_bars: 730 }
+    volatility_forecast: { bar: 1H, lookback_bars: 2000 }
+    drawdown_profile: { bar: 1D, lookback_bars: 3650 }
+    seasonality: { bar: 1H, lookback_bars: 8760 }
+    cross_asset_lead_lag: { bar: 1H, lookback_bars: 720 }
+    find_analogs: { bar: 1H, window_bars: 24 }
+    event_study:
+      bar: 1H
+      max_instruments: 10
+      max_events: 200
+      event_types:
+        cpi: { names: ['\bCPI\b', 'consumer price index'], countries: [US, USD] }
+        ppi: { names: ['\bPPI\b', 'producer price index'], countries: [US, USD] }
+        fomc: { names: ['\bFOMC\b', 'federal funds rate', 'fed interest rate decision'], countries: [US, USD] }
+        nfp: { names: ['non-?farm', '\bNFP\b'], countries: [US, USD] }
+        gdp: { names: ['\bGDP\b'], countries: [US, USD] }
+        retail_sales: { names: ['retail sales'], countries: [US, USD] }
+        unemployment: { names: ['unemployment rate', 'jobless claims'], countries: [US, USD] }
+      earnings_hour_utc: { bmo: 13, amc: 21, dmh: 17, default: 21 }
+    backtest:
+      bar: 1H
+      lookback_bars: 8760
+      warmup_bars: 250
+      taker_fee_rate: "0.0005"
+    verdict:
+      min_n: 20
   # ATL-84, brief §6.2/§7.11 and rule 7: the agents' tool layer (atlas_agents.tools).
   #   max_result_tokens: a tool result whose JSON is estimated (chars / chars_per_token) above this
   #     is trimmed by code: every list is cut to trim_rows rows, then the longest list is halved
   #     until it fits; the result is marked truncated: true.
   #   injection_patterns: case-insensitive regexes; text passed through untrusted() that matches
   #     any of them is flagged as instruction-like so the caller can raise a War Room alert.
+  # ATL-85, brief §6.2: okx_market / atlas_data read tools (Postgres only, decision #245).
+  #   ticker_bar: the bar get_tickers and list_instruments' 24h volume are computed from.
+  #   ticker_window_hours: the "24h" window for change and volume.
+  #   mark_price_bar: get_mark_price answers with this bar's last close, labelled a proxy.
+  #   series_limit: rows returned by get_long_short_ratio / get_taker_volume.
+  #   min_correlation_obs: fewer overlapping daily returns than this gives corr null.
+  market_tools:
+    ticker_bar: 1H
+    ticker_window_hours: 24
+    mark_price_bar: 1m
+    series_limit: 200
+    min_correlation_obs: 3
   tools:
     max_result_tokens: 4000
     chars_per_token: 4

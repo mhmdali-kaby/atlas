@@ -4,7 +4,11 @@ Importing this package registers every catalogue tool (as a ``not_implemented`` 
 tool with the same server and name is registered). Modules with real tools are imported here too.
 """
 
+# Real tools: importing a module registers its tools over the catalogue stubs.
+from atlas_agents.tools import account as account
 from atlas_agents.tools import catalogue as catalogue
+from atlas_agents.tools import history as history
+from atlas_agents.tools import market as market
 
 # Real tools (each replaces its catalogue stub on import).
 from atlas_agents.tools import memory as memory
@@ -41,6 +45,7 @@ __all__ = [
     "detect_instructions",
     "fq_name",
     "get_tool",
+    "history",
     "registered_tools",
     "untrusted",
 ]

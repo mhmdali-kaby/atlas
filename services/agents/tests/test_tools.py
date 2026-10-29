@@ -176,13 +176,17 @@ async def test_tool_errors_and_crashes_become_error_results() -> None:
     assert "secret detail" not in crashed["message"]
 
 
-# Catalogue tools with a real implementation; each has its own tests (ATL-86: news, memory).
+# Catalogue tools with a real implementation; each has its own tests
+# (ATL-85: okx_market, atlas_data; ATL-86: news, memory; ATL-87: history).
 IMPLEMENTED = {
+    *(("okx_market", n) for n in CATALOGUE["okx_market"]),
+    *(("atlas_data", n) for n in CATALOGUE["atlas_data"]),
     *(("news", n) for n in CATALOGUE["news"] if n != "web_search"),
     *(("memory", n) for n in CATALOGUE["memory"]),
     # ATL-88: all six warroom tools are real; cast_vote, submit_proposal and request_human_input
     # answer not_available_in_phase_1.
     *(("warroom", n) for n in CATALOGUE["warroom"]),
+    *(("history", n) for n in CATALOGUE["history"]),
 }
 
 
@@ -192,10 +196,16 @@ def test_implemented_tools_are_exactly_the_built_ones() -> None:
     assert built & catalogue == IMPLEMENTED
 
 
-@pytest.mark.parametrize(
-    ("server", "name"),
-    [(s, n) for s, tools in CATALOGUE.items() for n in tools if (s, n) not in IMPLEMENTED],
-)
+def test_implemented_tools_keep_their_catalogue_input_model() -> None:
+    for server, name in IMPLEMENTED:
+        tool = fw.get_tool(fq_name(server, name))
+        assert tool.input_model is CATALOGUE[server][name], tool.fq_name
+
+
+STUBS = [(s, n) for s, tools in CATALOGUE.items() for n in tools if (s, n) not in IMPLEMENTED]
+
+
+@pytest.mark.parametrize(("server", "name"), STUBS)
 async def test_every_catalogue_tool_is_a_not_implemented_stub(server: str, name: str) -> None:
     tool = fw.get_tool(fq_name(server, name))
     assert tool.implemented is False
@@ -234,8 +244,9 @@ def _minimal_args(schema: dict[str, Any]) -> dict[str, Any]:
 
 
 def test_a_real_tool_replaces_its_stub_and_a_stub_never_replaces_a_real_tool(scratch_registry: None) -> None:
-    name = fq_name("history", "compute_stats")
-    real = fw.atlas_tool("history", "compute_stats", RowsIn, RowsOut)
+    server, stub = STUBS[0]
+    name = fq_name(server, stub)
+    real = fw.atlas_tool(server, stub, RowsIn, RowsOut)
 
     @real
     async def compute_stats(ctx: ToolContext, args: RowsIn) -> ToolResult:
@@ -248,7 +259,7 @@ def test_a_real_tool_replaces_its_stub_and_a_stub_never_replaces_a_real_tool(scr
     register_catalogue()
     assert fw.get_tool(name).implemented is True
     with pytest.raises(ValueError, match="registered twice"):
-        fw.register(_tool(_rows, name="compute_stats"))
+        fw.register(_tool(_rows, name=stub, server=server))
 
 
 def test_registration_rules(scratch_registry: None) -> None:
