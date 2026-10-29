@@ -65,3 +65,29 @@ def test_unknown_stream_is_refused_before_connecting() -> None:
     unreachable = bus.make_client({"REDIS_HOST": "127.0.0.1", "REDIS_PORT": "1"})
     with pytest.raises(bus.UnknownStreamError):
         bus.publish("atlas.nope", EventEnvelope(type="t", env="demo", source="test"), client=unreachable)
+
+
+def test_demo_system_message_cli_publishes_a_valid_warroom_message(
+    client: redis.Redis, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    monkeypatch.setenv("REDIS_DB", os.environ.get("REDIS_TEST_DB", "15"))
+
+    assert bus.main(["--demo-system-message", "--text", "live check"]) == 0
+
+    entries = client.xrange(STREAM)
+    assert entries is not None
+    assert len(entries) == 1
+    envelope = EventEnvelope.model_validate_json(entries[0][1][bus.FIELD])
+    assert str(envelope.id) == capsys.readouterr().out.strip()
+    assert envelope.type == "warroom.message"
+    assert envelope.env == "demo"
+    assert envelope.payload["thread"] == {"kind": "main", "key": "main"}
+    assert envelope.payload["author_type"] == "system"
+    assert envelope.payload["content_md"] == "live check"
+
+
+def test_demo_message_as_an_agent() -> None:
+    envelope = bus.demo_message("hi", author="historian")
+    assert envelope.source == "agent:historian"
+    assert envelope.payload["author_type"] == "agent"
+    assert envelope.payload["author"] == "historian"

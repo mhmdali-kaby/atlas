@@ -309,6 +309,26 @@ it('authorises private-warroom, -account and -system for a signed-in owner only'
         ->assertJsonStructure(['auth']);
 })->with(['private-warroom', 'private-account', 'private-system']);
 
+it('lets the SPA origin call /broadcasting/auth with credentials (CORS), and nobody else', function (): void {
+    useReverbBroadcaster();
+    $form = ['channel_name' => 'private-warroom', 'socket_id' => '1234.5678'];
+
+    $this->withHeaders(['Origin' => 'http://localhost:3000', 'Access-Control-Request-Method' => 'POST'])
+        ->options('/broadcasting/auth')
+        ->assertHeader('Access-Control-Allow-Origin', 'http://localhost:3000')
+        ->assertHeader('Access-Control-Allow-Credentials', 'true');
+
+    $this->actingAs(User::factory()->create())
+        ->withHeaders(['Origin' => 'http://localhost:3000'])
+        ->post('/broadcasting/auth', $form)
+        ->assertOk()
+        ->assertHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+
+    $this->withHeaders(['Origin' => 'http://evil.test', 'Access-Control-Request-Method' => 'POST'])
+        ->options('/broadcasting/auth')
+        ->assertHeaderMissing('Access-Control-Allow-Origin');
+});
+
 it('refuses unknown private channels to a signed-in owner', function (): void {
     useReverbBroadcaster();
 
