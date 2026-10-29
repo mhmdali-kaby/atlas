@@ -307,6 +307,22 @@ news:
     timeout_seconds: 8
     max_bytes: 2000000
     max_per_poll: 25
+  # ATL-60: API collectors. Provider terms could not be re-read at build time (no network); the
+  # values below follow the providers' published free tiers and are recorded in each module's
+  # docstring. Finnhub's free tier allows 60 calls/minute per key (and 30/second); finnhub.news
+  # spends at most max_calls_per_poll of them per poll (1 general + the rest company news,
+  # rotating through the stock/ETF underlyings), leaving room for finnhub.calendar/earnings on the
+  # same key. A 429 delays the source's next poll by Retry-After, else rate_limit_window_seconds.
+  collectors:
+    finnhub:
+      max_calls_per_poll: 20
+      request_interval_seconds: "0.25"
+      company_news_days: 2
+      rate_limit_window_seconds: 60
+    cryptopanic:
+      rate_limit_window_seconds: 60
+    okx_announcements:
+      language: en-US
   # Per-symbol feed templates expand {symbol} for every stock/ETF perp underlying in instruments.
   sources:
     okx.announcements: { kind: api, category: exchange, name: OKX announcements, url: "https://www.okx.com/api/v5/support/announcements", poll_seconds: 120, requires_key: false }

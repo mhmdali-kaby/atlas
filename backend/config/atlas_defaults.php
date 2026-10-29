@@ -407,6 +407,20 @@ return [
             'max_bytes' => 2000000,
             'max_per_poll' => 25,
         ],
+        'collectors' => [
+            'finnhub' => [
+                'max_calls_per_poll' => 20,
+                'request_interval_seconds' => '0.25',
+                'company_news_days' => 2,
+                'rate_limit_window_seconds' => 60,
+            ],
+            'cryptopanic' => [
+                'rate_limit_window_seconds' => 60,
+            ],
+            'okx_announcements' => [
+                'language' => 'en-US',
+            ],
+        ],
         'sources' => [
             'okx.announcements' => [
                 'kind' => 'api',
