@@ -33,5 +33,16 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(is_int($perMinute) ? $perMinute : 30)
                 ->by('warroom-post|'.($user !== null ? (string) $user->getAuthIdentifier() : $request->ip()));
         });
+
+        // ATL-48: Settings → Data re-sync and pause, per user. Each starts work in trading_core.
+        foreach (['data-resync' => 'resync_per_minute', 'data-pause' => 'pause_per_minute'] as $name => $key) {
+            RateLimiter::for($name, function (Request $request) use ($name, $key): Limit {
+                $perMinute = config("atlas_defaults.data_api.{$key}");
+                $user = $request->user();
+
+                return Limit::perMinute(is_int($perMinute) ? $perMinute : 1)
+                    ->by($name.'|'.($user !== null ? (string) $user->getAuthIdentifier() : $request->ip()));
+            });
+        }
     }
 }
