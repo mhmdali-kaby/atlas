@@ -951,6 +951,14 @@
 .dt-matrix col.c-act {
   width: 64px;
 }
+/* QA (ATL-49 r1): Arabic "Retry" (إعادة المحاولة) is ~97px; give the action column room
+   for it and take the same width from the instrument column, so the table still fits the card. */
+[dir='rtl'] .dt-matrix col.c-inst {
+  width: 184px;
+}
+[dir='rtl'] .dt-matrix col.c-act {
+  width: 128px;
+}
 .dt-matrix th {
   position: sticky;
   top: 0;
@@ -1397,7 +1405,7 @@
 
 @media (max-width: 1100px) {
   .dt-keep-row {
-    grid-template-columns: minmax(150px, 1.2fr) minmax(120px, 1fr) minmax(90px, 1fr) 48px minmax(120px, 0.9fr) 68px;
+    grid-template-columns: minmax(120px, 1.2fr) minmax(96px, 1fr) minmax(64px, 1fr) 44px minmax(100px, 0.9fr) 64px;
     gap: 4px 12px;
   }
 }

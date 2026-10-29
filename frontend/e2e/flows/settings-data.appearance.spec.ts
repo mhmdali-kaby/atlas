@@ -119,6 +119,15 @@ test('lists every seeded instrument with each dataset’s percent and status, an
   // XCU's 1H job failed: its row says so, and so does the summary's notice.
   await expect(page.locator('[data-testid="dt-row"][data-inst="XCU-USDT-SWAP"]')).toHaveAttribute('data-status', 'failed')
   await expect(page.getByTestId('dt-notice-failed')).toBeVisible()
+  // Its Retry button sits wholly inside the instruments card in both languages (QA r1: ar overflowed).
+  const xcuRetry = page.locator('[data-testid="dt-row"][data-inst="XCU-USDT-SWAP"] .dt-act button')
+  await xcuRetry.scrollIntoViewIfNeeded()
+  const card = await page.locator('.dt-matrix-panel').boundingBox()
+  const btn = await xcuRetry.boundingBox()
+  expect(card && btn).toBeTruthy()
+  expect(btn!.x).toBeGreaterThanOrEqual(card!.x)
+  expect(btn!.x + btn!.width).toBeLessThanOrEqual(card!.x + card!.width)
+  expect(await xcuRetry.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
 
   await expect(page.getByTestId('dt-storage-total')).toContainText(bytesText(sizes.total_bytes))
 
@@ -134,6 +143,18 @@ test('lists every seeded instrument with each dataset’s percent and status, an
   await page.screenshot({ path: `${SHOTS}/${info.project.name}-running.png` })
   for (const id of ['dt-quality', 'dt-keeps', 'dt-instruments'])
     await page.getByTestId(id).screenshot({ path: `${SHOTS}/${info.project.name}-${id}.png` })
+
+  // At a 900px window every "What Atlas keeps" size cell still sits inside its card (QA r1: ar clipped it).
+  await page.setViewportSize({ width: 900, height: 900 })
+  const keeps = page.getByTestId('dt-keeps')
+  await keeps.scrollIntoViewIfNeeded()
+  const keepsBox = (await keeps.boundingBox())!
+  for (const cell of await keeps.locator('.dt-keep-size').all()) {
+    const b = (await cell.boundingBox())!
+    expect(b.x).toBeGreaterThanOrEqual(keepsBox.x)
+    expect(b.x + b.width).toBeLessThanOrEqual(keepsBox.x + keepsBox.width)
+  }
+  await keeps.screenshot({ path: `${SHOTS}/${info.project.name}-dt-keeps-900.png` })
 })
 
 test('Re-sync now posts, shows a busy state until the answer, and a 429 shows the try-again notice', async ({ page, lang }, info) => {
