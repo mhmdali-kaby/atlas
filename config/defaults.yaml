@@ -163,6 +163,25 @@ okx_rest:
     asset/balances: { requests: 6, per_seconds: 1 }
     asset/deposit-history: { requests: 6, per_seconds: 1 }
     asset/withdrawal-history: { requests: 6, per_seconds: 1 }
+    # ATL-45: public market data (brief §4.2). Limits per IP from the OKX v5 docs; see
+    # docs/handoff/ATL-45-market-data-client.md for the doc date.
+    market/candles: { requests: 40, per_seconds: 2 }
+    market/history-candles: { requests: 20, per_seconds: 2 }
+    public/funding-rate: { requests: 10, per_seconds: 2 }
+    public/funding-rate-history: { requests: 10, per_seconds: 2 }
+    public/open-interest: { requests: 20, per_seconds: 2 }
+    public/mark-price: { requests: 10, per_seconds: 2 }
+    rubik/stat/contracts/open-interest-volume: { requests: 5, per_seconds: 2 }
+    rubik/stat/contracts/long-short-account-ratio: { requests: 5, per_seconds: 2 }
+    rubik/stat/taker-volume: { requests: 5, per_seconds: 2 }
+  # ATL-45: the largest `limit` OKX accepts per request on paged market endpoints.
+  page_limits:
+    market/candles: 300
+    market/history-candles: 100
+    public/funding-rate-history: 100
+  # ATL-45: OKX codes that mean "too many requests". On these (and HTTP 429) the retry waits at least
+  # one full rate-limit window of that endpoint before trying again.
+  rate_limit_codes: ["50011"]
 
 # ATL-36: Redis Streams event bus (brief §3.2). Each XADD trims its stream to about this many
 # entries (MAXLEN ~), so the bus never grows without bound; Postgres is the record.

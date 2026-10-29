@@ -3,7 +3,9 @@
 Signs private requests, sends ``x-simulated-trading: 1`` in demo only, keeps a clock offset from
 ``public/time`` (refreshed every ``okx_rest.clock_sync_interval_seconds``), retries network errors, 5xx,
 429 and the retryable OKX codes with jittered exponential backoff, and rate-limits each endpoint with a
-token bucket. Phase 0 is read-only: there are no order, leverage, withdrawal or transfer methods here.
+token bucket. A 429 or an OKX "too many requests" code waits at least one rate-limit window of that endpoint
+before the retry. Public market-data methods (ATL-45) are unsigned. Read-only: there are no order, leverage,
+withdrawal or transfer methods here.
 """
 
 from __future__ import annotations
@@ -13,8 +15,9 @@ import json
 import logging
 import random
 import time
-from collections.abc import Awaitable, Callable, Mapping, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, TypeVar
 from urllib.parse import urlencode
 
@@ -28,12 +31,20 @@ from trading_core.okx.models import (
     AccountConfig,
     AssetBalance,
     Bill,
+    Candle,
     DepositRecord,
+    FundingRate,
+    FundingRateHistory,
     Instrument,
+    LongShortRatio,
+    MarkPrice,
     OkxModel,
+    OpenInterest,
+    OpenInterestVolume,
     Position,
     PositionHistory,
     ServerTime,
+    TakerVolume,
     Ticker,
     TradeFee,
     WithdrawalRecord,
@@ -47,6 +58,8 @@ API_PREFIX = "/api/v5/"
 
 M = TypeVar("M", bound=OkxModel)
 Sleep = Callable[[float], Awaitable[None]]
+Cursor = datetime | int | str | None
+"""A paging cursor or time bound: an aware ``datetime``, epoch milliseconds, or OKX's own ms string."""
 
 
 @dataclass(frozen=True)
@@ -65,6 +78,7 @@ class RetryPolicy:
     backoff_base_seconds: float
     backoff_max_seconds: float
     retryable_codes: frozenset[str]
+    rate_limit_codes: frozenset[str] = frozenset()
 
     @classmethod
     def from_defaults(cls) -> RetryPolicy:
@@ -74,6 +88,7 @@ class RetryPolicy:
             backoff_base_seconds=float(cfg["backoff_base_seconds"]),
             backoff_max_seconds=float(cfg["backoff_max_seconds"]),
             retryable_codes=frozenset(str(c) for c in cfg["retryable_codes"]),
+            rate_limit_codes=frozenset(str(c) for c in cfg["rate_limit_codes"]),
         )
 
     def delay(self, attempt: int, rand: Callable[[], float]) -> float:
@@ -83,8 +98,9 @@ class RetryPolicy:
 
 
 class _Retryable(Exception):
-    def __init__(self, error: Exception) -> None:
+    def __init__(self, error: Exception, *, rate_limited: bool = False) -> None:
         self.error = error
+        self.rate_limited = rate_limited
 
 
 class OkxClient:
@@ -202,6 +218,9 @@ class OkxClient:
                 last = r.error
                 if attempt < attempts:
                     delay = self._retry.delay(attempt, self._rand)
+                    if r.rate_limited:
+                        # OKX refills per window; retrying sooner would only be refused again.
+                        delay = max(delay, self._limiter.bucket(endpoint).limit.per_seconds)
                     log.warning(
                         "okx retry",
                         extra={
@@ -232,17 +251,18 @@ class OkxClient:
         code = str(body.get("code")) if isinstance(body, dict) and "code" in body else None
         msg = str(body.get("msg", "")) if isinstance(body, dict) else ""
 
+        rate_limited = resp.status_code == 429 or code in self._retry.rate_limit_codes
         if resp.status_code == 429 or resp.status_code >= 500:
             err: Exception = (
                 OkxError(code, msg, path=endpoint, http_status=resp.status_code)
                 if code not in (None, "0")
                 else OkxHttpError(resp.status_code, path=endpoint)
             )
-            raise _Retryable(err)
+            raise _Retryable(err, rate_limited=rate_limited)
         if code is not None and code != "0":
             err = OkxError(code, msg, path=endpoint, http_status=resp.status_code)
-            if code in self._retry.retryable_codes:
-                raise _Retryable(err)
+            if code in self._retry.retryable_codes or rate_limited:
+                raise _Retryable(err, rate_limited=rate_limited)
             raise err
         if resp.status_code >= 400:
             raise OkxHttpError(resp.status_code, path=endpoint)
@@ -272,6 +292,154 @@ class OkxClient:
     async def get_tickers(self, inst_type: str, *, inst_family: str | None = None) -> list[Ticker]:
         params = {"instType": inst_type, "instFamily": inst_family}
         return self._parse(Ticker, await self._get("market/tickers", params, signed=False))
+
+    # ---- public market data (ATL-45) ---------------------------------------------------------
+
+    async def get_candles(
+        self,
+        inst_id: str,
+        *,
+        bar: str = "1m",
+        after: Cursor = None,
+        before: Cursor = None,
+        limit: int | None = None,
+    ) -> list[Candle]:
+        """``market/candles``: recent bars, newest first. ``after`` returns bars older than that ts,
+        ``before`` bars newer than it. ``limit`` up to ``okx_rest.page_limits['market/candles']``."""
+        return await self._candles("market/candles", inst_id, bar, after, before, limit)
+
+    async def get_history_candles(
+        self,
+        inst_id: str,
+        *,
+        bar: str = "1m",
+        after: Cursor = None,
+        before: Cursor = None,
+        limit: int | None = None,
+    ) -> list[Candle]:
+        """``market/history-candles``: older bars (years back), newest first, same cursors."""
+        return await self._candles("market/history-candles", inst_id, bar, after, before, limit)
+
+    async def iter_candles(
+        self,
+        inst_id: str,
+        *,
+        bar: str = "1m",
+        after: Cursor = None,
+        since: Cursor = None,
+        limit: int | None = None,
+        history: bool = False,
+    ) -> AsyncIterator[list[Candle]]:
+        """Walk back in time page by page with the ``after`` cursor (each page newest first).
+
+        Starts at ``after`` (or the newest bar) and stops on an empty page, a page that reaches
+        ``since`` (bars older than ``since`` are dropped from the last page), or a cursor that does
+        not move. ``history=True`` reads ``market/history-candles``.
+        """
+        endpoint = "market/history-candles" if history else "market/candles"
+        floor = _cursor_ms(since)
+        cursor = _cursor_ms(after)
+        while True:
+            page = await self._candles(endpoint, inst_id, bar, cursor, None, limit)
+            if floor is not None:
+                page = [c for c in page if _epoch_ms(c.ts) >= int(floor)]
+            if not page:
+                return
+            yield page
+            oldest = str(min(_epoch_ms(c.ts) for c in page))
+            if oldest == cursor or (floor is not None and int(oldest) <= int(floor)):
+                return
+            cursor = oldest
+
+    async def _candles(
+        self, endpoint: str, inst_id: str, bar: str, after: Cursor, before: Cursor, limit: int | None
+    ) -> list[Candle]:
+        params = {
+            "instId": inst_id,
+            "bar": bar,
+            "after": _cursor_ms(after),
+            "before": _cursor_ms(before),
+            "limit": _limit(endpoint, limit),
+        }
+        return self._parse(Candle, await self._get(endpoint, params, signed=False))
+
+    async def get_funding_rate(self, inst_id: str) -> FundingRate:
+        """``public/funding-rate`` for one perpetual swap."""
+        rows = await self._get("public/funding-rate", {"instId": inst_id}, signed=False)
+        if not rows:
+            raise OkxResponseError("public/funding-rate returned no data")
+        return FundingRate.model_validate(rows[0])
+
+    async def get_funding_rate_history(
+        self, inst_id: str, *, after: Cursor = None, before: Cursor = None, limit: int | None = None
+    ) -> list[FundingRateHistory]:
+        """``public/funding-rate-history``, newest first; cursors are ``funding_time`` values."""
+        params = {
+            "instId": inst_id,
+            "after": _cursor_ms(after),
+            "before": _cursor_ms(before),
+            "limit": _limit("public/funding-rate-history", limit),
+        }
+        rows = await self._get("public/funding-rate-history", params, signed=False)
+        return self._parse(FundingRateHistory, rows)
+
+    async def get_open_interest(
+        self, inst_type: str, *, inst_family: str | None = None, inst_id: str | None = None
+    ) -> list[OpenInterest]:
+        """``public/open-interest`` (``inst_type`` SWAP, FUTURES or OPTION)."""
+        params = {"instType": inst_type, "instFamily": inst_family, "instId": inst_id}
+        return self._parse(OpenInterest, await self._get("public/open-interest", params, signed=False))
+
+    async def get_open_interest_volume(
+        self, ccy: str, *, period: str = "5m", begin: Cursor = None, end: Cursor = None
+    ) -> list[OpenInterestVolume]:
+        """``rubik/stat/contracts/open-interest-volume`` for a currency (``BTC``), newest first."""
+        return self._parse(
+            OpenInterestVolume,
+            await self._rubik("rubik/stat/contracts/open-interest-volume", ccy, None, period, begin, end),
+        )
+
+    async def get_long_short_ratio(
+        self, ccy: str, *, period: str = "5m", begin: Cursor = None, end: Cursor = None
+    ) -> list[LongShortRatio]:
+        """``rubik/stat/contracts/long-short-account-ratio`` for a currency, newest first."""
+        return self._parse(
+            LongShortRatio,
+            await self._rubik("rubik/stat/contracts/long-short-account-ratio", ccy, None, period, begin, end),
+        )
+
+    async def get_taker_volume(
+        self,
+        ccy: str,
+        *,
+        inst_type: str = "CONTRACTS",
+        period: str = "5m",
+        begin: Cursor = None,
+        end: Cursor = None,
+    ) -> list[TakerVolume]:
+        """``rubik/stat/taker-volume`` (``inst_type`` SPOT or CONTRACTS), newest first."""
+        return self._parse(
+            TakerVolume, await self._rubik("rubik/stat/taker-volume", ccy, inst_type, period, begin, end)
+        )
+
+    async def _rubik(
+        self, endpoint: str, ccy: str, inst_type: str | None, period: str, begin: Cursor, end: Cursor
+    ) -> list[Any]:
+        params = {
+            "ccy": ccy,
+            "instType": inst_type,
+            "period": period,
+            "begin": _cursor_ms(begin),
+            "end": _cursor_ms(end),
+        }
+        return await self._get(endpoint, params, signed=False)
+
+    async def get_mark_price(
+        self, inst_type: str, *, inst_family: str | None = None, inst_id: str | None = None
+    ) -> list[MarkPrice]:
+        """``public/mark-price`` (``inst_type`` MARGIN, SWAP, FUTURES or OPTION)."""
+        params = {"instType": inst_type, "instFamily": inst_family, "instId": inst_id}
+        return self._parse(MarkPrice, await self._get("public/mark-price", params, signed=False))
 
     # ---- account (read) ----------------------------------------------------------------------
 
@@ -378,6 +546,36 @@ def _page(
     params: dict[str, str | None], after: str | None, before: str | None, limit: int | None
 ) -> dict[str, str | None]:
     return {**params, "after": after, "before": before, "limit": None if limit is None else str(limit)}
+
+
+def _epoch_ms(ts: datetime) -> int:
+    return int(ts.timestamp()) * 1000 + ts.microsecond // 1000
+
+
+def _cursor_ms(value: Cursor) -> str | None:
+    """A cursor as OKX's epoch-millisecond string. A naive datetime is refused (UTC only)."""
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            raise ValueError("cursor datetimes must be timezone-aware (UTC)")
+        return str(_epoch_ms(value))
+    if isinstance(value, bool):
+        raise ValueError("a bool is not a cursor")
+    if isinstance(value, int):
+        return str(value)
+    if not value.isdigit():
+        raise ValueError(f"cursor must be epoch milliseconds, got {value!r}")
+    return value
+
+
+def _limit(endpoint: str, limit: int | None) -> str | None:
+    if limit is None:
+        return None
+    cap = int(DEFAULTS["okx_rest"]["page_limits"][endpoint])
+    if not 1 <= limit <= cap:
+        raise ValueError(f"{endpoint} limit must be 1..{cap}, got {limit}")
+    return str(limit)
 
 
 __all__ = ["OkxClient", "OkxCredentials", "RetryPolicy"]

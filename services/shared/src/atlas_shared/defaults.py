@@ -206,7 +206,51 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "requests": 6,
                 "per_seconds": 1,
             },
+            "market/candles": {
+                "requests": 40,
+                "per_seconds": 2,
+            },
+            "market/history-candles": {
+                "requests": 20,
+                "per_seconds": 2,
+            },
+            "public/funding-rate": {
+                "requests": 10,
+                "per_seconds": 2,
+            },
+            "public/funding-rate-history": {
+                "requests": 10,
+                "per_seconds": 2,
+            },
+            "public/open-interest": {
+                "requests": 20,
+                "per_seconds": 2,
+            },
+            "public/mark-price": {
+                "requests": 10,
+                "per_seconds": 2,
+            },
+            "rubik/stat/contracts/open-interest-volume": {
+                "requests": 5,
+                "per_seconds": 2,
+            },
+            "rubik/stat/contracts/long-short-account-ratio": {
+                "requests": 5,
+                "per_seconds": 2,
+            },
+            "rubik/stat/taker-volume": {
+                "requests": 5,
+                "per_seconds": 2,
+            },
         },
+        "page_limits": {
+            "market/candles": 300,
+            "market/history-candles": 100,
+            "public/funding-rate-history": 100,
+        },
+        "rate_limit_codes": [
+            "50011",
+        ],
     },
     "event_bus": {
         "stream_maxlen": 100000,
