@@ -49,3 +49,8 @@ strict = true
 files = ["shared/src", "trading_core/src", "agents/src", "ingest/src"]
 python_version = "3.12"
 plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+# atlas_ingest's feed parser and language detector ship no type information.
+module = ["feedparser", "feedparser.*", "langdetect", "langdetect.*"]
+ignore_missing_imports = true
