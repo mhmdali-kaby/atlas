@@ -699,4 +699,42 @@ DEFAULTS: Final[dict[str, Any]] = {
             "top_n": 5,
         },
     },
+    "agents": {
+        "budget_warning_pct": "80",
+        "models": {
+            "strong": "opus",
+            "standard": "sonnet",
+            "routine": "haiku",
+        },
+        "defaults": {
+            "enabled": False,
+            "model": "standard",
+            "routine_model": "routine",
+            "daily_tokens": 3000000,
+            "daily_turns": 300,
+            "max_turns_per_run": 25,
+        },
+        "roster": {
+            "orchestrator": {},
+            "market_scout": {
+                "model": "strong",
+            },
+            "news_intelligence": {
+                "model": "strong",
+            },
+            "historian": {
+                "model": "strong",
+                "enabled": True,
+            },
+            "technical_analyst": {},
+            "derivatives_sentiment": {},
+            "strategist": {
+                "model": "strong",
+            },
+            "devils_advocate": {
+                "model": "strong",
+            },
+            "portfolio_manager": {},
+        },
+    },
 }

@@ -529,3 +529,36 @@ quant:
   # ATL-80: drawdown_profile reports the top_n deepest close-to-close drawdowns.
   drawdown:
     top_n: 5
+
+# ATL-83, decisions #242/#245: the agent runtime (services/agents). Agents run on the owner's
+# logged-in Claude Code CLI (subscription), never an API key, so budgets are tokens and turns per
+# agent per Asia/Baghdad day; the SDK's cost is a notional display figure only.
+#   models: tier -> the alias handed to the CLI's --model ("opus" = the strongest available model).
+#   defaults: every agent's spec unless its roster entry overrides a field.
+#     model / routine_model: model tier for normal runs / for cheap routine checks.
+#     daily_tokens: tokens_in + tokens_out (input incl. cache reads/writes) per day.
+#     daily_turns: model turns per day; max_turns_per_run: --max-turns for one run.
+#   budget_warning_pct: share of either daily budget that publishes system.agent_budget once a day.
+agents:
+  budget_warning_pct: "80"
+  models:
+    strong: opus
+    standard: sonnet
+    routine: haiku
+  defaults:
+    enabled: false
+    model: standard
+    routine_model: routine
+    daily_tokens: 3000000
+    daily_turns: 300
+    max_turns_per_run: 25
+  roster:
+    orchestrator: {}
+    market_scout: { model: strong }
+    news_intelligence: { model: strong }
+    historian: { model: strong, enabled: true }
+    technical_analyst: {}
+    derivatives_sentiment: {}
+    strategist: { model: strong }
+    devils_advocate: { model: strong }
+    portfolio_manager: {}
