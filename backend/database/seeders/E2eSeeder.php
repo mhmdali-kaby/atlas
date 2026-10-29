@@ -11,7 +11,7 @@ use RuntimeException;
 /**
  * The Playwright flows' starting state (ATL-25): one owner who has not onboarded yet (no connection,
  * no settings change) plus PortfolioDemoSeeder's Portfolio data, so the Portfolio pages have figures
- * to show once onboarding lands there.
+ * to show once onboarding lands there, and WarroomDemoSeeder's 500 War Room messages.
  *
  * Refuses to run in production, and refuses any database whose name does not start with
  * `atlas_e2e_`, so a mistyped DB_DATABASE can never seed a test owner into the owner's real data.
@@ -45,6 +45,7 @@ class E2eSeeder extends Seeder
         ]);
 
         $this->call(WarroomThreadSeeder::class);
+        $this->call(WarroomDemoSeeder::class);
         $this->call(PortfolioDemoSeeder::class);
     }
 }

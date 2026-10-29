@@ -571,8 +571,9 @@
 }
 
 /* ---- Shell geometry (design tokens.css: sidebar, toolbar, footer) ------- */
+/* Sidebar 256 / 236 below 1100 (design v4 War Room §3; Phase 0 had 248 / 220). */
 :root {
-  --sidebar-width: 248px;
+  --sidebar-width: 256px;
   --toolbar-height: 52px;
   --footer-height: 30px;
   --content-max: 1180px;
@@ -580,7 +581,7 @@
 }
 @media (max-width: 1100px) {
   :root {
-    --sidebar-width: 220px;
+    --sidebar-width: 236px;
   }
 }
 
