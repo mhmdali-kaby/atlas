@@ -1,12 +1,15 @@
 """ATL-73 (security round 6, medium): the article extractor must not fetch a feed-supplied link's
-host, or any redirect target, unless every address it resolves to is public, and must never read
-an unbounded body into memory.
+host, or any redirect target, unless every address it resolves to is public; must refuse to use a
+connection whose actual peer is not one of those checked addresses (DNS rebinding); and must never
+read an unbounded body into memory.
 
-These tests use real local HTTP servers, not respx: the guard does its own real DNS resolution
-per hop, and that needs a genuine socket to prove "no request made" and "no second hop fetched".
-``conftest._no_real_dns`` replaces the real resolver with a fake one everywhere else in this
-package (so respx-mocked public hostnames never need network); here we restore the real resolver
-explicitly, or lie about one specific host to simulate "DNS said this was public".
+These tests use real local HTTP servers, not respx: the guard does its own real DNS resolution and
+real peer verification per hop, and that needs a genuine socket to prove "no request made", "no
+second hop fetched" and "the connection's real peer was checked". ``conftest._no_real_dns``
+replaces the real resolver and the real peer check with ones that trust everything, everywhere
+else in this package (so respx-mocked public hostnames never need network and never need a real
+socket to verify); here we restore the real resolver and/or the real peer check explicitly, or lie
+about one specific host to simulate "DNS said this was public".
 """
 
 from __future__ import annotations
@@ -14,7 +17,7 @@ from __future__ import annotations
 import resource
 import threading
 import time
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -23,6 +26,7 @@ import pytest
 from atlas_ingest.collectors import CollectError, read_capped
 from atlas_ingest.collectors.rss import RssCollector
 from atlas_ingest.extract import Extractor
+from atlas_ingest.extract import peer_matches as real_peer_matches
 from atlas_ingest.extract import resolve_host_addresses as real_resolve_host_addresses
 
 PUBLIC_FAKE_ADDRESS = "93.184.216.34"  # a real, globally-routable address; never dialled in tests
@@ -129,10 +133,50 @@ async def test_redirect_to_a_loopback_target_is_never_followed() -> None:
     assert internal_hits == []  # the redirect target was never requested
 
 
+# ---- AC1: a public DNS answer at check time that differs from the real connection (DNS
+# rebinding, e.g. a TTL-0 attacker record) is still blocked, from the live socket itself ---------
+
+
+async def test_dns_rebinding_after_check_is_blocked() -> None:
+    """The host check approves ``PUBLIC_FAKE_ADDRESS`` (simulating a genuinely public DNS answer
+    at check time); the real connection lands on the local server instead (simulating the record
+    changing before httpx dials). The mismatch must be caught from the connection itself, not
+    assumed away because the earlier getaddrinfo check passed."""
+    hits: list[str] = []
+
+    def respond(handler: BaseHTTPRequestHandler) -> None:
+        handler.send_response(200)
+        handler.send_header("Content-Type", "text/html")
+        handler.end_headers()
+        handler.wfile.write(CHUNK_OK_ARTICLE.encode())
+
+    async def lying_resolver(_host: str, _port: int) -> Sequence[str]:
+        return [PUBLIC_FAKE_ADDRESS]
+
+    with local_server(_handler(hits, respond)) as (host, port):
+        async with httpx.AsyncClient() as http:
+            extractor = Extractor(
+                http=http,
+                timeout_seconds=2,
+                max_bytes=2_000_000,
+                resolve_host=lying_resolver,
+                verify_peer=real_peer_matches,  # restore the real check: conftest trusts by default
+            )
+            result = await extractor.article_text(f"http://{host}:{port}/internal", set())
+
+    assert result is None
+    assert hits == ["/internal"]  # the request did reach the server: only the result is blocked
+
+
 # ---- AC1c: an unbounded body is capped, not read fully into memory -----------------------------
 
 
-async def test_oversized_stream_is_capped_without_reading_it_all() -> None:
+async def test_oversized_stream_is_capped_without_reading_it_all(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The host check must pass (so the request is really made) while the connection still lands
+    on this real local server: the check is lied to (``PUBLIC_FAKE_ADDRESS`` for any host) and the
+    post-connect peer check is bypassed on purpose, the same way conftest does it everywhere else
+    in this package, because this test is about the body cap, not the rebinding guard (covered by
+    ``test_dns_rebinding_after_check_is_blocked`` above)."""
     sent = bytearray()
 
     def respond_huge(handler: BaseHTTPRequestHandler) -> None:
@@ -147,6 +191,25 @@ async def test_oversized_stream_is_capped_without_reading_it_all() -> None:
         except (BrokenPipeError, ConnectionResetError):
             pass  # the client closed the socket once it had read past the cap: expected
 
+    async def lying_resolver(_host: str, _port: int) -> Sequence[str]:
+        return [PUBLIC_FAKE_ADDRESS]
+
+    # Wrap aiter_bytes to see exactly what the extractor's cap (read_capped) actually consumed
+    # from the stream, independent of how much the server managed to buffer/send.
+    read_total = 0
+    original_aiter_bytes = httpx.Response.aiter_bytes
+
+    def counting_aiter_bytes(self: httpx.Response, chunk_size: int | None = None) -> object:
+        async def wrapped() -> object:
+            nonlocal read_total
+            async for chunk in original_aiter_bytes(self, chunk_size):
+                read_total += len(chunk)
+                yield chunk
+
+        return wrapped()
+
+    monkeypatch.setattr(httpx.Response, "aiter_bytes", counting_aiter_bytes)
+
     hits: list[str] = []
     max_bytes = 2_000_000
     with local_server(_handler(hits, respond_huge)) as (host, port):
@@ -155,7 +218,8 @@ async def test_oversized_stream_is_capped_without_reading_it_all() -> None:
                 http=http,
                 timeout_seconds=10,
                 max_bytes=max_bytes,
-                resolve_host=real_resolve_host_addresses,
+                resolve_host=lying_resolver,
+                verify_peer=lambda _response, _allowed: True,
             )
             before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
             started = time.monotonic()
@@ -164,6 +228,10 @@ async def test_oversized_stream_is_capped_without_reading_it_all() -> None:
             after = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
 
     assert result is None
+    assert hits == ["/big"]  # the request really was made: the cap stopped the read, not the check
+    # What the extractor actually consumed from the stream must stay at the cap plus at most one
+    # more chunk, proving read_capped aborted early rather than draining the ~512 MB on offer.
+    assert read_total <= max_bytes + 65536, f"read {read_total} bytes past the {max_bytes} cap"
     assert elapsed < 10  # aborted almost immediately, not after streaming the full ~512 MB
     # ru_maxrss is KB on Linux, bytes on macOS; either way this must stay far under the 512 MB
     # the server offered, proving the cap stopped the read rather than just discarding the result.
