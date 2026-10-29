@@ -499,6 +499,36 @@ quant:
   atr_window: 14
   # Intraday-by-hour tables are given in UTC and in this display timezone.
   hour_table_timezone: Asia/Baghdad
+  # ATL-80: detect_regime. A Gaussian HMM (seeded) on [log return %, ln(rolling vol %)]; a state whose
+  # mean rolling vol is >= high_vol_ratio x the calmest state's is high_vol, the calmest state is
+  # low_vol when some state clears that ratio, other states are trend_up/trend_down when the t-statistic
+  # of their mean return (mean / std * sqrt(bars in the state)) is >= trend_t, else range. Falls back to ADX + vol percentile when
+  # fewer than min_bars feature rows exist, the fit raises, or EM stops at n_iter without converging.
+  regime:
+    n_states: 3
+    min_bars: 200
+    vol_window: 20
+    hmm_n_iter: 1000
+    hmm_tol: "0.0001"
+    hmm_covariance_type: full
+    random_state: 42
+    high_vol_ratio: "2.0"
+    trend_t: "3.0"
+    adx_window: 14
+    adx_trend_threshold: "25"
+    vol_percentile_lookback: 250
+    high_vol_percentile: "80"
+    low_vol_percentile: "20"
+  # ATL-80: volatility_forecast. GARCH(1,1) (arch, normal errors) on percent log returns; EWMA with
+  # ewma_lambda when there are fewer than garch_min_bars returns, the optimiser does not converge or the
+  # fit is not stationary (alpha + beta >= 1). garch_mean: constant | zero.
+  volatility:
+    garch_min_bars: 100
+    garch_mean: constant
+    ewma_lambda: "0.94"
+  # ATL-80: drawdown_profile reports the top_n deepest close-to-close drawdowns.
+  drawdown:
+    top_n: 5
 
 # ATL-83, decisions #242/#245: the agent runtime (services/agents). Agents run on the owner's
 # logged-in Claude Code CLI (subscription), never an API key, so budgets are tokens and turns per
