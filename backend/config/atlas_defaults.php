@@ -219,33 +219,59 @@ return [
         'content_max_chars' => 4000,
         'agents' => [
             'orchestrator' => [
-                'orch',
+                'name' => 'Orchestrator',
+                'handle' => 'Orch',
+                'aliases' => [],
             ],
             'market_scout' => [
-                'scout',
+                'name' => 'Market Scout',
+                'handle' => 'Scout',
+                'aliases' => [],
             ],
             'news_intelligence' => [
-                'news',
-                'newsintel',
+                'name' => 'News Intelligence',
+                'handle' => 'News',
+                'aliases' => [
+                    'newsintel',
+                ],
             ],
-            'historian' => [],
+            'historian' => [
+                'name' => 'Historian',
+                'handle' => 'Historian',
+                'aliases' => [],
+            ],
             'technical_analyst' => [
-                'technical',
-                'ta',
+                'name' => 'Technical Analyst',
+                'handle' => 'Technical',
+                'aliases' => [
+                    'ta',
+                ],
             ],
             'derivatives_sentiment' => [
-                'derivatives',
-                'sentiment',
+                'name' => 'Derivatives & Sentiment',
+                'handle' => 'Derivatives',
+                'aliases' => [
+                    'sentiment',
+                ],
             ],
-            'strategist' => [],
+            'strategist' => [
+                'name' => 'Strategist',
+                'handle' => 'Strategist',
+                'aliases' => [],
+            ],
             'devils_advocate' => [
-                'devil',
-                'devilsadvocate',
-                'da',
+                'name' => 'Devil\'s Advocate',
+                'handle' => 'Devil',
+                'aliases' => [
+                    'da',
+                ],
             ],
             'portfolio_manager' => [
-                'pm',
-                'portfolio',
+                'name' => 'Portfolio Manager',
+                'handle' => 'PM',
+                'aliases' => [
+                    'portfolio',
+                ],
             ],
         ],
     ],

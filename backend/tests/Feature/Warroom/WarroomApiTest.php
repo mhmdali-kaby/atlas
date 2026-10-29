@@ -213,6 +213,7 @@ it('lists the env threads with last_message_at, main first', function (): void {
 it('returns 401 for every endpoint when signed out', function (): void {
     auth()->guard('web')->logout();
 
+    $this->getJson('/api/warroom/agents')->assertUnauthorized();
     $this->getJson('/api/warroom/threads')->assertUnauthorized();
     $this->getJson('/api/warroom/messages?thread_id='.$this->thread->id)->assertUnauthorized();
     $this->postJson('/api/warroom/messages', ['thread_id' => $this->thread->id, 'content_md' => 'x'])->assertUnauthorized();
@@ -234,4 +235,45 @@ it('publishes with a caller-supplied envelope id', function (): void {
 
     expect($envelope['id'])->toBe('0b8f3c2e-6a51-4f0e-9a43-1c2d7e5b9f10')
         ->and(atl38Envelopes()[0]['id'])->toBe('0b8f3c2e-6a51-4f0e-9a43-1c2d7e5b9f10');
+});
+
+it('stores one-word handle mentions: "@Scout and @Devil look"', function (): void {
+    $this->postJson('/api/warroom/messages', [
+        'thread_id' => $this->thread->id, 'content_md' => '@Scout and @Devil look',
+    ])->assertCreated()->assertJsonPath('data.mentions', ['market_scout', 'devils_advocate']);
+
+    expect(WarroomMessage::query()->sole()->mentions)->toBe(['market_scout', 'devils_advocate']);
+});
+
+it('resolves every one-word handle to its slug', function (string $text, array $slugs): void {
+    expect((new MentionParser)->parse($text))->toBe($slugs);
+})->with([
+    'Scout' => ['@Scout', ['market_scout']],
+    'News' => ['@News', ['news_intelligence']],
+    'Technical' => ['@Technical', ['technical_analyst']],
+    'Derivatives' => ['@Derivatives', ['derivatives_sentiment']],
+    'Devil' => ['@Devil', ['devils_advocate']],
+    'PM' => ['@PM', ['portfolio_manager']],
+    'Orch' => ['@Orch', ['orchestrator']],
+    'Historian' => ['@Historian', ['historian']],
+    'Strategist' => ['@strategist', ['strategist']],
+    'slug' => ['@devils_advocate', ['devils_advocate']],
+]);
+
+it('lists the nine agents with slug, name, handle and aliases in brief order', function (): void {
+    $data = $this->getJson('/api/warroom/agents')->assertOk()->json('data');
+
+    expect($data)->toHaveCount(9)
+        ->and(array_column($data, 'slug'))->toBe([
+            'orchestrator', 'market_scout', 'news_intelligence', 'historian', 'technical_analyst',
+            'derivatives_sentiment', 'strategist', 'devils_advocate', 'portfolio_manager',
+        ])
+        ->and(array_column($data, 'handle'))->toBe([
+            'Orch', 'Scout', 'News', 'Historian', 'Technical', 'Derivatives', 'Strategist', 'Devil', 'PM',
+        ])
+        ->and($data[1])->toBe(['slug' => 'market_scout', 'name' => 'Market Scout', 'handle' => 'Scout', 'aliases' => []])
+        ->and($data[7]['name'])->toBe("Devil's Advocate");
+    foreach ($data as $agent) {
+        expect(array_keys($agent))->toBe(['slug', 'name', 'handle', 'aliases']);
+    }
 });

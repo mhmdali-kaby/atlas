@@ -169,21 +169,23 @@ okx_rest:
 event_bus:
   stream_maxlen: 100000
 
-# ATL-38: War Room API (brief §12, §16). `agents` maps each of the nine agent keys (brief §7) to the
-# extra @mention spellings that resolve to it; "@Historian", "@historian", "@market_scout" and
-# "@MarketScout" always resolve to the key itself (case-insensitive, "_"/"-" ignored).
+# ATL-38: War Room API (brief §12, §16). `agents` lists the nine agents in brief §7 order:
+# key = slug stored in warroom_messages.mentions; name = display name; handle = the one-word
+# @mention the composer offers; aliases = extra spellings that also resolve. The slug and the
+# name (spaces/punctuation removed) always resolve too. Matching is case-insensitive and
+# ignores "_", "-" and "'".
 warroom:
   page_limit_default: 50
   page_limit_max: 100
   post_per_minute: 30
   content_max_chars: 4000
   agents:
-    orchestrator: [orch]
-    market_scout: [scout]
-    news_intelligence: [news, newsintel]
-    historian: []
-    technical_analyst: [technical, ta]
-    derivatives_sentiment: [derivatives, sentiment]
-    strategist: []
-    devils_advocate: [devil, devilsadvocate, da]
-    portfolio_manager: [pm, portfolio]
+    orchestrator: { name: Orchestrator, handle: Orch, aliases: [] }
+    market_scout: { name: Market Scout, handle: Scout, aliases: [] }
+    news_intelligence: { name: News Intelligence, handle: News, aliases: [newsintel] }
+    historian: { name: Historian, handle: Historian, aliases: [] }
+    technical_analyst: { name: Technical Analyst, handle: Technical, aliases: [ta] }
+    derivatives_sentiment: { name: "Derivatives & Sentiment", handle: Derivatives, aliases: [sentiment] }
+    strategist: { name: Strategist, handle: Strategist, aliases: [] }
+    devils_advocate: { name: "Devil's Advocate", handle: Devil, aliases: [da] }
+    portfolio_manager: { name: Portfolio Manager, handle: PM, aliases: [portfolio] }

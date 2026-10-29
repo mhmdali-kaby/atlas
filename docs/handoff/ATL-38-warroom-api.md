@@ -4,7 +4,7 @@ For the War Room UI (ATL-39/40) and the bridge (ATL-37).
 
 ## The two-minute version
 
-- Four endpoints under `/api/warroom`, all `auth:sanctum` (SPA cookie session + `X-XSRF-TOKEN`), all
+- Five endpoints under `/api/warroom`, all `auth:sanctum` (SPA cookie session + `X-XSRF-TOKEN`), all
   401 when signed out. Routes: `backend/routes/api/warroom.php`; controller
   `App\Http\Controllers\Warroom\WarroomController`.
 - **Env**: there is no "active env" column yet, so every endpoint takes `env=demo|live` (query string, or
@@ -15,13 +15,35 @@ For the War Room UI (ATL-39/40) and the bridge (ATL-37).
   `id` = the row's `event_id`. The bridge must dedupe on `event_id` (unique column) and broadcast; it must
   not insert a second row. The payload also carries `message_id` and `created_at`, so the bridge can
   broadcast without re-reading if it wants.
-- Agent keys and their @mention aliases live in `config/defaults.yaml` → `warroom.agents` (nine keys).
-  `App\Support\Warroom\MentionParser` resolves them case-insensitively, ignoring `_`/`-`
-  (`@Historian`, `@MarketScout`, `@market_scout`, `@Technical`, `@PM`). Show the composer's autocomplete
-  from the same list (`MentionParser::agents()`; not exposed over HTTP yet — the Agents page in patch 9
-  will be).
+- The nine agents live in `config/defaults.yaml` → `warroom.agents` as
+  `{name, handle, aliases}` per slug. `App\Support\Warroom\MentionParser` resolves the slug, the name,
+  the one-word handle and the aliases, case-insensitively, ignoring punctuation (`@Historian`,
+  `@MarketScout`, `@market_scout`, `@Scout`, `@Devil`, `@PM`). The composer autocompletes from
+  `GET /api/warroom/agents` and should insert `@<handle>`.
 - `EventBus::publish()` gained an optional trailing `id:` argument (envelope id). Existing callers are
   unchanged.
+
+## GET /api/warroom/agents
+
+The nine agents in brief §7 order. Static config, no `env`. Insert `@` + `handle` in the composer;
+`slug` is what appears in a message's `mentions`; `name` is display copy (translate by `slug` in the SPA
+if you need Arabic).
+
+```json
+{
+  "data": [
+    { "slug": "orchestrator", "name": "Orchestrator", "handle": "Orch", "aliases": [] },
+    { "slug": "market_scout", "name": "Market Scout", "handle": "Scout", "aliases": [] },
+    { "slug": "news_intelligence", "name": "News Intelligence", "handle": "News", "aliases": ["newsintel"] },
+    { "slug": "historian", "name": "Historian", "handle": "Historian", "aliases": [] },
+    { "slug": "technical_analyst", "name": "Technical Analyst", "handle": "Technical", "aliases": ["ta"] },
+    { "slug": "derivatives_sentiment", "name": "Derivatives & Sentiment", "handle": "Derivatives", "aliases": ["sentiment"] },
+    { "slug": "strategist", "name": "Strategist", "handle": "Strategist", "aliases": [] },
+    { "slug": "devils_advocate", "name": "Devil's Advocate", "handle": "Devil", "aliases": ["da"] },
+    { "slug": "portfolio_manager", "name": "Portfolio Manager", "handle": "PM", "aliases": ["portfolio"] }
+  ]
+}
+```
 
 ## GET /api/warroom/threads?env=demo
 
@@ -169,4 +191,4 @@ Group by `thread_id` client-side for the scrubber.
 ## Not built here
 
 Thread creation over HTTP (instrument/agent threads come from the bridge's `firstOrCreate`), slash
-commands (`/pause`, `/kill` …), read/unread state, an agent-list endpoint, and message editing/deleting.
+commands (`/pause`, `/kill` …), read/unread state, agent status/cost (Agents page, patch 9), and message editing/deleting.

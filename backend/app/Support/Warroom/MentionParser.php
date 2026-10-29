@@ -7,8 +7,8 @@ namespace App\Support\Warroom;
 /**
  * Resolves `@Agent` mentions in War Room text to the nine agent keys in
  * `atlas_defaults.warroom.agents` (brief §7). Matching is case-insensitive and ignores "_" and
- * "-", so "@Historian", "@market_scout" and "@MarketScout" all resolve; each agent's configured
- * aliases ("@Technical", "@PM") resolve too. Unknown names are ignored.
+ * "-", so "@Historian", "@market_scout" and "@MarketScout" all resolve, as do each agent's
+ * one-word handle ("@Scout", "@Devil", "@PM") and configured aliases. Unknown names are ignored.
  */
 final class MentionParser
 {
@@ -34,33 +34,51 @@ final class MentionParser
     }
 
     /**
-     * @return list<string>
+     * @return list<string> agent slugs, in brief §7 order
      */
     public static function agents(): array
     {
-        $agents = config('atlas_defaults.warroom.agents');
-
-        return is_array($agents) ? array_map(strval(...), array_keys($agents)) : [];
+        return array_column(self::directory(), 'slug');
     }
 
     /**
-     * @return array<string, string> normalised spelling => agent key
+     * The nine agents with their display name, one-word @handle and extra aliases, in brief §7
+     * order (config/defaults.yaml warroom.agents). Served by GET /api/warroom/agents.
+     *
+     * @return list<array{slug: string, name: string, handle: string, aliases: list<string>}>
      */
-    private static function lookup(): array
+    public static function directory(): array
     {
         $agents = config('atlas_defaults.warroom.agents');
         if (! is_array($agents)) {
             return [];
         }
 
+        $out = [];
+        foreach ($agents as $slug => $agent) {
+            $slug = (string) $slug;
+            $agent = is_array($agent) ? $agent : [];
+            $aliases = is_array($agent['aliases'] ?? null) ? $agent['aliases'] : [];
+            $out[] = [
+                'slug' => $slug,
+                'name' => is_string($agent['name'] ?? null) ? $agent['name'] : $slug,
+                'handle' => is_string($agent['handle'] ?? null) ? $agent['handle'] : $slug,
+                'aliases' => array_values(array_filter($aliases, is_string(...))),
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
+     * @return array<string, string> normalised spelling => agent slug
+     */
+    private static function lookup(): array
+    {
         $lookup = [];
-        foreach ($agents as $key => $aliases) {
-            $key = (string) $key;
-            $lookup[self::normalise($key)] = $key;
-            foreach (is_array($aliases) ? $aliases : [] as $alias) {
-                if (is_string($alias)) {
-                    $lookup[self::normalise($alias)] = $key;
-                }
+        foreach (self::directory() as $agent) {
+            foreach ([$agent['slug'], $agent['name'], $agent['handle'], ...$agent['aliases']] as $spelling) {
+                $lookup[self::normalise($spelling)] = $agent['slug'];
             }
         }
 
@@ -69,6 +87,6 @@ final class MentionParser
 
     private static function normalise(string $name): string
     {
-        return strtolower(str_replace(['_', '-'], '', $name));
+        return strtolower((string) preg_replace('/[^A-Za-z0-9]/', '', $name));
     }
 }

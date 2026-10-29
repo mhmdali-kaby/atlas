@@ -28,6 +28,15 @@ use Illuminate\Support\Str;
  */
 class WarroomController extends Controller
 {
+    /**
+     * The nine agents (slug, display name, one-word @handle, aliases) for the composer's
+     * mention autocomplete and the sidebar. Static config; not env-specific.
+     */
+    public function agents(): JsonResponse
+    {
+        return response()->json(['data' => MentionParser::directory()]);
+    }
+
     public function threads(ThreadsRequest $request): AnonymousResourceCollection
     {
         $lastMessageAt = WarroomMessage::query()

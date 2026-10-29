@@ -217,35 +217,61 @@ DEFAULTS: Final[dict[str, Any]] = {
         "post_per_minute": 30,
         "content_max_chars": 4000,
         "agents": {
-            "orchestrator": [
-                "orch",
-            ],
-            "market_scout": [
-                "scout",
-            ],
-            "news_intelligence": [
-                "news",
-                "newsintel",
-            ],
-            "historian": [],
-            "technical_analyst": [
-                "technical",
-                "ta",
-            ],
-            "derivatives_sentiment": [
-                "derivatives",
-                "sentiment",
-            ],
-            "strategist": [],
-            "devils_advocate": [
-                "devil",
-                "devilsadvocate",
-                "da",
-            ],
-            "portfolio_manager": [
-                "pm",
-                "portfolio",
-            ],
+            "orchestrator": {
+                "name": "Orchestrator",
+                "handle": "Orch",
+                "aliases": [],
+            },
+            "market_scout": {
+                "name": "Market Scout",
+                "handle": "Scout",
+                "aliases": [],
+            },
+            "news_intelligence": {
+                "name": "News Intelligence",
+                "handle": "News",
+                "aliases": [
+                    "newsintel",
+                ],
+            },
+            "historian": {
+                "name": "Historian",
+                "handle": "Historian",
+                "aliases": [],
+            },
+            "technical_analyst": {
+                "name": "Technical Analyst",
+                "handle": "Technical",
+                "aliases": [
+                    "ta",
+                ],
+            },
+            "derivatives_sentiment": {
+                "name": "Derivatives & Sentiment",
+                "handle": "Derivatives",
+                "aliases": [
+                    "sentiment",
+                ],
+            },
+            "strategist": {
+                "name": "Strategist",
+                "handle": "Strategist",
+                "aliases": [],
+            },
+            "devils_advocate": {
+                "name": "Devil's Advocate",
+                "handle": "Devil",
+                "aliases": [
+                    "da",
+                ],
+            },
+            "portfolio_manager": {
+                "name": "Portfolio Manager",
+                "handle": "PM",
+                "aliases": [
+                    "portfolio",
+                ],
+            },
         },
     },
 }
