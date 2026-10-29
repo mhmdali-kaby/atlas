@@ -931,5 +931,12 @@ return [
             'tool_input_max_chars' => 2000,
             'tool_output_max_chars' => 2000,
         ],
+        'numguard' => [
+            'rel_tolerance' => '0.005',
+            'abs_floor' => '0.0001',
+            'rounding_aware' => true,
+            'derive_pairs' => true,
+            'max_pair_leaves' => 200,
+        ],
     ],
 ];

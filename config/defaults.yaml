@@ -679,3 +679,18 @@ agents:
     event_text_max_chars: 4000
     tool_input_max_chars: 2000
     tool_output_max_chars: 2000
+  # ATL-91, brief §7.11: the numeric hallucination guard (atlas_agents.numguard). Every number an
+  # agent states is matched against the numeric leaves of that turn's tool outputs.
+  #   rel_tolerance: |stated - tool| <= rel_tolerance x |tool| matches (0.005 = 0.5 %).
+  #   abs_floor: the smallest absolute tolerance, so tiny values (0.0001) are not held to 0.5 % of
+  #     themselves.
+  #   rounding_aware: a stated number also matches a tool value that rounds to it at the precision
+  #     written ("4.1%" matches 0.04132; "1.2M" matches 1,234,000).
+  #   derive_pairs: also match the difference or ratio of two tool numbers.
+  #   max_pair_leaves: only the first N distinct tool numbers are paired (N^2 candidates).
+  numguard:
+    rel_tolerance: "0.005"
+    abs_floor: "0.0001"
+    rounding_aware: true
+    derive_pairs: true
+    max_pair_leaves: 200

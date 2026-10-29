@@ -163,6 +163,7 @@ class AgentSession:
         prompt_version: int | None = None,
         clock: Clock | None = None,
         observer_factory: ObserverFactory | None = None,
+        system_prompt: Callable[[], str] | None = None,
     ) -> None:
         base = options or ClaudeAgentOptions()
         passed = [key for key in FORBIDDEN_ENV if key in base.env]
@@ -173,6 +174,8 @@ class AgentSession:
         self.spec = spec
         self.env = env
         self.prompt_version = prompt_version
+        # Rendered at every connect, so a new session picks up current settings and scores (ATL-90).
+        self._system_prompt = system_prompt
         self._engine = engine
         self._factory = client_factory
         self._publish = publisher
@@ -199,6 +202,8 @@ class AgentSession:
     async def _ensure_client(self) -> ClaudeClient:
         if self._client is None:
             scrub_process_env()
+            if self._system_prompt is not None:
+                self.options = dataclasses.replace(self.options, system_prompt=self._system_prompt())
             client = self._factory(self.options)
             await client.connect()
             self._client = client
