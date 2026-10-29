@@ -24,5 +24,14 @@ class AppServiceProvider extends ServiceProvider
     {
         // Owner login: 5 attempts per minute per client IP; the 6th gets 429.
         RateLimiter::for('login', fn (Request $request): Limit => Limit::perMinute(5)->by('login|'.$request->ip()));
+
+        // ATL-38: owner War Room posts, per user (brief §16).
+        RateLimiter::for('warroom-post', function (Request $request): Limit {
+            $perMinute = config('atlas_defaults.warroom.post_per_minute');
+            $user = $request->user();
+
+            return Limit::perMinute(is_int($perMinute) ? $perMinute : 30)
+                ->by('warroom-post|'.($user !== null ? (string) $user->getAuthIdentifier() : $request->ip()));
+        });
     }
 }

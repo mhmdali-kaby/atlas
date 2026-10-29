@@ -37,6 +37,8 @@ final class EventBus
     /**
      * @param  string  $env  demo or live; anything else is refused
      * @param  array<string, mixed>  $payload
+     * @param  string|null  $id  envelope id to use (a UUID); a fresh one when null. Pass the
+     *                           event_id of a row already persisted so consumers dedupe on it.
      * @return array{id: string, type: string, ts: string, env: string, source: string, correlation_id: string|null, payload: array<string, mixed>}
      */
     public function publish(
@@ -46,6 +48,7 @@ final class EventBus
         string $source,
         array $payload,
         ?string $correlationId = null,
+        ?string $id = null,
     ): array {
         if (! in_array($stream, self::STREAMS, true)) {
             throw new \InvalidArgumentException("Unknown event stream [{$stream}].");
@@ -56,7 +59,7 @@ final class EventBus
         }
 
         $envelope = [
-            'id' => (string) Str::uuid(),
+            'id' => $id ?? (string) Str::uuid(),
             'type' => $type,
             'ts' => Carbon::now('UTC')->format('Y-m-d\TH:i:s.v\Z'),
             'env' => $env,
