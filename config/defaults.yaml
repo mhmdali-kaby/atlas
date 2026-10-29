@@ -189,3 +189,29 @@ warroom:
     strategist: { name: Strategist, handle: Strategist, aliases: [] }
     devils_advocate: { name: "Devil's Advocate", handle: Devil, aliases: [da] }
     portfolio_manager: { name: Portfolio Manager, handle: PM, aliases: [portfolio] }
+
+# ATL-48 (read by the Data API; ATL-46's backfill should create jobs from the same numbers):
+# history depth per backfill dataset, in days back from when the job is created (brief §7.3:
+# 1D full history, 1H 2 years, 15m 180 days, 1m 30 days; funding and OI as far back as OKX gives).
+# null = full history ("as far back as OKX provides"); the API then reports no expected/percent
+# until the job is done.
+backfill:
+  depth_days:
+    "candles:1m": 30
+    "candles:5m": 30
+    "candles:15m": 180
+    "candles:1H": 730
+    "candles:4H": 730
+    "candles:1D": null
+    funding: null
+    open_interest: null
+    long_short_ratio: null
+    taker_volume: null
+
+# ATL-48: Settings → Data API (brief §14.10, §16). Re-sync and pause go to trading_core and are
+# throttled per user; repaired quality issues stay listed for this many days.
+data_api:
+  resync_per_minute: 1
+  pause_per_minute: 5
+  repaired_issue_days: 7
+  quality_issue_limit: 500
