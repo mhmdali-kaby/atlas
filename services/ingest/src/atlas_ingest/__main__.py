@@ -10,8 +10,10 @@ import signal
 import httpx
 from atlas_shared.db import make_engine
 
+from atlas_ingest.aliases import active_env
 from atlas_ingest.collectors import discover
 from atlas_ingest.config import IngestSettings
+from atlas_ingest.enrichment import Enricher
 from atlas_ingest.extract import Extractor
 from atlas_ingest.logs import configure_logging
 from atlas_ingest.pipeline import Pipeline
@@ -31,6 +33,9 @@ ARTICLE_USER_AGENT = (
 async def amain(settings: IngestSettings) -> None:
     discover()
     engine = make_engine()
+    env = active_env()
+    # ATL-65: link → classify → cluster → importance, then news.alert on atlas.warroom.
+    enricher = Enricher(env=env)
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGTERM, signal.SIGINT):
@@ -49,6 +54,7 @@ async def amain(settings: IngestSettings) -> None:
                 user_agent=ARTICLE_USER_AGENT,
             ),
             max_extract_per_poll=settings.extract_max_per_poll,
+            enrich=enricher,
         )
         runner = IngestRunner(
             engine=engine,
@@ -60,6 +66,7 @@ async def amain(settings: IngestSettings) -> None:
                 disable_minutes=settings.disable_minutes,
             ),
             app_key=settings.app_key,
+            env=env,
         )
         logger.info("ingest started", extra={"tick_seconds": settings.tick_seconds})
         await runner.run_forever(stop, settings.tick_seconds)

@@ -38,6 +38,11 @@ final class BridgeEventHandler
 
     public const MESSAGE_EVENT = 'warroom.message';
 
+    /** ATL-65: published by atlas_ingest, stored as a `news_alert` message in the main thread. */
+    public const NEWS_ALERT_EVENT = 'news.alert';
+
+    public const NEWS_ALERT_SOURCE = 'system:news';
+
     public const OUTCOME_PERSISTED = 'persisted';
 
     public const OUTCOME_DUPLICATE = 'duplicate';
@@ -53,7 +58,11 @@ final class BridgeEventHandler
     {
         $envelope = $this->envelope($raw);
 
-        if ($stream === 'atlas.warroom' && $envelope['type'] === self::MESSAGE_EVENT) {
+        if ($stream === 'atlas.warroom' && $envelope['type'] === self::NEWS_ALERT_EVENT) {
+            $envelope['payload'] = $this->newsAlertMessage($envelope);
+        }
+
+        if ($stream === 'atlas.warroom' && in_array($envelope['type'], [self::MESSAGE_EVENT, self::NEWS_ALERT_EVENT], true)) {
             $message = $this->persist($envelope);
             if ($message === null) {
                 return self::OUTCOME_DUPLICATE;
@@ -102,6 +111,87 @@ final class BridgeEventHandler
 
         /** @var array{id: string, type: string, ts: string, env: 'demo'|'live', source: string, correlation_id: string|null, payload: array<string, mixed>} $decoded */
         return $decoded;
+    }
+
+    /**
+     * A `news.alert` envelope (ATL-65) as a `warroom.message` payload: a `system` message in the
+     * main thread, authored `system:news`, kind `news_alert`. Every field of the alert is untrusted
+     * source text, so it goes into the card as data; content_md is only the headline as plain text
+     * (see plainContent), so nothing in it renders as markup.
+     *
+     * @param  array{id: string, type: string, ts: string, env: 'demo'|'live', source: string, correlation_id: string|null, payload: array<string, mixed>}  $envelope
+     * @return array<string, mixed>
+     */
+    private function newsAlertMessage(array $envelope): array
+    {
+        if ($envelope['source'] !== self::NEWS_ALERT_SOURCE) {
+            throw new MalformedEvent('source is not system:news for a news.alert');
+        }
+
+        $alert = $envelope['payload'];
+        $this->validate($alert, [
+            'news_item_id' => ['required', 'uuid'],
+            'cluster_id' => ['required', 'uuid'],
+            'headline' => ['required', 'string', 'max:2000'],
+            'source' => ['required', 'string', 'max:64'],
+            'source_name' => ['required', 'string', 'max:100'],
+            'category' => ['nullable', 'string', 'max:32'],
+            'url' => ['required', 'string', 'max:4000', 'url:http,https'],
+            'published_at' => ['required', 'string', 'date'],
+            'importance' => ['required', 'integer', 'between:1,5'],
+            'event_type' => ['required', 'string', 'max:32'],
+            'inst_ids' => ['present', 'array', 'list'],
+            'inst_ids.*' => ['string', 'max:64'],
+            'asset_classes' => ['present', 'array', 'list'],
+            'asset_classes.*' => ['string', 'max:32'],
+            'sentiment' => ['required', 'numeric', 'between:-1,1'],
+            'novelty' => ['nullable', 'numeric', 'between:0,1'],
+            'reason' => ['required', Rule::in(['importance', 'held_instrument'])],
+            'held_inst_ids' => ['present', 'array', 'list'],
+            'held_inst_ids.*' => ['string', 'max:64'],
+        ], 'payload');
+
+        $keys = [
+            'news_item_id', 'cluster_id', 'headline', 'source', 'source_name', 'category', 'url',
+            'published_at', 'importance', 'event_type', 'inst_ids', 'asset_classes', 'sentiment',
+            'novelty', 'reason', 'held_inst_ids',
+        ];
+        $card = [];
+        foreach ($keys as $key) {
+            $card[$key] = $alert[$key] ?? null;
+        }
+        $card['sentiment'] = (float) $alert['sentiment'];
+        $card['novelty'] = isset($alert['novelty']) ? (float) $alert['novelty'] : null;
+
+        return [
+            'thread' => ['kind' => 'main', 'key' => WarroomThread::MAIN_KEY],
+            'author_type' => 'system',
+            'author' => self::NEWS_ALERT_SOURCE,
+            'kind' => 'news_alert',
+            'content_md' => self::plainContent((string) $alert['headline']),
+            'card' => $card,
+        ];
+    }
+
+    /**
+     * The headline as one line of plain text that the War Room's content_md renderer
+     * (frontend/src/features/warroom/tokens.ts) shows as itself. That renderer has no links and React
+     * escapes HTML; its only markup is `**bold**`, `` `code` ``, `{{TAG}}` status tags, `-`/`1.` list
+     * lines and private-use placeholder characters. Those are neutralised here: whitespace folded to
+     * one line, control and private-use characters dropped, backticks turned into apostrophes, runs of
+     * `*`, `{` or `}` cut to one, and a leading list marker prefixed with U+2060 WORD JOINER.
+     */
+    public static function plainContent(string $text): string
+    {
+        $line = (string) preg_replace('/[\x{0000}-\x{001F}\x{007F}\x{E000}-\x{F8FF}]/u', ' ', $text);
+        $line = trim((string) preg_replace('/\s+/u', ' ', $line));
+        $line = str_replace('`', "'", $line);
+        $line = (string) preg_replace(['/\*{2,}/', '/\{{2,}/', '/\}{2,}/'], ['*', '{', '}'], $line);
+        if (preg_match('/^(?:-|\d+\.)\s/', $line) === 1) {
+            $line = "\u{2060}".$line;
+        }
+
+        return $line;
     }
 
     /**

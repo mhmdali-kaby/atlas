@@ -115,8 +115,10 @@ class Pipeline:
                 )
             )
 
-        # 5. enrichment hook (no-op until the wiring task), then insert
+        # 5. enrichment hook, then insert — unless the hook stored the items itself and said how many
+        #    (the ATL-65 enricher inserts each item before clustering the next one).
+        stored: int | None = None
         if prepared:
-            await self.enrich(prepared, EnrichContext(engine=self.engine, now=now))
-        inserted = await asyncio.to_thread(_insert, self.engine, prepared)
+            stored = await self.enrich(prepared, EnrichContext(engine=self.engine, now=now))
+        inserted = stored if stored is not None else await asyncio.to_thread(_insert, self.engine, prepared)
         return PollResult(fetched=len(raw_items), new=len(fresh), inserted=inserted)
