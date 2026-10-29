@@ -429,6 +429,7 @@ return [
         ],
         'sources' => [
             'okx.announcements' => [
+                'provider' => 'okx',
                 'kind' => 'api',
                 'category' => 'exchange',
                 'name' => 'OKX announcements',
@@ -437,6 +438,7 @@ return [
                 'requires_key' => false,
             ],
             'cryptopanic' => [
+                'provider' => 'cryptopanic',
                 'kind' => 'api',
                 'category' => 'crypto_news',
                 'name' => 'CryptoPanic',
@@ -445,6 +447,7 @@ return [
                 'requires_key' => true,
             ],
             'rss.coindesk' => [
+                'provider' => 'coindesk',
                 'kind' => 'rss',
                 'category' => 'crypto_news',
                 'name' => 'CoinDesk',
@@ -453,6 +456,7 @@ return [
                 'requires_key' => false,
             ],
             'rss.cointelegraph' => [
+                'provider' => 'cointelegraph',
                 'kind' => 'rss',
                 'category' => 'crypto_news',
                 'name' => 'Cointelegraph',
@@ -461,6 +465,7 @@ return [
                 'requires_key' => false,
             ],
             'rss.theblock' => [
+                'provider' => 'theblock',
                 'kind' => 'rss',
                 'category' => 'crypto_news',
                 'name' => 'The Block',
@@ -469,6 +474,7 @@ return [
                 'requires_key' => false,
             ],
             'rss.decrypt' => [
+                'provider' => 'decrypt',
                 'kind' => 'rss',
                 'category' => 'crypto_news',
                 'name' => 'Decrypt',
@@ -477,6 +483,7 @@ return [
                 'requires_key' => false,
             ],
             'rss.cnbc' => [
+                'provider' => 'cnbc',
                 'kind' => 'rss',
                 'category' => 'markets_news',
                 'name' => 'CNBC Top News',
@@ -485,6 +492,7 @@ return [
                 'requires_key' => false,
             ],
             'rss.marketwatch' => [
+                'provider' => 'marketwatch',
                 'kind' => 'rss',
                 'category' => 'markets_news',
                 'name' => 'MarketWatch Top Stories',
@@ -493,6 +501,7 @@ return [
                 'requires_key' => false,
             ],
             'rss.yahoo' => [
+                'provider' => 'yahoo',
                 'kind' => 'rss',
                 'category' => 'markets_news',
                 'name' => 'Yahoo Finance (per symbol)',
@@ -501,6 +510,7 @@ return [
                 'requires_key' => false,
             ],
             'finnhub.news' => [
+                'provider' => 'finnhub',
                 'kind' => 'api',
                 'category' => 'markets_news',
                 'name' => 'Finnhub news',
@@ -509,14 +519,19 @@ return [
                 'requires_key' => true,
             ],
             'finnhub.calendar' => [
+                'provider' => 'finnhub',
                 'kind' => 'calendar',
                 'category' => 'calendar',
                 'name' => 'Finnhub economic calendar',
                 'url' => 'https://finnhub.io/api/v1/calendar/economic',
                 'poll_seconds' => 900,
                 'requires_key' => true,
+                'covers' => [
+                    'forexfactory.calendar',
+                ],
             ],
             'finnhub.earnings' => [
+                'provider' => 'finnhub',
                 'kind' => 'earnings',
                 'category' => 'earnings',
                 'name' => 'Finnhub earnings calendar',
@@ -525,6 +540,7 @@ return [
                 'requires_key' => true,
             ],
             'forexfactory.calendar' => [
+                'provider' => 'forexfactory',
                 'kind' => 'calendar',
                 'category' => 'calendar',
                 'name' => 'ForexFactory weekly calendar',
@@ -533,6 +549,7 @@ return [
                 'requires_key' => false,
             ],
             'alternative_me.fng' => [
+                'provider' => 'alternative_me',
                 'kind' => 'sentiment',
                 'category' => 'sentiment',
                 'name' => 'Crypto Fear & Greed Index',

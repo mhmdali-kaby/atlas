@@ -185,6 +185,7 @@ def test_calendar_sentiment_alias_and_source_models_round_trip(session: Session)
             ),
             NewsSource(
                 key=f"test.{RUN}",
+                provider="test",
                 kind="rss",
                 category="crypto_news",
                 name="Test feed",
@@ -238,7 +239,7 @@ def test_python_decrypts_an_api_key_written_by_laravel(session: Session) -> None
     }
     php = (
         "App\\Models\\NewsSource::query()->create(["
-        f"'key' => '{key}', 'kind' => 'api', 'category' => 'crypto_news',"
+        f"'key' => '{key}', 'provider' => 'test', 'kind' => 'api', 'category' => 'crypto_news',"
         "'name' => 'Keyed', 'poll_seconds' => 180,"
         f"'requires_key' => true, 'api_key' => '{plaintext}']);"
     )

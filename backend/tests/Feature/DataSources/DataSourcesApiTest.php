@@ -19,7 +19,7 @@ const ATL66_KEY = 'cp-PLAINTEXT-key-0123456789abcdWXYZ';
 const ATL66_FIELDS = [
     'key', 'name', 'kind', 'category', 'url', 'enabled', 'requires_key', 'has_key', 'key_last4',
     'poll_seconds', 'status', 'consecutive_failures', 'disabled_until', 'last_success_at',
-    'last_item_at', 'last_error', 'updated_at',
+    'last_item_at', 'last_error', 'updated_at', 'provider', 'hourly_24h', 'covered_by',
 ];
 
 function atl66Source(string $key): NewsSource
@@ -245,10 +245,10 @@ it('writes one audit row per write naming the source and action', function (): v
         ->and($updated->before)->toBe(['source' => 'rss.coindesk', 'enabled' => true, 'poll_seconds' => 180])
         ->and($updated->after)->toBe(['source' => 'rss.coindesk', 'enabled' => false, 'poll_seconds' => 180])
         ->and($updated->user_id)->toBe($this->owner->id)
-        ->and($set->after)->toBe(['source' => 'cryptopanic', 'api_key' => 'key_set'])
-        ->and($set->before)->toBe(['source' => 'cryptopanic', 'api_key' => null])
-        ->and($replaced->before)->toBe(['source' => 'cryptopanic', 'api_key' => 'key_set'])
-        ->and($removed->after)->toBe(['source' => 'cryptopanic', 'api_key' => 'key_removed']);
+        ->and($set->after)->toEqual(['source' => 'cryptopanic', 'provider' => 'cryptopanic', 'sources' => ['cryptopanic'], 'api_key' => 'key_set'])
+        ->and($set->before)->toEqual(['source' => 'cryptopanic', 'provider' => 'cryptopanic', 'sources' => ['cryptopanic'], 'api_key' => null])
+        ->and($replaced->before)->toEqual(['source' => 'cryptopanic', 'provider' => 'cryptopanic', 'sources' => ['cryptopanic'], 'api_key' => 'key_set'])
+        ->and($removed->after)->toEqual(['source' => 'cryptopanic', 'provider' => 'cryptopanic', 'sources' => ['cryptopanic'], 'api_key' => 'key_removed']);
 
     // A no-op patch is not a write.
     $this->patchJson('/api/data-sources/rss.coindesk', ['enabled' => false])->assertOk();

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\Models\NewsSource;
+use App\Support\DataSources\HourlyCounts;
 use App\Support\DataSources\SourceStatus;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
@@ -19,6 +20,28 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class NewsSourceResource extends JsonResource
 {
+    /** @var list<int> headlines per fetched hour, oldest first (ATL-71) */
+    private array $hourly24h;
+
+    private ?string $coveredBy = null;
+
+    public function __construct(mixed $resource)
+    {
+        parent::__construct($resource);
+        $this->hourly24h = array_fill(0, HourlyCounts::HOURS, 0);
+    }
+
+    /**
+     * @param  list<int>  $hourly24h
+     */
+    public function withStats(array $hourly24h, ?string $coveredBy): static
+    {
+        $this->hourly24h = $hourly24h;
+        $this->coveredBy = $coveredBy;
+
+        return $this;
+    }
+
     /**
      * @return array<string, mixed>
      */
@@ -30,6 +53,7 @@ class NewsSourceResource extends JsonResource
 
         return [
             'key' => $source->key,
+            'provider' => $source->provider,
             'name' => $source->name,
             'kind' => $source->kind,
             'category' => $source->category,
@@ -45,6 +69,8 @@ class NewsSourceResource extends JsonResource
             'last_success_at' => $source->last_success_at?->toIso8601ZuluString('microsecond'),
             'last_item_at' => $source->last_item_at?->toIso8601ZuluString('microsecond'),
             'last_error' => $source->last_error,
+            'hourly_24h' => $this->hourly24h,
+            'covered_by' => $this->coveredBy,
             'updated_at' => $source->updated_at->toIso8601ZuluString('microsecond'),
         ];
     }
