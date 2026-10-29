@@ -6,14 +6,17 @@ patch; it only documents what exists today.
 ## Start / stop
 
 - `./atlas up` — starts Postgres and Redis (Docker Compose), then the API, Reverb, the War Room
-  bridge, Horizon, the scheduler, trading_core and the frontend dev server, each natively and each
-  bound to `127.0.0.1`. On first run it also generates `REVERB_APP_SECRET` (see "Rotate keys"
+  bridge, Horizon, the scheduler, trading_core, the news ingest process (`ingest`) and the
+  frontend dev server, each natively and each bound to `127.0.0.1` (ingest listens on no port). On first run it also generates `REVERB_APP_SECRET` (see "Rotate keys"
   below) and keeps the Mac awake with `caffeinate` while it runs.
 - `./atlas down` — stops the application processes. Postgres and Redis keep running; `docker
   compose stop` stops them.
 - `./atlas restart` — `down` then `up`.
 - `./atlas status` — which processes and ports are up.
 - `./atlas logs [name]` — tails `.atlas/logs/<name>.log`, or every log if `name` is omitted.
+  `./atlas logs ingest` shows one JSON line per poll (`poll ok` with counts, `poll failed` with
+  the error and `consecutive_failures`). A source that fails 3 times in a row is skipped for 30
+  minutes (`disabled_until` in `news_sources`); it is retried automatically after that.
 - `./atlas doctor` — runs `php artisan atlas:doctor`: Postgres, extensions, migrations, Redis,
   trading_core, OKX clock drift, the demo connection, the withdraw-permission rule, free disk
   space, session/debug security, the Reverb secret, and the backup check. Any `✗` line fails the
