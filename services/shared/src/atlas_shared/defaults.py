@@ -399,6 +399,13 @@ DEFAULTS: Final[dict[str, Any]] = {
     "news": {
         "failure_threshold": 3,
         "disable_minutes": 30,
+        "reload_seconds": 60,
+        "tick_seconds": 1,
+        "extract": {
+            "timeout_seconds": 8,
+            "max_bytes": 2000000,
+            "max_per_poll": 25,
+        },
         "sources": {
             "okx.announcements": {
                 "kind": "api",
@@ -420,7 +427,7 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "kind": "rss",
                 "category": "crypto_news",
                 "name": "CoinDesk",
-                "url": "https://www.coindesk.com/arc/outboundfeeds/rss/",
+                "url": "https://www.coindesk.com/arc/outboundfeeds/rss",
                 "poll_seconds": 180,
                 "requires_key": False,
             },
@@ -462,6 +469,14 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "name": "MarketWatch Top Stories",
                 "url": "https://feeds.content.dowjones.io/public/rss/mw_topstories",
                 "poll_seconds": 180,
+                "requires_key": False,
+            },
+            "rss.yahoo": {
+                "kind": "rss",
+                "category": "markets_news",
+                "name": "Yahoo Finance (per symbol)",
+                "url": "https://feeds.finance.yahoo.com/rss/2.0/headline?s={symbol}&region=US&lang=en-US",
+                "poll_seconds": 300,
                 "requires_key": False,
             },
             "finnhub.news": {

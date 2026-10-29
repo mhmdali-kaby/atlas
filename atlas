@@ -20,6 +20,7 @@ PROCS=(
   "horizon|backend|php artisan horizon"
   "scheduler|backend|php artisan schedule:work"
   "trading_core|services|uv run --package atlas-trading-core python -m trading_core"
+  "ingest|services|uv run --package atlas-ingest python -m atlas_ingest"
   "frontend|frontend|npm run dev"
 )
 
