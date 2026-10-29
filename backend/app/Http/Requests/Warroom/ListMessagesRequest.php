@@ -82,6 +82,13 @@ class ListMessagesRequest extends WarroomRequest
      */
     private const CURSOR_TIMESTAMP_FORMAT = '!Y-m-d H:i:s';
 
+    /**
+     * Postgres' timestamptz rejects year 0000 (SQLSTATE 22008, "date/time field value out of
+     * range"), but PHP's DateTimeImmutable parses "0000-01-01 00:00:00" without complaint. 0001
+     * is the earliest year both sides accept.
+     */
+    private const EARLIEST_CURSOR_TIMESTAMP = '0001-01-01 00:00:00';
+
     private static function isStrictCursorTimestamp(string $value): bool
     {
         $date = DateTimeImmutable::createFromFormat(self::CURSOR_TIMESTAMP_FORMAT, $value);
@@ -92,8 +99,11 @@ class ListMessagesRequest extends WarroomRequest
         // createFromFormat() silently rolls 2026-02-30 forward to 2026-03-02 instead of failing;
         // getLastErrors() is the only signal that the calendar date it accepted was invalid.
         $errors = DateTimeImmutable::getLastErrors();
+        if ($errors !== false && ($errors['warning_count'] !== 0 || $errors['error_count'] !== 0)) {
+            return false;
+        }
 
-        return $errors === false || ($errors['warning_count'] === 0 && $errors['error_count'] === 0);
+        return $date >= new DateTimeImmutable(self::EARLIEST_CURSOR_TIMESTAMP);
     }
 
     public function threadId(): string
