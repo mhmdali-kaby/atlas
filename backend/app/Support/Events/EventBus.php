@@ -30,10 +30,12 @@ final class EventBus
         'atlas.system',
     ];
 
+    public const ENVS = ['demo', 'live'];
+
     public function __construct(private readonly RedisManager $redis) {}
 
     /**
-     * @param  'demo'|'live'  $env
+     * @param  string  $env  demo or live; anything else is refused
      * @param  array<string, mixed>  $payload
      * @param  string|null  $id  envelope id to use (a UUID); a fresh one when null. Pass the
      *                           event_id of a row already persisted so consumers dedupe on it.
@@ -50,6 +52,10 @@ final class EventBus
     ): array {
         if (! in_array($stream, self::STREAMS, true)) {
             throw new \InvalidArgumentException("Unknown event stream [{$stream}].");
+        }
+        if (! in_array($env, self::ENVS, true)) {
+            // atlas_shared.events.EventEnvelope (and the bridge) accept only these.
+            throw new \InvalidArgumentException("Unknown env [{$env}].");
         }
 
         $envelope = [
