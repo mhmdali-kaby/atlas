@@ -4,7 +4,7 @@ import { memo, useLayoutEffect, useRef, useState, type CSSProperties, type Keybo
 import { useTranslation } from 'react-i18next'
 import { Button, SegmentedControl, Spinner } from '../../ui'
 import type { ApiJob } from './api'
-import { compact, DATASETS, exact, filterInsts, jobFraction, jobStatus, pctText, type DatasetDef, type DatasetKey, type Inst, type InstFilter, type Model } from './model'
+import { compact, DATASETS, exact, filterInsts, jobFraction, jobStatus, pctText, type DatasetDef, type DatasetKey, type Inst, type InstFilter, type Model, tKey } from './model'
 import { Fig, InstId, NS, StatusPill, Tip, useDepthText } from './parts'
 
 /* The instrument table (design §5.6): one row per instrument, one cell per job, virtualised against
@@ -157,6 +157,7 @@ export function Instruments(p: InstrumentsProps) {
       setMargin((prev) => (Math.abs(prev - m) > 0.5 ? m : prev))
     }
     measure()
+    if (typeof ResizeObserver === 'undefined') return
     const ro = new ResizeObserver(measure)
     const page = tbodyRef.current?.closest('.dt-page')
     if (page) ro.observe(page)
@@ -259,9 +260,9 @@ export function Instruments(p: InstrumentsProps) {
             <tr>
               <th scope="col">{t('i.col')}</th>
               {DATASETS.map((d) => (
-                <th key={d.key} scope="col" className="is-num" title={`${t(`ds.${d.key}`)}, ${depthText(d.key, p.depthOf(d.key))}`}>
+                <th key={d.key} scope="col" className="is-num" title={`${t(`ds.${tKey(d.key)}`)}, ${depthText(d.key, p.depthOf(d.key))}`}>
                   <span aria-hidden="true">{d.code ? <Fig>{d.code}</Fig> : t(`col.${d.key}`)}</span>
-                  <span className="sr-only">{t(`ds.${d.key}`)}</span>
+                  <span className="sr-only">{t(`ds.${tKey(d.key)}`)}</span>
                 </th>
               ))}
               <th scope="col" className="is-num">

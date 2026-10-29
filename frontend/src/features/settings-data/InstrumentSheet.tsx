@@ -2,7 +2,7 @@ import { RefreshCw } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, Sheet, SheetClose } from '../../ui'
-import { DATASETS, exact, jobStatus, pctText, type DatasetKey, type Inst, type Model } from './model'
+import { DATASETS, exact, jobStatus, pctText, type DatasetKey, type Inst, type Model, tKey } from './model'
 import { InstId, NS, StatusPill, Tr, useDepthText } from './parts'
 import { IssueRow } from './Quality'
 import { Lane } from './Summary'
@@ -96,7 +96,7 @@ export function InstrumentSheet({
               return (
                 <li className="dt-lane-row" key={d.key} data-ds={d.key}>
                   <span className="dt-lane-name">
-                    {t(`ds.${d.key}`)}
+                    {t(`ds.${tKey(d.key)}`)}
                     <small>{depth}</small>
                   </span>
                   <Lane job={job} dataset={d.key} stacked nowMs={nowMs} gaps={gaps} />

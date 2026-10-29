@@ -119,7 +119,8 @@ function candleSums(jobs: readonly (ApiJob | undefined)[]) {
   let expected = 0
   for (const j of jobs) {
     if (!j || j.expected === null) continue
-    written += Math.min(j.rows_written, j.expected)
+    // A done job is complete even when OKX had fewer bars than expected (the API says 100% too).
+    written += j.status === 'done' ? j.expected : Math.min(j.rows_written, j.expected)
     expected += j.expected
   }
   return { written, expected }
@@ -211,7 +212,7 @@ export function buildModel(report: BackfillReport): Model {
       let written = 0
       let expected = 0
       for (const j of list) {
-        written += j.expected !== null ? Math.min(j.rows_written, j.expected) : j.rows_written
+        written += j.expected === null ? j.rows_written : j.status === 'done' ? j.expected : Math.min(j.rows_written, j.expected)
         if (j.expected !== null) expected += j.expected
       }
       const by = (s: ApiJob['status']) => list.filter((j) => j.status === s).length
@@ -374,3 +375,6 @@ export function etaParts(sec: number): { h: number; m: number } | 'lessThanMinut
   }
   return { h, m }
 }
+
+/** A dataset as a translation key: i18next reads ":" as its namespace separator, so "candles:1H" → "candles_1H". */
+export const tKey = (dataset: string) => dataset.replace(':', '_')

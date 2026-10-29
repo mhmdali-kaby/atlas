@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button, SegmentedControl } from '../../ui'
 import type { ApiIssue, IssueKind } from './api'
-import { issueBars, sortIssues } from './model'
+import { issueBars, sortIssues, tKey } from './model'
 import { Fig, InstId, NS, Tip, Tr, useTimeText } from './parts'
 
 /* Data quality (design §5.4): open issues and gaps repaired this week. */
@@ -18,7 +18,7 @@ const KIND_ICON: Record<IssueKind, typeof SquareDashed> = {
 
 function IssueTitle({ q }: { q: ApiIssue }) {
   const { t } = useTranslation(NS)
-  const bar = t(`bar.${q.dataset}`, { defaultValue: q.dataset })
+  const bar = t(`bar.${tKey(q.dataset)}`, { defaultValue: q.dataset })
   if (q.kind === 'outlier') {
     const sigma = typeof q.detail?.sigma === 'number' ? q.detail.sigma : null
     return sigma === null ? <>{t('q.outlierPlain', { bar })}</> : <Tr k="q.outlier" values={{ sigma: `${sigma.toFixed(1)}σ`, bar }} />

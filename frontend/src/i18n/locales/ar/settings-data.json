@@ -110,22 +110,22 @@
     "other": "أخرى"
   },
   "ds": {
-    "candles:1D": "الشموع اليومية",
-    "candles:4H": "شموع 4 ساعات",
-    "candles:1H": "شموع الساعة",
-    "candles:15m": "شموع 15 دقيقة",
-    "candles:5m": "شموع 5 دقائق",
-    "candles:1m": "شموع الدقيقة",
+    "candles_1D": "الشموع اليومية",
+    "candles_4H": "شموع 4 ساعات",
+    "candles_1H": "شموع الساعة",
+    "candles_15m": "شموع 15 دقيقة",
+    "candles_5m": "شموع 5 دقائق",
+    "candles_1m": "شموع الدقيقة",
     "funding": "معدلات التمويل",
     "open_interest": "الفائدة المفتوحة"
   },
   "bar": {
-    "candles:1D": "اليوم",
-    "candles:4H": "4 ساعات",
-    "candles:1H": "الساعة",
-    "candles:15m": "15 دقيقة",
-    "candles:5m": "5 دقائق",
-    "candles:1m": "الدقيقة"
+    "candles_1D": "اليوم",
+    "candles_4H": "4 ساعات",
+    "candles_1H": "الساعة",
+    "candles_15m": "15 دقيقة",
+    "candles_5m": "5 دقائق",
+    "candles_1m": "الدقيقة"
   },
   "col": { "funding": "التمويل", "open_interest": "الفائدة المفتوحة" },
   "depth": {

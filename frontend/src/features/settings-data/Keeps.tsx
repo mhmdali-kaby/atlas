@@ -3,7 +3,7 @@ import type { CSSProperties, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Spinner } from '../../ui'
 import type { StorageReport } from './api'
-import { bytesText, CANDLE_KEYS, compact, pctText, type DatasetKey, type DatasetTotal, type Model } from './model'
+import { bytesText, CANDLE_KEYS, compact, pctText, type DatasetKey, type DatasetTotal, type Model, tKey } from './model'
 import { Fig, NS, Tr, useDepthText } from './parts'
 
 /* What Atlas keeps (design §5.5): each dataset's depth, progress and the storage its table uses. */
@@ -72,7 +72,7 @@ export function Keeps({ model: m, storage, depthOf }: { model: Model; storage: S
           <span className="dt-row-icon" aria-hidden="true">
             <Icon strokeWidth={1.75} />
           </span>
-          <span>{t(`ds.${key}`)}</span>
+          <span>{t(`ds.${tKey(key)}`)}</span>
         </span>
         <span className="dt-keep-depth">{depthText(key, null)}</span>
         <OpenMeter x={x} />
@@ -136,7 +136,7 @@ export function Keeps({ model: m, storage, depthOf }: { model: Model; storage: S
           const x = m.datasets[key]
           return (
             <Row child key={key} testId={`dt-keep-${key}`}>
-              <span className="dt-keep-name">{t(`ds.${key}`)}</span>
+              <span className="dt-keep-name">{t(`ds.${tKey(key)}`)}</span>
               <span className="dt-keep-depth">{depthText(key, depthOf(key))}</span>
               <Meter p={x.pct} cls={x.paused > 0 && !x.all ? 'is-paused' : undefined} />
               <span className="dt-keep-pct">

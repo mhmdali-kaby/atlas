@@ -18,8 +18,7 @@ import {
   type Model,
   type Status,
   type SummaryState,
-  DATASET,
-} from './model'
+  DATASET, tKey } from './model'
 import { Fig, InstId, NS, Tip, Tr, useTimeText } from './parts'
 import { formatClock } from '../portfolio/time'
 import type { ApiJob } from './api'
@@ -329,7 +328,7 @@ export function Summary(p: SummaryProps) {
             return (
               <li className="dt-now-row" key={`${instId}|${dataset}`}>
                 <InstId id={instId} />
-                <span className="dt-now-ds">{t(`ds.${dataset}`)}</span>
+                <span className="dt-now-ds">{t(`ds.${tKey(dataset)}`)}</span>
                 <Lane job={job} dataset={dataset} nowMs={p.nowMs} />
                 <span className="dt-now-reach">
                   {def.open ? (

@@ -151,6 +151,11 @@ class BackfillDemoSeeder extends Seeder
             ['TSLA-USDT-SWAP', 'candles:1D', 'zero_volume', $at(4320), $at(2880), $at(2870), null, ['bars' => 3]],
         ];
         foreach ($rows as [$instId, $dataset, $kind, $from, $to, $detected, $repaired, $detail]) {
+            // Times are relative to now, so drop this fixture's copy from an earlier run first.
+            DB::table('data_quality_issues')
+                ->where(['env' => self::ENV, 'inst_id' => $instId, 'dataset' => $dataset, 'kind' => $kind])
+                ->where('from_ts', '<>', $from)
+                ->delete();
             $values = [
                 'to_ts' => $to, 'detected_at' => $detected, 'repaired_at' => $repaired,
                 'detail' => json_encode($detail, JSON_THROW_ON_ERROR), 'updated_at' => $now,

@@ -96,22 +96,22 @@
     "other": "Other"
   },
   "ds": {
-    "candles:1D": "1-day bars",
-    "candles:4H": "4-hour bars",
-    "candles:1H": "1-hour bars",
-    "candles:15m": "15-minute bars",
-    "candles:5m": "5-minute bars",
-    "candles:1m": "1-minute bars",
+    "candles_1D": "1-day bars",
+    "candles_4H": "4-hour bars",
+    "candles_1H": "1-hour bars",
+    "candles_15m": "15-minute bars",
+    "candles_5m": "5-minute bars",
+    "candles_1m": "1-minute bars",
     "funding": "Funding rates",
     "open_interest": "Open interest"
   },
   "bar": {
-    "candles:1D": "1-day",
-    "candles:4H": "4-hour",
-    "candles:1H": "1-hour",
-    "candles:15m": "15-minute",
-    "candles:5m": "5-minute",
-    "candles:1m": "1-minute"
+    "candles_1D": "1-day",
+    "candles_4H": "4-hour",
+    "candles_1H": "1-hour",
+    "candles_15m": "15-minute",
+    "candles_5m": "5-minute",
+    "candles_1m": "1-minute"
   },
   "col": { "funding": "Funding", "open_interest": "Open interest" },
   "depth": {
