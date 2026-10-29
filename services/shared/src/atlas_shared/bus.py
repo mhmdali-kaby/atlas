@@ -9,7 +9,7 @@ import argparse
 import os
 import sys
 from collections.abc import Mapping, Sequence
-from typing import Final
+from typing import Any, Final
 
 import redis
 
@@ -64,28 +64,46 @@ def publish(stream: str, envelope: EventEnvelope, *, client: "redis.Redis | None
     return entry_id if isinstance(entry_id, str) else bytes(entry_id).decode()
 
 
+def _warroom_message_payload(*, author_type: str, author: str, content_md: str) -> dict[str, Any]:
+    """The payload of a ``warroom.message`` envelope.
+
+    Refuses ``author_type="human"``: only ``WarroomController::store`` writes the owner's own
+    messages, and only after it has already inserted the row itself (ATL-51, security round 4).
+    Nothing in this codebase builds a human message, and nothing should — nobody who writes
+    through this bus is the owner.
+    """
+    if author_type == "human":
+        raise ValueError('atlas_shared.bus refuses to build author_type="human" warroom messages')
+
+    return {
+        "thread": {"kind": "main", "key": "main"},
+        "author_type": author_type,
+        "author": author,
+        "kind": "text",
+        "content_md": content_md,
+        "card": None,
+        "reply_to": None,
+        "mentions": [],
+        "reasoning_md": None,
+        "tool_calls": None,
+        "tokens_in": None,
+        "tokens_out": None,
+        "cost_usd": None,
+    }
+
+
 def demo_message(text: str, *, env: str = "demo", author: str | None = None) -> EventEnvelope:
     """A ``warroom.message`` for the env's Main thread: a system event line, or an agent's text."""
+    author_type = "agent" if author else "system"
+    source = f"agent:{author}" if author else "system:demo"
     return EventEnvelope.model_validate(
         {
             "type": "warroom.message",
             "env": env,
-            "source": f"agent:{author}" if author else "system:demo",
-            "payload": {
-                "thread": {"kind": "main", "key": "main"},
-                "author_type": "agent" if author else "system",
-                "author": author or "atlas",
-                "kind": "text",
-                "content_md": text,
-                "card": None,
-                "reply_to": None,
-                "mentions": [],
-                "reasoning_md": None,
-                "tool_calls": None,
-                "tokens_in": None,
-                "tokens_out": None,
-                "cost_usd": None,
-            },
+            "source": source,
+            "payload": _warroom_message_payload(
+                author_type=author_type, author=author or "atlas", content_md=text
+            ),
         }
     )
 
