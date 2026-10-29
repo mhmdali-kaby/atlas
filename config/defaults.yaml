@@ -100,6 +100,25 @@ sync:
   account_interval_seconds: 60
   bills_interval_seconds: 300
 
+# ATL-46, brief §7.3: the resumable history backfill in trading_core. How far back each dataset
+# goes is backfill.depth_days (below, shared with the Data API); null depths walk back to
+# full_history_floor, i.e. until OKX returns no older data. Datasets are created and claimed in
+# dataset_order (daily and hourly bars before the 1m bars). One rate limiter is shared by all
+# `concurrency` workers, so OKX's per-endpoint limits hold whatever the concurrency.
+backfill_runner:
+  interval_seconds: 300
+  concurrency: 4
+  # Brief §14.5 market toggles that are on by default; dated futures and options stay off.
+  enabled_markets: [spot, crypto_perp, stock_perp, commodity_perp]
+  dataset_order: ["candles:1D", "candles:1H", "candles:4H", funding, open_interest, "candles:15m", "candles:5m", "candles:1m"]
+  # Open interest history is OKX rubik's per-currency series (crypto only); 1D goes back furthest.
+  open_interest_period: 1D
+  full_history_floor: "2009-01-01T00:00:00Z"
+  # Postgres accepts at most 65535 bind parameters per statement; batches are also capped at batch_rows.
+  max_bind_params: 65535
+  batch_rows: 2000
+  last_error_max_chars: 500
+
 # ATL-35: InternalSignatureMiddleware rejects any /internal request body larger than this (by
 # Content-Length, and by a running total while reading chunked bodies) before it is ever handed
 # to the MAC check, so an unsigned caller cannot force trading_core to buffer an unbounded body.
@@ -208,3 +227,29 @@ warroom:
     strategist: { name: Strategist, handle: Strategist, aliases: [] }
     devils_advocate: { name: "Devil's Advocate", handle: Devil, aliases: [da] }
     portfolio_manager: { name: Portfolio Manager, handle: PM, aliases: [portfolio] }
+
+# ATL-48 (read by the Data API; ATL-46's backfill should create jobs from the same numbers):
+# history depth per backfill dataset, in days back from when the job is created (brief §7.3:
+# 1D full history, 1H 2 years, 15m 180 days, 1m 30 days; funding and OI as far back as OKX gives).
+# null = full history ("as far back as OKX provides"); the API then reports no expected/percent
+# until the job is done.
+backfill:
+  depth_days:
+    "candles:1m": 30
+    "candles:5m": 30
+    "candles:15m": 180
+    "candles:1H": 730
+    "candles:4H": 730
+    "candles:1D": null
+    funding: null
+    open_interest: null
+    long_short_ratio: null
+    taker_volume: null
+
+# ATL-48: Settings → Data API (brief §14.10, §16). Re-sync and pause go to trading_core and are
+# throttled per user; repaired quality issues stay listed for this many days.
+data_api:
+  resync_per_minute: 1
+  pause_per_minute: 5
+  repaired_issue_days: 7
+  quality_issue_limit: 500

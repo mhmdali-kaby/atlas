@@ -40,6 +40,7 @@ class Scheduler:
     def __init__(self, *, sleep: Sleep = asyncio.sleep) -> None:
         self._jobs: dict[str, Job] = {}
         self._tasks: list[asyncio.Task[None]] = []
+        self._triggered: list[asyncio.Task[None]] = []
         self._sleep = sleep
 
     @property
@@ -74,6 +75,30 @@ class Scheduler:
                 job.runs += 1
             return result
 
+    def trigger(self, name: str) -> bool:
+        """Start one run of a job in the background unless one is already in flight.
+
+        Returns False when the job is already running (that run picks up new work itself). The
+        background task is cancelled by ``stop()`` like the periodic loops.
+        """
+        job = self._jobs.get(name)
+        if job is None:
+            raise UnknownJobError(name)
+        if job.lock.locked():
+            return False
+
+        async def once() -> None:
+            try:
+                await self.run_now(name)
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                logger.exception("triggered job failed", extra={"job": name})
+
+        self._triggered = [t for t in self._triggered if not t.done()]
+        self._triggered.append(asyncio.create_task(once(), name=f"trigger:{name}"))
+        return True
+
     async def _loop(self, job: Job) -> None:
         while True:
             try:
@@ -93,7 +118,9 @@ class Scheduler:
         ]
 
     async def stop(self) -> None:
-        for task in self._tasks:
+        tasks = [*self._tasks, *self._triggered]
+        for task in tasks:
             task.cancel()
-        await asyncio.gather(*self._tasks, return_exceptions=True)
+        await asyncio.gather(*tasks, return_exceptions=True)
         self._tasks = []
+        self._triggered = []
