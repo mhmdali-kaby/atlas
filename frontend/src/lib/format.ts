@@ -148,3 +148,13 @@ export function formatFixed(value: Figure, digits: number, lang: Lang = 'en'): s
   const nf = formatter(FIGURE_LOCALE[lang], { minimumFractionDigits: digits, maximumFractionDigits: digits })
   return typographicMinus(nf.format(asIntlValue(value)))
 }
+
+/** Display precision for a price (entry, mark, liq, …): 1 decimal above 10,000, else 2. */
+export function priceDecimals(value: Figure): number {
+  return !isMissing(value) && Math.abs(Number(value)) >= 10_000 ? 1 : 2
+}
+
+/** A price at OKX's display precision, locale-grouped: "67,250.5", "2,741.80" (Positions, the War Room inspector). */
+export function formatPrice(value: Figure, lang: Lang = 'en'): string {
+  return formatDecimal(value, lang, priceDecimals(value))
+}
