@@ -21,7 +21,7 @@ h = np.maximum(o, c) * (1.0 + np.abs(rng.normal(0.0, 0.002, n)))
 lo = np.minimum(o, c) * (1.0 - np.abs(rng.normal(0.0, 0.002, n)))
 start = datetime(2026, 9, 1, tzinfo=UTC)
 with (Path(__file__).parent / "backtest_1h.csv").open("w", newline="") as fh:
-    w = csv.writer(fh)
+    w = csv.writer(fh, lineterminator="\n")
     w.writerow(["ts", "o", "h", "l", "c", "vol"])
     for i in range(n):
         ts = (start + timedelta(hours=i)).strftime("%Y-%m-%dT%H:%M:%SZ")

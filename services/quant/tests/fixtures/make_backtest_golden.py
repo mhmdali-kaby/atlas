@@ -141,7 +141,7 @@ def main() -> None:
         worked = result["worked"]
         assert isinstance(worked, list)
         with (HERE / f"backtest_1h_worked_{name}.csv").open("w", newline="") as fh:
-            writer = csv.DictWriter(fh, fieldnames=list(worked[0]))
+            writer = csv.DictWriter(fh, fieldnames=list(worked[0]), lineterminator="\n")
             writer.writeheader()
             writer.writerows(worked)
         expected[name] = {"fee_rate": fee, "slippage": slip, **result["summary"]}  # type: ignore[dict-item]
