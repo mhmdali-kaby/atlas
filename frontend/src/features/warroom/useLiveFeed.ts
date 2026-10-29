@@ -45,7 +45,9 @@ export function useLiveFeed(env: TradingEnv, threadId: string | undefined) {
       const fresh = upsertMessage(qc, env, m)
       const cur = latest.current
       if (fresh && m.thread_id === cur.threadId && m.author_type !== 'human') {
-        const text = plainText(m.content_md, (tag) => cur.t(`tag.${tag}`)).slice(0, ANNOUNCE_CHARS)
+        const body = plainText(m.content_md, (tag) => cur.t(`tag.${tag}`))
+        // A news alert (design v6 §5.8) is announced as "Atlas: News alert. <headline>".
+        const text = (m.kind === 'news_alert' ? `${cur.t('kind.news_alert')}. ${body}` : body).slice(0, ANNOUNCE_CHARS)
         setAnnouncement(cur.t('liveAnnounce', { name: cur.authorName(m), text }))
       }
     }
