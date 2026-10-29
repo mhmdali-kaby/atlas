@@ -16,7 +16,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useState, type MouseEvent } from 'react'
+import { useState, type MouseEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Lang } from '../../lib/format'
 import { Button, Spinner } from '../../ui'
@@ -24,6 +24,8 @@ import type { WarroomMessage } from './api'
 import { discardMessage, isLocal, retryMessage, type LocalMessage } from './live'
 import { MessageActions, MessageMenu } from './MessageActions'
 import { Medallion, SystemMedallion } from './Medallion'
+import { NewsAlertCard } from './NewsAlertCard'
+import { readNewsAlert } from './newsAlert'
 import { Excerpt, Inline, Markdown } from './text'
 import { continues, shapeOf, useAuthorName } from './shape'
 import { formatFullTime, formatTime } from './time'
@@ -31,7 +33,8 @@ import { formatFullTime, formatTime } from './time'
 /*
  * Feed renderers (design v4 War Room §7, §12). Agents write documents on the page, the owner
  * speaks in bubbles at the inline end, system `text` is one quiet centred line, `system_alert` a
- * washed card, and any other kind a GenericCard with its label until its patch builds a card.
+ * washed card, a kind registered in CARDS its own card (news_alert: design v6 §5.8), and any other
+ * kind a GenericCard with its label until its patch builds a card.
  */
 
 const KIND_ICON: Record<string, LucideIcon> = {
@@ -45,6 +48,17 @@ const KIND_ICON: Record<string, LucideIcon> = {
   fill: CircleCheck,
   position_update: Layers,
   post_mortem: History,
+}
+
+/**
+ * Kinds with their own card. Each renderer returns null when the message lacks what its card
+ * needs, and the GenericCard draws it instead. A later patch registers its kind here.
+ */
+const CARDS: Partial<Record<string, (m: WarroomMessage, lang: Lang) => ReactNode>> = {
+  news_alert: (m, lang) => {
+    const alert = readNewsAlert(m.card)
+    return alert ? <NewsAlertCard alert={alert} lang={lang} /> : null
+  },
 }
 
 function Time({ ts, lang }: { ts: string; lang: Lang }) {
@@ -227,6 +241,7 @@ export function Message({ message: m, prev, parent, lang, active, tabbable, flas
 
   const KindIcon = KIND_ICON[m.kind] ?? FileText
   const kindLabel = t(`kind.${m.kind}`, { defaultValue: m.kind })
+  const card = m.kind === 'text' ? null : (CARDS[m.kind]?.(m, lang) ?? null)
   return (
     <article className={cls(cont && 'is-cont')} {...common} onContextMenu={onContextMenu}>
       <div className="msg-gutter">
@@ -248,6 +263,8 @@ export function Message({ message: m, prev, parent, lang, active, tabbable, flas
         {parent && <ReplyQuote parent={parent} onJump={onJump} />}
         {m.kind === 'text' ? (
           <Markdown text={m.content_md} />
+        ) : card ? (
+          card
         ) : (
           <div className="kind-card" data-kind={m.kind}>
             <div className="kind-head">

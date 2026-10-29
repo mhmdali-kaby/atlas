@@ -182,5 +182,35 @@
     "terms": "{{side}} <lever>{{lever}}×</lever>, <n>{{contracts}}</n> contracts",
     "entry": "Entry",
     "mark": "Mark"
+  },
+  "news": {
+    "imp": "Importance <n>{{n}}</n>",
+    "impOf": "Importance {{n}} of 5",
+    "by": "Published by {{source}} at {{time}}",
+    "read": "Read on {{host}}",
+    "sentiment": "Sentiment",
+    "positive": "positive",
+    "negative": "negative",
+    "neutral": "neutral",
+    "instruments": "Linked instruments",
+    "type": {
+      "earnings": "Earnings",
+      "guidance": "Guidance",
+      "macro_release": "Macro release",
+      "central_bank": "Central bank",
+      "regulation": "Regulation",
+      "hack_exploit": "Hack or exploit",
+      "listing": "Listing",
+      "delisting": "Delisting",
+      "ETF_flow": "ETF flows",
+      "M&A": "Merger or acquisition",
+      "lawsuit": "Lawsuit",
+      "product": "Product",
+      "partnership": "Partnership",
+      "token_unlock": "Token unlock",
+      "geopolitics": "Geopolitics",
+      "supply_shock": "Supply shock",
+      "other": "Other"
+    }
   }
 }
