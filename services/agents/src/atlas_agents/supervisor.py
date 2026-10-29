@@ -10,12 +10,13 @@ import logging
 import uuid
 from collections.abc import Callable, Mapping
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
 
-from atlas_agents import access, events
+from atlas_agents import access, events, prompts
 from atlas_agents.registry import REGISTRY, AgentSpec, enabled_agents
 from atlas_agents.session import AgentSession, ClientFactory, RunResult, Trigger, default_client_factory
 from atlas_agents.tools import ToolContext
@@ -40,12 +41,17 @@ class Supervisor:
         publisher: events.Publisher = events.bus_publisher,
         session_builder: SessionBuilder | None = None,
         replay_as_of: datetime | None = None,
+        prompts_dir: Path | None = None,
     ) -> None:
         sessions = sessionmaker(bind=engine)
+        enabled = enabled_agents(registry)
+        # Every enabled agent's current prompt version is recorded once, at start (ATL-90).
+        self.prompts = prompts.sync_versions(engine, [spec.slug for spec in enabled], prompts_dir=prompts_dir)
 
         def build(spec: AgentSpec) -> AgentSession:
             # Tools come only from the §7.10 matrix (atlas_agents.access); replay bounds every query.
             ctx = ToolContext(env=env, session_factory=sessions, agent=spec.slug, replay_as_of=replay_as_of)
+            prompt = self.prompts.get(spec.slug)
             return AgentSession(
                 spec,
                 env=env,
@@ -53,11 +59,13 @@ class Supervisor:
                 options=access.options_for(spec.slug, ctx),
                 client_factory=client_factory,
                 publisher=publisher,
+                prompt_version=prompt[1] if prompt else None,
+                system_prompt=prompts.renderer(ctx, prompt[0]) if prompt else None,
             )
 
         make = session_builder or build
         self.env = env
-        self.sessions: dict[str, AgentSession] = {spec.slug: make(spec) for spec in enabled_agents(registry)}
+        self.sessions: dict[str, AgentSession] = {spec.slug: make(spec) for spec in enabled}
 
     async def run(self, agent: str, prompt: str, **kwargs: Any) -> RunResult:
         """Run ``prompt`` on ``agent``. Raises only AgentUnavailableError; every other failure is a
