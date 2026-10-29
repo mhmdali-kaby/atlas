@@ -174,8 +174,14 @@ class LeadLagInput(ToolInput):
 # -- warroom -----------------------------------------------------------------------------------------
 
 
+AgentKind = Literal[
+    "text", "watchlist", "research_report", "news_alert", "vote_summary", "post_mortem", "system_alert"
+]
+"""The brief §12 message kinds an agent may author (ATL-88)."""
+
+
 class PostMessageInput(ToolInput):
-    kind: str
+    kind: AgentKind
     content_md: str = Field(max_length=20000)
     card: dict[str, Any] | None = None
 

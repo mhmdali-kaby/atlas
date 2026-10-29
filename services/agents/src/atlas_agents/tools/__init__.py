@@ -9,6 +9,7 @@ from atlas_agents.tools import catalogue as catalogue
 # Real tools (each replaces its catalogue stub on import).
 from atlas_agents.tools import memory as memory
 from atlas_agents.tools import news as news
+from atlas_agents.tools import warroom as warroom
 from atlas_agents.tools.framework import (
     SERVERS,
     NoInput,

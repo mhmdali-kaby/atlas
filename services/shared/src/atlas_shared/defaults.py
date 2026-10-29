@@ -796,5 +796,11 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "\\b(?:submit_proposal|cast_vote|post_message|place_order)\\s*\\(",
             ],
         },
+        "streaming": {
+            "max_events_per_second": 10,
+            "event_text_max_chars": 4000,
+            "tool_input_max_chars": 2000,
+            "tool_output_max_chars": 2000,
+        },
     },
 }
