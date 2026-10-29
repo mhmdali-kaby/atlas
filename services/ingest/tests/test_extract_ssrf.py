@@ -14,10 +14,12 @@ about one specific host to simulate "DNS said this was public".
 
 from __future__ import annotations
 
+import gzip
 import resource
 import threading
 import time
-from collections.abc import Iterator, Sequence
+import zlib
+from collections.abc import AsyncIterator, Iterator, Sequence
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -194,21 +196,23 @@ async def test_oversized_stream_is_capped_without_reading_it_all(monkeypatch: py
     async def lying_resolver(_host: str, _port: int) -> Sequence[str]:
         return [PUBLIC_FAKE_ADDRESS]
 
-    # Wrap aiter_bytes to see exactly what the extractor's cap (read_capped) actually consumed
-    # from the stream, independent of how much the server managed to buffer/send.
+    # Wrap aiter_raw to see exactly what the extractor's cap (read_capped) actually consumed off
+    # the wire, independent of how much the server managed to buffer/send. ATL-75: read_capped
+    # now reads the wire bytes itself via aiter_raw (not httpx's auto-decoding aiter_bytes), so
+    # that is the call to instrument here.
     read_total = 0
-    original_aiter_bytes = httpx.Response.aiter_bytes
+    original_aiter_raw = httpx.Response.aiter_raw
 
-    def counting_aiter_bytes(self: httpx.Response, chunk_size: int | None = None) -> object:
+    def counting_aiter_raw(self: httpx.Response, chunk_size: int | None = None) -> object:
         async def wrapped() -> object:
             nonlocal read_total
-            async for chunk in original_aiter_bytes(self, chunk_size):
+            async for chunk in original_aiter_raw(self, chunk_size):
                 read_total += len(chunk)
                 yield chunk
 
         return wrapped()
 
-    monkeypatch.setattr(httpx.Response, "aiter_bytes", counting_aiter_bytes)
+    monkeypatch.setattr(httpx.Response, "aiter_raw", counting_aiter_raw)
 
     hits: list[str] = []
     max_bytes = 2_000_000
@@ -289,3 +293,198 @@ async def test_read_capped_rejects_declared_content_length_up_front() -> None:
             async with http.stream("GET", f"http://{host}:{port}/x") as response:
                 with pytest.raises(CollectError, match="too large"):
                     await read_capped(response, max_bytes=1_000_000)
+
+
+# ---- ATL-75 (security round 7, QA's follow-up on the ATL-73 fix): a Content-Encoding: gzip body
+# must not be handed to an unbounded decompressor ------------------------------------------------
+
+
+# A gzip stream of 512 MB of a single repeated byte, compressed to well under 1 MB on the wire
+# (DEFLATE's ordinary ~1000:1 ratio on maximally repetitive input) -- the "zip bomb" shape that,
+# before ATL-75, blew well past read_capped's cap in memory before the cap ever got to look at
+# it: httpx's own Content-Encoding handling (``Response.aiter_bytes``, used by ``read_capped``
+# until this fix) calls zlib's decompressor with no bound on a single call's output, so one small
+# compressed chunk decompresses to its full, uncapped size in one shot. 512 MB (not the 4 GB QA
+# used by hand) is already two and a half times the 200 MB budget this task sets, decompresses in
+# well under a second, and is more than enough to prove the bound holds: the fix caps every
+# internal decompress() call at a fixed, small size independent of the total, so nothing about
+# *how much* bigger the bomb is changes what it proves.
+#
+# Built once here, at import time, by feeding a small 64 KB chunk through zlib.compressobj() many
+# times over rather than by compressing one 512 MB bytes object in a single call: this process's
+# ru_maxrss is a lifetime high-water mark that never falls back down, so building the bomb the
+# obvious way (``gzip.compress(b"A" * 512_000_000)``) would itself permanently plant a ~512 MB
+# floor under every later measurement in this file -- including the ones that are supposed to
+# prove the *fixed* code stays well under that -- and mask the very regression these tests exist
+# to catch. zlib.compressobj(level, zlib.DEFLATED, zlib.MAX_WBITS | 16) is the documented way to
+# get gzip-framed (not raw deflate) output from the streaming API, matching what a real server's
+# `Content-Encoding: gzip` would send.
+_bomb_compressor = zlib.compressobj(6, zlib.DEFLATED, zlib.MAX_WBITS | 16)
+_bomb_chunk = b"A" * 65536
+_bomb_pieces = [_bomb_compressor.compress(_bomb_chunk) for _ in range(512 * 1024 * 1024 // len(_bomb_chunk))]
+_bomb_pieces.append(_bomb_compressor.flush())
+GZIP_BOMB_512MB = b"".join(_bomb_pieces)
+del _bomb_compressor, _bomb_chunk, _bomb_pieces
+
+
+class _OneShotStream(httpx.AsyncByteStream):
+    """Yields ``data`` as a single chunk: the worst case for how much raw/compressed data a
+    single read off the wire can hand the decoder in one call. A real local HTTP server's actual
+    read sizes for a body this size (~500 KB) vary with the machine and the moment it runs --
+    one trial here measured a ~354 MB spike on the unfixed code, a second with a smaller
+    ``max_bytes`` measured only ~84 MB, comfortably under this task's 200 MB budget even though
+    the code was identically vulnerable both times. That is not a reliable way to prove a memory
+    bound; forcing the single-worst-case shape deterministically, bypassing the real socket
+    entirely via ``httpx.MockTransport``, removes the variance from what these tests prove."""
+
+    def __init__(self, data: bytes) -> None:
+        self._data = data
+
+    async def __aiter__(self) -> AsyncIterator[bytes]:
+        yield self._data
+
+    async def aclose(self) -> None:
+        return None
+
+
+def _gzip_bomb_transport(content_type: str) -> httpx.MockTransport:
+    def handle(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-type": content_type, "content-encoding": "gzip"},
+            stream=_OneShotStream(GZIP_BOMB_512MB),
+        )
+
+    return httpx.MockTransport(handle)
+
+
+async def test_gzip_bomb_article_body_is_capped_without_memory_blowup() -> None:
+    """A feed-supplied article link whose server answers with a gzip-encoded body that
+    decompresses to ~512 MB, delivered as one single read off the wire (the worst case), must
+    still return ``None`` from ``article_text``, and the 512 MB must never exist in memory at
+    once to get there. Without the ATL-75 fix this fails on the memory assertion even though the
+    function still eventually returns ``None`` -- the bomb already did its damage by the time the
+    cap got to react."""
+
+    async def lying_resolver(_host: str, _port: int) -> Sequence[str]:
+        return [PUBLIC_FAKE_ADDRESS]
+
+    async with httpx.AsyncClient(transport=_gzip_bomb_transport("text/html")) as http:
+        extractor = Extractor(
+            http=http,
+            timeout_seconds=10,
+            max_bytes=2_000_000,
+            resolve_host=lying_resolver,
+            verify_peer=lambda _response, _allowed: True,  # this test is about the body cap
+        )
+        before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        started = time.monotonic()
+        result = await extractor.article_text("http://bomb.example/article", set())
+        elapsed = time.monotonic() - started
+        after = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+
+    assert result is None
+    assert elapsed < 10  # aborted almost immediately, not after decompressing ~512 MB
+    growth = after - before
+    # ru_maxrss is KB on Linux, bytes on macOS; either way the ~512 MB this decompresses to must
+    # never exist in memory at once -- the task's 200 MB budget, in ru_maxrss units.
+    assert growth < 200_000_000, f"resident memory grew {growth} (ru_maxrss units) on a gzip bomb"
+
+
+async def test_read_capped_bounds_a_single_gzip_decode_call() -> None:
+    """Even one compressed read must never decompress to more than a small, fixed amount at once
+    -- proof that the cap is enforced piece by piece as decoding happens, not only once an
+    already-fully-decompressed total is compared against max_bytes (which is what a decoder that
+    collected every bounded piece into a list before returning, rather than yielding them, would
+    still do: the whole thing would already be in memory by the time the list existed). A
+    CollectError alone would not prove this -- the pre-fix code raises the very same error, just
+    after the 512 MB spike has already happened; the memory assertion is what actually tells the
+    two apart, exactly as it does for the ``Extractor.article_text`` case above."""
+    response = httpx.Response(
+        200,
+        headers={"content-type": "application/json", "content-encoding": "gzip"},
+        stream=_OneShotStream(GZIP_BOMB_512MB),
+    )
+    before = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    with pytest.raises(CollectError, match="too large"):
+        await read_capped(response, max_bytes=1_000_000)
+    after = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+    growth = after - before
+    assert growth < 200_000_000, f"resident memory grew {growth} (ru_maxrss units) on a gzip bomb"
+
+
+async def test_a_legitimately_gzip_encoded_body_still_decodes_correctly() -> None:
+    """The flip side of the two tests above: an ordinary, well-behaved gzip-encoded response (not
+    a bomb) must still come out of read_capped fully and correctly decoded. Nothing about reading
+    the wire bytes ourselves and decompressing them a piece at a time, instead of letting httpx's
+    own ``aiter_bytes`` do it in one call, may change what a legitimate response decodes to."""
+    article = b"<html><body><article><p>" + b"word " * 60 + b"</p></article></body></html>"
+    response = httpx.Response(
+        200,
+        headers={"content-type": "text/html; charset=utf-8", "content-encoding": "gzip"},
+        stream=_OneShotStream(gzip.compress(article)),
+    )
+    body = await read_capped(response, max_bytes=1_000_000)
+    assert body == article
+
+
+# ---- ATL-75 round-1 review: a malformed encoded body must raise CollectError, not escape as a
+# bare zlib.error -- and a legitimate raw-deflate body must still decode -----------------------
+
+
+async def test_read_capped_raises_collect_error_on_malformed_gzip_body() -> None:
+    """Garbage bytes under ``Content-Encoding: gzip`` used to raise a bare ``zlib.error`` out of
+    ``read_capped``, which no caller catches (only ``CollectError``/``httpx.HTTPError`` are
+    handled). This must come out as ``CollectError`` instead, exactly like the old
+    httpx.DecodingError (an ``httpx.HTTPError``) path did before ATL-75."""
+    response = httpx.Response(
+        200,
+        headers={"content-type": "application/json", "content-encoding": "gzip"},
+        stream=_OneShotStream(b"not actually gzip data, just garbage bytes" * 10),
+    )
+    with pytest.raises(CollectError, match="could not be decoded"):
+        await read_capped(response, max_bytes=1_000_000)
+
+
+async def test_article_text_returns_none_for_malformed_gzip_body() -> None:
+    """The end-to-end path a feed article hits: a gzip-labelled but non-gzip body must make
+    ``article_text`` return ``None``, the same as any other fetch failure -- not raise and abort
+    the whole poll via ``pipeline.py``'s ``asyncio.gather``."""
+
+    async def lying_resolver(_host: str, _port: int) -> Sequence[str]:
+        return [PUBLIC_FAKE_ADDRESS]
+
+    def handle(_request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/html", "content-encoding": "gzip"},
+            stream=_OneShotStream(b"garbage, not gzip" * 10),
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as http:
+        extractor = Extractor(
+            http=http,
+            timeout_seconds=10,
+            max_bytes=2_000_000,
+            resolve_host=lying_resolver,
+            verify_peer=lambda _response, _allowed: True,
+        )
+        result = await extractor.article_text("http://bad-gzip.example/article", set())
+    assert result is None
+
+
+async def test_read_capped_decodes_a_legitimate_raw_deflate_body() -> None:
+    """Some servers send ``Content-Encoding: deflate`` as raw DEFLATE with no zlib wrapper, which
+    ``httpx``'s own ``DeflateDecoder`` used to fall back to on the first failed decompress.
+    ``_BoundedZlibDecoder`` must retry the same way rather than treating every raw-deflate body as
+    malformed."""
+    article = b"<html><body><article><p>" + b"word " * 60 + b"</p></article></body></html>"
+    raw_deflate = zlib.compressobj(6, zlib.DEFLATED, -zlib.MAX_WBITS)
+    body_bytes = raw_deflate.compress(article) + raw_deflate.flush()
+    response = httpx.Response(
+        200,
+        headers={"content-type": "text/html; charset=utf-8", "content-encoding": "deflate"},
+        stream=_OneShotStream(body_bytes),
+    )
+    body = await read_capped(response, max_bytes=1_000_000)
+    assert body == article
