@@ -676,4 +676,42 @@ return [
         'atr_window' => 14,
         'hour_table_timezone' => 'Asia/Baghdad',
     ],
+    'agents' => [
+        'budget_warning_pct' => '80',
+        'models' => [
+            'strong' => 'opus',
+            'standard' => 'sonnet',
+            'routine' => 'haiku',
+        ],
+        'defaults' => [
+            'enabled' => false,
+            'model' => 'standard',
+            'routine_model' => 'routine',
+            'daily_tokens' => 3000000,
+            'daily_turns' => 300,
+            'max_turns_per_run' => 25,
+        ],
+        'roster' => [
+            'orchestrator' => [],
+            'market_scout' => [
+                'model' => 'strong',
+            ],
+            'news_intelligence' => [
+                'model' => 'strong',
+            ],
+            'historian' => [
+                'model' => 'strong',
+                'enabled' => true,
+            ],
+            'technical_analyst' => [],
+            'derivatives_sentiment' => [],
+            'strategist' => [
+                'model' => 'strong',
+            ],
+            'devils_advocate' => [
+                'model' => 'strong',
+            ],
+            'portfolio_manager' => [],
+        ],
+    ],
 ];
