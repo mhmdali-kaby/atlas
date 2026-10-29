@@ -11,7 +11,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import Numeric, String, Text, UniqueConstraint, Uuid
+from sqlalchemy import BigInteger, Boolean, Numeric, String, Text, UniqueConstraint, Uuid
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -169,3 +169,105 @@ class EquityPoint(_Row, Base):
     ts: Mapped[datetime] = mapped_column(_tz(), primary_key=True)
     total_eq_usd: Mapped[Decimal] = mapped_column(_num())
     upl_usd: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+
+
+# --- Market history (ATL-44): TimescaleDB hypertables on ts, keyed by their natural key ---------
+# No surrogate id: the primary key is the upsert conflict target, e.g.
+# insert(Candle).values(rows).on_conflict_do_update(index_elements=Candle.__table__.primary_key.columns, ...)
+
+
+class Candle(Base):
+    """OHLCV bar. bar is 1m|5m|15m|1H|4H|1D; confirmed is OKX's "bar closed" flag."""
+
+    __tablename__ = "candles"
+
+    env: Mapped[str] = mapped_column(String(255), primary_key=True)
+    inst_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    bar: Mapped[str] = mapped_column(String(255), primary_key=True)
+    ts: Mapped[datetime] = mapped_column(_tz(), primary_key=True)
+    o: Mapped[Decimal] = mapped_column(_num())
+    h: Mapped[Decimal] = mapped_column(_num())
+    l: Mapped[Decimal] = mapped_column(_num())  # noqa: E741 - OHLC column name
+    c: Mapped[Decimal] = mapped_column(_num())
+    vol: Mapped[Decimal] = mapped_column(_num())
+    vol_ccy: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    vol_ccy_quote: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    confirmed: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class FundingRate(Base):
+    __tablename__ = "funding_rates"
+
+    env: Mapped[str] = mapped_column(String(255), primary_key=True)
+    inst_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    ts: Mapped[datetime] = mapped_column(_tz(), primary_key=True)
+    funding_rate: Mapped[Decimal] = mapped_column(_num())
+    realized_rate: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+
+
+class OpenInterest(Base):
+    """inst_id is an OKX instId, or a bare ccy (no '-') for currency-level rubik series."""
+
+    __tablename__ = "open_interest"
+
+    env: Mapped[str] = mapped_column(String(255), primary_key=True)
+    inst_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    ts: Mapped[datetime] = mapped_column(_tz(), primary_key=True)
+    oi: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    oi_ccy: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    oi_usd: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+
+
+class LongShortRatio(Base):
+    """period is OKX rubik's 5m|1H|1D."""
+
+    __tablename__ = "long_short_ratio"
+
+    env: Mapped[str] = mapped_column(String(255), primary_key=True)
+    ccy: Mapped[str] = mapped_column(String(32), primary_key=True)
+    period: Mapped[str] = mapped_column(String(255), primary_key=True)
+    ts: Mapped[datetime] = mapped_column(_tz(), primary_key=True)
+    ratio: Mapped[Decimal] = mapped_column(_num())
+
+
+class TakerVolume(Base):
+    __tablename__ = "taker_volume"
+
+    env: Mapped[str] = mapped_column(String(255), primary_key=True)
+    ccy: Mapped[str] = mapped_column(String(32), primary_key=True)
+    period: Mapped[str] = mapped_column(String(255), primary_key=True)
+    ts: Mapped[datetime] = mapped_column(_tz(), primary_key=True)
+    buy_vol: Mapped[Decimal] = mapped_column(_num())
+    sell_vol: Mapped[Decimal] = mapped_column(_num())
+
+
+class BackfillJob(_Row, Base):
+    """One resumable backfill per (env, inst_id, dataset). dataset is candles:<bar> | funding |
+    open_interest | long_short_ratio | taker_volume; status is pending|running|done|failed|paused."""
+
+    __tablename__ = "backfill_jobs"
+    __table_args__ = (UniqueConstraint("env", "inst_id", "dataset"),)
+
+    inst_id: Mapped[str] = mapped_column(String(64))
+    dataset: Mapped[str] = mapped_column(String(255))
+    target_from: Mapped[datetime] = mapped_column(_tz())
+    cursor_ts: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
+    rows_written: Mapped[int] = mapped_column(BigInteger, default=0)
+    status: Mapped[str] = mapped_column(String(255), default="pending")
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class DataQualityIssue(_Row, Base):
+    """kind is gap|duplicate|zero_volume|outlier; repaired_at stays null until repaired from REST."""
+
+    __tablename__ = "data_quality_issues"
+    __table_args__ = (UniqueConstraint("env", "inst_id", "dataset", "kind", "from_ts"),)
+
+    inst_id: Mapped[str] = mapped_column(String(64))
+    dataset: Mapped[str] = mapped_column(String(255))
+    kind: Mapped[str] = mapped_column(String(255))
+    from_ts: Mapped[datetime] = mapped_column(_tz())
+    to_ts: Mapped[datetime] = mapped_column(_tz())
+    detail: Mapped[Any | None] = mapped_column(JSONB, nullable=True)
+    detected_at: Mapped[datetime] = mapped_column(_tz())
+    repaired_at: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)

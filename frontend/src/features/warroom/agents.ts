@@ -50,3 +50,10 @@ export function agentByHandle(handle: string): AgentDef | undefined {
 export function agentStatus(_slug: string): AgentStatus {
   return 'offline'
 }
+
+/** Agents whose handle starts with the query, or whose name contains it (case-insensitive). */
+export function filterAgents(query: string, nameOf: (a: AgentDef) => string): AgentDef[] {
+  const q = query.toLowerCase()
+  if (!q) return [...AGENTS]
+  return AGENTS.filter((a) => a.handle.toLowerCase().startsWith(q) || nameOf(a).toLowerCase().includes(q))
+}
