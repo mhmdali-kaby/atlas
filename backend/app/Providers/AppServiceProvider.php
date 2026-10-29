@@ -44,5 +44,14 @@ class AppServiceProvider extends ServiceProvider
                     ->by($name.'|'.($user !== null ? (string) $user->getAuthIdentifier() : $request->ip()));
             });
         }
+
+        // ATL-66: Settings → Data sources writes (toggle, poll interval, set/remove key), per user.
+        RateLimiter::for('data-sources-write', function (Request $request): Limit {
+            $perMinute = config('atlas_defaults.data_sources_api.writes_per_minute');
+            $user = $request->user();
+
+            return Limit::perMinute(is_int($perMinute) ? $perMinute : 20)
+                ->by('data-sources-write|'.($user !== null ? (string) $user->getAuthIdentifier() : $request->ip()));
+        });
     }
 }
