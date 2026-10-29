@@ -127,5 +127,5 @@ No key value or last 4 ever goes into audit.
 ## Two-minute version
 
 The frontend never needs to compute status — use `status` and `summary`. To check "is this key working",
-wait for the next poll: after PUT the source is `never_run` until ingest's next run sets `last_success_at`
-or `last_error`. There is no "test key" endpoint; that was not in scope.
+wait for the next poll: after PUT the failure columns are cleared, so watch `last_error` and `last_success_at` after ingest's next run (a source that never succeeded shows `never_run` until then)
+There is no "test key" endpoint; that was not in scope.
