@@ -182,4 +182,4 @@ def test_config_dir_override(tmp_path: pytest.TempPathFactory, monkeypatch: pyte
 
 
 def test_curly_apostrophe_negation() -> None:
-    assert headline_sentiment("Bitcoin doesn’t fall") > 0
+    assert headline_sentiment(f"Bitcoin doesn{chr(0x2019)}t fall") > 0
