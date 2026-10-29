@@ -1,5 +1,8 @@
 """ATL-61: ForexFactory / Finnhub economic calendar, Finnhub earnings and Fear & Greed collectors.
 
+ATL-72: the Finnhub calendar and earnings collectors also raise ATL-60's ``RateLimited`` on a 429,
+like finnhub.news.
+
 DB tests run against this checkout's test DB (atlas_shared.testing), migrated by
 `cd backend && php artisan test`. Provider responses (tests/fixtures/calendar) are written from the
 providers' documented shapes (no network at build time) and served by respx.
@@ -10,7 +13,9 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import io
 import json
+import logging
 import os
 import uuid
 from collections.abc import Iterator
@@ -26,10 +31,12 @@ from atlas_ingest import calendar as cal
 from atlas_ingest.collectors import discover, factory_for
 from atlas_ingest.collectors.forexfactory import parse_week
 from atlas_ingest.extract import Extractor
+from atlas_ingest.logs import configure_logging
 from atlas_ingest.pipeline import Pipeline
 from atlas_ingest.runner import IngestRunner, RunnerConfig
 from atlas_shared import testing
 from atlas_shared.db import EarningsEvent, EconomicEvent, Instrument, MarketSentiment, NewsSource, make_engine
+from atlas_shared.defaults import DEFAULTS
 from atlas_shared.laravel_crypt import parse_app_key
 from cryptography.hazmat.primitives import padding
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -443,6 +450,133 @@ def test_earnings_upsert_with_duplicate_keys_in_one_batch(clean: Engine) -> None
     assert cal.upsert_earnings(clean, batch, now) == 1
     assert cal.upsert_earnings(clean, batch, now) == 0
     assert count(clean, EarningsEvent) == 1
+
+
+# ---- ATL-72: Finnhub calendar/earnings back off on a 429 like finnhub.news ----------------------
+
+
+@pytest.mark.parametrize(("retry_after", "window"), [(None, 60), ("120", 120)])
+async def test_finnhub_calendar_429_waits_the_provider_window(
+    clean: Engine, retry_after: str | None, window: int
+) -> None:
+    # poll_seconds shorter than the window, so only the 429 handling can delay the next poll.
+    add_source(
+        clean,
+        "finnhub.calendar",
+        "calendar",
+        FINNHUB_CAL_URL,
+        api_key=laravel_encrypt(FINNHUB_KEY),
+        poll_seconds=10,
+    )
+    start = datetime(2026, 10, 29, 6, 0, tzinfo=UTC)
+    clock = FakeClock(start)
+    headers = {"Retry-After": retry_after} if retry_after else {}
+    async with httpx.AsyncClient() as http:
+        runner = make_runner(clean, http, clock)
+        with respx.mock(assert_all_called=False) as router:
+            route = router.get(FINNHUB_CAL_URL).mock(
+                side_effect=[httpx.Response(429, headers=headers, json={"error": "limit reached"})]
+                + [json_response({"economicCalendar": []})] * 5
+            )
+            assert await runner.tick() == ["finnhub.calendar"]
+            row = source_row(clean, "finnhub.calendar")
+            assert row.consecutive_failures == 1
+            assert row.last_error == "rate limited (HTTP 429)"
+            assert row.disabled_until is None
+
+            for elapsed in (10, 30, window - 1):
+                clock.set(start + timedelta(seconds=elapsed))
+                assert await runner.tick() == [], f"polled again after {elapsed}s"
+            assert route.call_count == 1
+
+            clock.set(start + timedelta(seconds=window))
+            assert await runner.tick() == ["finnhub.calendar"]
+    assert route.call_count == 2
+    assert source_row(clean, "finnhub.calendar").consecutive_failures == 0
+    assert count(clean, EconomicEvent) == 0  # the 429'd poll wrote nothing
+
+
+@pytest.mark.parametrize(("retry_after", "window"), [(None, 60), ("120", 120)])
+async def test_finnhub_earnings_429_waits_the_provider_window(
+    clean: Engine, retry_after: str | None, window: int
+) -> None:
+    add_instruments(clean, STOCKS)  # otherwise collect() returns [] before any request
+    add_source(
+        clean,
+        "finnhub.earnings",
+        "earnings",
+        FINNHUB_EARN_URL,
+        api_key=laravel_encrypt(FINNHUB_KEY),
+        poll_seconds=10,
+    )
+    start = datetime(2026, 10, 29, 6, 0, tzinfo=UTC)
+    clock = FakeClock(start)
+    headers = {"Retry-After": retry_after} if retry_after else {}
+    async with httpx.AsyncClient() as http:
+        runner = make_runner(clean, http, clock)
+        with respx.mock(assert_all_called=False) as router:
+            route = router.get(FINNHUB_EARN_URL).mock(
+                side_effect=[httpx.Response(429, headers=headers, json={"error": "limit reached"})]
+                + [json_response({"earningsCalendar": []})] * 5
+            )
+            assert await runner.tick() == ["finnhub.earnings"]
+            row = source_row(clean, "finnhub.earnings")
+            assert row.consecutive_failures == 1
+            assert row.last_error == "rate limited (HTTP 429)"
+            assert row.disabled_until is None
+
+            for elapsed in (10, 30, window - 1):
+                clock.set(start + timedelta(seconds=elapsed))
+                assert await runner.tick() == [], f"polled again after {elapsed}s"
+            assert route.call_count == 1
+
+            clock.set(start + timedelta(seconds=window))
+            assert await runner.tick() == ["finnhub.earnings"]
+    assert route.call_count == 2
+    assert source_row(clean, "finnhub.earnings").consecutive_failures == 0
+    assert count(clean, EarningsEvent) == 0  # the 429'd poll wrote nothing
+
+
+def test_finnhub_calendar_429_default_matches_finnhub_news(clean: Engine) -> None:
+    # AC3: no Retry-After header uses the same default as ATL-60's finnhub.news collector.
+    assert float(DEFAULTS["news"]["collectors"]["finnhub"]["rate_limit_window_seconds"]) == 60.0
+
+
+async def test_finnhub_calendar_and_earnings_429_never_leak_the_key(clean: Engine) -> None:
+    add_instruments(clean, STOCKS)
+    secret = "fh-SECRET-9f21ab"  # noqa: S105 - a fake key
+    add_source(clean, "finnhub.calendar", "calendar", FINNHUB_CAL_URL, api_key=laravel_encrypt(secret))
+    add_source(clean, "finnhub.earnings", "earnings", FINNHUB_EARN_URL, api_key=laravel_encrypt(secret))
+    stream = io.StringIO()
+    root = logging.getLogger()
+    saved = (list(root.handlers), root.level)
+    configure_logging(logging.DEBUG, stream=stream)  # the process's real logging setup
+    clock = FakeClock(datetime(2026, 10, 29, 6, 0, tzinfo=UTC))
+    try:
+        async with httpx.AsyncClient() as http:
+            runner = make_runner(clean, http, clock)
+            with respx.mock(assert_all_called=False) as router:
+                cal_route = router.get(FINNHUB_CAL_URL).mock(
+                    return_value=httpx.Response(429, json={"error": f"limit for {secret}"})
+                )
+                earn_route = router.get(FINNHUB_EARN_URL).mock(
+                    return_value=httpx.Response(429, json={"error": f"limit for {secret}"})
+                )
+                ran = await runner.tick()
+        assert sorted(ran) == ["finnhub.calendar", "finnhub.earnings"]
+        assert cal_route.call_count == 1 and earn_route.call_count == 1
+    finally:
+        root.handlers = saved[0]
+        root.setLevel(saved[1])
+
+    output = stream.getvalue()
+    assert "poll failed" in output
+    assert secret not in output
+    for key in ("finnhub.calendar", "finnhub.earnings"):
+        row = source_row(clean, key)
+        assert row.last_error == "rate limited (HTTP 429)"
+        assert secret not in (row.last_error or "")
+        assert row.consecutive_failures == 1
 
 
 # ---- Fear & Greed ------------------------------------------------------------------------------
