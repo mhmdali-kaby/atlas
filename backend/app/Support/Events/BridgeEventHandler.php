@@ -7,6 +7,7 @@ namespace App\Support\Events;
 use App\Http\Resources\WarroomMessageResource;
 use App\Models\WarroomMessage;
 use App\Models\WarroomThread;
+use App\Support\Warroom\MentionParser;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Broadcast;
@@ -136,6 +137,8 @@ final class BridgeEventHandler
             'cost_usd' => ['nullable', 'string', 'regex:/^\d{1,12}(\.\d{1,6})?$/'],
         ], 'payload');
 
+        $this->authoriseSource($envelope['source'], $payload['author_type'], $payload['author']);
+
         $env = $envelope['env'];
         $thread = $this->thread($env, $payload);
 
@@ -178,6 +181,38 @@ final class BridgeEventHandler
 
         // Read it back so card keys come out in jsonb order, as the API returns them.
         return $message->refresh();
+    }
+
+    /**
+     * `author_type: human` is only ever written by `WarroomController::store`, which inserts the
+     * row itself before publishing, so a genuine owner message is always caught by the dedupe
+     * check above and never reaches here. Anything that says `human` here was never stored by
+     * the API, i.e. it is a forgery (security round 4, ATL-51): reject it. An `agent` or `system`
+     * envelope must also say who it claims to be: `source` is `agent:<slug>` with `author` equal
+     * to that slug, for a slug in `MentionParser::directory()`, or `system:<name>`.
+     */
+    private function authoriseSource(string $source, string $authorType, string $author): void
+    {
+        if ($authorType === 'human') {
+            throw new MalformedEvent('payload.author_type "human" is written only by the owner\'s own messages');
+        }
+
+        if ($authorType === 'agent') {
+            if (
+                preg_match('/^agent:([a-z0-9_]+)$/', $source, $matches) !== 1
+                || $matches[1] !== $author
+                || ! in_array($matches[1], MentionParser::agents(), true)
+            ) {
+                throw new MalformedEvent('source does not match payload.author for an agent message');
+            }
+
+            return;
+        }
+
+        // $authorType === 'system' (the only value left in WarroomMessage::AUTHOR_TYPES).
+        if (preg_match('/^system:[a-z0-9_]+$/', $source) !== 1) {
+            throw new MalformedEvent('source is not a system source for a system message');
+        }
     }
 
     /**

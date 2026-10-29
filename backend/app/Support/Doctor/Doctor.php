@@ -25,6 +25,8 @@ final class Doctor
 
     private const WITHDRAW = 'withdraw';
 
+    private const MIN_REVERB_SECRET_LENGTH = 32;
+
     private bool $databaseUp = false;
 
     private bool $tradingCoreUp = false;
@@ -58,6 +60,7 @@ final class Doctor
             $this->withdrawPermission(),
             $this->diskSpace(),
             $this->security(),
+            $this->reverbSecret(),
             $this->backup(),
         ];
     }
@@ -316,6 +319,27 @@ final class Doctor
     {
         // The Backup feature (brief §14.12) does not exist yet: a warning, never a failure.
         return CheckResult::warn('backup', self::t('backup_not_configured'));
+    }
+
+    /**
+     * ATL-50 (security round 4, finding 1): an empty or short REVERB_APP_SECRET lets anyone compute
+     * valid private-channel auth with HMAC(key=""), reading the War Room and account streams and
+     * injecting fake messages. `./atlas up` generates one on first run; this only reports the truth.
+     */
+    private function reverbSecret(): CheckResult
+    {
+        $secret = (string) config('reverb.apps.apps.0.secret');
+        if ($secret === '') {
+            return CheckResult::fail('reverb_secret', self::t('reverb_secret_missing'));
+        }
+        $length = mb_strlen($secret);
+        if ($length < self::MIN_REVERB_SECRET_LENGTH) {
+            return CheckResult::fail('reverb_secret', self::t('reverb_secret_short', [
+                'length' => $length, 'min' => self::MIN_REVERB_SECRET_LENGTH,
+            ]));
+        }
+
+        return CheckResult::pass('reverb_secret', self::t('reverb_secret_ok', ['length' => $length]));
     }
 
     /**

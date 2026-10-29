@@ -91,3 +91,12 @@ def test_demo_message_as_an_agent() -> None:
     assert envelope.source == "agent:historian"
     assert envelope.payload["author_type"] == "agent"
     assert envelope.payload["author"] == "historian"
+
+
+def test_bus_refuses_to_build_a_human_warroom_message() -> None:
+    """ATL-51: only WarroomController::store writes author_type "human"; atlas_shared.bus never
+    should, so nothing on the Python side can be steered (e.g. by prompt injection) into building
+    one.
+    """
+    with pytest.raises(ValueError, match='author_type="human"'):
+        bus._warroom_message_payload(author_type="human", author="owner", content_md="hi")
