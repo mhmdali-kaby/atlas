@@ -286,3 +286,30 @@ data_api:
   pause_per_minute: 5
   repaired_issue_days: 7
   quality_issue_limit: 500
+
+# ATL-57: news and calendar ingest (brief §7.2, decision #243). kind = transport
+# (rss|api|calendar|earnings|sentiment); category = topic the UI groups by (exchange|crypto_news|
+# markets_news|calendar|earnings|sentiment). NewsSourcesSeeder inserts one
+# news_sources row per entry in `sources` (insert-only: an owner's later edits are kept).
+# poll_seconds follow the brief §7.2 table: exchange 2 min, news 2-5 min, calendar 15 min,
+# earnings daily, sentiment 15-60 min. A source that fails `failure_threshold` times in a row is
+# disabled for `disable_minutes` (status degraded); a requires_key source with no key is needs_key.
+# URLs were not re-checked against the live feeds (no network at build time): re-verify when the
+# collectors are recorded on a networked run.
+news:
+  failure_threshold: 3
+  disable_minutes: 30
+  sources:
+    okx.announcements: { kind: api, category: exchange, name: OKX announcements, url: "https://www.okx.com/api/v5/support/announcements", poll_seconds: 120, requires_key: false }
+    cryptopanic: { kind: api, category: crypto_news, name: CryptoPanic, url: "https://cryptopanic.com/api/v1/posts/", poll_seconds: 180, requires_key: true }
+    rss.coindesk: { kind: rss, category: crypto_news, name: CoinDesk, url: "https://www.coindesk.com/arc/outboundfeeds/rss/", poll_seconds: 180, requires_key: false }
+    rss.cointelegraph: { kind: rss, category: crypto_news, name: Cointelegraph, url: "https://cointelegraph.com/rss", poll_seconds: 180, requires_key: false }
+    rss.theblock: { kind: rss, category: crypto_news, name: The Block, url: "https://www.theblock.co/rss.xml", poll_seconds: 300, requires_key: false }
+    rss.decrypt: { kind: rss, category: crypto_news, name: Decrypt, url: "https://decrypt.co/feed", poll_seconds: 300, requires_key: false }
+    rss.cnbc: { kind: rss, category: markets_news, name: CNBC Top News, url: "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114", poll_seconds: 180, requires_key: false }
+    rss.marketwatch: { kind: rss, category: markets_news, name: MarketWatch Top Stories, url: "https://feeds.content.dowjones.io/public/rss/mw_topstories", poll_seconds: 180, requires_key: false }
+    finnhub.news: { kind: api, category: markets_news, name: Finnhub news, url: "https://finnhub.io/api/v1/news", poll_seconds: 180, requires_key: true }
+    finnhub.calendar: { kind: calendar, category: calendar, name: Finnhub economic calendar, url: "https://finnhub.io/api/v1/calendar/economic", poll_seconds: 900, requires_key: true }
+    finnhub.earnings: { kind: earnings, category: earnings, name: Finnhub earnings calendar, url: "https://finnhub.io/api/v1/calendar/earnings", poll_seconds: 86400, requires_key: true }
+    forexfactory.calendar: { kind: calendar, category: calendar, name: ForexFactory weekly calendar, url: "https://nfs.faireconomy.media/ff_calendar_thisweek.json", poll_seconds: 900, requires_key: false }
+    alternative_me.fng: { kind: sentiment, category: sentiment, name: Crypto Fear & Greed Index, url: "https://api.alternative.me/fng/", poll_seconds: 3600, requires_key: false }

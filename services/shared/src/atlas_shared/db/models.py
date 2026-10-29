@@ -7,13 +7,30 @@ the row's own ``ccy`` (or contracts/coins for ``pos``, as OKX reports it).
 """
 
 import uuid
-from datetime import datetime
+from collections.abc import Callable, Sequence
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import BigInteger, Boolean, Numeric, String, Text, UniqueConstraint, Uuid
-from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Computed,
+    Date,
+    Dialect,
+    ForeignKey,
+    Integer,
+    Numeric,
+    SmallInteger,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+)
+from sqlalchemy.dialects.postgresql import ARRAY, BYTEA, JSONB, TIMESTAMP
+from sqlalchemy.dialects.postgresql.base import ischema_names
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.types import UserDefinedType
 
 
 def _num() -> Numeric[Decimal]:
@@ -23,6 +40,50 @@ def _num() -> Numeric[Decimal]:
 def _tz() -> TIMESTAMP:
     """timestamptz(6): Laravel timestampTz(..., 6), always UTC."""
     return TIMESTAMP(timezone=True, precision=6)
+
+
+class Vector(UserDefinedType[list[float]]):
+    """pgvector ``vector(n)``. Binds a sequence of floats as the ``[a,b,…]`` text literal and reads
+    it back as ``list[float]``. Embeddings are similarity features, not money, so floats are right."""
+
+    cache_ok = True
+
+    def __init__(self, dim: int | None = None) -> None:
+        self.dim = dim
+
+    def get_col_spec(self, **kw: Any) -> str:
+        return "VECTOR" if self.dim is None else f"VECTOR({self.dim})"
+
+    def bind_processor(self, dialect: Dialect) -> Callable[[Sequence[float] | None], str | None]:
+        dim = self.dim
+
+        def process(value: Sequence[float] | None) -> str | None:
+            if value is None:
+                return None
+            if dim is not None and len(value) != dim:
+                raise ValueError(f"expected {dim} dimensions, got {len(value)}")
+            return "[" + ",".join(repr(float(v)) for v in value) + "]"
+
+        return process
+
+    def result_processor(
+        self, dialect: Dialect, coltype: object
+    ) -> Callable[[str | None], list[float] | None]:
+        def process(value: str | None) -> list[float] | None:
+            if value is None:
+                return None
+            inner = value.strip()[1:-1]
+            return [float(v) for v in inner.split(",")] if inner else []
+
+        return process
+
+
+# Lets inspect() reflect `vector(384)` columns as Vector(384) (schema drift test).
+ischema_names["vector"] = Vector
+
+
+def _text_array() -> ARRAY[str]:
+    return ARRAY(Text)
 
 
 class Base(DeclarativeBase):
@@ -271,3 +332,142 @@ class DataQualityIssue(_Row, Base):
     detail: Mapped[Any | None] = mapped_column(JSONB, nullable=True)
     detected_at: Mapped[datetime] = mapped_column(_tz())
     repaired_at: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
+
+
+class _Stamped:
+    """UUID id plus Laravel timestampsTz(6), for tables without an env column."""
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    created_at: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
+    updated_at: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
+
+
+class NewsSource(_Stamped, Base):
+    """One ingest source (ATL-57, decision #243). kind is the transport (rss|api|calendar|earnings|sentiment);
+    category is the topic (exchange|crypto_news|markets_news|calendar|earnings|sentiment).
+    api_key is Laravel ``encrypted``-cast ciphertext: decrypt with atlas_shared.laravel_crypt and
+    never log it. Ingest writes only the health columns (failures, disabled_until, last_*)."""
+
+    __tablename__ = "news_sources"
+    __table_args__ = (UniqueConstraint("key"),)
+
+    key: Mapped[str] = mapped_column(String(64))
+    kind: Mapped[str] = mapped_column(String(255))
+    category: Mapped[str] = mapped_column(String(255))
+    name: Mapped[str] = mapped_column(String(100))
+    url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    poll_seconds: Mapped[int] = mapped_column(Integer)
+    requires_key: Mapped[bool] = mapped_column(Boolean, default=False)
+    api_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    consecutive_failures: Mapped[int] = mapped_column(Integer, default=0)
+    disabled_until: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
+    last_success_at: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
+    last_item_at: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+
+class NewsCluster(_Stamped, Base):
+    """One story told by many sources; first_seen is the earliest item's published_at."""
+
+    __tablename__ = "news_clusters"
+
+    headline: Mapped[str] = mapped_column(Text)
+    first_seen: Mapped[datetime] = mapped_column(_tz())
+    last_seen: Mapped[datetime] = mapped_column(_tz())
+    item_count: Mapped[int] = mapped_column(Integer, default=0)
+    max_importance: Mapped[int] = mapped_column(SmallInteger, default=1)
+    instruments: Mapped[list[str]] = mapped_column(_text_array(), default=list)
+
+
+class NewsItem(_Stamped, Base):
+    """One fetched article (brief §5). Deduplicated on canonical_url_hash, a generated
+    sha256(canonical_url): write with ``ON CONFLICT (canonical_url_hash)``, never set it.
+    event_type is one of the brief §7.2 types; importance 1-5 and sentiment -1..1 are CHECKed."""
+
+    __tablename__ = "news_items"
+    __table_args__ = (UniqueConstraint("canonical_url_hash"),)
+
+    source: Mapped[str] = mapped_column(String(64))
+    url: Mapped[str] = mapped_column(Text)
+    canonical_url: Mapped[str] = mapped_column(Text)
+    canonical_url_hash: Mapped[bytes | None] = mapped_column(
+        BYTEA, Computed("atlas_sha256_text(canonical_url)", persisted=True), nullable=True
+    )
+    title: Mapped[str] = mapped_column(Text)
+    title_original: Mapped[str | None] = mapped_column(Text, nullable=True)
+    summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    body: Mapped[str | None] = mapped_column(Text, nullable=True)
+    published_at: Mapped[datetime] = mapped_column(_tz())
+    fetched_at: Mapped[datetime] = mapped_column(_tz())
+    language: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    entities: Mapped[Any | None] = mapped_column(JSONB, nullable=True)
+    instruments: Mapped[list[str]] = mapped_column(_text_array(), default=list)
+    asset_classes: Mapped[list[str]] = mapped_column(_text_array(), default=list)
+    event_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    sentiment: Mapped[Decimal | None] = mapped_column(Numeric(6, 4, asdecimal=True), nullable=True)
+    importance: Mapped[int] = mapped_column(SmallInteger, default=1)
+    novelty: Mapped[Decimal | None] = mapped_column(Numeric(6, 4, asdecimal=True), nullable=True)
+    cluster_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("news_clusters.id", ondelete="SET NULL"), nullable=True
+    )
+    embedding: Mapped[list[float] | None] = mapped_column(Vector(384), nullable=True)
+    raw: Mapped[Any | None] = mapped_column(JSONB, nullable=True)
+
+
+class EconomicEvent(_Stamped, Base):
+    """Scheduled macro release. actual/forecast/previous are kept as published ("3.2%", "245K")."""
+
+    __tablename__ = "economic_events"
+    __table_args__ = (UniqueConstraint("source", "external_id"),)
+
+    source: Mapped[str] = mapped_column(String(64))
+    external_id: Mapped[str] = mapped_column(String(191))
+    country: Mapped[str] = mapped_column(String(16))
+    name: Mapped[str] = mapped_column(String(255))
+    importance: Mapped[int] = mapped_column(SmallInteger, default=1)
+    scheduled_at: Mapped[datetime] = mapped_column(_tz())
+    actual: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    forecast: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    previous: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    surprise: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+
+
+class EarningsEvent(_Stamped, Base):
+    """time is Finnhub's hour field: bmo | amc | dmh | empty."""
+
+    __tablename__ = "earnings_events"
+    __table_args__ = (UniqueConstraint("symbol", "date"),)
+
+    symbol: Mapped[str] = mapped_column(String(32))
+    date: Mapped[date] = mapped_column(Date)
+    time: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    eps_est: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    eps_act: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    rev_est: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    rev_act: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+
+
+class MarketSentiment(_Stamped, Base):
+    """A market-wide sentiment reading, e.g. index_key crypto_fng (Alternative.me, 0-100)."""
+
+    __tablename__ = "market_sentiment"
+    __table_args__ = (UniqueConstraint("index_key", "ts"),)
+
+    index_key: Mapped[str] = mapped_column(String(64))
+    value: Mapped[Decimal] = mapped_column(_num())
+    classification: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    ts: Mapped[datetime] = mapped_column(_tz())
+
+
+class InstrumentAlias(_Stamped, Base):
+    """Entity-linking alias. target_kind is instrument_family (e.g. BTC-USDT) | asset_class."""
+
+    __tablename__ = "instrument_aliases"
+    __table_args__ = (UniqueConstraint("alias_normalized", "target"),)
+
+    alias: Mapped[str] = mapped_column(String(191))
+    alias_normalized: Mapped[str] = mapped_column(String(191))
+    target_kind: Mapped[str] = mapped_column(String(255))
+    target: Mapped[str] = mapped_column(String(64))
+    priority: Mapped[int] = mapped_column(SmallInteger, default=0)
