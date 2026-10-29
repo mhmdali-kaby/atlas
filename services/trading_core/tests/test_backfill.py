@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import time
 import uuid
 from collections.abc import Iterator
@@ -583,3 +584,33 @@ async def test_full_fixture_run_over_three_instruments(
         assert conn.execute(
             select(func.count()).select_from(OpenInterest).where(OpenInterest.env == ENV)
         ).scalar()
+
+
+# ---- logging at INFO (QA round 1: `created` is a reserved LogRecord attribute) -----------------
+
+
+def test_start_and_pause_answer_202_with_info_logging(
+    clean: Engine, caplog: pytest.LogCaptureFixture
+) -> None:
+    universe(clean)
+    client = app_client(clean)
+    with caplog.at_level(logging.INFO, logger="trading_core"):
+        start = post(client, "/internal/backfill/start", {"env": ENV})
+        pause = post(client, "/internal/backfill/pause", {"env": ENV})
+    assert start.status_code == 202, start.text
+    assert pause.status_code == 202, pause.text
+    started = next(r for r in caplog.records if r.getMessage() == "backfill start requested")
+    assert started.jobs_created == start.json()["created"]
+    assert any(r.getMessage() == "backfill pause requested" for r in caplog.records)
+
+
+@respx.mock(base_url=BASE, assert_all_called=False)
+async def test_runner_logs_at_info_without_crashing(
+    respx_mock: respx.MockRouter, clean: Engine, caplog: pytest.LogCaptureFixture
+) -> None:
+    respx_mock.get("/api/v5/market/history-candles").mock(return_value=httpx.Response(500, text="down"))
+    job_id = add_job(clean, "BTC-USDT-SWAP", "candles:1H", NOW - timedelta(days=730))
+    with caplog.at_level(logging.INFO, logger="trading_core"):
+        await BackfillRunner(ENV, clean, client_factory=factory()).run()
+    assert job_row(clean, job_id).status == "failed"
+    assert any(r.getMessage() == "backfill job failed" for r in caplog.records)

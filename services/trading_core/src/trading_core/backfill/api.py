@@ -82,7 +82,18 @@ async def start_backfill(request: Request) -> JSONResponse:
         )
     scheduler: Scheduler = request.app.state.scheduler
     started = scheduler.trigger(STREAM) if STREAM in scheduler.jobs else False
-    logger.info("backfill start requested", extra={"env": env, "inst_id": inst_id, **result.as_dict()})
+    # Explicit keys: `created` (and name, msg, module...) are reserved LogRecord attributes.
+    logger.info(
+        "backfill start requested",
+        extra={
+            "env": env,
+            "inst_id": inst_id,
+            "instruments": result.instruments,
+            "jobs_created": result.created,
+            "jobs_resumed": result.resumed,
+            "started": started,
+        },
+    )
     return JSONResponse(
         status_code=202, content={"ok": True, **result.as_dict(), "inst_id": inst_id, "started": started}
     )
