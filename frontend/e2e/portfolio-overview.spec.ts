@@ -117,7 +117,7 @@ async function open(page: Page, lang: 'en' | 'ar', theme: 'light' | 'dark') {
     [lang, theme] as const,
   )
   await page.emulateMedia({ reducedMotion: 'reduce' })
-  await page.goto('/')
+  await page.goto('/portfolio')
   await expect(page).toHaveURL(/\/portfolio$/)
   await expect(page.getByTestId('hero-equity')).toBeVisible()
   await expect(page.locator('[data-testid=equity-chart] .recharts-area-curve')).toBeVisible()

@@ -240,9 +240,7 @@ describe('Portfolio Overview', () => {
     expect(document.body.textContent).not.toMatch(/[٠-٩۰-۹]/)
   })
 
-  it('sends a signed-in owner at "/" to /portfolio', async () => {
-    fakeBackend()
-    const router = renderOverview('/')
-    await waitFor(() => expect(router.state.location.pathname).toBe('/portfolio'))
+  it('leaves "/" to the shell, which opens the War Room (design v4 War Room §3)', () => {
+    expect(portfolio.routes.some((r) => r.index)).toBe(false)
   })
 })

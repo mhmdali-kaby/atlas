@@ -121,10 +121,13 @@ export function AppShell({ shell = registeredShell }: { shell?: ShellRegistry })
   )
 }
 
-/** Signed in at "/": open the first page a feature registered. */
+/**
+ * Signed in at "/": open the first area (the War Room once it is registered, design v4 §3),
+ * at its first page.
+ */
 export function HomeRedirect({ shell = registeredShell }: { shell?: ShellRegistry }) {
-  const first = shell.navEntries[0]
-  return first ? <Navigate to={first.path} replace /> : <NotFound />
+  const first = shell.areas[0]
+  return first ? <Navigate to={areaHome(shell, first.id)} replace /> : <NotFound />
 }
 
 /** Design §8 empty state for a URL no feature serves (yet). */

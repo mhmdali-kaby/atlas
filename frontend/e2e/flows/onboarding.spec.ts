@@ -79,6 +79,7 @@ test('a new owner goes from Welcome to Portfolio through Connect, Risk and Auton
   // Settings → Risk shows the saved profile, and onboarding no longer reopens.
   await page.goto('/settings/risk')
   await expect(page.getByRole('radiogroup', { name: 'Risk profile' }).getByRole('radio', { name: 'Conservative' })).toHaveAttribute('aria-checked', 'true')
+  // Once onboarded, "/" opens the War Room (design v4 War Room §3).
   await page.goto('/')
-  await expect(page).toHaveURL(/\/portfolio$/)
+  await expect(page).toHaveURL(/\/warroom$/)
 })

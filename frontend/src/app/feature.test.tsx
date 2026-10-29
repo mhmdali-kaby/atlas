@@ -32,17 +32,19 @@ const fakePortfolioExtra: FeatureModule = {
 }
 
 describe('shell registry', () => {
-  it('the real features register Portfolio and Settings, each with its own pages', () => {
+  it('the real features register War Room, Portfolio and Settings, each with its own pages', () => {
     expect(features.length).toBeGreaterThan(0)
-    expect(shellRegistry.areas.map((a) => a.id)).toEqual(expect.arrayContaining(['portfolio', 'settings']))
+    expect(shellRegistry.areas.map((a) => a.id)).toEqual(['warroom', 'portfolio', 'settings'])
     const paths = (area: string) => shellRegistry.navEntries.filter((e) => e.area === area).map((e) => e.path)
     expect(paths('portfolio')).toEqual(['/portfolio', '/portfolio/positions', '/portfolio/holdings', '/portfolio/cashflows'])
     expect(paths('settings')).toEqual(['/settings/connections', '/settings/risk'])
   })
 
   it('adds a fake feature\'s area and sections without touching any other module', () => {
-    const base = buildShellRegistry(features)
-    const withFakes = buildShellRegistry([...features, fakeWarRoom, fakePortfolioExtra])
+    // The real War Room feature is left out, so the fake one is the only War Room contribution.
+    const others = features.filter((f) => f.area !== 'warroom')
+    const base = buildShellRegistry(others)
+    const withFakes = buildShellRegistry([...others, fakeWarRoom, fakePortfolioExtra])
 
     expect(withFakes.areas.map((a) => a.id)).toEqual(['warroom', ...base.areas.map((a) => a.id)])
     const warroom = withFakes.sections.filter((s) => s.area === 'warroom')
