@@ -690,6 +690,53 @@ DEFAULTS: Final[dict[str, Any]] = {
             "walk_forward_splits": 3,
             "overfit_sharpe_fraction": "0.5",
         },
+        "analogs": {
+            "k": 20,
+            "horizons": [
+                "1h",
+                "4h",
+                "24h",
+                "72h",
+            ],
+            "weights": {
+                "returns_path": "1",
+                "realised_vol": "1",
+                "volume_z": "1",
+                "funding": "1",
+            },
+        },
+        "seasonality": {
+            "funding_hours_utc": [
+                0,
+                8,
+                16,
+            ],
+            "funding_window_hours": 2,
+        },
+        "regime": {
+            "n_states": 3,
+            "min_bars": 200,
+            "vol_window": 20,
+            "hmm_n_iter": 1000,
+            "hmm_tol": "0.0001",
+            "hmm_covariance_type": "full",
+            "random_state": 42,
+            "high_vol_ratio": "2.0",
+            "trend_t": "3.0",
+            "adx_window": 14,
+            "adx_trend_threshold": "25",
+            "vol_percentile_lookback": 250,
+            "high_vol_percentile": "80",
+            "low_vol_percentile": "20",
+        },
+        "volatility": {
+            "garch_min_bars": 100,
+            "garch_mean": "constant",
+            "ewma_lambda": "0.94",
+        },
+        "drawdown": {
+            "top_n": 5,
+        },
     },
     "agents": {
         "budget_warning_pct": "80",
