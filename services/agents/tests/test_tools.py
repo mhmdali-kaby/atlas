@@ -176,8 +176,21 @@ async def test_tool_errors_and_crashes_become_error_results() -> None:
     assert "secret detail" not in crashed["message"]
 
 
-@pytest.mark.parametrize(("server", "name"), [(s, n) for s, tools in CATALOGUE.items() for n in tools])
-async def test_every_catalogue_tool_is_a_not_implemented_stub(server: str, name: str) -> None:
+# Servers whose catalogue tools have real implementations (ATL-85: okx_market, atlas_data).
+IMPLEMENTED_SERVERS = {"okx_market", "atlas_data"}
+STUB_TOOLS = [(s, n) for s, tools in CATALOGUE.items() if s not in IMPLEMENTED_SERVERS for n in tools]
+
+
+def test_implemented_servers_have_no_stub_left() -> None:
+    for server in IMPLEMENTED_SERVERS:
+        for name in CATALOGUE[server]:
+            tool = fw.get_tool(fq_name(server, name))
+            assert tool.implemented is True, tool.fq_name
+            assert tool.input_model is CATALOGUE[server][name], tool.fq_name
+
+
+@pytest.mark.parametrize(("server", "name"), STUB_TOOLS)
+async def test_every_unimplemented_catalogue_tool_is_a_not_implemented_stub(server: str, name: str) -> None:
     tool = fw.get_tool(fq_name(server, name))
     assert tool.implemented is False
     schema = tool.input_schema()
