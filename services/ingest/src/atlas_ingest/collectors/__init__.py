@@ -28,6 +28,7 @@ from datetime import datetime
 from typing import Protocol, TypeVar
 
 import httpx
+from sqlalchemy import Engine
 
 from atlas_ingest.items import RawItem
 
@@ -50,10 +51,28 @@ class CollectContext:
     now: datetime
     stock_symbols: Callable[[], Awaitable[list[str]]]
     """Underlying symbols of every stock/ETF perp in ``instruments`` (e.g. ``TSLA``, ``SPY``)."""
+    engine: Engine | None = None
+    """For collectors that write structured rows themselves (calendar, earnings, sentiment)."""
+    stats: PollStats = field(default_factory=lambda: PollStats())
+    """Collectors that write their own rows add the count to ``stats.written``."""
+
+
+@dataclass
+class PollStats:
+    written: int = 0
+    """Rows a structured collector inserted or updated; counts like news items for last_item_at."""
 
 
 class Collector(Protocol):
     async def collect(self, source: SourceConfig, ctx: CollectContext) -> list[RawItem]: ...
+
+
+class PollIntervalHook(Protocol):
+    """Optional on a collector: after a successful poll the runner asks for the delay until the
+    next one. ``None`` keeps ``poll_seconds``. Used by the calendar collectors to poll every minute
+    around scheduled events."""
+
+    async def next_poll_seconds(self, source: SourceConfig, ctx: CollectContext) -> float | None: ...
 
 
 class CollectError(Exception):

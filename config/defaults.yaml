@@ -390,3 +390,29 @@ news:
     earnings_bmo_time: "09:30"
     earnings_amc_time: "16:00"
     default_sentiment_index: crypto_fng
+  # ATL-61: calendar, earnings and sentiment collectors write economic_events, earnings_events and
+  # market_sentiment (not news_items). ForexFactory impact -> economic_events.importance; 0 means
+  # "not stored" (the column is CHECKed 1..5, and holidays are not tradeable events). Unknown
+  # impacts get unmapped_importance. Finnhub's lowercase impacts use the same map, case-insensitively.
+  calendar_importance:
+    High: 5
+    Medium: 3
+    Low: 1
+    Holiday: 0
+  calendar:
+    unmapped_importance: 1
+    # Brief §7.2: calendar every 15 min (the source's poll_seconds), and every fast_poll_seconds
+    # while any stored event with importance >= fast_min_importance is within ±fast_window_minutes.
+    fast_poll_seconds: 60
+    fast_window_minutes: 10
+    fast_min_importance: 1
+    # When finnhub.calendar is enabled, keyed and not degraded it is the calendar source and
+    # forexfactory.calendar makes no request.
+    finnhub_days_back: 1
+    finnhub_days_ahead: 7
+  earnings:
+    days_back: 3
+    days_ahead: 14
+  sentiment:
+    fng_index_key: crypto_fng
+    fng_limit: 10

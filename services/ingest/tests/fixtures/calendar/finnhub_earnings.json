@@ -1,0 +1,6 @@
+{"earningsCalendar":[
+{"date":"2026-10-30","epsActual":null,"epsEstimate":1.7647,"hour":"amc","quarter":4,"revenueActual":null,"revenueEstimate":101800000000,"symbol":"AAPL","year":2026},
+{"date":"2026-10-30","epsActual":null,"epsEstimate":1.7700,"hour":"amc","quarter":4,"revenueActual":null,"revenueEstimate":101900000000,"symbol":"AAPL","year":2026},
+{"date":"2026-10-22","epsActual":0.5,"epsEstimate":0.55,"hour":"amc","quarter":3,"revenueActual":28100000000,"revenueEstimate":26500000000,"symbol":"TSLA","year":2026},
+{"date":"2026-10-29","epsActual":null,"epsEstimate":3.67,"hour":"amc","quarter":1,"revenueActual":null,"revenueEstimate":75400000000,"symbol":"MSFT","year":2027},
+{"date":"2026-10-28","epsActual":null,"epsEstimate":0.12,"hour":"bmo","quarter":3,"revenueActual":null,"revenueEstimate":5000000,"symbol":"ACME","year":2026}]}
