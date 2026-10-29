@@ -359,3 +359,16 @@ news:
     high_novelty_bonus: 1
     low_novelty: "0.15"
     low_novelty_penalty: 1
+
+  # ATL-67: read-only /api/news, /api/news/clusters/{id}, /api/calendar, /api/sentiment/latest.
+  # Earnings rows carry a date plus Finnhub's hour hint; the calendar places bmo/amc at these
+  # US/Eastern wall-clock times (DST handled by Postgres), and dmh/unknown at 00:00 UTC.
+  api:
+    page_limit_default: 50
+    page_limit_max: 100
+    max_inst_ids: 50
+    calendar_default_hours: 48
+    earnings_timezone: America/New_York
+    earnings_bmo_time: "09:30"
+    earnings_amc_time: "16:00"
+    default_sentiment_index: crypto_fng

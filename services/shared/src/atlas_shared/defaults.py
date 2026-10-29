@@ -555,5 +555,15 @@ DEFAULTS: Final[dict[str, Any]] = {
             "low_novelty": "0.15",
             "low_novelty_penalty": 1,
         },
+        "api": {
+            "page_limit_default": 50,
+            "page_limit_max": 100,
+            "max_inst_ids": 50,
+            "calendar_default_hours": 48,
+            "earnings_timezone": "America/New_York",
+            "earnings_bmo_time": "09:30",
+            "earnings_amc_time": "16:00",
+            "default_sentiment_index": "crypto_fng",
+        },
     },
 }
