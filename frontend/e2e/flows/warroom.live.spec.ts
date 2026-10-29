@@ -3,6 +3,7 @@ import { mkdirSync } from 'node:fs'
 import { connect } from 'node:net'
 import path from 'node:path'
 import { promisify } from 'node:util'
+import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 import arWarroom from '../../src/i18n/locales/ar/warroom.json' with { type: 'json' }
 import enWarroom from '../../src/i18n/locales/en/warroom.json' with { type: 'json' }
@@ -14,6 +15,7 @@ import { BACKEND_DIR, BACKEND_ENV, EVIDENCE_DIR, REVERB, SERVICES_DIR, withEnv }
  * Python publishes through `python -m atlas_shared.bus --demo-system-message` on the e2e Redis DB.
  */
 const SHOTS = path.join(EVIDENCE_DIR, 'ATL-40')
+const NEWS_SHOTS = path.join(EVIDENCE_DIR, 'ATL-70')
 const run = promisify(execFile)
 
 test.describe.configure({ mode: 'serial' })
@@ -62,6 +64,30 @@ async function publishFromPython(text: string) {
   })
 }
 
+/**
+ * ATL-70: publishes ATL-65's shared news.alert fixture (services/ingest/tests/fixtures/alerts/
+ * news_alert_envelope.json) to atlas.warroom from Python, with a fresh event id and cluster so the
+ * bridge stores it as a new news_alert message, as ingest would.
+ */
+const NEWS_FIXTURE = 'ingest/tests/fixtures/alerts/news_alert_envelope.json'
+const PUBLISH_NEWS = `
+import json, sys, uuid
+from atlas_shared.bus import publish
+from atlas_shared.events import EventEnvelope
+env = json.load(open(sys.argv[1]))
+cluster = str(uuid.uuid4())
+env.update(id=str(uuid.uuid4()), ts=None, correlation_id="news:" + cluster)
+env = {k: v for k, v in env.items() if v is not None}
+env["payload"].update(json.loads(sys.argv[2]), cluster_id=cluster, news_item_id=str(uuid.uuid4()))
+publish("atlas.warroom", EventEnvelope.model_validate(env))
+`
+async function publishNewsAlert(payload: Record<string, unknown>) {
+  await run('uv', ['run', '--package', 'atlas-shared', 'python', '-c', PUBLISH_NEWS, NEWS_FIXTURE, JSON.stringify(payload)], {
+    cwd: SERVICES_DIR,
+    env: withEnv({ REDIS_HOST: BACKEND_ENV.REDIS_HOST!, REDIS_PORT: BACKEND_ENV.REDIS_PORT!, REDIS_DB: BACKEND_ENV.REDIS_DB! }),
+  })
+}
+
 const feedOf = (page: Page) => page.getByTestId('wr-feed')
 const input = (page: Page) => page.getByTestId('wr-composer-input')
 
@@ -74,6 +100,7 @@ async function openMain(page: Page) {
 
 test.beforeAll(async () => {
   mkdirSync(SHOTS, { recursive: true })
+  mkdirSync(NEWS_SHOTS, { recursive: true })
   await startReverb()
   bridge = start(['atlas:bridge', '--consumer=e2e-atl-40', '--block=200'])
 })
@@ -197,4 +224,100 @@ test('typing "@His" and choosing Historian inserts "@Historian " and the sent me
   const body = (await res.json()) as { data: { mentions: string[]; content_md: string } }
   expect(body.data.content_md).toBe('@Historian what happens after CPI?')
   expect(body.data.mentions).toEqual(['historian'])
+})
+
+/* ---- ATL-70: the news_alert card -------------------------------------------------------- */
+
+const NEWS_HEADLINE = `Tesla reports <script>alert(1)</script> **bold** third-quarter earnings ${Date.now()}`
+
+test('a news.alert published to atlas.warroom appears live as the news alert card, untrusted text literal', async ({ page }) => {
+  await openMain(page)
+  await publishNewsAlert({ headline: NEWS_HEADLINE, sentiment: -0.31 })
+
+  const card = feedOf(page).getByTestId('news-card').filter({ hasText: NEWS_HEADLINE })
+  await expect(card).toBeVisible({ timeout: 5_000 })
+  await expect(card).toHaveCount(1)
+  await expect(card.getByTestId('news-headline')).toHaveText(NEWS_HEADLINE)
+  await expect(card.locator('script, strong')).toHaveCount(0)
+  await expect(card.getByText(enWarroom.kind.news_alert)).toBeVisible()
+  await expect(card.getByRole('img', { name: 'Importance 4 of 5' })).toBeVisible()
+  await expect(card.getByTestId('news-type')).toHaveText(enWarroom.news.type.earnings)
+  await expect(card.getByRole('listitem')).toHaveText(['TSLA-USDT'])
+  // published_at 12:00:00Z = 15:00 Baghdad.
+  await expect(card.getByTestId('news-by')).toHaveText('Published by CNBC Top News at 15:00')
+  await expect(card.getByTestId('news-sentiment')).toContainText('−0.31')
+  const link = card.getByTestId('news-link')
+  await expect(link).toHaveAttribute('href', 'https://www.cnbc.com/2026/10/29/tesla-q3-earnings.html')
+  await expect(link).toHaveAttribute('target', '_blank')
+  await expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+  await expect(page.getByTestId('wr-live')).toContainText(`${enWarroom.kind.news_alert}.`)
+  await card.scrollIntoViewIfNeeded()
+  await card.screenshot({ path: path.join(NEWS_SHOTS, 'live-card-en-light.png') })
+})
+
+for (const [lang, theme] of [
+  ['en', 'light'],
+  ['en', 'dark'],
+  ['ar', 'light'],
+  ['ar', 'dark'],
+] as const) {
+  test(`the news alert card in ${lang}/${theme}: designed strings, no axe violations, nothing clipped`, async ({ page }) => {
+    await page.addInitScript(
+      ([l, th]) => {
+        localStorage.setItem('atlas.lang', l)
+        localStorage.setItem('atlas.theme', th)
+      },
+      [lang, theme] as const,
+    )
+    await page.emulateMedia({ colorScheme: theme })
+    await openMain(page)
+    await expect(page.locator('html')).toHaveAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr')
+    const wr = lang === 'ar' ? arWarroom : enWarroom
+    const card = feedOf(page).getByTestId('news-card').filter({ hasText: NEWS_HEADLINE })
+    await card.scrollIntoViewIfNeeded()
+    await expect(card).toBeVisible()
+    await expect(card.getByText(wr.kind.news_alert)).toBeVisible()
+    await expect(card.getByTestId('news-type')).toHaveText(wr.news.type.earnings)
+    await expect(card.getByTestId('news-link')).toContainText('cnbc.com')
+
+    const axe = await new AxeBuilder({ page }).include('[data-testid="news-card"]').analyze()
+    expect(axe.violations.flatMap((v) => v.nodes.map((n) => `${v.id} ${n.target.join(' ')}`))).toEqual([])
+
+    // Nothing inside the card overflows its box, and the card sits inside the feed column.
+    const clipped = await card.evaluate((el) => {
+      const box = el.getBoundingClientRect()
+      return [el, ...Array.from(el.querySelectorAll<HTMLElement>('*'))]
+        .filter((n) => !n.closest('.sr-only'))
+        .filter((n) => {
+          const r = n.getBoundingClientRect()
+          const over = n.scrollWidth > n.clientWidth + 1 && getComputedStyle(n).overflowX !== 'visible'
+          return over || r.left < box.left - 1 || r.right > box.right + 1
+        })
+        .map((n) => n.className || n.tagName)
+    })
+    expect(clipped).toEqual([])
+    const column = await feedOf(page).locator('.wr-column').boundingBox()
+    const box = await card.boundingBox()
+    expect(box!.x).toBeGreaterThanOrEqual(column!.x - 1)
+    expect(box!.x + box!.width).toBeLessThanOrEqual(column!.x + column!.width + 1)
+    if (lang === 'ar') {
+      // RTL: the card starts at the column's right, and sentiment sits at the inline end (left).
+      const senti = await card.getByTestId('news-sentiment').boundingBox()
+      const chip = await card.getByRole('listitem').first().boundingBox()
+      expect(senti!.x).toBeLessThan(chip!.x)
+    }
+    await card.screenshot({ path: path.join(NEWS_SHOTS, `card-${lang}-${theme}.png`) })
+  })
+}
+
+test('an importance-5 alert with no linked instruments draws no chips and no NaN', async ({ page }) => {
+  await openMain(page)
+  const headline = `Fed holds rates, no linked instruments ${Date.now()}`
+  await publishNewsAlert({ headline, importance: 5, inst_ids: [], sentiment: 0.0, event_type: 'central_bank', reason: 'importance', held_inst_ids: [] })
+  const card = feedOf(page).getByTestId('news-card').filter({ hasText: headline })
+  await expect(card).toBeVisible({ timeout: 5_000 })
+  await expect(card).toHaveClass(/imp-5/)
+  await expect(card.locator('.news-inst')).toHaveCount(0)
+  await expect(card).not.toContainText('NaN')
+  await card.screenshot({ path: path.join(NEWS_SHOTS, 'importance-5-no-instruments.png') })
 })

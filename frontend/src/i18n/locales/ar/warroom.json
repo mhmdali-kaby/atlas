@@ -190,5 +190,35 @@
     "terms": "{{side}} <lever>{{lever}}×</lever>، <n>{{contracts}}</n> عقد",
     "entry": "سعر الدخول",
     "mark": "سعر العلامة"
+  },
+  "news": {
+    "imp": "الأهمية <n>{{n}}</n>",
+    "impOf": "الأهمية {{n}} من 5",
+    "by": "نشره {{source}} الساعة {{time}}",
+    "read": "اقرأه على {{host}}",
+    "sentiment": "المعنويات",
+    "positive": "إيجابية",
+    "negative": "سلبية",
+    "neutral": "محايدة",
+    "instruments": "الأدوات المرتبطة",
+    "type": {
+      "earnings": "نتائج أعمال",
+      "guidance": "توقعات الشركة",
+      "macro_release": "بيانات اقتصادية",
+      "central_bank": "بنك مركزي",
+      "regulation": "تنظيم",
+      "hack_exploit": "اختراق أو ثغرة",
+      "listing": "إدراج",
+      "delisting": "شطب",
+      "ETF_flow": "تدفقات صناديق المؤشرات",
+      "M&A": "اندماج أو استحواذ",
+      "lawsuit": "دعوى قضائية",
+      "product": "منتج",
+      "partnership": "شراكة",
+      "token_unlock": "فتح رموز",
+      "geopolitics": "جيوسياسة",
+      "supply_shock": "صدمة عرض",
+      "other": "أخرى"
+    }
   }
 }
