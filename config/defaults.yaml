@@ -668,6 +668,17 @@ agents:
       - '\bmcp__\w+'
       - '"(?:tool_use|tool_call|function_call)"'
       - '\b(?:submit_proposal|cast_vote|post_message|place_order)\s*\('
+  # ATL-88, brief §6.1: live warroom.thinking events while a run streams (atlas_agents.streaming).
+  #   max_events_per_second: per run; deltas that arrive faster are coalesced into one event.
+  #   event_text_max_chars: thinking/text in one event is cut to this (the final message's
+  #     reasoning_md keeps everything).
+  #   tool_input_max_chars / tool_output_max_chars: a tool call's JSON input and its output are
+  #     cut to these in events and in the final message's tool_calls.
+  streaming:
+    max_events_per_second: 10
+    event_text_max_chars: 4000
+    tool_input_max_chars: 2000
+    tool_output_max_chars: 2000
   # ATL-91, brief §7.11: the numeric hallucination guard (atlas_agents.numguard). Every number an
   # agent states is matched against the numeric leaves of that turn's tool outputs.
   #   rel_tolerance: |stated - tool| <= rel_tolerance x |tool| matches (0.005 = 0.5 %).

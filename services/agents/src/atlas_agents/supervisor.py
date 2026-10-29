@@ -6,6 +6,7 @@ on this in later tasks; here it is the one place that turns any failure into a l
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 import uuid
 from collections.abc import Callable, Mapping
@@ -16,7 +17,7 @@ from typing import Any
 from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
 
-from atlas_agents import access, events, prompts
+from atlas_agents import access, events, prompts, streaming
 from atlas_agents.registry import REGISTRY, AgentSpec, enabled_agents
 from atlas_agents.session import AgentSession, ClientFactory, RunResult, Trigger, default_client_factory
 from atlas_agents.tools import ToolContext
@@ -51,14 +52,22 @@ class Supervisor:
         def build(spec: AgentSpec) -> AgentSession:
             # Tools come only from the §7.10 matrix (atlas_agents.access); replay bounds every query.
             ctx = ToolContext(env=env, session_factory=sessions, agent=spec.slug, replay_as_of=replay_as_of)
+            options = access.options_for(spec.slug, ctx)
+            observe = None
+            if replay_as_of is None:
+                # Live runs stream warroom.thinking (partial messages give the deltas) and post their
+                # final message; a replayed day (evals) never writes to the War Room.
+                options = dataclasses.replace(options, include_partial_messages=True)
+                observe = streaming.observer_factory(agent=spec.slug, env=env, publish=publisher)
             prompt = self.prompts.get(spec.slug)
             return AgentSession(
                 spec,
                 env=env,
                 engine=engine,
-                options=access.options_for(spec.slug, ctx),
+                options=options,
                 client_factory=client_factory,
                 publisher=publisher,
+                observer_factory=observe,
                 prompt_version=prompt[1] if prompt else None,
                 system_prompt=prompts.renderer(ctx, prompt[0]) if prompt else None,
             )
