@@ -400,6 +400,20 @@ it('refuses /broadcasting/auth without a CSRF token, with the real middleware ac
         ->assertStatus(419);
 });
 
+/**
+ * security-audit-round-5 #ATL-56: the route used to accept GET as well as POST, and a GET
+ * request never carries X-XSRF-TOKEN, so it bypassed CSRF entirely. The route now only accepts
+ * POST; a GET gets Laravel's normal 405, with the real middleware active (not just in testing).
+ */
+it('refuses GET /broadcasting/auth (POST only, no CSRF bypass via GET)', function (): void {
+    useReverbBroadcaster();
+    app()->instance('env', 'production');
+
+    $this->actingAs(User::factory()->create())
+        ->get('/broadcasting/auth?socket_id=1.2&channel_name=private-warroom')
+        ->assertStatus(405);
+});
+
 it('authorises /broadcasting/auth with a valid X-XSRF-TOKEN, with the real middleware active', function (): void {
     useReverbBroadcaster();
     $this->actingAs(User::factory()->create());
