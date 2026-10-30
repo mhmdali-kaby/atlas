@@ -60,6 +60,9 @@ class NewsSourceResource extends JsonResource
             'url' => $source->url,
             'enabled' => $source->enabled,
             'requires_key' => $source->requires_key,
+            // ATL-106: read-only trust flags behind a cluster's CONFIRMED/REPORTED/RUMOUR status.
+            'reputable' => $source->reputable,
+            'official' => $source->official,
             'has_key' => $hasKey,
             'key_last4' => $hasKey ? $source->apiKeyLast4() : null,
             'poll_seconds' => $source->poll_seconds,
