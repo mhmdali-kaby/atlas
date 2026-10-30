@@ -167,6 +167,21 @@ portfolio_history:
   # Decimal places of R in the API and CSV.
   r_scale: 2
 
+# ATL-174, brief §13 Performance: GET /api/portfolio/performance.
+portfolio_performance:
+  ranges: ["1M", "3M", "YTD", "ALL"]
+  default_range: ALL
+  # Sharpe and Sortino need at least this many owner (Asia/Baghdad) days of equity.
+  min_days_for_ratios: 10
+  # Daily ratios are annualised by sqrt(annualisation_days); crypto and perps trade every day.
+  annualisation_days: 365
+  # Decimal places of each output kind (HALF_UP). Money averages keep 8 and are stripped.
+  pct_scale: 2
+  ratio_scale: 4
+  money_scale: 8
+  # Internal precision for means, variances and square roots.
+  calc_scale: 24
+
 # ATL-46, brief §7.3: the resumable history backfill in trading_core. How far back each dataset
 # goes is backfill.depth_days (below, shared with the Data API); null depths walk back to
 # full_history_floor, i.e. until OKX returns no older data. Datasets are created and claimed in
