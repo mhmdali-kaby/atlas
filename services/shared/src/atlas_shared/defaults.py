@@ -168,6 +168,8 @@ DEFAULTS: Final[dict[str, Any]] = {
         "min_free_disk_gb": 5,
         "trading_core_timeout_seconds": 5,
         "max_session_lifetime_minutes": 15,
+        "claude_cli_timeout_seconds": 15,
+        "claude_cli_probe_timeout_seconds": 30,
     },
     "account_sync": {
         "usd_stablecoins": [
