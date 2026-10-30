@@ -452,11 +452,7 @@ def _rule_event(run: _Run, events: Iterable[EventInfo], now: datetime) -> None:
         return
     lead = timedelta(minutes=s.event_lead_minutes)
     upcoming = sorted(
-        (
-            e
-            for e in events
-            if e.importance >= s.event_min_importance and now <= e.scheduled_at <= now + lead
-        ),
+        (e for e in events if e.importance >= s.event_min_importance and now <= e.scheduled_at <= now + lead),
         key=lambda e: (e.scheduled_at, e.id),
     )
     for event in upcoming:
@@ -571,7 +567,9 @@ def evaluate(
 ) -> list[RuleAction]:
     """The actions to propose (empty when no rule fires)."""
     return list(
-        evaluate_full(position, proposal, atr_1h, last_swing, events, funding, now, settings, structure).actions
+        evaluate_full(
+            position, proposal, atr_1h, last_swing, events, funding, now, settings, structure
+        ).actions
     )
 
 

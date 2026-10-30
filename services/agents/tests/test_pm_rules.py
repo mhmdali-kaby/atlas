@@ -6,28 +6,30 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 
 import pytest
-from atlas_shared.proposals import TakeProfit
-from hypothesis import given, settings
-from hypothesis import strategies as st
-
 from atlas_agents.pm.rules import (
     EventInfo,
     FundingInfo,
     PositionState,
     ProposalPlan,
     RuleSettings,
+    Side,
     StructureReport,
     annualised_funding_pct,
     evaluate,
     evaluate_full,
 )
+from atlas_shared.proposals import TakeProfit
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 NOW = datetime(2026, 10, 31, 12, 0, tzinfo=UTC)
 D = Decimal
 CFG = RuleSettings.from_config()
 
 
-def long_position(mark: str, *, stop: str = "98", opened_minutes_ago: int = 60, **kw: object) -> PositionState:
+def long_position(
+    mark: str, *, stop: str = "98", opened_minutes_ago: int = 60, **kw: object
+) -> PositionState:
     return PositionState(
         inst_id="BTC-USDT-SWAP",
         side="long",
@@ -39,7 +41,9 @@ def long_position(mark: str, *, stop: str = "98", opened_minutes_ago: int = 60, 
     )
 
 
-def short_position(mark: str, *, stop: str = "102", opened_minutes_ago: int = 60, **kw: object) -> PositionState:
+def short_position(
+    mark: str, *, stop: str = "102", opened_minutes_ago: int = 60, **kw: object
+) -> PositionState:
     return PositionState(
         inst_id="ETH-USDT-SWAP",
         side="short",
@@ -82,7 +86,10 @@ def test_thresholds_come_from_defaults() -> None:
     assert CFG.two_r_trail_atr_mult == D("1.0")
     assert CFG.funding_max_annual_pct == D("30")
     assert CFG.close_before_high_impact_events is True
-    assert RuleSettings.from_config({"close_before_high_impact_events": False}).close_before_high_impact_events is False
+    assert (
+        RuleSettings.from_config({"close_before_high_impact_events": False}).close_before_high_impact_events
+        is False
+    )
     with pytest.raises(KeyError):
         RuleSettings.from_config({"no_such_rule": 1})
 
@@ -237,7 +244,10 @@ def test_funding_against_a_flat_short_after_nine_hours_flags_and_suggests_close(
     assert annualised_funding_pct(funding).quantize(D("0.01")) == D("35.00")
     pos = short_position("100.1", opened_minutes_ago=9 * 60)
     actions = run(pos, SHORT_PLAN, funding=funding)
-    assert [(a.kind, a.rule) for a in actions] == [("flag", "funding_cost"), ("suggest_close", "funding_cost")]
+    assert [(a.kind, a.rule) for a in actions] == [
+        ("flag", "funding_cost"),
+        ("suggest_close", "funding_cost"),
+    ]
     with pytest.raises(ValueError):
         actions[0].to_position_action()
 
@@ -271,13 +281,15 @@ def test_an_external_position_without_a_proposal_only_runs_the_non_r_rules() -> 
 
 # AC2: property --------------------------------------------------------------------------------
 
-prices = st.decimals(min_value=D("0.01"), max_value=D("1000"), places=2, allow_nan=False, allow_infinity=False)
+prices = st.decimals(
+    min_value=D("0.01"), max_value=D("1000"), places=2, allow_nan=False, allow_infinity=False
+)
 small = st.decimals(min_value=D("0.01"), max_value=D("50"), places=2, allow_nan=False, allow_infinity=False)
 
 
 @st.composite
 def scenarios(draw: st.DrawFn) -> tuple[PositionState, ProposalPlan | None, dict[str, object]]:
-    side = draw(st.sampled_from(["long", "short"]))
+    side: Side = draw(st.sampled_from(["long", "short"]))
     entry = draw(prices)
     risk = draw(small)
     sign = D(-1) if side == "long" else D(1)
@@ -286,7 +298,9 @@ def scenarios(draw: st.DrawFn) -> tuple[PositionState, ProposalPlan | None, dict
         orig_stop = entry / 2 if side == "long" else entry * 2
     mark = draw(prices)
     current = draw(st.one_of(st.none(), prices))
-    tps = draw(st.lists(st.tuples(prices, st.decimals(min_value=D("1"), max_value=D("33"), places=0)), max_size=3))
+    tps = draw(
+        st.lists(st.tuples(prices, st.decimals(min_value=D("1"), max_value=D("33"), places=0)), max_size=3)
+    )
     plan = draw(
         st.one_of(
             st.none(),
@@ -324,9 +338,14 @@ def scenarios(draw: st.DrawFn) -> tuple[PositionState, ProposalPlan | None, dict
         ],
         "funding": FundingInfo(rate=draw(st.decimals(min_value=D("-0.01"), max_value=D("0.01"), places=6))),
         "structure": draw(
-            st.one_of(st.none(), st.builds(StructureReport, st.sampled_from(["intact", "weakening", "broken"]), st.just(NOW)))
+            st.one_of(
+                st.none(),
+                st.builds(StructureReport, st.sampled_from(["intact", "weakening", "broken"]), st.just(NOW)),
+            )
         ),
-        "settings": RuleSettings.from_config({"fee_rate": str(draw(st.decimals(min_value=D("0"), max_value=D("0.01"), places=5)))}),
+        "settings": RuleSettings.from_config(
+            {"fee_rate": str(draw(st.decimals(min_value=D("0"), max_value=D("0.01"), places=5)))}
+        ),
     }
     return pos, plan, kw
 
