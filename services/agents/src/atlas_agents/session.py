@@ -54,7 +54,7 @@ ERROR_MAX_CHARS: Final = 1000
 RATE_LIMIT_TEXT: Final = re.compile(r"usage limit|rate[ _-]?limit|\b429\b|limit reached", re.IGNORECASE)
 
 RunStatus = Literal["ok", "error", "rate_limited", "over_budget", "degraded"]
-Trigger = Literal["mention", "schedule", "eval", "manual"]
+Trigger = Literal["mention", "schedule", "eval", "manual", "alert"]
 
 
 class ForbiddenCredentialError(ValueError):

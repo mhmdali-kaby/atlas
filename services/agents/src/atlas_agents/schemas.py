@@ -260,6 +260,18 @@ class UpcomingEvent(_Model):
     sensitive_instruments: list[str] = Field(default_factory=list)
 
 
+class NewsFlow(_Model):
+    """One instrument's news flow in a morning brief (ATL-107), counted in code over the brief's
+    lookback: news items linking it and the distinct story clusters among them."""
+
+    inst_id: str = Field(min_length=1, max_length=64)
+    items: int = Field(ge=0)
+    clusters: int = Field(ge=0)
+
+
+NewsBriefKind = Literal["instrument", "morning", "alert"]
+
+
 class NewsBrief(_Model):
     """News Intelligence's ``NewsBrief`` (brief §7.2). A ``research_report`` card with
     ``type: "news_brief"`` is validated against this model (``CARD_TYPES``)."""
@@ -273,6 +285,14 @@ class NewsBrief(_Model):
     priced_in: Literal["yes", "partly", "no"]
     what_to_watch: str = Field(min_length=1)
     data_as_of: AwareDatetime
+    brief_kind: NewsBriefKind = "instrument"
+    """ATL-107: instrument (an @News answer), morning (the 07:30 brief) or alert (a news.alert
+    analysis). Set by the runtime from the trigger."""
+    top_instruments: list[NewsFlow] = Field(default_factory=list)
+    """ATL-107, morning brief only: the instruments with the most news flow, computed in code."""
+    degraded_asset_classes: list[str] = Field(default_factory=list)
+    """ATL-107: asset classes whose every news source is disabled, needs_key or degraded, computed
+    in code when the brief is posted (brief §7.2 failure behaviour)."""
     meta: CardMeta | None = None
 
 
@@ -327,7 +347,9 @@ __all__ = [
     "HorizonDistribution",
     "NewsBrief",
     "NewsBriefCluster",
+    "NewsBriefKind",
     "NewsBriefSource",
+    "NewsFlow",
     "NewsStatus",
     "PriceMoveAtr",
     "RegimeRow",

@@ -806,6 +806,7 @@ return [
             ],
             'news_intelligence' => [
                 'model' => 'strong',
+                'enabled' => true,
             ],
             'historian' => [
                 'model' => 'strong',
@@ -998,6 +999,7 @@ return [
         'output_retries' => 1,
         'schedule' => [
             'historian_regime_table' => '07:30',
+            'news_morning_brief' => '07:30',
             'tick_seconds' => 30,
         ],
         'regime_table' => [
@@ -1007,6 +1009,35 @@ return [
             'block_ms' => 5000,
             'batch' => 50,
             'max_depth' => 2,
+        ],
+        'news_intelligence' => [
+            'alerts_per_hour' => 6,
+            'asset_class_categories' => [
+                'crypto' => [
+                    'crypto_news',
+                ],
+                'stock' => [
+                    'markets_news',
+                ],
+                'etf' => [
+                    'markets_news',
+                ],
+                'index' => [
+                    'markets_news',
+                ],
+                'commodity' => [
+                    'markets_news',
+                ],
+            ],
+            'mention_lookback_hours' => 72,
+            'morning_brief' => [
+                'lookback_hours' => 24,
+                'top_stories' => 10,
+                'events_hours' => 48,
+                'min_event_importance' => 2,
+                'max_events' => 30,
+                'top_instruments' => 5,
+            ],
         ],
         'scout' => [
             'watchlist_edit_window_minutes' => 10,

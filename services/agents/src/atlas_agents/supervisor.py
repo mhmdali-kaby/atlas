@@ -14,6 +14,8 @@ It is also the long-running process's brain (``python -m atlas_agents``, ATL-93)
   ``agent_runs`` (trigger ``schedule``, correlation_id ``<job>:<YYYY-MM-DD>``), so a restart later
   the same day does not run a job again. An interval hook runs every ``every_seconds`` (tracked in
   memory, so also at the first tick). :meth:`Supervisor.serve` loops both.
+* Any other envelope type on ``atlas.warroom`` goes only to the agents that registered that type
+  with ``HOOKS.event`` (ATL-107: ``news.alert`` starts News Intelligence and nobody else).
 
 Runs of one agent never overlap: each agent has its own lock.
 """
@@ -215,6 +217,23 @@ class Supervisor:
                 result = await hooks.on_mention(self, request)
             finally:
                 _MENTION_DEPTH.reset(token)
+            if result is not None:
+                results.append(result)
+        if envelope.type != "warroom.message":
+            results.extend(await self._dispatch_event(envelope))
+        return results
+
+    async def _dispatch_event(self, envelope: EventEnvelope) -> list[RunResult]:
+        """Hand a non-message envelope of this env to every enabled agent that registered its type
+        with ``HOOKS.event`` (ATL-107); no other agent sees it."""
+        results: list[RunResult] = []
+        if envelope.env != self.env:
+            return results
+        for slug, hooks in self.hooks.items():
+            handler = hooks.on_event.get(envelope.type)
+            if handler is None or slug not in self.sessions:
+                continue
+            result = await handler(self, envelope)
             if result is not None:
                 results.append(result)
         return results
