@@ -41,6 +41,7 @@ from sqlalchemy.orm import Session
 
 from trading_core.approvals.common import PROPOSALS_STREAM, SOURCE, proposal_payload, publish
 from trading_core.execution.executor import ExecutionResult, execute
+from trading_core.execution.reconcile import not_reconciled_refusal
 from trading_core.risk.api import decision_body
 from trading_core.risk.engine import RiskDecision, RiskEngineError, evaluate
 from trading_core.security import PROTECTED_PREFIX
@@ -166,6 +167,11 @@ async def execute_proposal(proposal_id: str, request: Request) -> JSONResponse:
         return JSONResponse(status_code=422, content={"ok": False, "error": "invalid_approved_by"})
 
     state = request.app.state
+    refusal = not_reconciled_refusal(state)
+    if refusal is not None:
+        # Rule 8 (ATL-146): no owner approval reaches the Executor before the startup reconciliation.
+        content = {**refusal, "proposal_id": proposal_id, "risk_check": None}
+        return JSONResponse(status_code=409, content=content)
     engine: Engine = state.engine
     injected: redis.Redis | None = getattr(state, "risk_redis", None)
     now: Callable[[], datetime] = getattr(state, "clock", None) or (lambda: datetime.now(UTC))

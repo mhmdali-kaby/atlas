@@ -203,6 +203,13 @@ return [
         ],
         'lifecycle_sweep_seconds' => 30,
     ],
+    'reconciliation' => [
+        'interval_seconds' => 300,
+        'fills_lookback_days' => 3,
+        'max_pages' => 50,
+        'protect_grace_seconds' => 30,
+        'fill_ts_slack_seconds' => 1,
+    ],
     'okx' => [
         'environments' => [
             'demo' => [

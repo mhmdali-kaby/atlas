@@ -112,6 +112,19 @@ decisions where the brief was silent, as the brief asks.
   treated as `awaiting_owner` while autonomy 3–4 are not enabled, so the cycle never calls the
   Executor and the `executing` state is not reached yet. The approval window defaults to 15 minutes
   (`autonomy.approval_timeout_minutes`, overridable by a settings value of the same name).
+- **Reconciliation rules the brief leaves open** (ATL-146, `trading_core/execution/reconcile.py`).
+  "DB position size" is the sum of the stored fills on the instrument (and posSide in long/short
+  mode) since the position's OKX `cTime`; it is compared only for positions opened inside the
+  `reconciliation.fills_lookback_days` window the run re-reads, so a position older than that never
+  trips `reconciliation_mismatch` on missing history. A position counts as protected when a pending
+  conditional/oco algo on its closing side carries an `slTriggerPx` (size coverage is ATL-144's
+  job). The missing stop goes at the opening proposal's stop when that is still on the right side
+  of the mark; a stop already crossed falls back to the emergency distance
+  (`emergency_stop_atr_mult` x ATR(1H), capped at `max_stop_pct`; with no ATR the cap itself), and
+  the alert says so. Reconciliation leaves a position alone while an Atlas order on that instrument
+  is new/sending or less than `protect_grace_seconds` old (the Executor's own stop check owns it).
+  An unsent `new`/`sending` order OKX does not know stays resumable. `/execute` answers 409
+  `not_reconciled` until the first run after startup succeeded or found no verified connection.
 - **Protection follows the filled size; one stop per entry (ATL-144).** On every fill of an Atlas
   entry the protective SL/OCO is amended (`trade/amend-algos`, size only) to exactly the filled size;
   when OKX shows none, a stand-alone stop `p` + 31 hex of the risk check id is placed, and any second
