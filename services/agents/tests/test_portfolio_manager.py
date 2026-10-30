@@ -22,8 +22,8 @@ import pytest
 from atlas_agents import access
 from atlas_agents import testing as fake
 from atlas_agents.agents import portfolio_manager as hooks
+from atlas_agents.orchestrator import approval
 from atlas_agents.pm import guard, limits, manage
-from atlas_agents.pm import route as pm_route
 from atlas_agents.pm.rules import RuleAction
 from atlas_agents.registry import REGISTRY, discover_hooks
 from atlas_agents.supervisor import Supervisor
@@ -415,7 +415,7 @@ async def test_plus_1_05r_makes_one_run_that_submits_amend_stop_to_breakeven_plu
     # The vote is skipped: straight to the Risk Engine, then autonomy (level 2 -> the owner).
     assert risk.calls == [str(row.id)]
     with Session(world.engine) as s:
-        level = pm_route.autonomy_level(
+        level = approval.autonomy_level(
             s, ToolContext(env=ENV, session_factory=sessionmaker(world.engine), agent=SLUG)
         )
     assert row.status == ("awaiting_owner" if level >= 2 else "advise_only")
@@ -583,3 +583,17 @@ async def test_a_risk_engine_refusal_rejects_the_proposal_with_the_reason(world:
     [row] = world.proposals()
     assert (row.status, row.status_reason) == ("rejected", "risk_risk_engine_error")
     assert any("risk_engine_error" in e.payload["content_md"] for e in _messages(rec))
+
+
+def test_the_in_process_memory_forgets_closed_positions_and_past_events() -> None:
+    manage.reset()
+    manage._advised[(ENV, "HELD")] = NOW
+    manage._advised[(ENV, "GONE")] = NOW
+    manage._pre_event[(ENV, "HELD", "future")] = NOW + timedelta(minutes=20)
+    manage._pre_event[(ENV, "HELD", "past")] = NOW - timedelta(minutes=1)
+    manage._pre_event[(ENV, "GONE", "future")] = NOW + timedelta(minutes=20)
+    manage._pre_event[("live", "GONE", "future")] = NOW + timedelta(minutes=20)  # other env untouched
+    manage._prune(ENV, {"HELD"}, NOW)
+    assert set(manage._advised) == {(ENV, "HELD")}
+    assert set(manage._pre_event) == {(ENV, "HELD", "future"), ("live", "GONE", "future")}
+    manage.reset()

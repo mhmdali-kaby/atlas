@@ -7,8 +7,9 @@ cards) and ATL-185 (executing approved actions).
 
 - The agent is `portfolio_manager`. It is **off by default** and runs on the **strong** model when it
   runs at all. Hooks are in `atlas_agents/agents/portfolio_manager.py`, the work is in `atlas_agents/pm/`:
-  `inputs.py` (DB → rule inputs), `manage.py` (tick, triggers, reviewer), `guard.py` (what may be
-  submitted), `route.py` (vote skipped → risk → autonomy) and `limits.py` (70% warnings).
+  `inputs.py` (DB → rule inputs), `manage.py` (process state, plan, tick, triggers, one run),
+  `review.py` (the prompt, `ActionReviewer`, `submit`), `guard.py` (what may be submitted),
+  `route.py` (vote skipped → risk → autonomy) and `limits.py` (70% warnings).
 - **The cheap path:** `manage.tick(host)` runs every `agents.portfolio_manager.check.every_seconds`
   (300). For a position where no rule fires there is no model call and no message.
 - **A rule fires** (amend_stop / partial_close / close) → `manage.manage()`: one run with the computed
@@ -23,8 +24,10 @@ cards) and ATL-185 (executing approved actions).
   mark, and with `not_computed_action` for anything else, including any PM submission outside a run
   that has expected actions. A second identical submission returns `already_submitted`.
 - **Routing** (`pm/route.py`): `under_review → passed` (no vote), then one
-  `POST /internal/risk/evaluate/{id}`. After that it follows the cycle's `_risk` rules: `rejected` /
-  `advise_only` (autonomy 1) / `awaiting_owner` + `approval_expires_at`. On `TradingCoreError` the
+  `POST /internal/risk/evaluate/{id}`. After that it calls
+  `atlas_agents.orchestrator.approval.apply_risk_result`, the same function the cycle's `_risk`
+  calls (one owner of the approval policy; autonomy 3-4 go there): `rejected` (`status_reason
+  risk_rejected`) / `advise_only` (autonomy 1) / `awaiting_owner` + `approval_expires_at`. On `TradingCoreError` the
   proposal becomes `rejected` with `status_reason = "risk_<code>"`, for example
   `risk_risk_engine_error` until ATL-184 merges. A War Room line names the code.
 
@@ -36,8 +39,9 @@ cards) and ATL-185 (executing approved actions).
 `event_reduce:<event id>`. `evidence` = `[{"type": "proposal", "id": "<opening entry proposal id>"}]`.
 The War Room proposal card and the `proposal.opened` event are the ATL-153 ones. `cycle_id` is null.
 
-`proposal.awaiting_owner` / `proposal.advise_only` on atlas.proposals use the cycle's payload, plus
-`kind`, with `cycle_id: null` and `side: null`:
+`proposal.awaiting_owner` / `proposal.advise_only` on atlas.proposals come from the same
+`apply_risk_result` as the cycle's, so the payload is identical (both now carry `kind`); for the PM
+`cycle_id` and `side` are null:
 
 ```json
 {"proposal_id": "…", "version": 1, "cycle_id": null, "kind": "amend_stop", "inst_id": "BTC-USDT-SWAP",
