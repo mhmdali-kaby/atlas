@@ -64,13 +64,17 @@ class TimedRecorder:
 def _session(
     spec: AgentSpec, engine: Engine, client: fake.FakeClaudeClient, rec: TimedRecorder, time: FakeTime
 ) -> AgentSession:
-    def make(run_id: uuid.UUID, correlation_id: str | None) -> ThinkingPublisher:
+    def make(
+        run_id: uuid.UUID, correlation_id: str | None, thread_id: str | None, reply_to: str | None
+    ) -> ThinkingPublisher:
         return ThinkingPublisher(
             agent=spec.slug,
             env="demo",
             run_id=run_id,
             publish=rec,
             correlation_id=correlation_id,
+            thread_id=thread_id,
+            reply_to=reply_to,
             config=CONFIG,
             clock=time.clock,
             sleep=time.sleep,

@@ -131,7 +131,9 @@ final class BridgeEventHandler
      * already fits is returned unchanged. Otherwise `truncated` is set to true and the longest
      * string fields (`text`, `output`, …; a non-scalar `input` becomes its JSON string first) are
      * cut, at a UTF-8 character boundary, until the JSON fits. If the payload still does not fit
-     * with those strings emptied, only its identifying keys are kept.
+     * with those strings emptied, only its identifying keys are kept. `thread_id` and `reply_to`
+     * (ATL-98) are identifying too, so the run's live row always stays under the right question,
+     * even in the last-resort shape.
      *
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
@@ -148,7 +150,8 @@ final class BridgeEventHandler
         }
 
         // Longest string first, so the bulk (the text or the tool output) is what gets cut.
-        $strings = array_filter($payload, fn ($value, $key) => is_string($value) && ! in_array($key, ['run_id', 'agent', 'delta_type', 'tool', 'tool_use_id'], true), ARRAY_FILTER_USE_BOTH);
+        // thread_id/reply_to (ATL-98) are identifying, like run_id, and are never cut.
+        $strings = array_filter($payload, fn ($value, $key) => is_string($value) && ! in_array($key, ['run_id', 'agent', 'delta_type', 'tool', 'tool_use_id', 'thread_id', 'reply_to'], true), ARRAY_FILTER_USE_BOTH);
         uasort($strings, fn (string $a, string $b) => strlen($b) <=> strlen($a));
 
         foreach (array_keys($strings) as $key) {
@@ -179,7 +182,7 @@ final class BridgeEventHandler
         }
 
         $kept = ['truncated' => true];
-        foreach (['run_id', 'agent', 'seq', 'delta_type'] as $key) {
+        foreach (['run_id', 'agent', 'seq', 'delta_type', 'thread_id', 'reply_to'] as $key) {
             if (array_key_exists($key, $payload) && (is_scalar($payload[$key]) || $payload[$key] === null)) {
                 $kept[$key] = is_string($payload[$key]) ? mb_strcut($payload[$key], 0, 128, 'UTF-8') : $payload[$key];
             }

@@ -229,6 +229,30 @@ async def test_an_owner_mention_on_the_stream_gets_one_history_verdict_reply(
         assert run is not None and run.trigger == "mention" and run.status == "ok"
 
 
+async def test_every_thinking_event_of_a_mention_run_carries_the_threads_reply_to(clean: Engine) -> None:
+    """ATL-98: every warroom.thinking event of a run started from an @mention, run_end included,
+    carries the mention's thread_id and message id as reply_to, same as the final reply."""
+    rec = Recorder()
+    client = fake.FakeClaudeClient([_attempt(_card())])
+    sup = _supervisor(clean, client, rec)
+    owner = _owner_message()
+
+    (result,) = await sup.handle_envelope(owner)
+
+    assert result.status == "ok"
+    (reply,) = rec.of("warroom.message")
+    assert reply.payload["thread_id"] == owner.payload["thread_id"]
+    assert reply.payload["reply_to"] == owner.payload["message_id"]
+    thinking = rec.of("warroom.thinking")
+    assert len(thinking) > 1  # at least one streamed delta plus run_end
+    for event in thinking:
+        assert event.payload["thread_id"] == reply.payload["thread_id"]
+        assert event.payload["reply_to"] == reply.payload["reply_to"]
+    (end,) = _deltas(rec, "run_end")
+    assert end.payload["thread_id"] == owner.payload["thread_id"]
+    assert end.payload["reply_to"] == owner.payload["message_id"]
+
+
 async def test_a_small_sample_is_capped_and_the_correction_is_in_meta(clean: Engine) -> None:
     rec = Recorder()
     small = json.loads(json.dumps(ANALOGS_OUTPUT))
@@ -444,6 +468,29 @@ async def test_the_regime_table_is_posted_once_at_0730_and_not_again_after_a_res
     restarted = _supervisor(market, fake.FakeClaudeClient([]), rec, now=NOW + timedelta(minutes=10))
     assert await restarted.tick() == []
     assert len(rec.of("warroom.message")) == 1
+
+
+async def test_regime_table_thinking_events_have_null_thread_and_reply(
+    market: Engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """ATL-98: a scheduled run (the 07:30 regime table) is not a reply to anything, so every
+    warroom.thinking event, run_end included, carries null thread_id and reply_to (shown in Main)."""
+    monkeypatch.setattr(historian, "regime_top_n", lambda defaults=DEFAULTS: 2)
+    rec = Recorder()
+    commentary = [fake.assistant_text("ATL93B leads the table."), fake.result(tokens_in=50, tokens_out=10)]
+    client = fake.FakeClaudeClient([commentary])
+    sup = _supervisor(market, client, rec)
+
+    (result,) = await sup.tick()
+
+    assert result.status == "ok"
+    thinking = rec.of("warroom.thinking")
+    assert len(thinking) >= 1
+    for event in thinking:
+        assert event.payload["thread_id"] is None
+        assert event.payload["reply_to"] is None
+    (end,) = _deltas(rec, "run_end")
+    assert end.payload["thread_id"] is None and end.payload["reply_to"] is None
 
 
 async def test_a_failed_regime_run_still_posts_the_table_without_commentary(
