@@ -6,9 +6,9 @@ are never logged or published), then subscribes ``private_ws.channels``: account
 balance_and_position, orders, orders-algo and liquidation-warning. Ping, jittered reconnect and the
 30 s staleness rule are the public feed's (:mod:`trading_core.ws.feed`).
 
-Each push:
 Order and algo persistence is :mod:`trading_core.execution.order_store`, shared with reconciliation.
 
+Each push:
 
 * ``orders`` — upsert ``orders`` by (env, clOrdId), then (env, ordId); an order Atlas does not know is
   inserted with origin ``external``. A push with ``fillSz > 0`` inserts one ``fills`` row, deduped on

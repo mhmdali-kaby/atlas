@@ -294,7 +294,8 @@ market_ws:
 # logged in with the env's verified connection. Ping, reconnect backoff and the 30 s staleness rule
 # are market_ws's. Freshness lives in the Redis hash <key>:<env> (see atlas_shared.market_data
 # private_* helpers). Balance/position snapshot ticks from pushes are written at most once per
-# snapshot_min_interval_seconds (a skipped one is flushed by the stale check). With no verified
+# snapshot_min_interval_seconds (a skipped one is flushed by the stale check; the account.* events
+# carry the live values in between). With no verified
 # connection the feed retries every no_connection_retry_seconds.
 private_ws:
   key: "atlas:pws"
