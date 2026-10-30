@@ -20,7 +20,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, time
 from decimal import Decimal
-from typing import Any, Final, Literal
+from typing import Any, Final
 from zoneinfo import ZoneInfo
 
 import numpy as np
@@ -36,8 +36,7 @@ from atlas_shared.db import (
     owner_day,
 )
 from atlas_shared.defaults import DEFAULTS
-from sqlalchemy import ColumnElement, String, column, or_, select, table
-from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP
+from sqlalchemy import ColumnElement, or_, select
 from sqlalchemy.orm import Session
 
 from atlas_agents import proposals as props
@@ -60,16 +59,6 @@ AUTHORS: Final[Mapping[str, str]] = {
     NEWS: "news_intelligence",
     HISTORY: "historian",
 }
-
-_messages = table(
-    "warroom_messages",
-    column("id"),
-    column("env", String),
-    column("author", String),
-    column("kind", String),
-    column("card", JSONB),
-    column("created_at", TIMESTAMP(timezone=True)),
-)
 
 
 @dataclass(frozen=True)
@@ -189,28 +178,15 @@ def _pick(item: WatchlistItem) -> dict[str, Any]:
 
 
 def _latest(session: Session, ctx: ToolContext, author: str, card_type: str, inst_id: str) -> Item | None:
-    where = [
-        _messages.c.env == ctx.env,
-        _messages.c.author == author,
-        _messages.c.kind == "research_report",
-        _messages.c.card["type"].astext == card_type,
-        ctx.bound(_messages.c.created_at),
-    ]
-    if card_type == NEWS:
-        where.append(_messages.c.card["inst_ids"].op("?")(inst_id))
-    else:
-        where.append(_messages.c.card["inst_id"].astext == inst_id)
-    row = session.execute(
-        select(_messages.c.id, _messages.c.card, _messages.c.created_at)
-        .where(*where)
-        .order_by(_messages.c.created_at.desc())
-        .limit(1)
-    ).first()
-    if row is None:
+    found = props.latest_card(
+        session, ctx, author=author, card_type=card_type, inst_id=inst_id, inst_ids_field=card_type == NEWS
+    )
+    if found is None:
         return None
-    msg_id, card, posted = row
-    age = int((ctx.now() - posted).total_seconds() // 60)
-    return Item(card=dict(card), message_id=str(msg_id), posted_at=posted, age_minutes=max(0, age))
+    age = int((ctx.now() - found.posted_at).total_seconds() // 60)
+    return Item(
+        card=found.card, message_id=found.message_id, posted_at=found.posted_at, age_minutes=max(0, age)
+    )
 
 
 def atr_percentile(
@@ -391,7 +367,3 @@ def gather(
         take_profit_split=sizing.split_take_profits(3, c),
         notes=notes,
     )
-
-
-def side_of(direction: str | None) -> Literal["buy", "sell"] | None:
-    return {"long": "buy", "short": "sell"}.get(direction or "")  # type: ignore[return-value]

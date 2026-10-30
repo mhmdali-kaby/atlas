@@ -206,10 +206,6 @@ def default_time_stop_minutes(
     return max(1, math.ceil((end - now).total_seconds() / 60))
 
 
-def is_us_session_asset(asset_class: str | None, cfg: Mapping[str, Any] | None = None) -> bool:
-    return asset_class in set((cfg or config())["time_stop"]["us_session_asset_classes"])
-
-
 def multipliers_table(cfg: Mapping[str, Any] | None = None) -> Sequence[str]:
     """The sizing rule as text lines for the prompt."""
     s = (cfg or config())["sizing"]

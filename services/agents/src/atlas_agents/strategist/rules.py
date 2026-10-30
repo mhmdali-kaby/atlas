@@ -4,8 +4,10 @@
 the rules hold whether the proposal came from the Strategist's run (atlas_agents.strategist.run) or
 from the model calling the tool itself:
 
-* ``size_from_guidance`` — size_suggestion_pct_equity is the code's sizing guidance
-  (atlas_agents.strategist.sizing), never the model's arithmetic;
+* ``size_from_guidance`` — the code's sizing guidance (atlas_agents.strategist.sizing) is a ceiling
+  on size_suggestion_pct_equity: a model size above it, or a missing one, becomes the guidance;
+* ``size_reduced_by_model`` — a model size in (0, guidance] is kept (brief §7.6 step 6: the
+  Strategist cuts the size for correlated exposure) and recorded with both numbers;
 * ``leverage_lowest_that_fits`` — leverage_suggestion is the lowest leverage that fits;
 * ``probability_clamped`` — probability_estimate stays within +/- max_adjust_points of the
   Historian analog hit rate for the proposal's side;
@@ -54,9 +56,13 @@ def apply_with(
     if inputs.sizing is not None:
         code = inputs.sizing.size_pct
         model = _dec(out.get("size_suggestion_pct_equity"))
-        if model != code:
+        if model is not None and 0 < model <= code:
+            if model < code:
+                corrections.append({"rule": "size_reduced_by_model", "model": _s(model), "code": _s(code)})
+            out["size_suggestion_pct_equity"] = format(model, "f")
+        else:
             corrections.append({"rule": "size_from_guidance", "model": _s(model), "code": _s(code)})
-        out["size_suggestion_pct_equity"] = format(code, "f")
+            out["size_suggestion_pct_equity"] = format(code, "f")
 
     model_lev = out.get("leverage_suggestion")
     if model_lev != inputs.leverage:

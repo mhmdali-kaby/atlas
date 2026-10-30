@@ -8,8 +8,11 @@ its proposal card) and ATL-169 (the Portfolio Manager's formalise request).
 - Slug `strategist`, handle `@Strategist`, **disabled by default** (`agents.roster.strategist: {model:
   strong}`); the owner enables it in Settings → Agents.
 - The model never computes a size, a leverage or a final probability. Code computes them before the
-  run (they are in the inputs the model reads) and **sets them on the proposal at submission**, in
+  run (they are in the inputs the model reads) and **applies them at submission**, in
   `warroom.submit_proposal`'s own path, so the rule holds even if the model calls the tool itself.
+  The size guidance is a **ceiling**: a model size in (0, guidance] is kept (§7.6 step 6, cutting for
+  correlated exposure; recorded as `size_reduced_by_model`); above it or missing → the guidance
+  (`size_from_guidance`). Leverage and the probability clamp are always set by code.
 - In a planning run the model does not call `submit_proposal`: it ends with a decision block and
   code submits it **once** (one retry if the checklist refuses it). Revise/withdraw stay tool calls.
 - No usable TechnicalSetup → **no model run**: code posts "No trade on X" naming the missing input.
@@ -69,7 +72,9 @@ technical_setup = author `technical_analyst`, `card.type = technical_setup`, `ca
 positioning_report = author `agents.strategist.positioning_author` (`derivatives_sentiment`), type
 `positioning_report` (ATL-136's card; read as raw JSON, no schema import, so it works before ATL-136
 merges); news_brief = author `news_intelligence`, type `news_brief`, `card.inst_ids ? inst`;
-history_verdict = author `historian`, type `history_verdict`.
+history_verdict = author `historian`, type `history_verdict`. All four are read with
+`proposals.latest_card(...)` (returns `LatestCard(card, posted_at, message_id)`;
+`inst_ids_field=True` for the news_brief `inst_ids` list).
 
 ## The numbers
 
@@ -98,6 +103,7 @@ history_verdict = author `historian`, type `history_verdict`.
 "meta": {
   "corrections": [
     {"rule": "size_from_guidance", "model": "9", "code": "2.8125"},
+    // or, when the model went lower: {"rule": "size_reduced_by_model", "model": "1", "code": "2.8125"}
     {"rule": "leverage_lowest_that_fits", "model": 7, "code": 1},
     {"rule": "take_profit_split_default", "model": null, "code": ["50", "30", "20"]},
     {"rule": "time_stop_default", "model": null, "code": 1440},

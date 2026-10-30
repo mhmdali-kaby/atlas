@@ -483,9 +483,9 @@ async def test_mention_plans_the_named_instrument(world: World) -> None:
 # -- the rules on their own -----------------------------------------------------------------------------
 
 
-def test_rules_keep_a_matching_size_and_record_nothing_for_it() -> None:
+def _rule_inputs() -> inp.StrategistInputs:
     size = sizing.size_suggestion(D("5"), D("0.6"), D("70"))
-    inputs = inp.StrategistInputs(
+    return inp.StrategistInputs(
         inst_id="X-USDT-SWAP",
         as_of=NOW,
         asset_class="crypto",
@@ -499,6 +499,10 @@ def test_rules_keep_a_matching_size_and_record_nothing_for_it() -> None:
         time_stop_minutes=1440,
         take_profit_split=[D("50"), D("30"), D("20")],
     )
+
+
+def test_rules_keep_a_matching_size_and_record_nothing_for_it() -> None:
+    inputs = _rule_inputs()
     raw = _proposal(
         "X-USDT-SWAP", size_suggestion_pct_equity="2.8125", leverage_suggestion=2, time_stop_minutes=600
     )
@@ -509,3 +513,20 @@ def test_rules_keep_a_matching_size_and_record_nothing_for_it() -> None:
     assert out["time_stop_minutes"] == 600
     assert meta["analog_hit_rate"] is None  # no Historian card: the model's p stands
     assert out["probability_estimate"] == 0.55
+
+
+def test_rules_keep_a_size_the_model_cut_below_the_guidance() -> None:
+    # §7.6 step 6: the Strategist cuts the size for correlated exposure; the guidance is a ceiling,
+    # so the Risk Engine's strategist_suggestion cap stays at the model's 1%.
+    out, meta = apply_with(_proposal("X-USDT-SWAP", size_suggestion_pct_equity=1), _rule_inputs())
+    assert D(out["size_suggestion_pct_equity"]) == D("1")
+    sized = [c for c in meta["corrections"] if c["rule"].startswith("size_")]
+    assert sized == [{"rule": "size_reduced_by_model", "model": "1", "code": "2.8125"}]
+
+
+@pytest.mark.parametrize("model", [9, None, 0, -1])
+def test_rules_cap_a_size_above_the_guidance_or_fill_a_missing_one(model: Any) -> None:
+    out, meta = apply_with(_proposal("X-USDT-SWAP", size_suggestion_pct_equity=model), _rule_inputs())
+    assert D(out["size_suggestion_pct_equity"]) == D("2.8125")
+    sized = [c for c in meta["corrections"] if c["rule"].startswith("size_")]
+    assert [c["rule"] for c in sized] == ["size_from_guidance"]
