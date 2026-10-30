@@ -11,6 +11,7 @@ import { Feed } from './Feed'
 import { FeedEmpty, FeedError, FeedNotFound, FeedSkeleton } from './FeedStates'
 import { Inspector } from './Inspector'
 import { localMessages, useOutbox } from './live'
+import { runsForThread, useRuns } from './runs'
 import { useLiveFeed, type BannerState } from './useLiveFeed'
 import { useSelectedThread } from './selection'
 import { useThreadName } from './shape'
@@ -109,6 +110,10 @@ export function WarRoomPage() {
   // leaves it behind — the composer below belongs to the new thread. Reset during render (React's
   // "adjusting state when a prop changes" pattern), not an effect: it must apply before this
   // render commits, not after.
+  // Live agent runs drawn in this thread (ATL-97): scheduled runs (no thread) belong to Main.
+  const allRuns = useRuns((s) => s.runs)
+  const runs = useMemo(() => (selected ? runsForThread(allRuns, env, selected.id, selected.kind === 'main') : []), [allRuns, env, selected])
+
   const [replyTo, setReplyTo] = useState<WarroomMessage | null>(null)
   const lastThreadId = useRef(selected?.id)
   if (lastThreadId.current !== selected?.id) {
@@ -124,11 +129,11 @@ export function WarRoomPage() {
   } else if (!selected) {
     // Threads have loaded and the URL's thread (or Main) is not among them.
     feed = <FeedNotFound />
-  } else if (list.length === 0 && pending.length === 0) {
+  } else if (list.length === 0 && pending.length === 0 && runs.length === 0) {
     feed = <FeedEmpty thread={selected} />
   } else {
     // Keyed by thread so a new thread starts at its own bottom with fresh scroll state.
-    feed = <Feed key={selected.id} thread={selected} threadName={threadName} query={messages} pending={pending} onReply={setReplyTo} />
+    feed = <Feed key={selected.id} thread={selected} threadName={threadName} query={messages} pending={pending} runs={runs} onReply={setReplyTo} />
   }
 
   return (

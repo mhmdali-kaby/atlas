@@ -24,8 +24,25 @@ export interface SystemAlertCard {
   title?: string
 }
 
+/**
+ * One tool call of an agent run (ATL-88 final-message shape). `input` is the JSON object, or a
+ * string cut by the runtime when `input_truncated`; `output` is the tool's result text.
+ */
+export interface ToolCall {
+  id?: string | null
+  name: string
+  input: unknown
+  input_truncated?: boolean
+  as_of?: string | null
+  output?: string | null
+  output_truncated?: boolean
+  is_error?: boolean | null
+}
+
 export interface WarroomMessage {
   id: string
+  /** The agent run that wrote it, when the API carries it (the envelope does; ATL-93). */
+  run_id?: string | null
   thread_id: string
   author_type: 'agent' | 'human' | 'system'
   author: string
@@ -35,7 +52,7 @@ export interface WarroomMessage {
   reply_to: string | null
   mentions: string[]
   reasoning_md: string | null
-  tool_calls: unknown[] | null
+  tool_calls: ToolCall[] | null
   tokens_in: number | null
   tokens_out: number | null
   cost_usd: string | null
