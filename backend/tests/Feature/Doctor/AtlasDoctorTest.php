@@ -6,8 +6,10 @@ use App\Models\AuditLog;
 use App\Models\Connection;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
+use Illuminate\Process\PendingProcess;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Process;
 
 const ATL13_CORE = 'http://127.0.0.1:8100';
 const ATL13_SECRET = 'atl13-test-only-internal-secret';
@@ -16,9 +18,13 @@ const ATL13_API_SECRET = 'atl13-api-secret-value';
 const ATL13_PASSPHRASE = 'atl13-passphrase-value';
 const ATL13_FULL_UID = '4471029384756123';
 
+/** ATL-95, decision #242: never a real value, but it must never reach doctor's output either. */
+const ATL95_API_KEY = 'atl95-test-only-anthropic-api-key';
+
 const ATL13_CHECKS = [
     'postgres', 'postgres_extensions', 'migrations', 'redis', 'trading_core', 'okx_clock',
-    'demo_connection', 'withdraw_permission', 'disk_space', 'security', 'reverb_secret', 'backup',
+    'demo_connection', 'withdraw_permission', 'disk_space', 'security', 'reverb_secret',
+    'claude_cli', 'claude_cli_login', 'claude_api_key', 'backup',
 ];
 
 /** A valid 64-char Reverb secret, test-only (never the owner's real one). */
@@ -76,9 +82,47 @@ function lineFor(string $output, string $name): string
 
 function expectNoSecrets(string $output): void
 {
-    foreach ([ATL13_KEY, ATL13_API_SECRET, ATL13_PASSPHRASE, ATL13_FULL_UID, ATL13_SECRET] as $secret) {
+    foreach ([ATL13_KEY, ATL13_API_SECRET, ATL13_PASSPHRASE, ATL13_FULL_UID, ATL13_SECRET, ATL95_API_KEY] as $secret) {
         expect($output)->not->toContain($secret);
     }
+}
+
+/**
+ * ATL-95: fake the three `claude` CLI calls doctor may make. Defaults to installed and logged
+ * in via `auth status --json`; pass `version`/`authStatus`/`probe` exit codes or output to make
+ * one of them fail. `authStatus: null` makes the status command look unsupported (no usable
+ * JSON), so doctor falls back to the `-p "ok" --max-turns 1` probe.
+ *
+ * @param  array{exitCode?: int, output?: string}  $version
+ * @param  array{exitCode?: int, output?: string}|null  $authStatus
+ * @param  array{exitCode?: int, output?: string}  $probe
+ */
+function fakeClaudeCli(array $version = [], ?array $authStatus = [], array $probe = []): void
+{
+    Process::fake(function (PendingProcess $process) use ($version, $authStatus, $probe) {
+        $command = $process->command;
+        if (! is_array($command)) {
+            return Process::result(exitCode: 1);
+        }
+        if (in_array('--version', $command, true)) {
+            return Process::result(output: $version['output'] ?? "2.4.1 (Claude Code)\n", exitCode: $version['exitCode'] ?? 0);
+        }
+        if (in_array('status', $command, true)) {
+            if ($authStatus === null) {
+                return Process::result(output: "unknown command 'status'\n", exitCode: 1);
+            }
+
+            return Process::result(
+                output: $authStatus['output'] ?? json_encode(['loggedIn' => true]),
+                exitCode: $authStatus['exitCode'] ?? 0,
+            );
+        }
+        if (in_array('-p', $command, true)) {
+            return Process::result(output: $probe['output'] ?? 'ok', exitCode: $probe['exitCode'] ?? 0);
+        }
+
+        return Process::result(exitCode: 1);
+    });
 }
 
 beforeEach(function (): void {
@@ -88,11 +132,21 @@ beforeEach(function (): void {
         'atlas_defaults.doctor.min_free_disk_gb' => 0,
         'reverb.apps.apps.0.secret' => ATL50_REVERB_SECRET,
     ]);
+    fakeClaudeCli();
+    putenv('ANTHROPIC_API_KEY');
+    putenv('ANTHROPIC_AUTH_TOKEN');
+    unset($_ENV['ANTHROPIC_API_KEY'], $_ENV['ANTHROPIC_AUTH_TOKEN'], $_SERVER['ANTHROPIC_API_KEY'], $_SERVER['ANTHROPIC_AUTH_TOKEN']);
     $this->connection = Connection::query()->create([
         'exchange' => 'okx', 'env' => 'demo', 'label' => 'OKX Demo',
         'api_key' => ATL13_KEY, 'api_secret' => ATL13_API_SECRET, 'passphrase' => ATL13_PASSPHRASE,
         'permissions' => ['read_only', 'trade'], 'uid_last4' => '6123', 'last_verified_at' => now(),
     ]);
+});
+
+afterEach(function (): void {
+    putenv('ANTHROPIC_API_KEY');
+    putenv('ANTHROPIC_AUTH_TOKEN');
+    unset($_ENV['ANTHROPIC_API_KEY'], $_ENV['ANTHROPIC_AUTH_TOKEN'], $_SERVER['ANTHROPIC_API_KEY'], $_SERVER['ANTHROPIC_AUTH_TOKEN']);
 });
 
 it('passes with everything up and a verified demo connection', function (): void {
@@ -302,4 +356,97 @@ it('prints one JSON object per check with name, ok and detail', function (): voi
     expect($byName['backup'])->toMatchArray(['ok' => true, 'status' => 'warn']);
     expect($byName['postgres']['ok'])->toBeTrue();
     expectNoSecrets($output);
+});
+
+// ATL-95, decision #242: agents run on the owner's logged-in claude CLI, never an API key.
+
+it('fails the login check with a "claude login" hint when the CLI is not authenticated', function (): void {
+    fakeCore();
+    fakeClaudeCli(authStatus: ['output' => json_encode(['loggedIn' => false])]);
+
+    [$code, $output] = doctor();
+
+    expect($code)->not->toBe(0);
+    expect(lineFor($output, 'claude_cli'))->toStartWith('✓');
+    expect(lineFor($output, 'claude_cli_login'))->toStartWith('✗')->toContain('claude login');
+});
+
+it('falls back to a prompt probe when the CLI has no usable auth status command', function (): void {
+    fakeCore();
+    fakeClaudeCli(authStatus: null, probe: ['exitCode' => 0]);
+
+    [$code, $output] = doctor();
+
+    expect($code)->toBe(0);
+    expect(lineFor($output, 'claude_cli_login'))->toStartWith('✓');
+    Process::assertRan(fn (PendingProcess $p): bool => is_array($p->command) && in_array('-p', $p->command, true));
+});
+
+it('fails the login check when the fallback prompt probe also fails', function (): void {
+    fakeCore();
+    fakeClaudeCli(authStatus: null, probe: ['exitCode' => 1]);
+
+    [$code, $output] = doctor();
+
+    expect($code)->not->toBe(0);
+    expect(lineFor($output, 'claude_cli_login'))->toStartWith('✗')->toContain('claude login');
+});
+
+it('fails the install check and never runs the auth check when claude is missing', function (): void {
+    fakeCore();
+    fakeClaudeCli(version: ['exitCode' => 127, 'output' => '']);
+
+    [$code, $output] = doctor();
+
+    expect($code)->not->toBe(0);
+    expect(lineFor($output, 'claude_cli'))->toStartWith('✗');
+    expect(lineFor($output, 'claude_cli_login'))->toStartWith('✗')->toContain('not found');
+    Process::assertNotRan(fn (PendingProcess $p): bool => is_array($p->command)
+        && (in_array('status', $p->command, true) || in_array('-p', $p->command, true)));
+});
+
+it('fails the API key check when ANTHROPIC_API_KEY is set, without leaking its value', function (): void {
+    fakeCore();
+    putenv('ANTHROPIC_API_KEY='.ATL95_API_KEY);
+
+    [$code, $output] = doctor();
+
+    expect($code)->not->toBe(0);
+    expect(lineFor($output, 'claude_api_key'))->toStartWith('✗')->toContain('ANTHROPIC_API_KEY');
+    expectNoSecrets($output);
+});
+
+it('fails the API key check when ANTHROPIC_AUTH_TOKEN is set', function (): void {
+    fakeCore();
+    putenv('ANTHROPIC_AUTH_TOKEN='.ATL95_API_KEY);
+
+    [$code, $output] = doctor();
+
+    expect($code)->not->toBe(0);
+    expect(lineFor($output, 'claude_api_key'))->toStartWith('✗')->toContain('ANTHROPIC_AUTH_TOKEN');
+    expectNoSecrets($output);
+});
+
+it('passes the API key check when neither Anthropic variable is set', function (): void {
+    fakeCore();
+
+    [$code, $output] = doctor();
+
+    expect($code)->toBe(0);
+    expect(lineFor($output, 'claude_api_key'))->toStartWith('✓');
+});
+
+it('never lets ANTHROPIC_API_KEY reach the claude subprocess calls', function (): void {
+    fakeCore();
+    putenv('ANTHROPIC_API_KEY='.ATL95_API_KEY);
+
+    doctor();
+
+    Process::assertRan(function (PendingProcess $p): bool {
+        if (! is_array($p->command) || ! in_array('--version', $p->command, true)) {
+            return false;
+        }
+
+        return ($p->environment['ANTHROPIC_API_KEY'] ?? null) === false;
+    });
 });
