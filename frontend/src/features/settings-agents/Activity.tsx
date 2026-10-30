@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import { formatFixed } from '../../lib/format'
+import { formatFixed, formatList } from '../../lib/format'
 import { Skeleton } from '../../ui'
 import { useLang } from '../portfolio/hooks'
 import { formatDayTime } from '../portfolio/time'
@@ -24,8 +24,7 @@ function Line({ field, change }: { field: string; change: { from: unknown; to: u
   if (field === LISTS.allow || field === LISTS.deny) {
     const from = asList(change.from)
     const to = asList(change.to)
-    const fmt = new Intl.ListFormat(lang === 'ar' ? 'ar' : 'en', { style: 'long', type: 'conjunction' })
-    const hosts = (xs: string[]) => fmt.format(xs.map((h) => `⁦${displayHost(h)}⁩`))
+    const hosts = (xs: string[]) => formatList(xs.map((h) => `⁦${displayHost(h)}⁩`), lang)
     const added = to.filter((h) => !from.includes(h))
     const removed = from.filter((h) => !to.includes(h))
     const bits = [

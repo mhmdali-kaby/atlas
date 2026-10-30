@@ -1,7 +1,8 @@
-import { ArrowDownRight, ArrowUpRight, ExternalLink, Newspaper } from 'lucide-react'
+import { ExternalLink, Newspaper } from 'lucide-react'
 import { Trans, useTranslation } from 'react-i18next'
-import { formatDecimal, formatFixed, type Lang } from '../../lib/format'
+import type { Lang } from '../../lib/format'
 import type { NewsAlert } from './newsAlert'
+import { ImportancePips, SignedSentiment } from './newsParts'
 import { fillSlots, slot } from './slots'
 import { InstrumentId } from './text'
 import { formatFullTime, formatTime } from './time'
@@ -14,22 +15,13 @@ import { formatFullTime, formatTime } from './time'
  * only link is the article URL, kept only when it is http(s).
  */
 
-/** Sentiment as a signed value: sign + arrow + a spoken word, never colour alone; |s| < 0.05 is neutral. */
+/** The sentiment label and its signed value. */
 function Sentiment({ value, lang }: { value: number; lang: Lang }) {
   const { t } = useTranslation('warroom')
-  const tone = value >= 0.05 ? 'profit' : value <= -0.05 ? 'loss' : 'zero'
-  const text = tone === 'zero' ? formatFixed(0, 2, lang) : formatDecimal(value.toFixed(2), lang, 2, 'exceptZero')
-  const Icon = tone === 'profit' ? ArrowUpRight : ArrowDownRight
   return (
     <span className="news-senti" data-testid="news-sentiment">
       <span>{t('news.sentiment')}</span>
-      <span className={`signed is-${tone}`} data-sign={tone}>
-        {tone !== 'zero' && <Icon aria-hidden="true" strokeWidth={2.25} className="icon-dir" />}
-        <bdi dir="ltr" className="num fig">
-          {text}
-        </bdi>
-        <span className="sr-only"> {t(tone === 'profit' ? 'news.positive' : tone === 'loss' ? 'news.negative' : 'news.neutral')}</span>
-      </span>
+      <SignedSentiment value={value} lang={lang} />
     </span>
   )
 }
@@ -47,11 +39,7 @@ export function NewsAlertCard({ alert: a, lang }: { alert: NewsAlert; lang: Lang
         </span>
         <span className="news-kind">{t('kind.news_alert')}</span>
         <span className="news-imp" role="img" aria-label={t('news.impOf', { n: a.importance })}>
-          <span className="news-pips" aria-hidden="true">
-            {[1, 2, 3, 4, 5].map((n) => (
-              <i key={n} className={n <= a.importance ? 'is-on' : undefined} style={{ height: 2 + n * 2 }} />
-            ))}
-          </span>
+          <ImportancePips n={a.importance} />
           <span aria-hidden="true">
             <Trans t={t} i18nKey="news.imp" values={{ n: a.importance }} components={{ n: <span className="num" /> }} />
           </span>

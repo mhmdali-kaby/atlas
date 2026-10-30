@@ -27,6 +27,8 @@ import { Medallion, SystemMedallion } from './Medallion'
 import { HistoryVerdictCard } from './HistoryVerdictCard'
 import { readHistoryVerdict, readRegimeTable, unmatchedOf } from './historian'
 import { NewsAlertCard } from './NewsAlertCard'
+import { NewsBriefCard } from './NewsBriefCard'
+import { readNewsBrief } from './newsBrief'
 import { MessageReasoning } from './Reasoning'
 import { useRuns } from './runs'
 import { readNewsAlert } from './newsAlert'
@@ -65,6 +67,7 @@ const KIND_ICON: Record<string, LucideIcon> = {
  */
 interface CardCtx {
   onJump: (id: string) => void
+  parent?: WarroomMessage
 }
 
 const CARDS: Partial<Record<string, (m: WarroomMessage, lang: Lang, ctx: CardCtx) => ReactNode>> = {
@@ -74,7 +77,17 @@ const CARDS: Partial<Record<string, (m: WarroomMessage, lang: Lang, ctx: CardCtx
   },
   // The Historian's answer (design v7 Historian cards §5): its content_md above the card, with
   // untraced numbers marked in both (brief §7.11, ATL-91 unmatched_numbers).
-  research_report: (m, lang) => {
+  research_report: (m, lang, { parent }) => {
+    // News Intelligence's brief (design v9 §B): its content_md above the card, as for the Historian.
+    const brief = readNewsBrief(m.card, parent?.kind)
+    if (brief) {
+      return (
+        <>
+          <AgentBody message={m} />
+          <NewsBriefCard brief={brief} unmatched={unmatchedOf(m)} lang={lang} />
+        </>
+      )
+    }
     const card = readHistoryVerdict(m.card)
     if (!card) return null
     const unmatched = unmatchedOf(m)
@@ -335,7 +348,7 @@ function AgentMessage({ m, cont, cls, common, parent, lang, label, time, onJump,
   }, [m.id])
   const KindIcon = KIND_ICON[m.kind] ?? FileText
   const kindLabel = t(`kind.${m.kind}`, { defaultValue: m.kind })
-  const card = m.kind === 'text' ? null : (CARDS[m.kind]?.(m, lang, { onJump }) ?? null)
+  const card = m.kind === 'text' ? null : (CARDS[m.kind]?.(m, lang, { onJump, parent }) ?? null)
   return (
     <article ref={ref} className={cls(cont && 'is-cont')} {...common} onContextMenu={onContextMenu}>
       <div className="msg-gutter">

@@ -343,12 +343,13 @@ bdi.fig, bdi.tok { white-space: nowrap; }
 .news-insts { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .news-inst { display: inline-flex; align-items: center; height: 24px; padding-inline: 8px; border-radius: var(--radius-full); background: var(--fill-3); font-size: var(--fs-footnote); }
 .news-senti { display: inline-flex; align-items: center; gap: 6px; margin-inline-start: auto; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
-.news-senti .signed { display: inline-flex; align-items: center; gap: 3px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.news-senti .signed svg { width: 0.9em; height: 0.9em; }
-.news-senti .signed.is-profit { color: var(--profit-ink); }
-.news-senti .signed.is-loss { color: var(--loss-ink); }
-.news-senti .signed.is-zero { color: var(--label); }
-[dir='rtl'] .news-senti .icon-dir { transform: scaleX(-1); }
+/* signed sentiment (newsParts SignedSentiment), shared by the news alert and brief cards */
+.news-signed { display: inline-flex; align-items: center; gap: 3px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.news-signed svg { width: 0.9em; height: 0.9em; }
+.news-signed.is-profit { color: var(--profit-ink); }
+.news-signed.is-loss { color: var(--loss-ink); }
+.news-signed.is-zero { color: var(--label); }
+[dir='rtl'] .news-signed .icon-dir { transform: scaleX(-1); }
 .news-foot {
   display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 12px;
   margin-inline: -14px; padding: 8px 14px 9px; border-top: 0.5px solid var(--separator);

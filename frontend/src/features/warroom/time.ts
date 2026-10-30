@@ -75,3 +75,26 @@ export function dayLabel(ts: string | number, lang: Lang, now: number, words: { 
   if (rel === 'yesterday') return words.yesterday
   return dtf(lang, { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date(ms(ts)))
 }
+
+const utcTime = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+const utcFull = new Intl.DateTimeFormat('en-GB', { timeZone: 'UTC', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+
+/** "01:47": the instant's time in UTC (Western digits in both languages, like every War Room time). */
+export function formatUtcTime(ts: string | number): string {
+  return utcTime.format(new Date(ms(ts)))
+}
+
+/** "28 Oct, 01:47": the instant's date and time in UTC, for tooltips. */
+export function formatUtcFull(ts: string | number): string {
+  return utcFull.format(new Date(ms(ts)))
+}
+
+/** "Wed 28 Oct" in Baghdad (calendar day headers). */
+export function formatDayShort(ts: string | number, lang: Lang): string {
+  return dtf(lang, { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(ms(ts)))
+}
+
+/** "28 Oct, 06:10" in Baghdad. */
+export function formatDateTime(ts: string | number, lang: Lang): string {
+  return `${formatDate(ts, lang)}${lang === 'ar' ? '، ' : ', '}${formatTime(ts, lang)}`
+}
