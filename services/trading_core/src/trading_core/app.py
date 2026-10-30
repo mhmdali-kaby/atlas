@@ -41,6 +41,7 @@ from trading_core.sync.bills import STREAM as BILLS_JOB
 from trading_core.sync.bills import bills_job
 from trading_core.sync.instruments import STREAM as INSTRUMENTS_JOB
 from trading_core.sync.instruments import instruments_job
+from trading_core.ws import MarketFeed, default_feed
 
 logger = logging.getLogger("trading_core")
 
@@ -212,20 +213,30 @@ def create_app(
     *,
     scheduler: Scheduler | None = None,
     engine: Engine | None = None,
+    market_feed: MarketFeed | None = None,
 ) -> FastAPI:
     settings = settings or Settings.from_env()
     if not settings.internal_shared_secret:
         logger.warning("INTERNAL_SHARED_SECRET is empty; every /internal call will be rejected")
     db = engine if engine is not None else make_engine()
     jobs = scheduler if scheduler is not None else default_scheduler(settings, db)
+    # The live feed (ATL-125) is built only for the real app or when a test passes one in, so an
+    # app made around an injected scheduler never opens a socket to OKX.
+    feed = market_feed
+    if feed is None and scheduler is None and settings.run_market_ws:
+        feed = default_feed(settings.env, db)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
         if settings.run_scheduler:
             jobs.start()
+            if feed is not None:
+                await feed.start()
         try:
             yield
         finally:
+            if feed is not None:
+                await feed.stop()
             await jobs.stop()
 
     application = FastAPI(
@@ -239,6 +250,7 @@ def create_app(
     application.state.settings = settings
     application.state.scheduler = jobs
     application.state.engine = db
+    application.state.market_feed = feed
 
     @application.get("/health")
     async def health() -> dict[str, str]:

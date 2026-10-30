@@ -152,6 +152,31 @@ return [
             '1D' => 960,
         ],
     ],
+    'market_ws' => [
+        'ping_interval_seconds' => 25,
+        'market_data_max_age_seconds' => 30,
+        'reconnect_base_seconds' => 1,
+        'reconnect_max_seconds' => 60,
+        'reconnect_jitter' => '0.5',
+        'subscriptions_refresh_seconds' => 15,
+        'tick_publish_min_interval_seconds' => 1,
+        'stale_check_seconds' => 5,
+        'always_subscribe' => [
+            'BTC-USDT-SWAP',
+        ],
+        'public_channels' => [
+            'tickers',
+            'mark-price',
+            'books5',
+        ],
+        'business_channels' => [
+            'candle1m',
+            'candle5m',
+            'candle1H',
+        ],
+        'key_prefix' => 'atlas:md',
+        'snapshot_ttl_seconds' => 86400,
+    ],
     'quality' => [
         'interval_seconds' => 900,
         'window_bars' => 500,

@@ -26,6 +26,7 @@ from decimal import Decimal
 from typing import Any, Final
 
 from atlas_quant.grid import bar_delta
+from atlas_shared import market_data
 from atlas_shared.db import (
     Candle,
     FundingRate,
@@ -390,24 +391,70 @@ class OrderbookOut(BaseModel):
     asks: list[list[Decimal]]
 
 
+BOOKS_SOURCE: Final = "redis:atlas:md (OKX books5 WebSocket)"
+
+
+def _levels(raw: Any, depth: int) -> list[list[Decimal]]:
+    """OKX books5 levels ``[px, sz, "0", orders]`` -> ``[px, sz]``, best first, at most ``depth``."""
+    out: list[list[Decimal]] = []
+    for level in raw if isinstance(raw, list) else []:
+        if isinstance(level, list) and len(level) >= 2:
+            out.append([Decimal(str(level[0])), Decimal(str(level[1]))])
+        if len(out) >= depth:
+            break
+    return out
+
+
+def _book_unavailable(args: GetOrderbookInput, reason: str, as_of: datetime) -> ToolResult:
+    return ToolResult(
+        data=OrderbookOut(inst_id=args.inst_id, available=False, reason=reason, bids=[], asks=[]),
+        as_of=as_of,
+        source=BOOKS_SOURCE,
+    )
+
+
 @atlas_tool("okx_market", "get_orderbook", GetOrderbookInput, OrderbookOut)
 async def get_orderbook(ctx: ToolContext, args: GetOrderbookInput) -> ToolResult:
-    """Order book for inst_id. Atlas does not store order books yet (the WebSocket books feed
-    arrives in Phase 2), so this always answers available=false with the reason; never infer depth
-    or spread from it."""
+    """Top of the order book for inst_id from the live OKX books5 feed: at most 5 levels a side,
+    each [price, size], best first; as_of is OKX's book time. available=false (with empty sides and
+    the reason) when the instrument is not subscribed, the book is older than
+    market_ws.market_data_max_age_seconds, or in replay; never infer depth or spread then."""
     with ctx.session_factory() as session:
         find_instrument(session, ctx, args.inst_id)
+    if ctx.replaying:
+        return _book_unavailable(args, "Order books are live-only and are not stored for replay.", ctx.now())
+    try:
+        snap = ctx.market_snapshot(ctx.env, args.inst_id)
+    except Exception:
+        return _book_unavailable(args, "The live market-data store (Redis) is unreachable.", ctx.now())
+    now = ctx.now()
+    book = snap.books5
+    if book is None:
+        return _book_unavailable(
+            args,
+            "No books5 snapshot: the live feed is not subscribed to this instrument (it covers the "
+            "watchlist, open positions and BTC-USDT-SWAP).",
+            now,
+        )
+    max_age = market_data.max_age_seconds()
+    if snap.channel_stale("books5", now, max_age):
+        at = snap.channel_at.get("books5")
+        age = f"{(now - at).total_seconds():.0f} s old" if at else "of unknown age"
+        return _book_unavailable(
+            args, f"The books5 snapshot is stale ({age}; limit {max_age:.0f} s). Depth is unknown.", now
+        )
+    ts = book.get("ts")
+    as_of = market_data.from_ms(ts) if ts else snap.channel_at.get("books5", now)
     return ToolResult(
         data=OrderbookOut(
             inst_id=args.inst_id,
-            available=False,
-            reason="Atlas stores no order book in Phase 1; the books feed arrives with the Phase 2 "
-            "WebSocket market data. Depth, spread and slippage are unknown.",
-            bids=[],
-            asks=[],
+            available=True,
+            reason="Live OKX books5 snapshot (top 5 levels per side).",
+            bids=_levels(book.get("bids"), args.depth),
+            asks=_levels(book.get("asks"), args.depth),
         ),
-        as_of=ctx.now(),
-        source=src("instruments"),
+        as_of=as_of,
+        source=BOOKS_SOURCE,
     )
 
 
