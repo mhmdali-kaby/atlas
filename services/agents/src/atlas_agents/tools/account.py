@@ -25,7 +25,6 @@ import uuid
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any, Final
-from zoneinfo import ZoneInfo
 
 from atlas_shared.db import (
     BalanceSnapshot,
@@ -34,8 +33,8 @@ from atlas_shared.db import (
     PositionSnapshot,
     Watchlist,
     WatchlistItem,
+    owner_day,
 )
-from atlas_shared.defaults import DEFAULTS
 from pydantic import BaseModel, Field
 from sqlalchemy import ColumnElement, Integer, String, Uuid, column, or_, select, table
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP
@@ -44,7 +43,6 @@ from sqlalchemy.orm import Session
 from atlas_agents.tools.catalogue import GetCorrelationsInput, GetWatchlistInput
 from atlas_agents.tools.framework import NoInput, ToolContext, ToolError, ToolResult, atlas_tool
 from atlas_agents.tools.market import closed_bars, market_config, newest, src
-from atlas_agents.watchlists import baghdad_today
 
 # The only settings keys an agent may see: numeric limits from brief §14 (SettingsSchema's
 # NUMERIC_FIELDS minus the onboarding flag). Adding a key here is a deliberate, reviewed change;
@@ -431,7 +429,7 @@ async def get_today_budget_left(ctx: ToolContext, args: NoInput) -> ToolResult:
     used = Decimal(0)
     max_open = values.get("max_open_positions")
     max_open_int = int(max_open) if max_open is not None else None
-    day = ctx.now().astimezone(ZoneInfo(str(DEFAULTS["timezone"]["display"]))).date()
+    day = owner_day(ctx.now())
     return ToolResult(
         data=BudgetOut(
             env=ctx.env,
@@ -492,7 +490,7 @@ async def get_watchlist(ctx: ToolContext, args: GetWatchlistInput) -> ToolResult
     """Market Scout's watchlist for an Asia/Baghdad date (default: today in Asia/Baghdad): the latest
     version, its status (draft|published|partial_evidence|empty) and reason, and the picks the owner
     has not removed, ordered by rank."""
-    day = args.date or baghdad_today(ctx.now())
+    day = args.date or owner_day(ctx.now())
     with ctx.session_factory() as session:
         wl = session.scalars(
             select(Watchlist)

@@ -6,7 +6,7 @@ ATL-110 (scores), ATL-112 (Scout evals) and ATL-115 (War Room card).
 ## The two-minute version
 
 - A watchlist belongs to **an env and an Asia/Baghdad business day** (`watchlists.date`, a Postgres
-  `date`). Compute the day with `atlas_agents.watchlists.baghdad_today(instant)`; never take
+  `date`). Compute the day with `atlas_shared.db.owner_day(instant)` (re-exported as `atlas_agents.watchlists.baghdad_today`); never take
   `.date()` of a UTC timestamp — at 01:30 Baghdad the UTC date is still yesterday.
 - **Every save is a new version.** A re-run (intraday alert, `/cycle now`) calls `save_watchlist`
   again for the same (env, date) and gets `version = max + 1`. The current watchlist is the
@@ -131,7 +131,7 @@ with session_factory() as s:
 
 ## `atlas_data.get_watchlist`
 
-Input: `{"date": "2026-10-31"}` or `{}` (default: `baghdad_today(ctx.now())`; in replay that is the
+Input: `{"date": "2026-10-31"}` or `{}` (default: `owner_day(ctx.now())`; in replay that is the
 Baghdad day of `replay_as_of`).
 
 Reads the highest version for (ctx.env, date) with `created_at <= replay_as_of` in replay. Items

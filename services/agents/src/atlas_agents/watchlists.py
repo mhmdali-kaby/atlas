@@ -16,10 +16,8 @@ from collections.abc import Mapping, Sequence
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any, Final, Literal, get_args
-from zoneinfo import ZoneInfo
 
-from atlas_shared.db import Watchlist, WatchlistItem
-from atlas_shared.defaults import DEFAULTS
+from atlas_shared.db import Watchlist, WatchlistItem, owner_day
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
@@ -34,11 +32,8 @@ class WatchlistError(ValueError):
     """A watchlist that save_watchlist refuses to write (bad env, date, status or pick set)."""
 
 
-def baghdad_today(at: datetime) -> date:
-    """The Asia/Baghdad calendar date of the instant ``at`` (naive values are taken as UTC)."""
-    if at.tzinfo is None:
-        at = at.replace(tzinfo=UTC)
-    return at.astimezone(ZoneInfo(str(DEFAULTS["timezone"]["display"]))).date()
+baghdad_today = owner_day
+"""The Asia/Baghdad date of an instant: a re-export of :func:`atlas_shared.db.owner_day`."""
 
 
 def _validate(
