@@ -52,19 +52,24 @@ matches), even though `"SOL"` alone would otherwise sort first alphabetically.
 `blocked: true` means the instrument is on the Settings blocklist (**ATL-115: disable it in the
 picker, don't hide it** — the owner should see why it's greyed out).
 
-## The blocklist — one source, same as Market Scout (decision #247)
+## The blocklist — one source, `App\Support\Watchlists\Blocklist` (decision #247)
 
-There is already a blocklist, and this endpoint reads it rather than keeping its own: the env's
-`settings` row's `data['blocklist']` when that key is set, else `config('atlas_defaults.agents.scout.universe.blocklist')`
-(`config/defaults.yaml` → `agents.scout.universe.blocklist`, empty by default). This is exactly the
-rule Market Scout's `config_from` applies (`services/agents/src/atlas_agents/scout/universe.py:151-166`),
-so an instrument the Scout drops as blocked is the same one this endpoint marks `blocked: true` —
-there is no second list to keep in sync. Matching is case-insensitive on both sides (`inst_id` and
-every blocklist entry are upper-cased before comparing).
+This endpoint does not implement its own blocklist lookup. It injects
+`App\Support\Watchlists\Blocklist` (added in ATL-103, already used by
+`PinWatchlistItemRequest`) and calls `$blocklist->for($env)` once before scoring the page of
+rows. That class is the single source: the env's `settings` row's `data['blocklist']` when it is a
+list of strings, else `config('atlas_defaults.agents.scout.universe.blocklist')`
+(`config/defaults.yaml` → `agents.scout.universe.blocklist`, empty by default) — the same rule
+Market Scout's `config_from` applies (`services/agents/src/atlas_agents/scout/universe.py:151-166`).
+Matching is case-insensitive on both sides (`inst_id` and every blocklist entry are upper-cased
+before comparing). There is no second list anywhere in this task, so the pin picker (this
+endpoint) and the pin endpoint (`PinWatchlistItemRequest`) can never disagree about what is
+blocked, including on malformed settings data (`Blocklist` falls back to config unless
+`data.blocklist` is a plain list of strings).
 
-The controller reads the `settings` row directly (`Setting::query()->where('env', $env)->first()`),
-**not** `SettingsService::current()` — that method creates the row and writes a settings_history
-entry on first read, which a GET must never do.
+`Blocklist::for()` reads the `settings` row directly (`Setting::query()->where('env',
+$env)->value('data')`), **not** `SettingsService::current()` — that method creates the row and
+writes a settings_history entry on first read, which a GET must never do.
 
 Until Settings → Markets (brief §14.5) has an editable blocklist field, changing the default list
 means editing `config/defaults.yaml` and running `php artisan atlas:defaults`. Changing it per-env

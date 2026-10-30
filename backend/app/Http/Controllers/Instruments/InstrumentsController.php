@@ -7,7 +7,7 @@ namespace App\Http\Controllers\Instruments;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Instruments\SearchInstrumentsRequest;
 use App\Http\Resources\InstrumentResource;
-use App\Models\Setting;
+use App\Support\Watchlists\Blocklist;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 
@@ -20,7 +20,7 @@ class InstrumentsController extends Controller
 {
     private const COLUMNS = ['inst_id', 'inst_type', 'asset_class', 'base_ccy', 'quote_ccy', 'settle_ccy'];
 
-    public function index(SearchInstrumentsRequest $request): AnonymousResourceCollection
+    public function index(SearchInstrumentsRequest $request, Blocklist $blocklist): AnonymousResourceCollection
     {
         $env = $request->env();
         $q = $request->search();
@@ -47,31 +47,12 @@ class InstrumentsController extends Controller
             ->limit($request->limit())
             ->get(self::COLUMNS);
 
-        $blocklist = self::blocklist($env);
+        $blocked = $blocklist->for($env);
         foreach ($rows as $row) {
-            $row->blocked = in_array(mb_strtoupper((string) $row->inst_id), $blocklist, true);
+            $row->blocked = in_array(mb_strtoupper((string) $row->inst_id), $blocked, true);
         }
 
         return InstrumentResource::collection($rows);
-    }
-
-    /**
-     * Same source Market Scout's `config_from` reads (ATL-104, decision #247): the env's
-     * settings row's data `blocklist` when present, else `agents.scout.universe.blocklist`.
-     * Reads the row directly rather than through SettingsService::current(), which would
-     * create the row and write an audit entry for what is only a read here.
-     *
-     * @return list<string> upper-cased inst_ids
-     */
-    private static function blocklist(string $env): array
-    {
-        $setting = Setting::query()->where('env', $env)->first();
-        $list = $setting instanceof Setting ? ($setting->data['blocklist'] ?? null) : null;
-        if (! is_array($list)) {
-            $list = config('atlas_defaults.agents.scout.universe.blocklist');
-        }
-
-        return is_array($list) ? array_values(array_map(static fn (mixed $v): string => mb_strtoupper((string) $v), $list)) : [];
     }
 
     /** Postgres' default LIKE escape character is backslash; q may contain % or _ literally. */
