@@ -190,15 +190,27 @@ async def test_a_broken_case_is_a_failed_case_not_a_crash(engine: Engine, tmp_pa
     assert report.cases[2].passed == 5
 
 
-async def test_an_invented_number_fails_no_invented_numbers(engine: Engine, tmp_path: Path) -> None:
+# numguard matches within 0.5% and also tries pairwise differences and ratios of every tool leaf, so
+# with ~70 candle prices almost any small figure is "derivable". A large negative amount is not: no
+# leaf, ratio (all positive) or price difference (|d| < ~1,200) comes near it. Checked against
+# numguard.check with this case's tool outputs.
+INVENTED = "-48213.7"
+
+
+@pytest.mark.parametrize("which", ["numguard", "stub"])
+async def test_an_invented_number_fails_no_invented_numbers(
+    engine: Engine, tmp_path: Path, which: str
+) -> None:
     def invent(raw: dict[str, Any]) -> None:
         text = next(s for s in raw["fake"]["steps"] if "text" in s)
-        text["text"] += " The 30-day hit rate is 61.3%."
+        text["text"] += f" The 30-day PnL was {INVENTED}."
+        raw["properties"]["no_invented_numbers"] = {"guard": which}
 
-    case = load_case(_copy_case("btc_stats_1h", tmp_path, "invented", invent))
+    case = load_case(_copy_case("btc_stats_1h", tmp_path, f"invented_{which}", invent))
     result = await run_case(case, engine, fake=True)
     outcome = {p.name: p for p in result.properties}["no_invented_numbers"]
-    assert not outcome.passed and "61.3%" in outcome.detail
+    assert outcome.detail.startswith(f"{which}:")
+    assert not outcome.passed and INVENTED in outcome.detail
 
 
 async def test_a_tool_outside_the_access_matrix_is_refused(engine: Engine, tmp_path: Path) -> None:
