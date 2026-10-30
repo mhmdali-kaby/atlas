@@ -166,6 +166,11 @@ doctor:
   # ATL-33 AC4: the one place this number lives. config/session.php's SESSION_LIFETIME
   # fallback and Doctor::security() both read it, so they cannot drift apart.
   max_session_lifetime_minutes: 15
+  # ATL-95, decision #242: `claude --version` / `claude auth status --json` timeout.
+  claude_cli_timeout_seconds: 15
+  # The non-interactive prompt probe (`claude -p "ok" --max-turns 1`) used only when the
+  # installed CLI has no status/auth command to ask instead; a real model turn is slower.
+  claude_cli_probe_timeout_seconds: 30
 
 # ATL-10: account sync. Funding-account coins are valued in USD with OKX SPOT tickers
 # (<CCY>-<quote> last price, quotes tried in order). Stablecoins count 1:1 with USD in Phase 0.
