@@ -26,6 +26,8 @@ from trading_core.config import Settings
 from trading_core.connection_test import router as connection_test_router
 from trading_core.logs import AccessLogMiddleware
 from trading_core.marketdata.api import router as quality_router
+from trading_core.marketdata.derivatives import JOB as DERIVATIVES_POLLER_JOB
+from trading_core.marketdata.derivatives import derivatives_poller_job
 from trading_core.marketdata.poller import JOB as CANDLE_POLLER_JOB
 from trading_core.marketdata.poller import candle_poller_job
 from trading_core.marketdata.quality import JOB as QUALITY_JOB
@@ -191,7 +193,8 @@ def default_scheduler(settings: Settings, engine: Engine | None = None) -> Sched
         DEFAULTS["sync"]["history_interval_seconds"],
         history_job(settings.env, engine, settings.app_key),
     )
-    # Public OKX limits are per IP: the backfill, the candle poller and the gap repair share one limiter.
+    # Public OKX limits are per IP: the backfill, the candle and derivatives pollers and the gap repair
+    # share one limiter.
     limiter = RateLimiter()
 
     def market_client(env: str) -> OkxClient:
@@ -206,6 +209,11 @@ def default_scheduler(settings: Settings, engine: Engine | None = None) -> Sched
         CANDLE_POLLER_JOB,
         DEFAULTS["candle_poller"]["tick_seconds"],
         candle_poller_job(settings.env, engine, client_factory=market_client),
+    )
+    scheduler.add(
+        DERIVATIVES_POLLER_JOB,
+        DEFAULTS["derivatives_poller"]["interval_seconds"],
+        derivatives_poller_job(settings.env, engine, client_factory=market_client),
     )
     scheduler.add(
         QUALITY_JOB,

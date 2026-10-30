@@ -19,3 +19,6 @@ Hand-written in the documented OKX v5 response shape (the build sandbox had no n
 `public_mark_price`, and the positional-array rubik files `rubik_stat_contracts_open_interest_volume`,
 `rubik_stat_contracts_long_short_account_ratio`, `rubik_stat_taker_volume`. Re-record from the demo API
 when a networked run is available; the shapes must not change.
+
+ATL-134 adds `market_index_tickers` (quoteCcy=USDT, three indexes), hand-written in the documented
+shape for the same reason.

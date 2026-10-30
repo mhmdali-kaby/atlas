@@ -743,8 +743,9 @@ class Vote(_Row, Base):
 
 class RiskCheck(_Row, Base):
     """One Risk Engine run on a proposal (brief §10). result approved|resized|rejected; decision
-    send_now|awaiting_owner, and null exactly when the result is rejected (CHECKed). checks is the
-    ordered list of §10 check results. final_size is contracts after lotSz rounding;
+    send_now|awaiting_owner|advise_only (ATL-127), and null exactly when the result is rejected
+    (CHECKed). checks is the ordered list of the nine §10 check results (trading_core.risk.engine).
+    final_size is contracts after lotSz rounding;
     final_notional_usd is USD."""
 
     __tablename__ = "risk_checks"

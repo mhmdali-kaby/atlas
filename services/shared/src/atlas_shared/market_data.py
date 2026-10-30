@@ -8,6 +8,9 @@ One Redis hash per instrument, ``<market_ws.key_prefix>:<env>:<instId>`` (``atla
 ``books5``       JSON of the last ``books5`` push: ``{"asks": [[px, sz, "0", n], ...], "bids": ..., "ts"}``
 ``<channel>_ms`` epoch ms at which that channel last pushed (``tickers_ms``, ``books5_ms``, ...)
 ``closed:<bar>`` open time (epoch ms) of the newest confirmed bar already published as candle.closed
+``index``        JSON ``{"idxPx", "ts"}`` of the instrument's index price (``market/index-tickers``),
+                 written every 5 min by trading_core's derivatives poller (ATL-134), not the socket
+``index_ms``     OKX's ``ts`` of that index price (so ``channel_at["index"]`` is its age)
 
 The Risk Engine and the agents read freshness from here without touching the socket: an
 instrument is **stale** when it has had no message for ``market_ws.market_data_max_age_seconds``
@@ -27,6 +30,7 @@ LAST_MSG_MS = "last_msg_ms"
 TICKER = "ticker"
 MARK = "mark"
 BOOKS5 = "books5"
+INDEX = "index"
 CLOSED_PREFIX = "closed:"
 
 
@@ -71,6 +75,7 @@ class MarketSnapshot:
     mark: dict[str, Any] | None
     books5: dict[str, Any] | None
     channel_at: dict[str, datetime]
+    index: dict[str, Any] | None = None
 
     def age_seconds(self, now: datetime) -> float | None:
         if self.last_msg_at is None:
@@ -107,6 +112,7 @@ def read_snapshot(client: HashReader, env: str, inst_id: str) -> MarketSnapshot:
         mark=_json(raw.get(MARK)),
         books5=_json(raw.get(BOOKS5)),
         channel_at=channel_at,
+        index=_json(raw.get(INDEX)),
     )
 
 
@@ -166,6 +172,7 @@ __all__ = [
     "BOOKS5",
     "CLOSED_PREFIX",
     "CONNECTED",
+    "INDEX",
     "LAST_MSG_MS",
     "LOGIN_MS",
     "MARK",

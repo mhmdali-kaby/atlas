@@ -112,6 +112,39 @@ return [
         'market_data_max_age_seconds' => 30,
         'margin_buffer' => '0.9',
     ],
+    'risk_rules' => [
+        'us_session' => [
+            'timezone' => 'America/New_York',
+            'open' => '09:30',
+            'close' => '16:00',
+            'weekdays' => [
+                1,
+                2,
+                3,
+                4,
+                5,
+            ],
+        ],
+        'atr_bar' => '1H',
+        'atr_window' => 14,
+        'atr_lookback_bars' => 120,
+        'correlation_threshold' => '0.8',
+        'correlation_lookback_days' => 30,
+        'correlation_min_obs' => 20,
+        'maint_margin_ratio' => '0.005',
+        'fallback_taker_fee_rate' => '0.0005',
+        'high_impact_importance' => 5,
+        'used_statuses' => [
+            'sent',
+            'partially_filled',
+            'filled',
+            'closed',
+        ],
+        'evaluable_statuses' => [
+            'passed',
+            'risk_checked',
+        ],
+    ],
     'executor' => [
         'entry_timeout_minutes' => 30,
         'td_mode_perps' => 'isolated',
@@ -214,6 +247,20 @@ return [
             '1D',
         ],
         'page_limit' => 100,
+    ],
+    'derivatives_poller' => [
+        'interval_seconds' => 300,
+        'period' => '5m',
+        'taker_inst_type' => 'CONTRACTS',
+        'always_ccys' => [
+            'BTC',
+            'ETH',
+        ],
+        'index_quote_ccys' => [
+            'USDT',
+            'USDC',
+        ],
+        'concurrency' => 2,
     ],
     'candle_grid' => [
         'offset_minutes' => [
@@ -420,6 +467,10 @@ return [
             ],
             'public/mark-price' => [
                 'requests' => 10,
+                'per_seconds' => 2,
+            ],
+            'market/index-tickers' => [
+                'requests' => 20,
                 'per_seconds' => 2,
             ],
             'rubik/stat/contracts/open-interest-volume' => [
@@ -1264,6 +1315,32 @@ return [
                 'mult' => '2',
             ],
         ],
+        'derivatives' => [
+            'funding_z_days' => [
+                7,
+                30,
+            ],
+            'min_funding_obs' => 3,
+            'sign_flip_days' => 3,
+            'default_interval_hours' => 8,
+            'oi_windows_hours' => [
+                1,
+                4,
+                24,
+            ],
+            'price_dead_band_pct' => '0.25',
+            'oi_dead_band_pct' => '0.5',
+            'long_short_period' => '5m',
+            'long_short_change_hours' => 24,
+            'taker_period' => '5m',
+            'taker_windows_hours' => [
+                1,
+                4,
+            ],
+            'max_age_minutes' => 30,
+            'window_stretch' => '1.5',
+            'index_max_age_multiplier' => 10,
+        ],
         'regime_table' => [
             'top_n' => 60,
         ],
@@ -1303,6 +1380,25 @@ return [
                 'max_events' => 30,
                 'top_instruments' => 5,
             ],
+        ],
+        'technical_analyst' => [
+            'history_bars' => [
+                '1D' => 400,
+                '4H' => 500,
+                '1H' => 500,
+                '15m' => 500,
+                '5m' => 300,
+            ],
+            'stale_bars' => 2,
+            'stale_check_bars' => [
+                '1H',
+            ],
+            'min_stop_atr_mult' => '1.0',
+            'max_slippage_bps' => '10',
+            'watchlist_max_runs' => 10,
+            'mention_max_instruments' => 3,
+            'position_bar' => '1H',
+            'zones_reported' => 8,
         ],
         'ta_structure' => [
             'levels' => [

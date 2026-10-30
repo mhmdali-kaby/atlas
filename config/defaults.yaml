@@ -113,6 +113,39 @@ risk_engine:
   market_data_max_age_seconds: 30
   margin_buffer: "0.9"
 
+# ATL-127, brief §10: fixed rules of the Risk Engine's checks (trading_core/risk/engine.py). Not
+# owner limits (those are in Settings above); these say how a check measures.
+#   us_session: the US cash session for avoid_stock_perps_outside_us_hours, in its own timezone, so
+#   DST comes from the tz database. weekdays are ISO (1 = Monday). Exchange holidays are not modelled.
+#   atr_bar/atr_window/atr_lookback_bars: ATR(1H) for check 3 (Wilder, atlas_quant), from closed bars.
+#   correlation_*: check 5's 30-day Pearson correlation of daily log returns; a pair with fewer
+#   overlapping returns than min_obs is "unknown" (not counted as correlated, listed in the check).
+#   maint_margin_ratio: maintenance margin assumed by check 7's isolated liquidation estimate.
+#   fallback_taker_fee_rate: used by sizing until trade-fee rates are stored per instType; the
+#   check records fee_source = "config_fallback" when it is used.
+#   high_impact_importance: check 8's blackout counts economic events at or above this importance.
+#   used_statuses: proposal statuses whose approved size counts as used today (daily exposure, trades).
+#   evaluable_statuses: the only proposal statuses evaluate() accepts. passed = the vote passed;
+#   risk_checked = an owner Edit re-runs the check (brief §12). Any other status (cancelled, rejected,
+#   expired, sent, filled ...) is refused before anything is written, so it cannot re-enter approval.
+risk_rules:
+  us_session:
+    timezone: America/New_York
+    open: "09:30"
+    close: "16:00"
+    weekdays: [1, 2, 3, 4, 5]
+  atr_bar: 1H
+  atr_window: 14
+  atr_lookback_bars: 120
+  correlation_threshold: "0.8"
+  correlation_lookback_days: 30
+  correlation_min_obs: 20
+  maint_margin_ratio: "0.005"
+  fallback_taker_fee_rate: "0.0005"
+  high_impact_importance: 5
+  used_statuses: [sent, partially_filled, filled, closed]
+  evaluable_statuses: [passed, risk_checked]
+
 # ATL-141, brief §4.4, §11: Executor parameters (trading_core/execution), editable in Settings.
 #   entry_timeout_minutes: an unfilled limit entry is cancelled after this long.
 #   td_mode_perps: OKX tdMode for perps (one of td_modes_perps); spot always uses "cash".
@@ -214,6 +247,22 @@ candle_poller:
   concurrency: 4
   bars: ["1m", "5m", "15m", "1H", "4H", "1D"]
   page_limit: 100
+# ATL-134, brief §7.5: OKX rubik long/short account ratio and taker volume, polled every
+# interval_seconds at rubik period `period` for always_ccys + the crypto base currencies of the
+# market feed's instruments (today's watchlist and open positions). taker_inst_type is rubik's
+# instType (CONTRACTS = perps + futures). Upserted on (env, ccy, period, ts). The same tick stores
+# public/open-interest for each -SWAP in that instrument set (open_interest, keyed by OKX ts), the
+# 5-minute OI the derivatives features' 1h/4h windows need. It also reads market/index-tickers once
+# per index_quote_ccys entry that a watched -SWAP's index (instFamily, BTC-USDT) uses, and writes the
+# index into the atlas:md:<env>:<instId> hash as `index` (JSON {idxPx, ts}) and `index_ms` (OKX ts)
+# for the basis (agents.derivatives.index_max_age_multiplier).
+derivatives_poller:
+  interval_seconds: 300
+  period: 5m
+  taker_inst_type: CONTRACTS
+  always_ccys: [BTC, ETH]
+  index_quote_ccys: [USDT, USDC]
+  concurrency: 2
 candle_grid:
   offset_minutes: { "1m": 0, "5m": 0, "15m": 0, "1H": 0, "4H": 0, "1D": 960 }
 
@@ -360,6 +409,8 @@ okx_rest:
     public/funding-rate-history: { requests: 10, per_seconds: 2 }
     public/open-interest: { requests: 20, per_seconds: 2 }
     public/mark-price: { requests: 10, per_seconds: 2 }
+    # ATL-134: index prices for the basis (OKX v5 docs: 20 requests / 2 s per IP).
+    market/index-tickers: { requests: 20, per_seconds: 2 }
     rubik/stat/contracts/open-interest-volume: { requests: 5, per_seconds: 2 }
     rubik/stat/contracts/long-short-account-ratio: { requests: 5, per_seconds: 2 }
     rubik/stat/taker-volume: { requests: 5, per_seconds: 2 }
@@ -992,6 +1043,35 @@ agents:
     bb_width_lookback: 180
     squeeze_percentile: "10"
     keltner: { ema: 20, atr: 10, mult: "2" }
+  # ATL-134, brief §7.5: derivatives features (atlas_agents.derivatives.features), pure functions
+  # over DB frames. funding: z-scores are (newest - mean) / std (ddof 1) of the rates with ts in the
+  # last N days, newest included, null below min_funding_obs rows; annualised = current x funding
+  # periods per year, the period being the median gap between stored rates (default_interval_hours
+  # when fewer than two). sign_flip_days: sign changes between consecutive non-zero rates.
+  # oi_windows_hours: OI and price change (%) from the newest value at least that old. A window is
+  # "flat" when |price %| < price_dead_band_pct or |OI %| < oi_dead_band_pct. long_short_period /
+  # taker_period: the rubik period read; taker_windows_hours: sum(buy) / sum(sell) over rows with
+  # ts in the last N hours. max_age_minutes: the newest rubik / OI row older than this is null
+  # (reason stale). window_stretch: the reference row of an N-hour change must be no older than
+  # N x window_stretch before the newest row (so a 1D series never passes for a 1h change).
+  # index_max_age_multiplier: the basis' stored index (polled every 5 min by derivatives_poller) is
+  # stale when older than market_ws.market_data_max_age_seconds x this.
+  # Zero OI or zero candle/taker volume marks the reading unreliable and nothing is computed on it.
+  derivatives:
+    funding_z_days: [7, 30]
+    min_funding_obs: 3
+    sign_flip_days: 3
+    default_interval_hours: 8
+    oi_windows_hours: [1, 4, 24]
+    price_dead_band_pct: "0.25"
+    oi_dead_band_pct: "0.5"
+    long_short_period: 5m
+    long_short_change_hours: 24
+    taker_period: 5m
+    taker_windows_hours: [1, 4]
+    max_age_minutes: 30
+    window_stretch: "1.5"
+    index_max_age_multiplier: 10
   regime_table:
     top_n: 60
   mentions:
@@ -1046,6 +1126,28 @@ agents:
   #   patterns: breakout_retest, failed_breakout, range, flag (flag/pennant) and double (top/bottom);
   #     the geometric rule for each is in atlas_agents.ta.patterns.
   #   microstructure: book imbalance over the top imbalance_depths levels of each side.
+  # ATL-135, brief §7.4: the Technical Analyst agent (atlas_agents.technical_analyst).
+  #   history_bars: closed bars per timeframe loaded for okx_market.get_ta_table (§7.4 inputs).
+  #   stale_bars / stale_check_bars: a run refuses (and posts a data alert) when the newest closed
+  #     bar of any of these timeframes is more than stale_bars bars late.
+  #   min_stop_atr_mult: the stop must be at least this many ATR(1H) from the entry-zone midpoint,
+  #     else code turns the setup into "none".
+  #   max_slippage_bps: estimated slippage at the Risk Engine's max size above this adds a
+  #     thin-liquidity note. Max size = sizing equity x max_position_pct (settings).
+  #   watchlist_max_runs: at most this many picks of one watchlist card are analysed.
+  #   mention_max_instruments: at most this many instruments named in one @Technical mention.
+  #   position_bar: the closed bar (candle.closed) that re-checks an instrument with an open position.
+  #   zones_reported: the nearest zones per timeframe kept in the table (half below, half above price).
+  technical_analyst:
+    history_bars: { "1D": 400, "4H": 500, "1H": 500, "15m": 500, "5m": 300 }
+    stale_bars: 2
+    stale_check_bars: ["1H"]
+    min_stop_atr_mult: "1.0"
+    max_slippage_bps: "10"
+    watchlist_max_runs: 10
+    mention_max_instruments: 3
+    position_bar: 1H
+    zones_reported: 8
   ta_structure:
     levels:
       lookback_bars: 120

@@ -286,6 +286,7 @@ name = "atlas-trading-core"
 version = "0.0.0"
 source = { editable = "trading_core" }
 dependencies = [
+    { name = "atlas-quant" },
     { name = "atlas-shared" },
     { name = "fastapi" },
     { name = "httpx" },
@@ -296,6 +297,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "atlas-quant", editable = "quant" },
     { name = "atlas-shared", editable = "shared" },
     { name = "fastapi", specifier = ">=0.115" },
     { name = "httpx", specifier = ">=0.27" },

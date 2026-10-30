@@ -420,6 +420,14 @@ class MarkPrice(OkxModel):
     ts: MsRequired
 
 
+class IndexTicker(OkxModel):
+    """``market/index-tickers``: ``inst_id`` is the index (``BTC-USDT``), the perp's instFamily."""
+
+    inst_id: str
+    idx_px: Dec = None
+    ts: MsRequired
+
+
 ALL_MODELS: tuple[type[OkxModel], ...] = (
     ServerTime,
     Instrument,
@@ -442,4 +450,5 @@ ALL_MODELS: tuple[type[OkxModel], ...] = (
     LongShortRatio,
     TakerVolume,
     MarkPrice,
+    IndexTicker,
 )

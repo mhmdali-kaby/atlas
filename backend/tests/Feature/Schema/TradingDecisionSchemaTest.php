@@ -134,3 +134,15 @@ it('requires a decision on approved risk checks and none on rejected ones', func
     expect(fn () => DB::transaction(fn () => DB::table('risk_checks')->insert(['id' => (string) Str::uuid(), ...$base, 'result' => 'maybe', 'decision' => 'send_now'])))
         ->toThrow(QueryException::class, 'risk_checks_result_check');
 });
+
+it('accepts advise_only as a risk decision and refuses an unknown one (ATL-127)', function (): void {
+    $proposal = insertProposal();
+    $base = ['env' => 'demo', 'proposal_id' => $proposal, 'settings_version' => 3, 'result' => 'approved',
+        'final_size' => '1', 'final_notional_usd' => '100', 'leverage' => 1];
+
+    DB::table('risk_checks')->insert(['id' => (string) Str::uuid(), ...$base, 'decision' => 'advise_only']);
+
+    expect(DB::table('risk_checks')->where('decision', 'advise_only')->count())->toBe(1);
+    expect(fn () => DB::transaction(fn () => DB::table('risk_checks')->insert(['id' => (string) Str::uuid(), ...$base, 'decision' => 'yolo'])))
+        ->toThrow(QueryException::class, 'risk_checks_decision_check');
+});
