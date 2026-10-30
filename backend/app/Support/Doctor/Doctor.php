@@ -9,6 +9,7 @@ use App\Support\Auditable;
 use App\Support\TradingCore;
 use Illuminate\Database\Migrations\Migrator;
 use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Process\Factory as ProcessFactory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 use Throwable;
@@ -27,6 +28,12 @@ final class Doctor
 
     private const MIN_REVERB_SECRET_LENGTH = 32;
 
+    /**
+     * Decision #242: the Agent SDK must never see these, and neither should this command's own
+     * probe of the CLI — an API key in the environment must not make "logged in" look true.
+     */
+    private const FORBIDDEN_ENV = ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN'];
+
     private bool $databaseUp = false;
 
     private bool $tradingCoreUp = false;
@@ -38,10 +45,14 @@ final class Doctor
 
     private ?string $testFailure = null;
 
+    /** The `claude` binary the install check found, once it has passed. */
+    private ?string $claudeBin = null;
+
     public function __construct(
         private readonly HttpFactory $http,
         private readonly Migrator $migrator,
         private readonly Auditable $audit,
+        private readonly ProcessFactory $process,
     ) {}
 
     /**
@@ -61,6 +72,9 @@ final class Doctor
             $this->diskSpace(),
             $this->security(),
             $this->reverbSecret(),
+            $this->claudeCli(),
+            $this->claudeLogin(),
+            $this->claudeApiKey(),
             $this->backup(),
         ];
     }
@@ -343,6 +357,86 @@ final class Doctor
     }
 
     /**
+     * Decision #242: agents run through the owner's logged-in `claude` CLI, never an API key.
+     * Looks for `claude` on PATH, or at ATLAS_CLAUDE_BIN when set, and runs `claude --version`.
+     */
+    private function claudeCli(): CheckResult
+    {
+        $bin = self::claudeBinConfig();
+        try {
+            $result = $this->process->newPendingProcess()->timeout(self::int('claude_cli_timeout_seconds', 15))
+                ->env(self::withoutAnthropicEnv())
+                ->run([$bin, '--version']);
+        } catch (Throwable $e) {
+            return CheckResult::fail('claude_cli', self::t('claude_cli_missing', ['bin' => $bin, 'reason' => self::reason($e)]));
+        }
+        if (! $result->successful()) {
+            return CheckResult::fail('claude_cli', self::t('claude_cli_missing', ['bin' => $bin, 'reason' => self::t('claude_cli_exit', ['code' => $result->exitCode() ?? -1])]));
+        }
+        $this->claudeBin = $bin;
+        $version = trim(strtok(trim($result->output()), "\n") ?: '');
+
+        return CheckResult::pass('claude_cli', self::t('claude_cli_ok', ['version' => self::str($version)]));
+    }
+
+    /**
+     * A cheap non-interactive auth check: the CLI's own `auth status --json` when it understands
+     * it, otherwise one short prompt turn. Never runs when claudeCli() did not find the CLI.
+     */
+    private function claudeLogin(): CheckResult
+    {
+        if ($this->claudeBin === null) {
+            return CheckResult::fail('claude_cli_login', self::t('skipped_no_cli'));
+        }
+        $bin = $this->claudeBin;
+        $timeout = self::int('claude_cli_timeout_seconds', 15);
+
+        try {
+            $status = $this->process->newPendingProcess()->timeout($timeout)->env(self::withoutAnthropicEnv())
+                ->run([$bin, 'auth', 'status', '--json']);
+            /** @var mixed $decoded */
+            $decoded = json_decode(trim($status->output()), true);
+        } catch (Throwable) {
+            $decoded = null;
+        }
+
+        if (is_array($decoded) && array_key_exists('loggedIn', $decoded)) {
+            return $decoded['loggedIn'] === true
+                ? CheckResult::pass('claude_cli_login', self::t('claude_cli_login_ok'))
+                : CheckResult::fail('claude_cli_login', self::t('claude_cli_login_failed'));
+        }
+
+        // This build of the CLI has no status command we could parse: fall back to one cheap,
+        // non-interactive prompt turn, still with no API key reaching the process.
+        try {
+            $probe = $this->process->newPendingProcess()->timeout(self::int('claude_cli_probe_timeout_seconds', 30))
+                ->env(self::withoutAnthropicEnv())
+                ->run([$bin, '-p', 'ok', '--max-turns', '1']);
+        } catch (Throwable) {
+            return CheckResult::fail('claude_cli_login', self::t('claude_cli_login_failed'));
+        }
+
+        return $probe->successful()
+            ? CheckResult::pass('claude_cli_login', self::t('claude_cli_login_ok'))
+            : CheckResult::fail('claude_cli_login', self::t('claude_cli_login_failed'));
+    }
+
+    /**
+     * Decision #242: an ANTHROPIC_API_KEY/ANTHROPIC_AUTH_TOKEN in the environment the agents
+     * process would inherit (backend/.env is loaded into this same process's env by Laravel's
+     * own bootstrap, so checking here covers both) would let usage silently fall to
+     * pay-as-you-go instead of the owner's subscription. Only the variable names are reported.
+     */
+    private function claudeApiKey(): CheckResult
+    {
+        $present = array_values(array_filter(self::FORBIDDEN_ENV, static fn (string $key): bool => self::envIsSet($key)));
+
+        return $present === []
+            ? CheckResult::pass('claude_api_key', self::t('claude_api_key_ok'))
+            : CheckResult::fail('claude_api_key', self::t('claude_api_key_set', ['vars' => implode(', ', $present)]));
+    }
+
+    /**
      * @param  array<string, mixed>  $body
      */
     private function auditTest(Connection $connection, array $body): void
@@ -398,5 +492,32 @@ final class Doctor
         $value = config("atlas_defaults.doctor.{$key}");
 
         return is_int($value) ? $value : $fallback;
+    }
+
+    /** ATLAS_CLAUDE_BIN, or the bare command name so it is resolved from PATH. */
+    private static function claudeBinConfig(): string
+    {
+        $bin = config('services.claude_code.bin');
+
+        return is_string($bin) && $bin !== '' ? $bin : 'claude';
+    }
+
+    /**
+     * Extra env for the Process call: both forbidden keys unset (Symfony Process removes an
+     * inherited variable when its value is `false`), so this probe can never read "logged in"
+     * off an API key that happens to be set.
+     *
+     * @return array<string, false>
+     */
+    private static function withoutAnthropicEnv(): array
+    {
+        return array_fill_keys(self::FORBIDDEN_ENV, false);
+    }
+
+    private static function envIsSet(string $key): bool
+    {
+        $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
+
+        return is_string($value) && $value !== '';
     }
 }
