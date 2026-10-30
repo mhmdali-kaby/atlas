@@ -1163,6 +1163,34 @@ agents:
     mention_max_instruments: 3
     position_bar: 1H
     zones_reported: 8
+  # ATL-136, brief §7.5: the Derivatives & Sentiment Analyst (atlas_agents.derivatives.report,
+  # hooks in atlas_agents.agents.derivatives). Disabled by default (roster).
+  #   watchlist_max_runs / mention_max_instruments: as for the Technical Analyst.
+  #   debounce_minutes: each trigger (watchlist, mention, funding, extreme) runs at most once per
+  #     instrument in this window (kept in the supervisor's memory; a restart resets it).
+  #   funding_settlement_hours_utc / funding_delay_minutes: runs for watchlist + held instruments
+  #     at each settlement + delay (00:05/08:05/16:05 UTC); funding_grace_minutes: a check later than
+  #     this after the slot (process was down) skips that slot instead of running late.
+  #   schedule_check_seconds: how often the funding slot and the extreme readings are checked.
+  #   extreme_check_seconds: how often the features of watched instruments are re-read for the code
+  #     trigger: |OI change| over extreme_oi_window_hours > extreme_oi_change_pct, or |funding z|
+  #     (any of extreme_funding_z_keys) > extreme_funding_z.
+  #   regime_windows_hours: the card's regime is the quadrant of the first of these windows that
+  #     has one ("flat" when none has, or the data is unreliable).
+  derivatives_sentiment:
+    watchlist_max_runs: 10
+    mention_max_instruments: 3
+    debounce_minutes: 60
+    funding_settlement_hours_utc: [0, 8, 16]
+    funding_delay_minutes: 5
+    funding_grace_minutes: 30
+    schedule_check_seconds: 60
+    extreme_check_seconds: 300
+    extreme_oi_window_hours: 1
+    extreme_oi_change_pct: "10"
+    extreme_funding_z: "2.5"
+    extreme_funding_z_keys: ["7d"]
+    regime_windows_hours: [24, 4, 1]
   ta_structure:
     levels:
       lookback_bars: 120
