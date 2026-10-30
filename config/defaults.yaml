@@ -196,6 +196,9 @@ executor:
   # OKX sCodes meaning "TP/SL cannot be attached to this order/instrument": place the entry bare and
   # protect it with an OCO algo order instead (brief §11).
   attach_refused_codes: ["51010"]
+  # ATL-144: how often trading_core looks for limit/post_only entries past entry_timeout_minutes and for
+  # filled entries whose protection does not yet match the filled size (restart recovery).
+  lifecycle_sweep_seconds: 30
 
 # Brief §4.1. Checked against the OKX v5 docs (https://www.okx.com/docs-v5/en/) at build time.
 okx:
@@ -493,6 +496,8 @@ okx_rest:
     trade/close-position: { requests: 20, per_seconds: 2 }
     trade/order-algo: { requests: 20, per_seconds: 2 }
     trade/cancel-algos: { requests: 20, per_seconds: 2 }
+    # ATL-144: resize a pending SL/OCO to the filled size.
+    trade/amend-algos: { requests: 20, per_seconds: 2 }
     trade/orders-pending: { requests: 60, per_seconds: 2 }
     trade/orders-algo-pending: { requests: 20, per_seconds: 2 }
     trade/orders-history: { requests: 40, per_seconds: 2 }

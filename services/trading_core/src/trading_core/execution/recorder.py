@@ -7,7 +7,7 @@ import uuid
 from collections.abc import Callable
 from datetime import datetime
 from decimal import Decimal
-from typing import Any
+from typing import Any, Protocol
 
 import redis
 from atlas_shared import bus
@@ -25,7 +25,6 @@ from trading_core.execution.config import (
     WARROOM_SOURCE,
     WARROOM_STREAM,
 )
-from trading_core.execution.plan import _Plan
 
 log = logging.getLogger("trading_core.execution")
 
@@ -38,10 +37,23 @@ _OKX_ORDER_STATES = {
 }
 
 
+class _RecorderContext(Protocol):
+    """What the recorder needs from its caller: the Executor's ``_Plan`` or a lifecycle context."""
+
+    @property
+    def env(self) -> str: ...
+    @property
+    def correlation_id(self) -> str: ...
+    @property
+    def proposal_id(self) -> uuid.UUID: ...
+
+
 class _Recorder:
     """Writes order/algo transitions and publishes them; one short transaction per write."""
 
-    def __init__(self, engine: Engine, rds: redis.Redis, plan: _Plan, now: Callable[[], datetime]) -> None:
+    def __init__(
+        self, engine: Engine, rds: redis.Redis, plan: _RecorderContext, now: Callable[[], datetime]
+    ) -> None:
         self.engine = engine
         self.rds = rds
         self.plan = plan

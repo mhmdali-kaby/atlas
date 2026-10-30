@@ -86,6 +86,7 @@ FRESH = "ws.private.fresh"
 
 Publisher = Callable[[str, EventEnvelope], object]
 ReconnectCallback = Callable[[dict[str, Any]], "Awaitable[None] | None"]
+OrderCallback = Callable[[order_store.OrderUpsert], "Awaitable[None] | None"]
 
 
 @dataclass
@@ -134,6 +135,7 @@ class PrivateFeed:
         self._last_msg: datetime | None = None
         self._stale = False
         self._callbacks: list[ReconnectCallback] = []
+        self._order_callbacks: list[OrderCallback] = []
         self._tasks: list[asyncio.Task[None]] = []
         # Account state rebuilt from pushes on each connection; written as one snapshot tick.
         self._balance: AccountBalance | None = None
@@ -147,6 +149,11 @@ class PrivateFeed:
     def on_reconnected(self, callback: ReconnectCallback) -> None:
         """Called (sync or async) with the event payload after every re-login on a new socket."""
         self._callbacks.append(callback)
+
+    def on_order(self, callback: OrderCallback) -> None:
+        """Called (sync or async) with the ``OrderUpsert`` after every stored ``orders`` push, once its
+        events are published (ATL-144: fill handling and protection resizing)."""
+        self._order_callbacks.append(callback)
 
     @property
     def running(self) -> bool:
@@ -338,6 +345,13 @@ class PrivateFeed:
                 ORDER_STATE_CHANGED,
                 {**payload, "from_state": u.prev_state, "to_state": u.state},
             )
+        for cb in list(self._order_callbacks):
+            try:
+                result = cb(u)
+                if inspect.isawaitable(result):
+                    await result
+            except Exception:
+                logger.exception("ws.private order callback failed")
 
     async def _algo(self, row: Mapping[str, Any], now: datetime) -> None:
         u = await asyncio.to_thread(order_store.upsert_algo, self.engine, self.env, row, now)
