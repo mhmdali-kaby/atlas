@@ -374,6 +374,158 @@
       "stopped": "{{name}} stopped. {{why}}"
     }
   },
+  "wl": {
+    "updated": "Updated",
+    "replaced": "Replaced at {{time}} by an updated list.",
+    "showUpdate": "Show the update",
+    "titleUpdated": "Updated at {{time}}",
+    "titleEmpty": "No watchlist today",
+    "funnel": "{{picks}} from a shortlist of {{short}}.",
+    "picks_one": "{{count}} pick",
+    "picks_other": "{{count}} picks",
+    "inst_one": "{{count}} instrument",
+    "inst_other": "{{count}} instruments",
+    "min_one": "{{count}} minute",
+    "min_other": "{{count}} minutes",
+    "window": "You can change this list until {{time}}.",
+    "left": "{{t}} left",
+    "pinBtn": "Pin instrument",
+    "closed": "Editing closed at {{time}}.",
+    "closedLive": "Editing closed for today’s watchlist.",
+    "oneMinuteLive": "One minute left to change today’s watchlist.",
+    "edits": {
+      "pinned": "You pinned {{list}}.",
+      "removed": "You removed {{list}}.",
+      "both": "You removed {{removed}} and pinned {{pinned}}.",
+      "carried": "Your pin on {{list}} carried over."
+    },
+    "conflictTitle": "Editing has closed",
+    "conflict": {
+      "remove": "The edit window had already closed, so {{inst}} is still on the list.",
+      "restore": "The edit window had already closed, so {{inst}} stays off the list.",
+      "pin": "The edit window had already closed, so {{inst}} wasn’t pinned."
+    },
+    "replacedTitle": "This list was replaced",
+    "replacedConflict": {
+      "remove": "An updated list replaced this one, so {{inst}} is still on it. Make changes on the current list.",
+      "restore": "An updated list replaced this one, so {{inst}} stays off it. Make changes on the current list.",
+      "pin": "An updated list replaced this one, so {{inst}} wasn’t pinned. Make changes on the current list."
+    },
+    "partial": "Partial evidence. {{why}}, so every conviction is capped at {{cap}}.",
+    "partialBare": "Partial evidence, so every conviction is capped at {{cap}}.",
+    "partialWhy": {
+      "timed_out": "{{agent}} didn’t reply in time",
+      "not_asked": "{{agent}} wasn’t asked",
+      "stale": "The market data was {{min}} old"
+    },
+    "degraded": "No {{cls}} news is coming in, so {{cls}} convictions are capped at {{cap}}.",
+    "degradedSince": "No {{cls}} news has come in since {{time}}, so {{cls}} convictions are capped at {{cap}}.",
+    "dcls": {
+      "crypto": "crypto",
+      "stock": "stock",
+      "etf": "ETF",
+      "index": "index",
+      "commodity": "commodity",
+      "other": "other"
+    },
+    "trigger": {
+      "news_alert": "After an importance-{{imp}} alert at {{time}}",
+      "vol_spike": "After a {{sigma}} hourly move in {{inst}} at {{time}}"
+    },
+    "changes": {
+      "added": "New since {{time}}: {{list}}.",
+      "dropped": "Dropped since {{time}}: {{list}}."
+    },
+    "backdrop": "Market backdrop",
+    "usHoursAt": "US market hours {{range}}",
+    "usShort": "US hours",
+    "usHoursTip": "New York’s regular session in Baghdad time. It moves an hour when US clocks change.",
+    "now": "Now",
+    "later": "+{{n}} later",
+    "laterTip": "After 08:00 tomorrow: {{list}}",
+    "alertMark": "Alert",
+    "rail": {
+      "label": "The day from 08:00 to 08:00 tomorrow. {{cats}} {{us}}",
+      "cats": "Catalysts: {{list}}.",
+      "none": "No scheduled catalysts.",
+      "cat": "{{name}} at {{time}} for {{bases}}",
+      "us": "US market hours {{open}} to {{close}}.",
+      "tip": "{{time}}, {{name}}. Importance {{imp}} of 5. For {{insts}}."
+    },
+    "bias": {
+      "long": "Long",
+      "short": "Short",
+      "neutral": "Neutral"
+    },
+    "biasSr": "Bias",
+    "convSr": "Conviction {{v}} of 1",
+    "convCapTip": {
+      "partial_evidence": "Capped at {{cap}} because the evidence was partial. Market Scout’s estimate was {{before}}.",
+      "news_class_down": "Capped at {{cap}} because no {{cls}} news has come in since {{time}}. Market Scout’s estimate was {{before}}.",
+      "news_class_down_open": "Capped at {{cap}} because no {{cls}} news is coming in. Market Scout’s estimate was {{before}}."
+    },
+    "cls": {
+      "crypto": "Crypto",
+      "stock": "Stock",
+      "etf": "ETF",
+      "index": "Index",
+      "commodity": "Commodity",
+      "other": "Other"
+    },
+    "spotOf": "{{cls}} spot",
+    "new": "New",
+    "support": "Support",
+    "resistance": "Resistance",
+    "invalidation": "Invalidation",
+    "pinnedBy": "Pinned by you",
+    "pinnedNote": "The team includes it from the next analysis cycle.",
+    "removedBy": "Removed by you at {{time}}",
+    "undo": "Undo",
+    "undoAria": "Put {{inst}} back on today’s watchlist",
+    "remove": "Remove",
+    "removeAria": "Remove {{inst}} from today’s watchlist",
+    "pin": "Pin",
+    "pinAria": "Pin {{inst}} to today’s watchlist",
+    "notPicked": "Not picked",
+    "more_one": "Show {{count}} more",
+    "more_other": "Show {{count}} more",
+    "fewer": "Show fewer",
+    "empty": {
+      "empty_shortlist": "No instrument passed today’s filters for 24-hour volume, spread and listing age, so there was nothing to shortlist.",
+      "no_picks": "Market Scout reviewed a shortlist of {{short}} and found nothing worth the team’s attention today.",
+      "next": "Market Scout looks again if an importance-5 alert or a 3σ move arrives before 23:00."
+    },
+    "search": "Search instruments",
+    "popLabel": "Pin an instrument to today’s watchlist",
+    "groupNotPicked": "Not picked today",
+    "groupResults": "Instruments",
+    "typeToSearch": "Type a ticker to search the live instruments.",
+    "searching": "Searching…",
+    "noMatch": "No live instrument matches “{{q}}”.",
+    "onList": "On the list",
+    "blocked": "Blocked in Settings",
+    "pinningInst": "Pinning {{inst}}…",
+    "hint": "{{ret}} to pin, {{esc}} to close",
+    "keyReturn": "Return",
+    "keyEsc": "Esc",
+    "err": {
+      "notLive": "{{inst}} isn’t live on the demo account right now.",
+      "blocked": "{{inst}} is blocked in Settings.",
+      "unknown": "{{inst}} isn’t an instrument on the demo account.",
+      "server": "Couldn’t pin {{inst}}. Atlas’s server didn’t answer. Try again."
+    },
+    "toast": {
+      "pinned": "Pinned {{inst}}",
+      "pinnedBody": "The team includes it from the next analysis cycle.",
+      "removed": "Removed {{inst}}",
+      "removedBody": "Undo is in the list until {{time}}.",
+      "restored": "{{inst}} is back on the list",
+      "removeFail": "Couldn’t remove {{inst}}",
+      "restoreFail": "Couldn’t put {{inst}} back",
+      "pinFail": "Couldn’t pin {{inst}}",
+      "failBody": "Atlas’s server didn’t answer, so nothing changed. Try again."
+    }
+  },
   "news_brief": {
     "form": {
       "morning_brief": "Morning brief",

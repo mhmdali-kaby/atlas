@@ -8,6 +8,7 @@ import { cachedIds, upsertMessage } from './live'
 import { runMatches, toolLabel, useRuns, type ThinkingEnvelope } from './runs'
 import { useAuthorName } from './shape'
 import { plainText } from './tokens'
+import { invalidateWatchlists } from './watchlist'
 
 /*
  * The War Room's live side (brief §12, design v4 War Room §7 ConnectionBanner, §11):
@@ -55,6 +56,8 @@ export function useLiveFeed(env: TradingEnv, threadId: string | undefined) {
         runs.resolve(m, mainThreadId(), row ? (focused?.matches('[data-testid="wr-reason-toggle"]') ? 'toggle' : 'row') : null)
       }
       const fresh = upsertMessage(qc, env, m)
+      // A new watchlist version replaces the day's current one (design v9 §A5, "Replaced").
+      if (m.kind === 'watchlist') void invalidateWatchlists(qc, env)
       const cur = latest.current
       if (fresh && m.thread_id === cur.threadId && m.author_type !== 'human') {
         const body = plainText(m.content_md, (tag) => cur.t(`tag.${tag}`))
@@ -93,11 +96,17 @@ export function useLiveFeed(env: TradingEnv, threadId: string | undefined) {
         setAnnouncement(cur.t('run.ann.start', { name }))
       }
     }
+    // ATL-103: an owner edit (remove, restore, pin) from any tab; the cards refetch the day.
+    const onWatchlist = (e: { env?: string } | undefined) => {
+      if (!e?.env || e.env === env) void invalidateWatchlists(qc, env)
+    }
     channel.listen('.warroom.message', onMessage)
     channel.listen('.warroom.thinking', onThinking)
+    channel.listen('.watchlist.updated', onWatchlist)
     return () => {
       channel.stopListening('.warroom.message', onMessage)
       channel.stopListening('.warroom.thinking', onThinking)
+      channel.stopListening('.watchlist.updated', onWatchlist)
       for (const timer of timers) window.clearTimeout(timer)
     }
   }, [qc, env])

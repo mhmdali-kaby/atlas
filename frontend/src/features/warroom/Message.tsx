@@ -33,6 +33,8 @@ import { MessageReasoning } from './Reasoning'
 import { useRuns } from './runs'
 import { readNewsAlert } from './newsAlert'
 import { RegimeTableCard } from './RegimeTableCard'
+import { WatchlistCard } from './WatchlistCard'
+import { readWatchlistCard } from './watchlist'
 import { UntracedScope } from './Untraced'
 import { Excerpt, Inline, Markdown } from './text'
 import { continues, shapeOf, useAuthorName } from './shape'
@@ -63,14 +65,19 @@ const KIND_ICON: Record<string, LucideIcon> = {
  * Kinds with their own card. Each renderer returns null when the message lacks what its card
  * needs, and the GenericCard draws it instead. A later patch registers its kind here.
  */
-const CARDS: Partial<Record<string, (m: WarroomMessage, lang: Lang, parent?: WarroomMessage) => ReactNode>> = {
+interface CardCtx {
+  onJump: (id: string) => void
+  parent?: WarroomMessage
+}
+
+const CARDS: Partial<Record<string, (m: WarroomMessage, lang: Lang, ctx: CardCtx) => ReactNode>> = {
   news_alert: (m, lang) => {
     const alert = readNewsAlert(m.card)
     return alert ? <NewsAlertCard alert={alert} lang={lang} /> : null
   },
   // The Historian's answer (design v7 Historian cards §5): its content_md above the card, with
   // untraced numbers marked in both (brief §7.11, ATL-91 unmatched_numbers).
-  research_report: (m, lang, parent) => {
+  research_report: (m, lang, { parent }) => {
     // News Intelligence's brief (design v9 §B): its content_md above the card, as for the Historian.
     const brief = readNewsBrief(m.card, parent?.kind)
     if (brief) {
@@ -88,6 +95,17 @@ const CARDS: Partial<Record<string, (m: WarroomMessage, lang: Lang, parent?: War
       <>
         <AgentBody message={m} />
         <HistoryVerdictCard card={card} unmatched={unmatched} lang={lang} />
+      </>
+    )
+  },
+  // Market Scout's watchlist (design v9 §A): the Scout's words above, the day's agenda under them.
+  watchlist: (m, lang, ctx) => {
+    const card = readWatchlistCard(m.card)
+    if (!card) return null
+    return (
+      <>
+        <AgentBody message={m} />
+        <WatchlistCard card={card} lang={lang} onJump={ctx.onJump} />
       </>
     )
   },
@@ -330,7 +348,7 @@ function AgentMessage({ m, cont, cls, common, parent, lang, label, time, onJump,
   }, [m.id])
   const KindIcon = KIND_ICON[m.kind] ?? FileText
   const kindLabel = t(`kind.${m.kind}`, { defaultValue: m.kind })
-  const card = m.kind === 'text' ? null : (CARDS[m.kind]?.(m, lang, parent) ?? null)
+  const card = m.kind === 'text' ? null : (CARDS[m.kind]?.(m, lang, { onJump, parent }) ?? null)
   return (
     <article ref={ref} className={cls(cont && 'is-cont')} {...common} onContextMenu={onContextMenu}>
       <div className="msg-gutter">
