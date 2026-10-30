@@ -448,6 +448,11 @@ def fills_size(engine: Engine, env: str, p: Position) -> Decimal:
     return sum((_signed_fill(r[0], r[1], r[2]) for r in rows), ZERO)
 
 
+def _plain(value: Decimal) -> str:
+    """``Decimal`` as a plain string without trailing zeros (``4.000`` → ``4``)."""
+    return format(value.normalize(), "f")
+
+
 def _mismatch(engine: Engine, env: str, p: Position, now: datetime) -> dict[str, Any] | None:
     if p.c_time is None or p.pos is None:
         return None
@@ -461,8 +466,8 @@ def _mismatch(engine: Engine, env: str, p: Position, now: datetime) -> dict[str,
         "inst_id": p.inst_id,
         "pos_id": p.pos_id,
         "pos_side": p.pos_side,
-        "okx_pos": order_store.s(p.pos),
-        "db_pos": order_store.s(db),
+        "okx_pos": _plain(p.pos),
+        "db_pos": _plain(db),
         "opened_at": order_store.iso(p.c_time),
     }
 
