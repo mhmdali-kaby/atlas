@@ -59,6 +59,19 @@ class UpdateSettingsRequest extends FormRequest
                 default => ['sometimes', 'integer:strict', 'between:'.implode(',', SettingsSchema::agentIntegerBounds($setting))],
             };
         }
+        // ATL-124: markets toggles and lists.
+        foreach (SettingsSchema::BOOLEAN_FIELDS as $field) {
+            $rules["changes.{$field}"] = ['sometimes', 'boolean:strict'];
+        }
+        foreach (SettingsSchema::MARKET_LIST_FIELDS as $field) {
+            $rules["changes.{$field}"] = ['sometimes', 'present', 'array', 'list'];
+            $rules["changes.{$field}.*"] = ['required', 'string', 'distinct', Rule::in(SettingsSchema::marketKinds())];
+        }
+        foreach (SettingsSchema::INSTRUMENT_LIST_FIELDS as $field) {
+            $rules["changes.{$field}"] = ['sometimes', 'present', 'array', 'list', 'max:'.SettingsSchema::marketListMax()];
+            $rules["changes.{$field}.*"] = ['required', 'string', 'max:64', self::instId()];
+        }
+
         foreach (SettingsSchema::WEB_DOMAIN_FIELDS as $field) {
             $key = 'changes.'.self::escape($field);
             $rules[$key] = ['sometimes', 'present', 'array', 'list', 'max:'.SettingsSchema::webDomainsMax()];
@@ -89,6 +102,15 @@ class UpdateSettingsRequest extends FormRequest
         return function (string $attribute, mixed $value, Closure $fail): void {
             if (SettingsSchema::normaliseHostname($value) === null) {
                 $fail(__('settings.hostname_format'));
+            }
+        };
+    }
+
+    private static function instId(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail): void {
+            if (SettingsSchema::normaliseInstId($value) === null) {
+                $fail(__('settings.inst_id_format'));
             }
         };
     }

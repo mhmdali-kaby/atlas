@@ -34,3 +34,10 @@ decisions where the brief was silent, as the brief asks.
   `atlas:doctor` reports the demo case as a warning (exit 0) and fails on a live connection whose last
   test stored `withdraw`. Brief rule 5 is unchanged: no withdrawal or transfer code exists anywhere,
   and `NoWithdrawalCodeTest` guards it.
+- **Money-limit defaults start small** (ATL-124). The brief (§14.4) names the money limits but gives
+  no numbers, so a fresh env starts with `bot_capital_cap_usdt` 10,000, `max_usdt_per_trade` 1,000,
+  `max_new_exposure_per_day_usdt` 5,000 and `max_trades_per_day` 10. The Risk Engine uses the smaller
+  of these and the risk-profile percentages, so the first orders are small until the owner raises
+  them in Settings. Asset-class toggles are stored as `enabled_markets`, the list of
+  `markets.kinds` that are on (dated futures and options start off); `whitelist` and `blocklist` are
+  upper-case instId lists, the blocklist always wins.
