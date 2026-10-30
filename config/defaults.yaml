@@ -1120,6 +1120,30 @@ agents:
   #   mention_max_instruments: at most this many instruments named in one @Technical mention.
   #   position_bar: the closed bar (candle.closed) that re-checks an instrument with an open position.
   #   zones_reported: the nearest zones per timeframe kept in the table (half below, half above price).
+  # ATL-153, brief §7.6: the Strategist's six-point checklist, enforced in code by
+  # warroom.submit_proposal before a proposal is saved (atlas_agents.proposals).
+  #   setup_max_age_minutes: item 2, the newest TechnicalSetup card must be younger than this.
+  #   news_lookback_hours / contradict_sentiment: item 3, a CONFIRMED story on the instrument
+  #     published in the lookback whose mean sentiment opposes the side by at least this much fails.
+  #   event_blackout_minutes / blackout_importance: item 3, an economic event at or above this
+  #     importance scheduled within this many minutes from now fails. A settings-table value of
+  #     event_blackout_minutes overrides this default.
+  #   min_expectancy: item 5, p x R - (1 - p) must be greater than this. min R is the owner's
+  #     settings min_expected_r.
+  #   pending_statuses: item 6, proposal statuses that count as "pending" on the same inst + side.
+  #   open_statuses: a proposal can be voted on, revised or withdrawn only in these statuses.
+  #   max_revisions: revise() may create at most this many revisions of an original proposal.
+  strategist:
+    checklist:
+      setup_max_age_minutes: 60
+      news_lookback_hours: 24
+      contradict_sentiment: "0.2"
+      event_blackout_minutes: 60
+      blackout_importance: 5
+      min_expectancy: "0.2"
+      pending_statuses: [draft, under_review, voting, passed, risk_checked, awaiting_owner, sent, partially_filled]
+      open_statuses: [under_review, voting]
+      max_revisions: 1
   technical_analyst:
     history_bars: { "1D": 400, "4H": 500, "1H": 500, "15m": 500, "5m": 300 }
     stale_bars: 2

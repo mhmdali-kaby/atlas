@@ -1351,6 +1351,31 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "top_instruments": 5,
             },
         },
+        "strategist": {
+            "checklist": {
+                "setup_max_age_minutes": 60,
+                "news_lookback_hours": 24,
+                "contradict_sentiment": "0.2",
+                "event_blackout_minutes": 60,
+                "blackout_importance": 5,
+                "min_expectancy": "0.2",
+                "pending_statuses": [
+                    "draft",
+                    "under_review",
+                    "voting",
+                    "passed",
+                    "risk_checked",
+                    "awaiting_owner",
+                    "sent",
+                    "partially_filled",
+                ],
+                "open_statuses": [
+                    "under_review",
+                    "voting",
+                ],
+                "max_revisions": 1,
+            },
+        },
         "technical_analyst": {
             "history_bars": {
                 "1D": 400,

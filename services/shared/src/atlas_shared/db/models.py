@@ -719,6 +719,8 @@ class Proposal(_Row, Base):
     take_profits: Mapped[Any] = _jsonb_list()
     time_stop_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     size_suggestion_pct: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    close_pct: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    """partial_close only: % of the position to close, 0 < x < 100 (ATL-153)."""
     leverage_suggestion: Mapped[int | None] = mapped_column(Integer, nullable=True)
     expected_r: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
     probability: Mapped[Decimal | None] = mapped_column(Numeric(6, 4, asdecimal=True), nullable=True)
@@ -739,6 +741,8 @@ class Vote(_Row, Base):
     vote: Mapped[str] = mapped_column(String(255))
     confidence: Mapped[Decimal] = mapped_column(Numeric(6, 4, asdecimal=True))
     reason: Mapped[str] = _text_blank()
+    fix: Mapped[str | None] = mapped_column(Text, nullable=True)
+    """A "change" vote's requested fix (ATL-153)."""
 
 
 class RiskCheck(_Row, Base):
