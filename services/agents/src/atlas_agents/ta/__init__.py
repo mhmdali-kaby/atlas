@@ -1,8 +1,9 @@
-"""Technical Analyst precompute (brief §7.4): deterministic indicator, level and pattern tables."""
-"""Technical Analyst precompute (ATL-132, brief §7.4): deterministic indicators per timeframe.
+"""Technical Analyst precompute (brief §7.4): deterministic indicator, level and pattern tables.
 
-``ta.table(inst_id, frames_by_tf)`` is the entry point; :mod:`atlas_agents.ta.indicators` holds the
-per-bar definitions and :mod:`atlas_agents.ta.swings` the ZigZag detector.
+``ta.table(inst_id, frames_by_tf)`` is the entry point. :mod:`atlas_agents.ta.indicators` holds the
+per-bar indicator definitions and :mod:`atlas_agents.ta.swings` the ZigZag detector (ATL-132), while
+support/resistance zones, prior day/week levels, VWAPs, the volume profile, pattern flags and the
+order-book walk live alongside them (ATL-133).
 """
 
 from atlas_agents.ta.indicators import compute, indicator_frame, ta_config
