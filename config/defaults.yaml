@@ -610,7 +610,7 @@ agents:
     max_turns_per_run: 25
   roster:
     orchestrator: {}
-    market_scout: { model: strong }
+    market_scout: { model: strong, enabled: true }
     news_intelligence: { model: strong, enabled: true }
     historian: { model: strong, enabled: true }
     technical_analyst: {}
@@ -758,10 +758,13 @@ agents:
   #   mentions.max_depth (ATL-101): an agent-written @mention is one deeper than the run that wrote
   #     it (owner, system and scheduled runs are depth 0); a mention at this depth or deeper starts
   #     no run, so with 2 the chain A -> B -> C stops before C.
+  #   mentions.parent_wait_seconds (ATL-108): how long a mention handler waits for atlas:bridge to
+  #     store an agent-written mention before replying to Main (so the reply carries reply_to).
   output_retries: 1
   schedule:
     historian_regime_table: "07:30"
     news_morning_brief: "07:30"
+    scout_watchlist: "08:00"
     tick_seconds: 30
   regime_table:
     top_n: 60
@@ -769,12 +772,14 @@ agents:
     block_ms: 5000
     batch: 50
     max_depth: 2
+    parent_wait_seconds: 3
   # ATL-107, brief §7.2 + decision #247 (5): News Intelligence (atlas_agents.news_intelligence).
   #   alerts_per_hour: ingest news.alert envelopes that start an alert analysis per rolling hour;
   #     the rest are skipped and logged (counted in the supervisor's memory, so a restart resets it).
   #   asset_class_categories: asset class -> news_sources.category values that cover it. When every
   #     source of those categories is disabled, needs_key or degraded (disabled_until in the future),
-  #     the class is listed in the brief card's degraded_asset_classes.
+  #     the class is listed in the brief card's degraded_asset_classes, and Market Scout (ATL-108) caps
+  #     that class's convictions at agents.scout.partial_conviction_cap.
   #   mention_lookback_hours: the window an instrument brief covers (brief: last 72h).
   #   alert_parent_tries / alert_parent_wait_ms: atlas:bridge stores the alert message from the same
   #     stream, so the analysis looks it up this many times, this far apart, before replying in Main.
@@ -827,6 +832,28 @@ agents:
     # may pin, remove or restore items (POST /api/watchlists/...). Market Scout stamps
     # watchlists.edit_window_ends_at = created_at + this; Laravel uses the same rule when it is null.
     watchlist_edit_window_minutes: 10
+    # ATL-108, brief §7.1 steps 4-6 + failure behaviour: the 08:00 pipeline (atlas_agents.agents.
+    # market_scout). Code mentions @News (shortlist instruments with catalysts) and @Historian (top
+    # historian_top_n), polls warroom_messages every poll_seconds for their replies (reply_to = the
+    # mention's row) up to wait_seconds, then runs the Scout session. After the model: a feature
+    # table older than stale_minutes or a teammate that did not reply makes the watchlist
+    # partial_evidence with every conviction capped at partial_conviction_cap; a group of more than
+    # max_correlated_picks picks/open positions linked by 30-day correlation above
+    # prescore.correlation.threshold is refused once (in-run retry), then trimmed from the lowest
+    # rank; blocked or owner-removed instruments are dropped. history_days: past days of own picks
+    # shown to the model. link_seconds: how long to wait for the bridge to store the card before
+    # watchlists.message_id is left null.
+    # A class in agents.news_intelligence.asset_class_categories none of whose news sources is up is
+    # listed in the card's degraded_asset_classes and its picks' convictions are capped at
+    # partial_conviction_cap (cap_reason news_class_down).
+    wait_seconds: 300
+    poll_seconds: 2
+    historian_top_n: 8
+    stale_minutes: 15
+    partial_conviction_cap: "0.5"
+    max_correlated_picks: 2
+    history_days: 5
+    link_seconds: 5
     universe:
       enabled_markets: [spot, crypto_perp, stock_perp, commodity_perp]
       blocklist: []

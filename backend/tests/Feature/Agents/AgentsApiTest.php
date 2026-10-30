@@ -153,8 +153,8 @@ it('lists the nine roster agents with settings, state, prompt and last run', fun
     $scout = $response->json('data.1');
     expect($scout['name'])->toBe('Market Scout')
         ->and($scout['handle'])->toBe('Scout')
-        ->and($scout['enabled'])->toBeFalse()
-        ->and($scout['state'])->toBe('disabled')
+        ->and($scout['enabled'])->toBeTrue()
+        ->and($scout['state'])->toBe('idle')
         ->and($scout['prompt'])->toBeNull()
         ->and($scout['last_run'])->toBeNull()
         ->and($scout['today'])->toBe(['tokens' => 0, 'tokens_in' => 0, 'tokens_out' => 0, 'turns' => 0, 'runs' => 0, 'cost_usd_notional' => '0.000000']);
