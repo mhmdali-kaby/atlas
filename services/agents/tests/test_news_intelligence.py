@@ -15,6 +15,7 @@ from decimal import Decimal
 from typing import Any
 
 import pytest
+from atlas_agents import mentions
 from atlas_agents import news_intelligence as news
 from atlas_agents import testing as fake
 from atlas_agents.agents import news_intelligence as hooks_module
@@ -501,7 +502,7 @@ async def test_news_alerts_start_news_intelligence_only_and_the_seventh_in_an_ho
     assert "untrusted_source" in client.queries[0]
 
     # Alerts not yet stored by the bridge are answered in Main without waiting in this test.
-    monkeypatch.setattr(hooks_module, "PARENT_TRIES", 1)
+    monkeypatch.setattr(mentions, "ALERT_PARENT_TRIES", 1)
     for minute in range(1, 6):
         clock["now"] = NOW + timedelta(minutes=minute)
         (r,) = await sup.handle_envelope(_alert(cluster_id))

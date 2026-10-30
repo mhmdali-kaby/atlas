@@ -1,7 +1,7 @@
 # ATL-109 — Market Scout's intraday re-runs: triggers, debounce, the re-run card
 
 For ATL-115 (the War Room watchlist card) and anyone touching Market Scout later.
-Code: `services/agents/src/atlas_agents/scout/rerun.py` (rules, spike maths, debounce) and the
+Code: `services/agents/src/atlas_agents/scout/rerun.py` (rules, spike maths, debounce, card text `rerun_line`), `atlas_agents.mentions.resolve_alert_row` (the alert's War Room row) and the
 "intraday re-runs" section at the end of `services/agents/src/atlas_agents/agents/market_scout.py`
 (hooks). Tests: the ATL-109 section at the end of `services/agents/tests/test_market_scout.py`.
 

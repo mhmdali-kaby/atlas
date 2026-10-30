@@ -44,7 +44,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from atlas_agents import events, historian, news_intelligence, numguard
-from atlas_agents.mentions import MentionRequest, max_depth
+from atlas_agents.mentions import MentionRequest, max_depth, resolve_alert_row
 from atlas_agents.registry import HOOKS, AgentHost, ScheduleFire
 from atlas_agents.schemas import WatchlistPick
 from atlas_agents.scout import features as scout_features
@@ -76,8 +76,8 @@ from atlas_agents.scout.universe import build_universe, load_config
 from atlas_agents.session import Review, RunResult
 from atlas_agents.tools import ToolContext
 from atlas_agents.tools.account import compute_correlations, get_positions
-from atlas_agents.tools.framework import NoInput, ToolError
-from atlas_agents.tools.warroom import MAIN_THREAD, _parent
+from atlas_agents.tools.framework import NoInput
+from atlas_agents.tools.warroom import MAIN_THREAD
 from atlas_agents.watchlists import save_watchlist
 
 log = logging.getLogger(__name__)
@@ -90,8 +90,6 @@ WARROOM_STREAM: Final = "atlas.warroom"
 SOURCE: Final = "atlas.scout_watchlist"
 RERUN_JOB: Final = "scout_rerun"
 SPIKE_JOB: Final = "scout_spike_check"
-ALERT_ROW_TRIES: Final = int(news_intelligence.config()["alert_parent_tries"])
-ALERT_ROW_WAIT_SECONDS: Final = int(news_intelligence.config()["alert_parent_wait_ms"]) / 1000
 
 _tasks: set[asyncio.Task[Any]] = set()
 
@@ -429,7 +427,7 @@ def scout_prompt(inputs: Inputs) -> str:
     if inputs.rerun is not None:
         partial += (
             "\n\nTHIS IS AN INTRADAY RE-RUN (brief §7.1 step 6), triggered by "
-            f"{_trigger_words(inputs.rerun)}; see intraday_rerun_trigger. Re-check today's picks "
+            f"{rerun.trigger_words(inputs.rerun)}; see intraday_rerun_trigger. Re-check today's picks "
             "against it: keep, add or drop instruments on the evidence. The new version replaces "
             "today's current watchlist."
         )
@@ -472,33 +470,6 @@ def _summary(
         listed = ", ".join(f"{p.inst_id} {p.bias} ({p.conviction:g})" for p in picks)
         lines.append(f"Today's watchlist: {listed}.")
     return "\n".join(lines)
-
-
-def _trigger_words(trigger: Mapping[str, Any]) -> str:
-    if trigger.get("kind") == rerun.VOL_SPIKE:
-        return (
-            f"a volatility spike: {trigger.get('inst_id')} moved {trigger.get('sigma')} sigma on the "
-            f"1H bar that closed at {trigger.get('at')}"
-        )
-    return f"an importance-{trigger.get('importance')} news alert (event {trigger.get('event_id')})"
-
-
-def rerun_line(trigger: Mapping[str, Any], changes: Mapping[str, Any] | None) -> str:
-    """The card text's first line on a re-run: what triggered it and what changed (code-written)."""
-    if trigger.get("kind") == rerun.VOL_SPIKE:
-        why = (
-            f"{trigger.get('inst_id')} moved {trigger.get('sigma')} sigma on the 1H bar closed at "
-            f"{trigger.get('at')}"
-        )
-    else:
-        headline = str(trigger.get("headline") or "").strip() or "(no headline)"
-        why = f"importance-{trigger.get('importance')} news alert: {headline}"
-    line = f"**Intraday re-run** ({why})."
-    if changes is not None:
-        added = ", ".join(changes.get("added") or []) or "none"
-        dropped = ", ".join(changes.get("dropped") or []) or "none"
-        line += f" Added: {added}. Dropped: {dropped}."
-    return line
 
 
 def _card_pick(pick: WatchlistPick, pinned: Sequence[str], caps: Mapping[str, Cap]) -> dict[str, Any]:
@@ -714,7 +685,7 @@ class WatchlistReviewer:
         saved.card["meta"] = numguard.check(summary, plain, outputs).to_meta()
         trigger = saved.card.get("trigger")
         if isinstance(trigger, Mapping):  # code-written, so outside the number guard
-            summary = f"{rerun_line(trigger, saved.card.get('changes'))}\n{summary}"
+            summary = f"{rerun.rerun_line(trigger, saved.card.get('changes'))}\n{summary}"
         return Review(
             message={
                 "kind": CARD_TYPE,
@@ -829,7 +800,8 @@ async def _post_empty(
     }
     trigger = saved.card.get("trigger")
     if isinstance(trigger, Mapping):
-        payload["content_md"] = f"{rerun_line(trigger, saved.card.get('changes'))}\n{payload['content_md']}"
+        line = rerun.rerun_line(trigger, saved.card.get("changes"))
+        payload["content_md"] = f"{line}\n{payload['content_md']}"
     _publish(
         host,
         events.envelope(
@@ -982,20 +954,6 @@ def _last_rerun(ctx: ToolContext, day: date) -> datetime | None:
         return rerun.last_saved_rerun(session, ctx, day, SLUG)
 
 
-async def _alert_row(ctx: ToolContext, event_id: str) -> str | None:
-    """The alert's warroom_messages row id (the bridge stores it from the same stream, so retry a
-    few times like News Intelligence does), or None."""
-    tries = 1 if ctx.replaying else ALERT_ROW_TRIES
-    for attempt in range(tries):
-        try:
-            row_id, _thread = await asyncio.to_thread(_parent, ctx, event_id)
-            return row_id
-        except ToolError:
-            if attempt + 1 < tries:
-                await asyncio.sleep(ALERT_ROW_WAIT_SECONDS)
-    return None
-
-
 async def request_rerun(
     host: AgentHost, trigger: Mapping[str, Any], *, now: datetime, alert_event_id: str | None = None
 ) -> asyncio.Task[RunResult | None] | None:
@@ -1019,7 +977,7 @@ async def request_rerun(
     async def go() -> RunResult | None:
         detail = dict(trigger)
         if alert_event_id is not None:
-            detail["message_id"] = await _alert_row(ctx, alert_event_id)
+            detail["message_id"], _thread = await resolve_alert_row(ctx, alert_event_id)
         try:
             return await run_watchlist(
                 host, trigger="alert", correlation_id=correlation_id, day=day, trigger_detail=detail
@@ -1099,7 +1057,6 @@ __all__ = [
     "prepare",
     "publish_watchlist",
     "request_rerun",
-    "rerun_line",
     "rerun_on_alert",
     "rerun_on_spike",
     "run_watchlist",

@@ -13,6 +13,7 @@ starts no run, so with the default 2 a chain A -> B -> C stops before C.
 
 from __future__ import annotations
 
+import asyncio
 import time
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -33,6 +34,7 @@ __all__ = [
     "max_depth",
     "mention_from_envelope",
     "parent_wait_seconds",
+    "resolve_alert_row",
     "resolve_parent",
 ]
 
@@ -110,6 +112,27 @@ def parent_wait_seconds(defaults: Mapping[str, Any] = DEFAULTS) -> float:
 
 
 _PARENT_POLL_SECONDS = 0.25
+
+# How often, and how far apart, a news.alert's War Room row is looked up before giving up
+# (``agents.news_intelligence.alert_parent_tries`` / ``alert_parent_wait_ms``). Read at call time,
+# so tests can shorten them.
+ALERT_PARENT_TRIES = int(DEFAULTS["agents"]["news_intelligence"]["alert_parent_tries"])
+ALERT_PARENT_WAIT_SECONDS = int(DEFAULTS["agents"]["news_intelligence"]["alert_parent_wait_ms"]) / 1000
+
+
+async def resolve_alert_row(ctx: ToolContext, event_id: str) -> tuple[str | None, str | None]:
+    """(row id, thread id) of a ``news.alert``'s War Room message, or (None, None). atlas:bridge
+    stores it from the same stream, so it may land a moment after the supervisor reads the
+    envelope: look it up to ALERT_PARENT_TRIES times, ALERT_PARENT_WAIT_SECONDS apart (once in
+    replay). Used by News Intelligence (reply_to) and Market Scout (the re-run trigger's message_id)."""
+    tries = 1 if ctx.replaying else ALERT_PARENT_TRIES
+    for attempt in range(tries):
+        try:
+            return await asyncio.to_thread(_parent, ctx, event_id)
+        except ToolError:
+            if attempt + 1 < tries:
+                await asyncio.sleep(ALERT_PARENT_WAIT_SECONDS)
+    return None, None
 
 
 def resolve_parent(

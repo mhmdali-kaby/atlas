@@ -288,6 +288,37 @@ class Debounce:
 DEBOUNCE: Final = Debounce()
 
 
+# -- card text ------------------------------------------------------------------------------------
+
+
+def trigger_words(trigger: Mapping[str, Any]) -> str:
+    """The trigger in words, for the Scout prompt (the untrusted headline is left out)."""
+    if trigger.get("kind") == VOL_SPIKE:
+        return (
+            f"a volatility spike: {trigger.get('inst_id')} moved {trigger.get('sigma')} sigma on the "
+            f"1H bar that closed at {trigger.get('at')}"
+        )
+    return f"an importance-{trigger.get('importance')} news alert (event {trigger.get('event_id')})"
+
+
+def rerun_line(trigger: Mapping[str, Any], changes: Mapping[str, Any] | None) -> str:
+    """The card text's first line on a re-run: what triggered it and what changed (code-written)."""
+    if trigger.get("kind") == VOL_SPIKE:
+        why = (
+            f"{trigger.get('inst_id')} moved {trigger.get('sigma')} sigma on the 1H bar closed at "
+            f"{trigger.get('at')}"
+        )
+    else:
+        headline = str(trigger.get("headline") or "").strip() or "(no headline)"
+        why = f"importance-{trigger.get('importance')} news alert: {headline}"
+    line = f"**Intraday re-run** ({why})."
+    if changes is not None:
+        added = ", ".join(changes.get("added") or []) or "none"
+        dropped = ", ".join(changes.get("dropped") or []) or "none"
+        line += f" Added: {added}. Dropped: {dropped}."
+    return line
+
+
 __all__ = [
     "DEBOUNCE",
     "KINDS",
@@ -305,5 +336,7 @@ __all__ = [
     "listed_ids",
     "measure_spike",
     "news_trigger",
+    "rerun_line",
     "spike_trigger",
+    "trigger_words",
 ]
