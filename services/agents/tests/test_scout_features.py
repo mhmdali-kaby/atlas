@@ -31,7 +31,15 @@ def _frame(start: datetime, step: timedelta, n: int, seed: int) -> pd.DataFrame:
     vol = rng.uniform(1_000, 5_000, n)
     idx = pd.DatetimeIndex([start + step * i for i in range(n)], name="ts")
     return pd.DataFrame(
-        {"o": opens, "h": high, "l": low, "c": close, "vol": vol, "vol_ccy": vol, "vol_ccy_quote": vol * close},
+        {
+            "o": opens,
+            "h": high,
+            "l": low,
+            "c": close,
+            "vol": vol,
+            "vol_ccy": vol,
+            "vol_ccy_quote": vol * close,
+        },
         index=idx,
     )
 
@@ -135,9 +143,7 @@ def test_no_funding_history_gives_null_funding_with_a_reason() -> None:
 
 
 def test_missing_inputs_are_null_never_zero() -> None:
-    f = compute_features(
-        _inputs(daily=DAILY.iloc[:10], hourly=HOURLY.iloc[:0], funding=None, news=[]), AS_OF
-    )
+    f = compute_features(_inputs(daily=DAILY.iloc[:10], hourly=HOURLY.iloc[:0], funding=None, news=[]), AS_OF)
     assert f.returns_pct["30d"] is None and "returns_pct.30d" in f.missing
     assert f.ma_distance_pct["200d"] is None and "ma_distance_pct.200d" in f.missing
     assert f.atr_pct_1h is None and "atr_pct_1h" in f.missing
@@ -151,9 +157,16 @@ def test_missing_inputs_are_null_never_zero() -> None:
 
 def test_catalysts_combine_shared_and_own() -> None:
     cpi = Catalyst(
-        kind="economic", name="CPI", at=AS_OF + timedelta(hours=5), date=AS_OF.date(), importance=5, source="x"
+        kind="economic",
+        name="CPI",
+        at=AS_OF + timedelta(hours=5),
+        date=AS_OF.date(),
+        importance=5,
+        source="x",
     )
-    earn = Catalyst(kind="earnings", name="AAPL earnings", at=None, date=AS_OF.date(), importance=None, source="y")
+    earn = Catalyst(
+        kind="earnings", name="AAPL earnings", at=None, date=AS_OF.date(), importance=None, source="y"
+    )
     f = compute_features(_inputs(shared_catalysts=[cpi], catalysts=[earn]), AS_OF)
     assert f.catalyst_count_48h == 2
     assert f.catalyst_max_importance_48h == 5
