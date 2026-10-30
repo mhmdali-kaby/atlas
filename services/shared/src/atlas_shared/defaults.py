@@ -743,6 +743,17 @@ DEFAULTS: Final[dict[str, Any]] = {
     },
     "agents": {
         "budget_warning_pct": "80",
+        "settings_bounds": {
+            "daily_tokens": {
+                "min": 1,
+                "max": 1000000000,
+            },
+            "daily_turns": {
+                "min": 1,
+                "max": 100000,
+            },
+            "web_domains_max": 200,
+        },
         "models": {
             "strong": "opus",
             "standard": "sonnet",

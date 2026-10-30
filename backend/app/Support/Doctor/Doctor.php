@@ -79,6 +79,19 @@ final class Doctor
         ];
     }
 
+    /**
+     * ATL-113: only the `claude` CLI checks (installed, logged in, no Anthropic key variable),
+     * for GET /api/agents/claude-status. Same order and rules as in run().
+     *
+     * @return list<CheckResult>
+     */
+    public function claudeChecks(): array
+    {
+        $this->claudeBin = null;
+
+        return [$this->claudeCli(), $this->claudeLogin(), $this->claudeApiKey()];
+    }
+
     private function postgres(): CheckResult
     {
         try {

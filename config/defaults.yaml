@@ -578,6 +578,14 @@ quant:
 #   budget_warning_pct: share of either daily budget that publishes system.agent_budget once a day.
 agents:
   budget_warning_pct: "80"
+  # ATL-113, brief §14.7: bounds for the owner-editable agent settings (PATCH /api/settings keys
+  # agents.<slug>.enabled|model|daily_tokens|daily_turns and agents.web.allow_domains|deny_domains).
+  # Their defaults are agents.defaults + agents.roster and agents.web below.
+  #   web_domains_max: entries per web domain list.
+  settings_bounds:
+    daily_tokens: { min: 1, max: 1000000000 }
+    daily_turns: { min: 1, max: 100000 }
+    web_domains_max: 200
   models:
     strong: opus
     standard: sonnet
