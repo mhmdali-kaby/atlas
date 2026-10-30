@@ -171,6 +171,30 @@ candle_poller:
 candle_grid:
   offset_minutes: { "1m": 0, "5m": 0, "15m": 0, "1H": 0, "4H": 0, "1D": 960 }
 
+# ATL-125, brief §4.1/§4.2 + decision #249 (F): trading_core's public + business WebSocket market
+# feed. URLs come from okx.environments.<env>.ws_public_url / ws_business_url. Subscriptions cover
+# always_subscribe + today's (Asia/Baghdad) watchlist + open positions, re-read every
+# subscriptions_refresh_seconds. An instrument with no message for market_data_max_age_seconds is
+# stale. The latest ticker, mark price, books5 and last-message time per instrument live in the
+# Redis hash <key_prefix>:<env>:<instId> (see atlas_shared.market_data). market.tick is published
+# at most once per tick_publish_min_interval_seconds per instrument; candle.closed once per bar.
+# Reconnects wait min(reconnect_max_seconds, reconnect_base_seconds * 2^attempt), scaled by a
+# random factor in [1 - reconnect_jitter, 1].
+market_ws:
+  ping_interval_seconds: 25
+  market_data_max_age_seconds: 30
+  reconnect_base_seconds: 1
+  reconnect_max_seconds: 60
+  reconnect_jitter: "0.5"
+  subscriptions_refresh_seconds: 15
+  tick_publish_min_interval_seconds: 1
+  stale_check_seconds: 5
+  always_subscribe: ["BTC-USDT-SWAP"]
+  public_channels: [tickers, mark-price, books5]
+  business_channels: [candle1m, candle5m, candle1H]
+  key_prefix: "atlas:md"
+  snapshot_ttl_seconds: 86400
+
 # ATL-47, brief §7.3 data-quality checks, every interval_seconds and on demand
 # (POST /internal/quality/check). Each run looks at the last window_bars bars of every candle series
 # whose backfill is done. Gaps = missing ts in the bar grid (re-fetched from REST; repaired_at when

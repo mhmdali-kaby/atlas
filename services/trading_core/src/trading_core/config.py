@@ -20,6 +20,8 @@ class Settings:
     max_clock_skew_seconds: int = 30
     # TRADING_CORE_SCHEDULER=0 serves the API without the periodic sync loops (tests, one-off runs).
     run_scheduler: bool = True
+    # TRADING_CORE_MARKET_WS=0 keeps the OKX WebSocket market feed (ATL-125) off.
+    run_market_ws: bool = True
     # Laravel's APP_KEY ("base64:..."), used only to decrypt connections (decision #235). Never logged.
     app_key: str = field(default="", repr=False)
 
@@ -37,4 +39,6 @@ class Settings:
             run_scheduler=os.environ.get("TRADING_CORE_SCHEDULER", "1").strip().lower()
             not in ("0", "false", "no"),
             app_key=os.environ.get("APP_KEY", ""),
+            run_market_ws=os.environ.get("TRADING_CORE_MARKET_WS", "1").strip().lower()
+            not in ("0", "false", "no"),
         )
