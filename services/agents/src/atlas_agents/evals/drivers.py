@@ -205,6 +205,7 @@ async def technical_analyst_driver(
     supervisor: Supervisor, case: EvalCase
 ) -> tuple[RunResult | None, props.Transcript]:
     from atlas_agents import technical_analyst as ta_agent
+
     inst_id = str(case.inputs["inst_id"])
     why = str(case.inputs.get("why") or f"Eval {case.case_id}: analyse {inst_id}.")
     host = _RecordingHost(supervisor)
@@ -213,10 +214,14 @@ async def technical_analyst_driver(
     )
     if result is None:
         if host.prompt is not None:
-            return None, props.Transcript(status="error", error="the run returned nothing", prompt=case.prompt)
+            return None, props.Transcript(
+                status="error", error="the run returned nothing", prompt=case.prompt
+            )
         table, _ = await build_ta_table(supervisor.tool_context(ta_agent.SLUG), inst_id)
         if not table.get("stale"):
-            return None, props.Transcript(status="error", error=f"{inst_id} was not analysed", prompt=case.prompt)
+            return None, props.Transcript(
+                status="error", error=f"{inst_id} was not analysed", prompt=case.prompt
+            )
         alert = ta_agent.data_alert(inst_id, table, why)
         refused = RunResult(run_id=uuid.uuid5(uuid.NAMESPACE_URL, f"eval/{case.case_id}"), status="ok")
         return refused, props.Transcript(
@@ -235,7 +240,9 @@ async def technical_analyst_driver(
     outputs = list(base.tool_outputs)
     reviewer = host.reviewer
     if isinstance(reviewer, ta_agent.SetupReviewer):
-        outputs.append({"as_of": reviewer.table.get("data_as_of"), "source": TA_TABLE_SOURCE, "data": reviewer.table})
+        outputs.append(
+            {"as_of": reviewer.table.get("data_as_of"), "source": TA_TABLE_SOURCE, "data": reviewer.table}
+        )
     if card is not None:
         card_meta = card.pop("meta", None) or {}
         meta["corrections"] = list(card_meta.get("corrections") or [])

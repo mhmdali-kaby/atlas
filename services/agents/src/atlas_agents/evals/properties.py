@@ -532,7 +532,9 @@ def asset_classes(t: Transcript, params: Mapping[str, Any]) -> Outcome:
 
 _TA_SCALAR_LEVELS: Final = ("poc", "vah", "val")
 _ZONE_ID: Final = re.compile(r"^(?P<bar>[0-9]+[mHDW]):z\d+$")
-_PRIOR_ID: Final = re.compile(r"^(?:levels\.)?(?:prior\.)?(?P<period>prior_day|prior_week)\.(?P<key>high|low|close)$")
+_PRIOR_ID: Final = re.compile(
+    r"^(?:levels\.)?(?:prior\.)?(?P<period>prior_day|prior_week)\.(?P<key>high|low|close)$"
+)
 _BAR_ID: Final = re.compile(r"^(?P<bar>[0-9]+[mHDW])\.(?P<key>[a-z0-9_]+)$")
 _PLAN_PRICE_KEYS: Final = ("entry_zone", "stop", "targets")
 
@@ -660,7 +662,10 @@ def prices_traceable(t: Transcript, params: Mapping[str, Any]) -> Outcome:
             return False, f"levels_used id {level_id!r} is not a level of the TA table"
         given = _dec((ref or {}).get("price"))
         if given is not None and not near(given, values):
-            return False, f"levels_used {level_id} price {given} is not that level ({', '.join(map(str, values))})"
+            return (
+                False,
+                f"levels_used {level_id} price {given} is not that level ({', '.join(map(str, values))})",
+            )
         cited.extend(values)
     for target in card.get("targets") or []:
         values = ta_level(table, str((target or {}).get("reason", "")))
@@ -680,10 +685,16 @@ def prices_traceable(t: Transcript, params: Mapping[str, Any]) -> Outcome:
             if mid is not None and atr is not None:
                 pool += [mid + sign * m * atr for m in widened]
             if not near(price, pool):
-                return False, f"stop {price} is not a cited level +/- the ATR buffer, nor entry +/- k x ATR(1H)"
+                return (
+                    False,
+                    f"stop {price} is not a cited level +/- the ATR buffer, nor entry +/- k x ATR(1H)",
+                )
         elif not near(price, cited):
             return False, f"{where} {price} is not a level the card cites from the TA table (invented price)"
-    return True, f"{checked} plan prices and {len(card.get('levels_used') or [])} levels traced to the TA table"
+    return (
+        True,
+        f"{checked} plan prices and {len(card.get('levels_used') or [])} levels traced to the TA table",
+    )
 
 
 def prices_on_tick(t: Transcript, params: Mapping[str, Any]) -> Outcome:
@@ -703,7 +714,10 @@ def stop_min_atr(t: Transcript, params: Mapping[str, Any]) -> Outcome:
     mult = Decimal(str(params.get("mult", "1.0")))
     tight = _corrections(t, "stop_too_tight")
     if tight:
-        return False, f"the agent's stop was {tight[0].get('stop_distance_atr')} x ATR(1H); code removed the setup"
+        return (
+            False,
+            f"the agent's stop was {tight[0].get('stop_distance_atr')} x ATR(1H); code removed the setup",
+        )
     if card.get("setup_type") == "none":
         return True, "no setup, so no stop to check"
     _, atr = _tick_and_atr(ta_table(t))
