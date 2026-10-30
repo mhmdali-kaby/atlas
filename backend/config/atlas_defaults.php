@@ -1467,6 +1467,57 @@ return [
                 ],
                 'max_revisions' => 1,
             ],
+            'sizing' => [
+                'conviction_low' => '0.55',
+                'conviction_high' => '0.7',
+                'conviction_multipliers' => [
+                    '0.5',
+                    '0.75',
+                    '1.0',
+                ],
+                'vol_low_percentile' => '60',
+                'vol_high_percentile' => '85',
+                'vol_multipliers' => [
+                    '1.0',
+                    '0.75',
+                    '0.5',
+                ],
+                'unknown_conviction_multiplier' => '0.5',
+                'unknown_vol_multiplier' => '0.5',
+                'atr_bar' => '1H',
+                'atr_window' => 14,
+                'atr_percentile_lookback' => 180,
+                'margin_buffer' => '0.9',
+            ],
+            'probability' => [
+                'max_adjust_points' => '15',
+                'analog_horizons' => [
+                    '24h',
+                    '4h',
+                    '72h',
+                    '1h',
+                ],
+            ],
+            'take_profit_split' => [
+                '50',
+                '30',
+                '20',
+            ],
+            'time_stop' => [
+                'crypto_minutes' => 1440,
+                'us_sessions' => 2,
+                'us_session_asset_classes' => [
+                    'stock',
+                    'etf',
+                    'index',
+                ],
+                'us_timezone' => 'America/New_York',
+                'us_open' => '09:30',
+                'us_close' => '16:00',
+            ],
+            'positioning_author' => 'derivatives_sentiment',
+            'mention_max_instruments' => 3,
+            'cycle_max_instruments' => 10,
         ],
         'votes' => [
             'voters' => [
