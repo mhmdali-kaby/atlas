@@ -110,7 +110,8 @@ Same shape. Kind is `text`, thread Main, and it is filled in:
 {"id":"…","type":"warroom.thinking","ts":"2026-10-29T09:00:01.2Z","env":"demo",
  "source":"agent:historian","correlation_id":"cycle-1",
  "payload":{"run_id":"<agent_runs.id>","agent":"historian","seq":3,
-  "delta_type":"thinking|text|tool_use|tool_result",
+  "delta_type":"thinking|text|tool_use|tool_result|run_end",
+  "thread_id":"<warroom_threads.id>|null","reply_to":"<warroom_messages.id>|null",
   "text":"… (thinking/text only, cut to event_text_max_chars 4000)",
   "tool":"mcp__history__detect_regime (tool_use/tool_result)",
   "tool_use_id":"toolu_1 (tool_use/tool_result)",
@@ -124,6 +125,16 @@ is the `agent_runs` row id, so the UI can link a live stream to the run, and the
 published right after the stream's last event. `text` events are the agent's visible answer as it
 is written. The final message repeats it in full.
 
+- `thread_id`/`reply_to` (ATL-98): for a run started from an @mention, the mention's own
+  `thread_id` and message id (`reply_to`) — the exact values the run's final reply uses
+  (`AgentSession.run(..., thread_id=, reply_to=)`, passed by the Historian's mention handler
+  once it has resolved the parent with `historian.resolve_parent`). Both are `null` for a
+  scheduled run (the 07:30 regime table) or a manual run, and the UI shows those in Main. They
+  are set once, at observer creation, so every event of the run carries them — not only the
+  final message, which is published after the stream. `BridgeEventHandler::capPayload` never
+  truncates or drops them: they are excluded from the string fields it cuts and are kept in the
+  last-resort identifying-keys-only shape alongside `run_id`/`agent`/`seq`/`delta_type`.
+
 ## Config (`config/defaults.yaml`, `agents.streaming`)
 
 `max_events_per_second: 10`, `event_text_max_chars: 4000`, `tool_input_max_chars: 2000`,
@@ -131,9 +142,11 @@ is written. The final message repeats it in full.
 
 ## Runtime hooks
 
-- `AgentSession(..., observer_factory=fn(run_id, correlation_id) -> RunObserver)`. A `RunObserver`
-  has `async on_message(msg)` for every SDK message and `async on_finish(RunResult)`. Observer
-  failures are logged and never fail the run, and publish failures are swallowed the same way.
+- `AgentSession(..., observer_factory=fn(run_id, correlation_id, thread_id, reply_to) ->
+  RunObserver)`. The last two (ATL-98) are `AgentSession.run(..., thread_id=, reply_to=)`'s,
+  defaulting to `None`. A `RunObserver` has `async on_message(msg)` for every SDK message and
+  `async on_finish(RunResult)`. Observer failures are logged and never fail the run, and publish
+  failures are swallowed the same way.
 - `streaming.observer_factory(agent=, env=, publish=)` builds that from `ThinkingPublisher`.
 - `atlas_agents.testing` adds `thinking(text)`, `thinking_delta(text)`, `text_delta(text)` and
   `block_stop()` builders for FakeClaudeClient scripts.

@@ -169,6 +169,8 @@ class Supervisor:
             correlation_id=request.correlation_id,
             reviewer=reviewer,
             max_follow_ups=historian.output_retries(),
+            thread_id=thread_id,
+            reply_to=reply_to,
         )
 
     async def consume_warroom(
