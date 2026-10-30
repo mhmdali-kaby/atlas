@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Requests\Settings;
 
 use App\Support\Settings\SettingsSchema;
-use Brick\Math\BigDecimal;
-use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -17,8 +15,6 @@ use Illuminate\Validation\Rule;
  */
 class RiskPreviewRequest extends FormRequest
 {
-    private const DECIMAL_PATTERN = '/^\d{1,15}(\.\d{1,8})?$/';
-
     /** The settings fields the preview's formula reads; the only ones a draft may override. */
     private const DECIMAL_DRAFT_FIELDS = [
         'max_loss_per_trade_pct',
@@ -66,12 +62,12 @@ class RiskPreviewRequest extends FormRequest
 
         foreach (self::DECIMAL_DRAFT_FIELDS as $field) {
             [, $min, $max, $exclusive] = SettingsSchema::NUMERIC_FIELDS[$field];
-            $rules[$field] = ['sometimes', 'string', self::decimalRange((string) $min, (string) $max, $exclusive)];
+            $rules[$field] = ['sometimes', 'string', UpdateSettingsRequest::decimalRange((string) $min, (string) $max, $exclusive)];
         }
 
         // bot_capital_cap_usdt is the one nullable field (decision #250: null = no cap).
         [, $min, $max, $exclusive] = SettingsSchema::NUMERIC_FIELDS['bot_capital_cap_usdt'];
-        $rules['bot_capital_cap_usdt'] = ['sometimes', 'nullable', 'string', self::decimalRange((string) $min, (string) $max, $exclusive)];
+        $rules['bot_capital_cap_usdt'] = ['sometimes', 'nullable', 'string', UpdateSettingsRequest::decimalRange((string) $min, (string) $max, $exclusive)];
 
         return $rules;
     }
@@ -101,29 +97,5 @@ class RiskPreviewRequest extends FormRequest
         }
 
         return $drafts;
-    }
-
-    private static function decimalRange(string $min, string $max, bool $exclusive): Closure
-    {
-        return function (string $attribute, mixed $value, Closure $fail) use ($min, $max, $exclusive): void {
-            if ($value === null) {
-                return;
-            }
-            if (! is_string($value) || preg_match(self::DECIMAL_PATTERN, $value) !== 1) {
-                $fail(__('settings.decimal_format'));
-
-                return;
-            }
-
-            $number = BigDecimal::of($value);
-            $tooLow = $exclusive ? $number->isLessThanOrEqualTo($min) : $number->isLessThan($min);
-
-            if ($tooLow || $number->isGreaterThan($max)) {
-                $fail(__($exclusive ? 'settings.decimal_range_exclusive' : 'settings.decimal_range_inclusive', [
-                    'min' => $min,
-                    'max' => $max,
-                ]));
-            }
-        };
     }
 }

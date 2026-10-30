@@ -45,7 +45,7 @@ final class RiskPreviewService
     public function preview(string $env, array $drafts, ?User $user = null): array
     {
         $setting = $this->settings->current($env, $user);
-        $values = $this->applyDrafts($this->settings->values($setting), $drafts);
+        $values = $this->settings->apply($this->settings->values($setting), $drafts);
 
         $equityRow = DB::table('equity_curve')->where('env', $env)->orderByDesc('ts')->first(['ts', 'total_eq_usd']);
         $equity = $equityRow === null ? null : BigDecimal::of((string) $equityRow->total_eq_usd);
@@ -108,30 +108,6 @@ final class RiskPreviewService
             'trades_today' => $tradesToday,
             'reason' => null,
         ];
-    }
-
-    /**
-     * Brief §14.3's preset replaces the two fields this preview reads, then any individually
-     * drafted field overrides that (mirrors SettingsService::apply, scoped to this formula).
-     *
-     * @param  array<string, bool|int|string|list<string>|null>  $values
-     * @param  array<string, string|null>  $drafts
-     * @return array<string, bool|int|string|list<string>|null>
-     */
-    private function applyDrafts(array $values, array $drafts): array
-    {
-        $next = $values;
-        $profile = $drafts['risk_profile'] ?? null;
-        if (is_string($profile) && in_array($profile, SettingsSchema::PRESETS, true)) {
-            $next = [...$next, ...SettingsSchema::preset($profile)];
-        }
-        foreach ($drafts as $field => $value) {
-            if ($field !== 'risk_profile') {
-                $next[$field] = $value;
-            }
-        }
-
-        return $next;
     }
 
     /**
