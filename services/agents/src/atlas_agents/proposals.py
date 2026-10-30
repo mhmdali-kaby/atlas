@@ -70,6 +70,7 @@ ItemName = Literal[
 
 _messages = table(
     "warroom_messages",
+    column("id"),
     column("env", String),
     column("author", String),
     column("kind", String),
@@ -119,18 +120,41 @@ def settings_data(session: Session, ctx: ToolContext) -> SettingsData:
     return SettingsData(version=int(version), data=data if isinstance(data, dict) else {})
 
 
+@dataclass(frozen=True)
+class LatestCard:
+    """The newest research_report card found by :func:`latest_card`."""
+
+    card: dict[str, Any]
+    posted_at: datetime
+    message_id: str
+
+
 def latest_card(
-    session: Session, ctx: ToolContext, *, author: str, card_type: str, inst_id: str
-) -> tuple[dict[str, Any], datetime] | None:
-    """(card, created_at) of ``author``'s newest research_report card of ``card_type`` on ``inst_id``."""
+    session: Session,
+    ctx: ToolContext,
+    *,
+    author: str,
+    card_type: str,
+    inst_id: str,
+    inst_ids_field: bool = False,
+) -> LatestCard | None:
+    """``author``'s newest research_report card of ``card_type`` on ``inst_id``.
+
+    With ``inst_ids_field`` the card names its instruments in an ``inst_ids`` list (news_brief)
+    rather than one ``inst_id``."""
+    names_inst = (
+        _messages.c.card["inst_ids"].op("?")(inst_id)
+        if inst_ids_field
+        else _messages.c.card["inst_id"].astext == inst_id
+    )
     row = session.execute(
-        select(_messages.c.card, _messages.c.created_at)
+        select(_messages.c.id, _messages.c.card, _messages.c.created_at)
         .where(
             _messages.c.env == ctx.env,
             _messages.c.author == author,
             _messages.c.kind == "research_report",
             _messages.c.card["type"].astext == card_type,
-            _messages.c.card["inst_id"].astext == inst_id,
+            names_inst,
             ctx.bound(_messages.c.created_at),
         )
         .order_by(_messages.c.created_at.desc())
@@ -138,7 +162,8 @@ def latest_card(
     ).first()
     if row is None:
         return None
-    return dict(row[0]), row[1]
+    msg_id, card, posted = row
+    return LatestCard(card=dict(card), posted_at=posted, message_id=str(msg_id))
 
 
 def open_positions(session: Session, ctx: ToolContext, inst_id: str) -> list[PositionSnapshot]:
@@ -199,7 +224,7 @@ def _check_setup(session: Session, ctx: ToolContext, inst_id: str, cfg: Mapping[
         return ChecklistItem(
             item=2, name="technical_setup", passed=False, detail=f"no TechnicalSetup card for {inst_id}"
         )
-    card, posted = found
+    card, posted = found.card, found.posted_at
     age = ctx.now() - posted
     minutes = int(age.total_seconds() // 60)
     if card.get("setup_type") == "none":
@@ -323,7 +348,7 @@ def _check_historian(session: Session, ctx: ToolContext, inst_id: str) -> Checkl
         return ChecklistItem(
             item=4, name="historian_verdict", passed=True, detail=f"no Historian verdict on {inst_id}"
         )
-    verdict = found[0].get("verdict")
+    verdict = found.card.get("verdict")
     if verdict == "contradicts":
         return ChecklistItem(
             item=4,
