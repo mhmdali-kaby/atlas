@@ -31,7 +31,9 @@ class UpdateSettingsRequest extends FormRequest
         $rules = [
             'env' => ['required', 'string', Rule::in(SettingsEnvRequest::envs())],
             'version' => ['required', 'integer:strict', 'min:1'],
-            'changes' => ['required', 'array:'.implode(',', SettingsSchema::fields()), 'min:1'],
+            // Not `array:<keys>`: the validator swaps literal dots in input keys for a placeholder,
+            // so the agent keys (`agents.historian.enabled`) are checked against the raw input.
+            'changes' => ['required', 'array', 'min:1', $this->knownFields()],
             'changes.risk_profile' => ['sometimes', 'string', Rule::in(SettingsSchema::PROFILES)],
         ];
 
@@ -46,7 +48,49 @@ class UpdateSettingsRequest extends FormRequest
         // on top of the schema range rather than widening/narrowing NUMERIC_FIELDS per phase.
         $rules['changes.autonomy_level'][] = self::maxEnabledAutonomyLevel();
 
+        // ATL-113: agent settings. Their keys hold literal dots (`agents.historian.enabled`), so
+        // the rule keys escape them; error keys come back unescaped (`changes.agents.historian.enabled`).
+        foreach (SettingsSchema::agentFields() as $field => $kind) {
+            $key = 'changes.'.self::escape($field);
+            $setting = substr($field, (int) strrpos($field, '.') + 1);
+            $rules[$key] = match ($kind) {
+                'boolean' => ['sometimes', 'boolean:strict'],
+                'model' => ['sometimes', 'string', Rule::in(SettingsSchema::AGENT_MODELS)],
+                default => ['sometimes', 'integer:strict', 'between:'.implode(',', SettingsSchema::agentIntegerBounds($setting))],
+            };
+        }
+        foreach (SettingsSchema::WEB_DOMAIN_FIELDS as $field) {
+            $key = 'changes.'.self::escape($field);
+            $rules[$key] = ['sometimes', 'present', 'array', 'list', 'max:'.SettingsSchema::webDomainsMax()];
+            $rules["{$key}.*"] = ['required', 'string', 'max:253', self::hostname()];
+        }
+
         return $rules;
+    }
+
+    private function knownFields(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail): void {
+            $raw = $this->input('changes');
+            $unknown = is_array($raw) ? array_diff(array_map(strval(...), array_keys($raw)), SettingsSchema::fields()) : [];
+            if ($unknown !== []) {
+                $fail(__('validation.array', ['attribute' => $attribute]));
+            }
+        };
+    }
+
+    private static function escape(string $field): string
+    {
+        return str_replace('.', '\\.', $field);
+    }
+
+    private static function hostname(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail): void {
+            if (SettingsSchema::normaliseHostname($value) === null) {
+                $fail(__('settings.hostname_format'));
+            }
+        };
     }
 
     private static function maxEnabledAutonomyLevel(): Closure
@@ -83,11 +127,11 @@ class UpdateSettingsRequest extends FormRequest
     }
 
     /**
-     * @return array<string, int|string>
+     * @return array<string, bool|int|string|list<string>>
      */
     public function changes(): array
     {
-        /** @var array<string, int|string> $changes */
+        /** @var array<string, bool|int|string|list<string>> $changes */
         $changes = $this->validated('changes');
 
         return $changes;

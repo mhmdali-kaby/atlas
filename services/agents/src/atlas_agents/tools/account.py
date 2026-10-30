@@ -11,23 +11,32 @@ label, API key, secret or passphrase (brief §1.6, §18).
 * settings are built from an explicit allow-list of numeric keys (``SETTINGS_SNAPSHOT_KEYS``);
   nothing outside it can reach an agent. In replay the version in force at the cutoff is read from
   ``settings_history``.
-* open orders and the watchlist have no table yet (Executor: Phase 2; watchlist: patch E), so those
-  tools answer an empty list with ``available: false`` and the reason.
+* open orders have no table yet (Executor: Phase 2), so that tool answers an empty list with
+  ``available: false`` and the reason.
+* the watchlist is the latest version saved for the Asia/Baghdad date (ATL-102), bounded on
+  ``watchlists.created_at`` in replay.
 """
 
 from __future__ import annotations
 
 import itertools
 import math
+import uuid
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any, Final
-from zoneinfo import ZoneInfo
 
-from atlas_shared.db import BalanceSnapshot, Candle, EquityPoint, PositionSnapshot
-from atlas_shared.defaults import DEFAULTS
-from pydantic import BaseModel
-from sqlalchemy import Integer, String, Uuid, column, select, table
+from atlas_shared.db import (
+    BalanceSnapshot,
+    Candle,
+    EquityPoint,
+    PositionSnapshot,
+    Watchlist,
+    WatchlistItem,
+    owner_day,
+)
+from pydantic import BaseModel, Field
+from sqlalchemy import ColumnElement, Integer, String, Uuid, column, or_, select, table
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP
 from sqlalchemy.orm import Session
 
@@ -420,7 +429,7 @@ async def get_today_budget_left(ctx: ToolContext, args: NoInput) -> ToolResult:
     used = Decimal(0)
     max_open = values.get("max_open_positions")
     max_open_int = int(max_open) if max_open is not None else None
-    day = ctx.now().astimezone(ZoneInfo(str(DEFAULTS["timezone"]["display"]))).date()
+    day = owner_day(ctx.now())
     return ToolResult(
         data=BudgetOut(
             env=ctx.env,
@@ -446,28 +455,103 @@ async def get_today_budget_left(ctx: ToolContext, args: NoInput) -> ToolResult:
 # -- get_watchlist -----------------------------------------------------------------------------------
 
 
+class WatchlistItemOut(BaseModel):
+    inst_id: str
+    rank: int
+    asset_class: str
+    bias: str
+    conviction: float
+    thesis: str
+    catalysts: list[dict[str, Any]]
+    key_levels: dict[str, float]
+    invalidation: str
+    pinned_by_owner: bool
+    data_as_of: datetime
+
+
 class WatchlistOut(BaseModel):
     date: date
     available: bool
-    items: list[dict[str, Any]]
-    reason: str
+    watchlist_id: uuid.UUID | None = None
+    version: int | None = None
+    status: str | None = None
+    created_by: str | None = None
+    created_at: datetime | None = None
+    edit_window_ends_at: datetime | None = None
+    message_id: uuid.UUID | None = None
+    data: dict[str, Any] = Field(default_factory=dict)
+    items: list[WatchlistItemOut]
+    order: str = "rank asc"
+    reason: str | None = None
 
 
 @atlas_tool("atlas_data", "get_watchlist", GetWatchlistInput, WatchlistOut)
 async def get_watchlist(ctx: ToolContext, args: GetWatchlistInput) -> ToolResult:
-    """Today's (or date's, Asia/Baghdad) watchlist chosen by Market Scout. Market Scout is not built
-    yet, so this answers available=false with an empty list."""
-    day = args.date or ctx.now().astimezone(ZoneInfo(str(DEFAULTS["timezone"]["display"]))).date()
-    return ToolResult(
-        data=WatchlistOut(
+    """Market Scout's watchlist for an Asia/Baghdad date (default: today in Asia/Baghdad): the latest
+    version, its status (draft|published|partial_evidence|empty) and reason, and the picks the owner
+    has not removed, ordered by rank."""
+    day = args.date or owner_day(ctx.now())
+    with ctx.session_factory() as session:
+        wl = session.scalars(
+            select(Watchlist)
+            .where(Watchlist.env == ctx.env, Watchlist.date == day, ctx.bound(Watchlist.created_at))
+            .order_by(Watchlist.version.desc())
+            .limit(1)
+        ).first()
+        if wl is None:
+            return ToolResult(
+                data=WatchlistOut(
+                    date=day,
+                    available=False,
+                    items=[],
+                    reason=f"Market Scout has not saved a watchlist for {day.isoformat()} (Asia/Baghdad).",
+                ),
+                as_of=ctx.now(),
+                source=src("watchlists"),
+            )
+        # In replay, an item the owner removed after the cutoff was still on the list at the cutoff.
+        not_removed: ColumnElement[bool] = WatchlistItem.removed_by_owner_at.is_(None)
+        if ctx.replay_as_of is not None:
+            not_removed = or_(not_removed, WatchlistItem.removed_by_owner_at > ctx.replay_as_of)
+        items = session.scalars(
+            select(WatchlistItem)
+            .where(WatchlistItem.watchlist_id == wl.id, not_removed)
+            .order_by(WatchlistItem.rank)
+        ).all()
+        out = WatchlistOut(
             date=day,
-            available=False,
-            items=[],
-            reason="No watchlist exists yet: Market Scout and the watchlists table arrive in Phase 1 "
-            "patch E.",
-        ),
-        as_of=ctx.now(),
-        source="postgres:none (watchlists table arrives in patch E)",
+            available=True,
+            watchlist_id=wl.id,
+            version=wl.version,
+            status=wl.status,
+            created_by=wl.created_by,
+            created_at=wl.created_at,
+            edit_window_ends_at=wl.edit_window_ends_at,
+            message_id=wl.message_id,
+            data=dict(wl.data or {}),
+            items=[
+                WatchlistItemOut(
+                    inst_id=i.inst_id,
+                    rank=i.rank,
+                    asset_class=i.asset_class,
+                    bias=i.bias,
+                    conviction=float(i.conviction),
+                    thesis=i.thesis,
+                    catalysts=list(i.catalysts or []),
+                    key_levels={k: float(v) for k, v in (i.key_levels or {}).items()},
+                    invalidation=i.invalidation,
+                    pinned_by_owner=i.pinned_by_owner,
+                    data_as_of=i.data_as_of,
+                )
+                for i in items
+            ],
+            reason=wl.reason,
+        )
+        created_at = wl.created_at
+    return ToolResult(
+        data=out,
+        as_of=newest([created_at], ctx),
+        source=src("watchlists", "watchlist_items"),
     )
 
 

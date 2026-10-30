@@ -276,6 +276,27 @@ class NewsBrief(_Model):
     meta: CardMeta | None = None
 
 
+class Catalyst(_Model):
+    """One reason a pick may move (brief §6.3): what, when, which source, how important (1-5)."""
+
+    time: AwareDatetime | None = Field(default=None, description="When it happens (UTC); null if unscheduled")
+    source: str = Field(min_length=1, max_length=500)
+
+
+class WatchlistPick(_Model):
+    """One Market Scout pick (brief §6.3). ``rank`` 1 is the strongest. ``key_levels`` maps a level
+    name (support, resistance, invalidation, ...) to a price."""
+
+    rank: int = Field(ge=1)
+    asset_class: str = Field(min_length=1, max_length=32)
+    bias: Literal["long", "short", "neutral"]
+    conviction: float = Field(ge=0, le=1)
+    thesis: str = Field(min_length=1)
+    catalysts: list[Catalyst] = Field(default_factory=list)
+    key_levels: dict[str, float] = Field(default_factory=dict)
+    invalidation: str = Field(min_length=1)
+
+
 # War Room card registry: card ``type`` -> the one model it must validate against.
 CARD_TYPES: dict[str, type[BaseModel]] = {
     "history_verdict": HistoryVerdict,
@@ -297,6 +318,7 @@ def card_rule_violations(card: BaseModel) -> list[str]:
 __all__ = [
     "CARD_TYPES",
     "CardMeta",
+    "Catalyst",
     "HistoryVerdict",
     "HorizonDistribution",
     "NewsBrief",
@@ -314,6 +336,7 @@ __all__ = [
     "VerdictCorrection",
     "VerdictCorrectionMeta",
     "VerdictEvidence",
+    "WatchlistPick",
     "card_rule_violations",
     "enforce_verdict_rules",
 ]

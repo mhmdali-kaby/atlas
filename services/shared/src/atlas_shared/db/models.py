@@ -616,3 +616,50 @@ class AgentScore(_Row, Base):
     calibration: Mapped[Any] = _jsonb_obj()
     pnl_attributed_usd: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
     data: Mapped[Any] = _jsonb_obj()
+
+
+class Watchlist(_Row, Base):
+    """Market Scout's watchlist for one Asia/Baghdad business day (ATL-102, decision #247 (3)).
+
+    ``date`` is a DATE, never a timestamp. Re-runs add a row with the next ``version``; the current
+    watchlist for (env, date) is the highest version. status: draft|published|partial_evidence|empty.
+    Write it with ``atlas_agents.watchlists.save_watchlist``, which validates the picks."""
+
+    __tablename__ = "watchlists"
+    __table_args__ = (UniqueConstraint("env", "date", "version"),)
+
+    date: Mapped[date] = mapped_column(Date)
+    version: Mapped[int] = mapped_column(Integer)
+    created_by: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(255))
+    edit_window_ends_at: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    message_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, nullable=True)
+    data: Mapped[Any] = _jsonb_obj()
+
+
+class WatchlistItem(_Stamped, Base):
+    """One pick on a watchlist. conviction is CHECKed to 0..1 and rank to >= 1; rank and inst_id
+    are unique within a watchlist. removed_by_owner_at is set when the owner removes the pick."""
+
+    __tablename__ = "watchlist_items"
+    __table_args__ = (
+        UniqueConstraint("watchlist_id", "rank"),
+        UniqueConstraint("watchlist_id", "inst_id"),
+    )
+
+    watchlist_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("watchlists.id", ondelete="CASCADE"))
+    inst_id: Mapped[str] = mapped_column(String(64))
+    rank: Mapped[int] = mapped_column(Integer)
+    asset_class: Mapped[str] = mapped_column(String(32))
+    bias: Mapped[str] = mapped_column(String(255))
+    conviction: Mapped[Decimal] = mapped_column(Numeric(6, 4, asdecimal=True))
+    thesis: Mapped[str] = mapped_column(Text)
+    catalysts: Mapped[Any] = mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+    key_levels: Mapped[Any] = _jsonb_obj()
+    invalidation: Mapped[str] = mapped_column(Text)
+    pinned_by_owner: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    removed_by_owner_at: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
+    data_as_of: Mapped[datetime] = mapped_column(_tz())
