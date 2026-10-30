@@ -41,6 +41,8 @@ from trading_core.sync.account import STREAM as ACCOUNT_JOB
 from trading_core.sync.account import account_job
 from trading_core.sync.bills import STREAM as BILLS_JOB
 from trading_core.sync.bills import bills_job
+from trading_core.sync.history import STREAM as HISTORY_JOB
+from trading_core.sync.history import history_job
 from trading_core.sync.instruments import STREAM as INSTRUMENTS_JOB
 from trading_core.sync.instruments import instruments_job
 from trading_core.ws import MarketFeed, default_feed
@@ -184,6 +186,11 @@ def default_scheduler(settings: Settings, engine: Engine | None = None) -> Sched
         BILLS_JOB,
         DEFAULTS["sync"]["bills_interval_seconds"],
         bills_job(settings.env, engine, settings.app_key),
+    )
+    scheduler.add(
+        HISTORY_JOB,
+        DEFAULTS["sync"]["history_interval_seconds"],
+        history_job(settings.env, engine, settings.app_key),
     )
     # Public OKX limits are per IP: the backfill, the candle and derivatives pollers and the gap repair
     # share one limiter.
