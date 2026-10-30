@@ -50,8 +50,8 @@ Code: `services/agents/src/atlas_agents/agents/market_scout.py` (pipeline + hook
    partial, else each pick whose asset class (from the feature table, else the pick) is in
    `degraded_asset_classes`. Then renumber ranks 1..n. A pick above the cap gets
    `conviction_before_cap` and `cap_reason` on the card (`partial_evidence` wins when both apply).
-3a. `degraded_asset_classes` is set in `prepare()` from
-   `atlas_agents.news_intelligence.degraded_asset_classes(ctx)` (ATL-107's rule, the same list News
+3a. `degraded_asset_classes` and `degraded_since` (ATL-120) are set in `prepare()` from
+   `atlas_agents.news_intelligence.news_coverage(ctx)` (ATL-107's rule, the same values News
    puts on its brief): classes of `agents.news_intelligence.asset_class_categories` with no news
    source available, in config order (not sorted). The news-down cap alone does **not** make the
    status `partial_evidence`.
@@ -104,6 +104,7 @@ Published (run-posted: the payload also carries `run_id`, `reasoning_md`, `tool_
      "…": "…", "pinned_by_owner": false}
   ],
   "degraded_asset_classes": ["crypto"],
+  "degraded_since": {"crypto": "2026-10-31T03:10:00Z"},
   "backdrop": ["BTC trending up.", "Gold flat ahead of CPI.", "No big US event in 48h."],
   "rejected": [{"inst_id": "ETH-USDT-SWAP", "reason": "weaker evidence"}, {"…": "3 in total"}],
   "corrections": [{"rule": "blocked", "inst_id": "DOGE-USDT-SWAP", "detail": "on the blocklist"}],
@@ -127,8 +128,18 @@ Published (run-posted: the payload also carries `run_id`, `reasoning_md`, `tool_
 - `teammates[].status` ∈ `replied | timed_out | not_asked`.
 - `picks[].conviction_before_cap` / `picks[].cap_reason` are present **only** on a pick whose
   conviction was lowered; `cap_reason` ∈ `partial_evidence | news_class_down`. `conviction` is
-  already the capped value. `degraded_asset_classes` is always present (`[]` when every class has
-  news), also on both empty variants.
+  already the capped value. `partial_evidence` = a Historian/News timeout or not-asked, or a
+  stale feature table (caps every pick); `news_class_down` = the pick's class is in
+  `degraded_asset_classes` (caps that class only); when both apply the pick carries
+  `partial_evidence`. A pick at or under the cap has neither field. `degraded_asset_classes` is
+  always present (`[]` when every class has news), also on both empty variants.
+- `degraded_since` (ATL-120) is always present beside it: `{asset_class: ISO-8601 UTC with Z | null}`,
+  one key per degraded class (`{}` when none); the latest `news_sources.last_success_at` of that
+  class's sources, `null` if none ever succeeded. Same values as the morning `news_brief` card.
+  For the class notice and the cap tooltip.
+- The model never writes `degraded_asset_classes`, `degraded_since`, or a pick's `cap_reason`,
+  `conviction_before_cap` or `pinned_by_owner`: the reviewer drops them from the model's card
+  before validation (no retry is spent) and code writes them on the saved card.
 - `content_md` starts with `**News down** for crypto: convictions in that class capped at 0.5.`
   when a class is degraded.
 - `meta` is the number guard (same shape as other cards; ATL-96 highlights from it).

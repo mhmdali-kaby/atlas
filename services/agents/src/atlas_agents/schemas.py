@@ -296,6 +296,9 @@ class NewsBrief(_Model):
     degraded_asset_classes: list[str] = Field(default_factory=list)
     """ATL-107: asset classes whose every news source is disabled, needs_key or degraded, computed
     in code when the brief is posted (brief §7.2 failure behaviour)."""
+    degraded_since: dict[str, str | None] = Field(default_factory=dict)
+    """ATL-120: one entry per degraded class, the latest ``last_success_at`` (ISO-8601 UTC) across
+    that class's news sources, or null when none ever succeeded. Written by code."""
     meta: CardMeta | None = None
 
 
