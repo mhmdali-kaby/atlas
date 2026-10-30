@@ -442,6 +442,8 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "url": "https://www.okx.com/api/v5/support/announcements",
                 "poll_seconds": 120,
                 "requires_key": False,
+                "reputable": True,
+                "official": True,
             },
             "cryptopanic": {
                 "provider": "cryptopanic",
@@ -451,6 +453,8 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "url": "https://cryptopanic.com/api/v1/posts/",
                 "poll_seconds": 180,
                 "requires_key": True,
+                "reputable": False,
+                "official": False,
             },
             "rss.coindesk": {
                 "provider": "coindesk",
@@ -460,6 +464,8 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "url": "https://www.coindesk.com/arc/outboundfeeds/rss",
                 "poll_seconds": 60,
                 "requires_key": False,
+                "reputable": True,
+                "official": False,
             },
             "rss.cointelegraph": {
                 "provider": "cointelegraph",
@@ -469,6 +475,8 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "url": "https://cointelegraph.com/rss",
                 "poll_seconds": 60,
                 "requires_key": False,
+                "reputable": False,
+                "official": False,
             },
             "rss.theblock": {
                 "provider": "theblock",
@@ -478,6 +486,8 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "url": "https://www.theblock.co/rss.xml",
                 "poll_seconds": 60,
                 "requires_key": False,
+                "reputable": True,
+                "official": False,
             },
             "rss.decrypt": {
                 "provider": "decrypt",
@@ -487,6 +497,8 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "url": "https://decrypt.co/feed",
                 "poll_seconds": 60,
                 "requires_key": False,
+                "reputable": False,
+                "official": False,
             },
             "rss.cnbc": {
                 "provider": "cnbc",
@@ -496,6 +508,8 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114",
                 "poll_seconds": 60,
                 "requires_key": False,
+                "reputable": True,
+                "official": False,
             },
             "rss.marketwatch": {
                 "provider": "marketwatch",
@@ -505,6 +519,8 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "url": "https://feeds.content.dowjones.io/public/rss/mw_topstories",
                 "poll_seconds": 60,
                 "requires_key": False,
+                "reputable": True,
+                "official": False,
             },
             "rss.yahoo": {
                 "provider": "yahoo",
@@ -514,6 +530,8 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "url": "https://feeds.finance.yahoo.com/rss/2.0/headline?s={symbol}&region=US&lang=en-US",
                 "poll_seconds": 300,
                 "requires_key": False,
+                "reputable": False,
+                "official": False,
             },
             "finnhub.news": {
                 "provider": "finnhub",
@@ -523,6 +541,8 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "url": "https://finnhub.io/api/v1/news",
                 "poll_seconds": 180,
                 "requires_key": True,
+                "reputable": True,
+                "official": False,
             },
             "finnhub.calendar": {
                 "provider": "finnhub",
@@ -535,6 +555,8 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "covers": [
                     "forexfactory.calendar",
                 ],
+                "reputable": False,
+                "official": False,
             },
             "finnhub.earnings": {
                 "provider": "finnhub",
@@ -544,6 +566,8 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "url": "https://finnhub.io/api/v1/calendar/earnings",
                 "poll_seconds": 86400,
                 "requires_key": True,
+                "reputable": False,
+                "official": False,
             },
             "forexfactory.calendar": {
                 "provider": "forexfactory",
@@ -553,6 +577,8 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "url": "https://nfs.faireconomy.media/ff_calendar_thisweek.json",
                 "poll_seconds": 900,
                 "requires_key": False,
+                "reputable": False,
+                "official": False,
             },
             "alternative_me.fng": {
                 "provider": "alternative_me",
@@ -562,6 +588,8 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "url": "https://api.alternative.me/fng/",
                 "poll_seconds": 3600,
                 "requires_key": False,
+                "reputable": False,
+                "official": False,
             },
         },
         "embedding": {
@@ -923,6 +951,10 @@ DEFAULTS: Final[dict[str, Any]] = {
             "mark_price_bar": "1m",
             "series_limit": 200,
             "min_correlation_obs": 3,
+        },
+        "news_price_move": {
+            "bar": "1H",
+            "history_bars": 200,
         },
         "tools": {
             "max_result_tokens": 4000,

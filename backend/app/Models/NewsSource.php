@@ -26,6 +26,8 @@ use Illuminate\Support\Carbon;
  * @property bool $enabled
  * @property int $poll_seconds
  * @property bool $requires_key
+ * @property bool $reputable newsroom with editorial standards (ATL-106); read-only, from config
+ * @property bool $official the venue's own channel, e.g. OKX announcements (ATL-106); read-only, from config
  * @property string|null $api_key plaintext through the model; ciphertext in the column
  * @property int $consecutive_failures
  * @property Carbon|null $disabled_until
@@ -61,6 +63,8 @@ class NewsSource extends Model
         return [
             'enabled' => 'boolean',
             'requires_key' => 'boolean',
+            'reputable' => 'boolean',
+            'official' => 'boolean',
             'poll_seconds' => 'integer',
             'api_key' => 'encrypted',
             'consecutive_failures' => 'integer',

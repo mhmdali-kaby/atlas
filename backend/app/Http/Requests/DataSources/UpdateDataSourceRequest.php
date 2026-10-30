@@ -35,6 +35,10 @@ class UpdateDataSourceRequest extends FormRequest
             'api_key' => ['prohibited'],
             'key' => ['prohibited'],
             'requires_key' => ['prohibited'],
+            // ATL-106: trust flags come from config/defaults.yaml only; the owner cannot raise a
+            // source to reputable/official and turn its rumours into CONFIRMED news.
+            'reputable' => ['prohibited'],
+            'official' => ['prohibited'],
         ];
     }
 }
