@@ -25,6 +25,7 @@ from atlas_quant.drawdown import (
 )
 from atlas_quant.event_study import AtrMove, EventStudyResult, OffsetStat, event_study
 from atlas_quant.leadlag import LagCorrelation, LeadLagResult, cross_asset_lead_lag
+from atlas_quant.moves import MoveSince, move_since_atr
 from atlas_quant.regime import RegimeParams, RegimeResult, RegimeState, detect_regime
 from atlas_quant.seasonality import SeasonalityResult, SeasonBucket, seasonality
 from atlas_quant.stats import (
@@ -60,6 +61,7 @@ __all__ = [
     "LagCorrelation",
     "LeadLagResult",
     "Metrics",
+    "MoveSince",
     "OffsetStat",
     "RegimeParams",
     "RegimeResult",
@@ -80,6 +82,7 @@ __all__ = [
     "event_study",
     "find_analogs",
     "load_candles",
+    "move_since_atr",
     "seasonality",
     "volatility_forecast",
 ]

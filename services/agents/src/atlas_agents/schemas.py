@@ -214,10 +214,73 @@ class RegimeTable(_Model):
     meta: CardMeta | None = None
 
 
+NewsStatus = Literal["CONFIRMED", "REPORTED", "RUMOUR"]
+
+
+class NewsBriefSource(_Model):
+    """One outlet that carried the story."""
+
+    name: str = Field(min_length=1, max_length=200)
+    url: str = Field(min_length=1, max_length=2000)
+    published_at: AwareDatetime
+
+
+class PriceMoveAtr(_Model):
+    """Move of one linked instrument since the story was first seen, in ATR(14, 1H) units."""
+
+    inst_id: str = Field(min_length=1, max_length=64)
+    value: float | None
+    reason: str | None = None
+    """Why ``value`` is null (e.g. candles missing)."""
+
+
+class NewsBriefCluster(_Model):
+    """One story in a News Intelligence brief (brief §7.2). ``cluster_id`` names the stored story
+    cluster: ``status``, ``status_sources``, ``first_seen`` and ``price_move_since_first_seen_atr``
+    are overwritten with the news tools' code-computed values when the card is posted (ATL-106,
+    decision #247 (4)), whatever the model wrote."""
+
+    cluster_id: str = Field(min_length=1, max_length=64)
+    headline: str = Field(min_length=1, max_length=500)
+    status: NewsStatus = "RUMOUR"
+    status_sources: list[str] = Field(default_factory=list)
+    sources: list[NewsBriefSource] = Field(default_factory=list)
+    event_type: str | None = None
+    importance: int = Field(ge=1, le=5)
+    sentiment: float | None = Field(default=None, ge=-1, le=1)
+    first_seen: AwareDatetime
+    price_move_since_first_seen_atr: list[PriceMoveAtr] = Field(default_factory=list)
+
+
+class UpcomingEvent(_Model):
+    time: AwareDatetime
+    name: str = Field(min_length=1, max_length=300)
+    forecast: str | None = None
+    previous: str | None = None
+    sensitive_instruments: list[str] = Field(default_factory=list)
+
+
+class NewsBrief(_Model):
+    """News Intelligence's ``NewsBrief`` (brief §7.2). A ``research_report`` card with
+    ``type: "news_brief"`` is validated against this model (``CARD_TYPES``)."""
+
+    type: Literal["news_brief"] = "news_brief"
+    inst_ids: list[str] = Field(default_factory=list)
+    clusters: list[NewsBriefCluster] = Field(default_factory=list)
+    upcoming_events: list[UpcomingEvent] = Field(default_factory=list)
+    net_sentiment_24h: float | None = Field(default=None, ge=-1, le=1)
+    net_sentiment_72h: float | None = Field(default=None, ge=-1, le=1)
+    priced_in: Literal["yes", "partly", "no"]
+    what_to_watch: str = Field(min_length=1)
+    data_as_of: AwareDatetime
+    meta: CardMeta | None = None
+
+
 # War Room card registry: card ``type`` -> the one model it must validate against.
 CARD_TYPES: dict[str, type[BaseModel]] = {
     "history_verdict": HistoryVerdict,
     "regime_table": RegimeTable,
+    "news_brief": NewsBrief,
 }
 
 
@@ -236,11 +299,17 @@ __all__ = [
     "CardMeta",
     "HistoryVerdict",
     "HorizonDistribution",
+    "NewsBrief",
+    "NewsBriefCluster",
+    "NewsBriefSource",
+    "NewsStatus",
+    "PriceMoveAtr",
     "RegimeRow",
     "RegimeSummary",
     "RegimeTable",
     "StopNoiseCheck",
     "UnmatchedNumber",
+    "UpcomingEvent",
     "Verdict",
     "VerdictCorrection",
     "VerdictCorrectionMeta",
