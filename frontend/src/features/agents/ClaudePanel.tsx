@@ -19,14 +19,20 @@ const INSTALL_URL = 'https://docs.claude.com/en/docs/claude-code/setup'
 function Checks({ c }: { c: ClaudeStatus }) {
   const { t } = useTranslation(NS)
   const version = cliVersion(c)
-  const items: { s: 'pass' | 'fail' | 'skip'; text: React.ReactNode }[] = [
+  const items: { s: 'pass' | 'fail' | 'skip' | 'unknown'; text: React.ReactNode }[] = [
     c.installed
       ? { s: 'pass', text: version ? <Tr k="chk.cliPass" values={{ version }} /> : t('chk.cliPassNoVersion') }
       : { s: 'fail', text: t('chk.cliFail') },
-    !c.installed ? { s: 'skip', text: t('chk.loginSkip') } : c.logged_in ? { s: 'pass', text: t('chk.loginPass') } : { s: 'fail', text: t('chk.loginFail') },
+    !c.installed
+      ? { s: 'skip', text: t('chk.loginSkip') }
+      : c.logged_in === null
+        ? { s: 'unknown', text: t('chk.loginUnknown') }
+        : c.logged_in
+          ? { s: 'pass', text: t('chk.loginPass') }
+          : { s: 'fail', text: t('chk.loginFail') },
     c.api_key_env_clear ? { s: 'pass', text: t('chk.keyPass') } : { s: 'fail', text: <Tr k="chk.keyFail" values={{ var: keyVars(c).join(', ') }} /> },
   ]
-  const Icon = { pass: CircleCheck, fail: CircleX, skip: CircleMinus }
+  const Icon = { pass: CircleCheck, fail: CircleX, skip: CircleMinus, unknown: CircleAlert }
   return (
     <ul className="ag-checks" aria-label={t('cl.checks')}>
       {items.map(({ s, text }, i) => {
@@ -132,11 +138,21 @@ export function ClaudePanel() {
     )
   }
 
-  const tone = view === 'logged_out' ? 'warn' : 'error'
-  const Icon = view === 'logged_out' ? TriangleAlert : CircleAlert
-  const title = t(view === 'missing' ? 'cl.missTitle' : view === 'logged_out' ? 'cl.outTitle' : 'cl.keyTitle')
+  const tone = view === 'logged_out' || view === 'login_unknown' ? 'warn' : 'error'
+  const Icon = view === 'logged_out' || view === 'login_unknown' ? TriangleAlert : CircleAlert
+  const title = t(
+    view === 'missing' ? 'cl.missTitle' : view === 'logged_out' ? 'cl.outTitle' : view === 'login_unknown' ? 'cl.unknownTitle' : 'cl.keyTitle',
+  )
   const body =
-    view === 'missing' ? <Tr k="cl.missBody" /> : view === 'logged_out' ? t('cl.outBody') : <Tr k="cl.keyBody" values={{ var: keyVars(c).join(', ') }} />
+    view === 'missing' ? (
+      <Tr k="cl.missBody" />
+    ) : view === 'logged_out' ? (
+      t('cl.outBody')
+    ) : view === 'login_unknown' ? (
+      t('cl.unknownBody')
+    ) : (
+      <Tr k="cl.keyBody" values={{ var: keyVars(c).join(', ') }} />
+    )
   const command = c.login_command || 'claude login'
 
   const copy = () => {

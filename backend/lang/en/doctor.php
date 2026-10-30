@@ -54,6 +54,7 @@ return [
     'skipped_no_cli' => 'Not checked: the claude CLI was not found',
     'claude_cli_login_ok' => 'Logged in',
     'claude_cli_login_failed' => 'Not logged in. Run `claude login` in a terminal on this Mac, then check again.',
+    'claude_cli_login_unknown' => 'Could not confirm sign-in without running a model turn. Check again, or run `claude login` on this Mac.',
     'claude_api_key_ok' => 'Not set',
     'claude_api_key_set' => ':vars is set. Unset it so agent usage cannot silently fall back to pay-as-you-go.',
     'summary_ok' => 'All required checks passed.',

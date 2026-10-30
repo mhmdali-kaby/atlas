@@ -45,7 +45,7 @@ function agent(slug: string, over: Partial<AgentRow> = {}): AgentRow {
 
 const SLUGS = ['orchestrator', 'market_scout', 'news_intelligence', 'historian', 'technical_analyst', 'derivatives_sentiment', 'strategist', 'devils_advocate', 'portfolio_manager']
 
-function fakeBackend(lists: AgentRow[][]) {
+function fakeBackend(lists: AgentRow[][], claude: Record<string, unknown> = {}) {
   const seen = { agents: 0 }
   vi.stubGlobal(
     'fetch',
@@ -60,7 +60,16 @@ function fakeBackend(lists: AgentRow[][]) {
       }
       if (path === '/api/agents/claude-status') {
         return reply(200, {
-          data: { ok: true, installed: true, logged_in: true, api_key_env_clear: true, login_command: 'claude login', checks: [], checked_at: '2026-10-30T08:00:00Z' },
+          data: {
+            ok: true,
+            installed: true,
+            logged_in: true,
+            api_key_env_clear: true,
+            login_command: 'claude login',
+            checks: [],
+            checked_at: '2026-10-30T08:00:00Z',
+            ...claude,
+          },
         })
       }
       return reply(404)
@@ -122,5 +131,15 @@ describe('AgentsPage', () => {
     fakeBackend([[]])
     renderPage()
     expect(await screen.findByTestId('ag-empty')).toHaveTextContent('No agents yet')
+  })
+
+  // ATL-122: the HTTP status endpoint sends logged_in: null when it could not confirm sign-in
+  // without probing the CLI; the panel must read that as "unknown", not "signed out".
+  it('renders a null logged_in as unknown, not signed out', async () => {
+    fakeBackend([SLUGS.map((s) => agent(s))], { ok: false, logged_in: null })
+    renderPage()
+    const panel = await screen.findByTestId('ag-claude')
+    expect(panel).toHaveAttribute('data-view', 'login_unknown')
+    expect(panel).toHaveTextContent("Couldn’t confirm Claude is signed in")
   })
 })
