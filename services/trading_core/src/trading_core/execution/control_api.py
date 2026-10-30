@@ -20,7 +20,9 @@ from typing import Any
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
-from trading_core.execution import kill as control
+from trading_core.execution import close_cancel, trading_state
+from trading_core.execution.control import ControlError
+from trading_core.execution.kill import kill as run_kill
 from trading_core.security import PROTECTED_PREFIX
 
 router = APIRouter(prefix=PROTECTED_PREFIX)
@@ -51,7 +53,7 @@ def _deps(request: Request) -> dict[str, Any]:
     }
 
 
-def _refused(err: control.ControlError) -> JSONResponse:
+def _refused(err: ControlError) -> JSONResponse:
     return JSONResponse(
         status_code=err.status, content={"ok": False, "error": err.reason, "detail": err.detail}
     )
@@ -66,7 +68,7 @@ async def pause(request: Request) -> JSONResponse:
     if reason is not None and (not isinstance(reason, str) or len(reason) > 500):
         return JSONResponse(status_code=422, content={"ok": False, "error": "invalid_reason"})
     state = request.app.state
-    payload = control.pause(
+    payload = trading_state.pause(
         state.engine, state.settings.env, reason=reason, redis_client=getattr(state, "executor_redis", None)
     )
     return JSONResponse(status_code=200, content={"ok": True, **payload})
@@ -75,7 +77,7 @@ async def pause(request: Request) -> JSONResponse:
 @router.post("/system/resume", response_model=None)
 async def resume(request: Request) -> JSONResponse:
     state = request.app.state
-    payload = control.resume(
+    payload = trading_state.resume(
         state.engine, state.settings.env, redis_client=getattr(state, "executor_redis", None)
     )
     return JSONResponse(status_code=200, content={"ok": True, **payload})
@@ -89,7 +91,7 @@ async def kill(request: Request) -> JSONResponse:
     flatten = body.get("flatten", False)
     if not isinstance(flatten, bool):
         return JSONResponse(status_code=422, content={"ok": False, "error": "invalid_flatten"})
-    report = await control.kill(request.app.state.settings.env, flatten=flatten, **_deps(request))
+    report = await run_kill(request.app.state.settings.env, flatten=flatten, **_deps(request))
     return JSONResponse(status_code=200, content=report)
 
 
@@ -102,10 +104,10 @@ async def close_position(inst_id: str, request: Request) -> JSONResponse:
     if pos_side is not None and pos_side not in POS_SIDES:
         return JSONResponse(status_code=422, content={"ok": False, "error": "invalid_pos_side"})
     try:
-        report = await control.close_position(
+        report = await close_cancel.close_position(
             request.app.state.settings.env, inst_id, pos_side, **_deps(request)
         )
-    except control.ControlError as err:
+    except ControlError as err:
         return _refused(err)
     return JSONResponse(status_code=200 if report["ok"] else 502, content=report)
 
@@ -113,7 +115,12 @@ async def close_position(inst_id: str, request: Request) -> JSONResponse:
 @router.post("/orders/{order_id}/cancel", response_model=None)
 async def cancel_order(order_id: str, request: Request) -> JSONResponse:
     try:
-        report = await control.cancel_order(request.app.state.settings.env, order_id, **_deps(request))
-    except control.ControlError as err:
+        report = await close_cancel.cancel_order(
+            request.app.state.settings.env,
+            order_id,
+            lifecycle=getattr(request.app.state, "entry_lifecycle", None),
+            **_deps(request),
+        )
+    except ControlError as err:
         return _refused(err)
     return JSONResponse(status_code=200 if report["ok"] else 502, content=report)

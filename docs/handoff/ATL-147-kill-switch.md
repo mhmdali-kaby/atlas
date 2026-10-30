@@ -5,7 +5,14 @@ paused/breaker banner), ATL-152 (demo integration: kill-switch flatten) and ATL-
 
 ## Two-minute version
 
-- Code: `trading_core/execution/kill.py` (logic) and `trading_core/execution/control_api.py` (routes).
+- Code, under `trading_core/execution/`: `control_api.py` (routes), `trading_state.py` (pause,
+  resume, `set_paused`), `kill.py` (the kill switch), `close_cancel.py` (one-position close, one-order
+  cancel), `control.py` (the OKX reads/cancels/close with retries, the report, `ControlError`) and
+  `okx_access.py` (stored connection, executor settings, single-attempt OKX client, bus publishers —
+  shared with the Executor plan, `EntryLifecycle` and the recorder).
+- After the first cancel pass the kill reads `orders-pending` **once more** and cancels any order that
+  was not in the first read: the Executor checks paused only when it plans, so an execute that planned
+  before the pause can place its entry while the kill is running.
 - All five routes are under `/internal`, HMAC-signed exactly like `/internal/execute/{id}`
   (`X-Atlas-Timestamp`, `X-Atlas-Signature`; 401 otherwise). Laravel calls them with
   `App\Support\TradingCore` signing. They act on the env trading_core runs for (`ATLAS_ENV`).
@@ -93,12 +100,25 @@ that instrument+side's pending algos (SL, TP, OCO, trigger). Does **not** pause.
 
 ### `POST /internal/orders/{order_id}/cancel`
 
-`order_id` is our `orders.id` UUID. Cancels on OKX by ordId (or clOrdId when OKX never gave one).
-For an Atlas **entry**, it then reads the order back: with nothing filled it cancels the stand-alone
-protection (`o…`) and marks the attached one (`s…`, which OKX drops with the entry) `canceled`; with
-a fill it keeps both (they guard that position; `stops_kept` counts them). Updates `orders.filled_sz`.
+`order_id` is our `orders.id` UUID.
 
-- 200 `{...report fields, "order_id": "...", "inst_id": "...", "status": "cancelled", "filled_sz": "0"}`
+An Atlas **entry** (`origin=atlas`, `purpose=entry`) is handed to `EntryLifecycle.cancel` (the app's
+`app.state.entry_lifecycle`, so it shares the per-order lock with fills and the timeout sweep). It is
+the same flow as the entry timeout: cancel by clOrdId (retried `order_max_retries` times), read the
+order back, then
+- nothing filled → the stand-alone protection pending on OKX is cancelled, every stored protection row
+  (`s…`/`o…`/`p…`, including an attached `s…` row with no algoId) is marked `canceled`, the proposal
+  goes to `cancelled`, and `atlas.orders` gets `order.cancelled`;
+- a partial fill → exactly one stop is kept and amended to the filled size (duplicates cancelled), the
+  proposal goes to `partially_filled`, and `order.cancelled` carries `protection` (`amended`, `in_sync`,
+  `placed`, …).
+Either way the War Room gets an `order` message, card `{"type": "entry_cancelled", ...}`.
+
+Any other order is a plain `trade/cancel-order` by ordId (or clOrdId) with the same retries.
+
+- 200 `{...report fields, "order_id": "...", "inst_id": "...", "status": "cancelled", "filled_sz": "2",
+  "protection": {"status": "amended", "target_sz": "2", "algo_cl_ord_id": "s…", "canceled": ["o…"]}}`
+  (`filled_sz`/`protection` are null for a non-entry order and for an unfilled entry's protection)
 - 404 `order_not_found` (unknown id, other env, not a UUID) · 409 `order_not_open` (state not
   new/sending/live/partially_filled) or `connection_missing` · 502 `status: failed`.
 
@@ -127,5 +147,4 @@ All §3.2 envelopes, `env` = the env.
 - Spot holdings are not sold by flatten: `trade/close-position` is for margin/derivative positions.
 - No `orders` row is written for the close-position order (it has no size in its answer); the private
   feed imports it as it fills.
-- Resizing protection after a partial fill is still the Executor's open item (ATL-143 handoff).
 - Nothing here places an opening order; `test_only_execution_calls_the_order_wrappers` still passes.

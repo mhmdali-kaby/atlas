@@ -10,9 +10,7 @@ from decimal import Decimal
 from typing import Any, Protocol
 
 import redis
-from atlas_shared import bus
 from atlas_shared.db import AlgoOrder, Order, Proposal
-from atlas_shared.events import EventEnvelope
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 
@@ -25,6 +23,7 @@ from trading_core.execution.config import (
     WARROOM_SOURCE,
     WARROOM_STREAM,
 )
+from trading_core.execution.okx_access import publish, warroom_payload
 
 log = logging.getLogger("trading_core.execution")
 
@@ -60,19 +59,15 @@ class _Recorder:
         self.now = now
 
     def _publish(self, stream: str, type_: str, payload: dict[str, Any], source: str = SOURCE) -> None:
-        envelope = EventEnvelope.model_validate(
-            {
-                "type": type_,
-                "env": self.plan.env,
-                "source": source,
-                "correlation_id": self.plan.correlation_id,
-                "payload": payload,
-            }
+        publish(
+            self.rds,
+            stream,
+            type_,
+            self.plan.env,
+            payload,
+            source=source,
+            correlation_id=self.plan.correlation_id,
         )
-        try:
-            bus.publish(stream, envelope, client=self.rds)
-        except redis.RedisError:
-            log.warning("event publish failed", extra={"type": type_})
 
     def order(self, order_id: uuid.UUID, to_state: str, **fields: Any) -> None:
         at = self.now()
@@ -154,21 +149,7 @@ class _Recorder:
         self._publish(
             WARROOM_STREAM,
             "warroom.message",
-            {
-                "thread": {"kind": "main", "key": "main"},
-                "author_type": "system",
-                "author": WARROOM_AUTHOR,
-                "kind": kind,
-                "content_md": content_md,
-                "card": card,
-                "reply_to": None,
-                "mentions": [],
-                "reasoning_md": None,
-                "tool_calls": None,
-                "tokens_in": None,
-                "tokens_out": None,
-                "cost_usd": None,
-            },
+            warroom_payload(WARROOM_AUTHOR, kind, content_md, card),
             source=WARROOM_SOURCE,
         )
 

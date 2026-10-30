@@ -25,7 +25,9 @@ from sqlalchemy import Engine, delete, select, text, update
 from sqlalchemy.exc import OperationalError
 from trading_core.app import create_app
 from trading_core.config import Settings
-from trading_core.execution import kill as control
+from trading_core.execution import close_cancel, trading_state
+from trading_core.execution import kill as kill_switch
+from trading_core.execution.control import ControlError
 from trading_core.okx import OkxClient, OkxCredentials
 from trading_core.okx.error_messages import human_message
 from trading_core.risk.breakers import Breakers
@@ -294,7 +296,7 @@ def mock_okx(
 
 
 async def run_kill(engine: Engine, rds: redis.Redis, flatten: bool, sleep: FakeSleep | None = None) -> Any:
-    return await control.kill(
+    return await kill_switch.kill(
         ENV,
         flatten=flatten,
         engine=engine,
@@ -359,6 +361,34 @@ async def test_kill_pauses_first_cancels_entries_and_tp_only_keeps_stops_and_clo
     assert room[0].payload["kind"] == "system_alert"
     assert "kept 2 stop-loss order(s)" in room[0].payload["content_md"]
     assert room[0].payload["card"]["type"] == "kill_switch"
+
+
+async def test_kill_cancels_an_entry_placed_while_the_first_read_was_in_flight(
+    engine: Engine, rds: redis.Redis, world: dict[str, Any]
+) -> None:
+    """The Executor checks paused when it plans; one that planned before the kill can place its entry
+    after the kill's first orders-pending read. The second read catches it."""
+    a, b = world["insts"]
+    with respx.mock(base_url=BASE, assert_all_called=False) as router:
+        mock_okx(router, world["insts"], orders=[], algos=[], positions=[])
+        reads = iter(
+            [
+                ok([pending_order(a, "1001")]),
+                ok([pending_order(a, "1001"), pending_order(b, "1009")]),
+            ]
+        )
+        router.get("/api/v5/trade/orders-pending").mock(side_effect=lambda _r: next(reads))
+
+        def cancel(request: httpx.Request) -> httpx.Response:
+            body = json.loads(request.content)
+            return ok([{"ordId": body["ordId"], "clOrdId": "", "sCode": "0", "sMsg": ""}])
+
+        router.post("/api/v5/trade/cancel-order").mock(side_effect=cancel)
+        report = await run_kill(engine, rds, flatten=False)
+        assert [b["ordId"] for b in posts(router, "trade/cancel-order")] == ["1001", "1009"]
+    assert report["ok"] is True
+    assert report["cancelled_orders"] == 2
+    assert sorted(i["ref"] for i in report["items"] if i["kind"] == "order") == ["1001", "1009"]
 
 
 async def test_kill_with_flatten_closes_each_position_reduce_only_then_its_algos(
@@ -476,10 +506,10 @@ def test_resume_clears_an_okx_errors_breaker_and_unpauses(
 ) -> None:
     breakers = Breakers(engine, ENV, redis_client=rds, now=lambda: AT)
     assert breakers.trip("okx_errors", "3 OKX errors in the last 5 minutes.", {"count": 3})
-    control.pause(engine, ENV, reason="Owner pause", redis_client=rds, now=lambda: AT)
+    trading_state.pause(engine, ENV, reason="Owner pause", redis_client=rds, now=lambda: AT)
     assert paused(engine)
 
-    payload = control.resume(engine, ENV, redis_client=rds, now=lambda: AT)
+    payload = trading_state.resume(engine, ENV, redis_client=rds, now=lambda: AT)
 
     assert payload["paused"] is False
     assert payload["breakers_cleared"] == ["okx_errors"]
@@ -496,7 +526,7 @@ def test_resume_leaves_the_self_clearing_stale_data_breaker_to_the_monitor(
 ) -> None:
     breakers = Breakers(engine, ENV, redis_client=rds, now=lambda: AT)
     breakers.trip("data_stale", "No market data.", {})
-    payload = control.resume(engine, ENV, redis_client=rds, now=lambda: AT)
+    payload = trading_state.resume(engine, ENV, redis_client=rds, now=lambda: AT)
     assert payload["breakers_cleared"] == []
     assert payload["active_breakers"] == ["data_stale"]
 
@@ -516,7 +546,7 @@ async def test_closing_one_position_closes_only_that_instrument_and_cancels_its_
             algos=[algo(a, "7101", "sl"), algo(a, "7102", "tp"), algo(b, "7103", "oco")],
             positions=[position(a), position(b)],
         )
-        report = await control.close_position(
+        report = await close_cancel.close_position(
             ENV, a, None, engine=engine, redis_client=rds, client_factory=factory, sleep=FakeSleep()
         )
         closes = posts(router, "trade/close-position")
@@ -536,8 +566,8 @@ async def test_closing_a_position_that_is_not_open_is_404(
     a, b = world["insts"]
     with respx.mock(base_url=BASE, assert_all_called=False) as router:
         mock_okx(router, world["insts"], orders=[], algos=[], positions=[position(b)])
-        with pytest.raises(control.ControlError) as exc:
-            await control.close_position(
+        with pytest.raises(ControlError) as exc:
+            await close_cancel.close_position(
                 ENV, a, None, engine=engine, redis_client=rds, client_factory=factory, sleep=FakeSleep()
             )
         assert posts(router, "trade/close-position") == []
@@ -608,7 +638,8 @@ def seed_entry(engine: Engine, inst_id: str) -> uuid.UUID:
                 updated_at=AT,
             )
         )
-        for cl, algo_id in (("s" + rid.hex[1:], "8801"), ("o" + rid.hex[1:], "8802")):
+        # The attached TP/SL row has no algoId until OKX activates it (okx_ops marks it live without one).
+        for cl, algo_id in (("s" + rid.hex[1:], None), ("o" + rid.hex[1:], "8802")):
             c.execute(
                 AlgoOrder.__table__.insert().values(
                     id=uuid.uuid4(),
@@ -636,39 +667,113 @@ def order_detail(inst_id: str, filled: str) -> dict[str, Any]:
     return {**pending_order(inst_id, "4001"), "state": "canceled", "accFillSz": filled}
 
 
-@pytest.mark.parametrize(("filled", "cancelled_algos"), [("0", ["8802"]), ("2", [])])
-async def test_cancelling_an_entry_cancels_its_protection_only_when_nothing_filled(
-    engine: Engine, rds: redis.Redis, world: dict[str, Any], filled: str, cancelled_algos: list[str]
+def entry_state(engine: Engine, oid: uuid.UUID) -> tuple[Any, dict[str, tuple[str, D]], str]:
+    with engine.connect() as c:
+        order = c.execute(
+            select(Order.state, Order.filled_sz, Order.cl_ord_id, Order.proposal_id).where(Order.id == oid)
+        ).one()
+        algos = {
+            r.algo_cl_ord_id[0]: (r.state, r.sz)
+            for r in c.execute(
+                select(AlgoOrder.algo_cl_ord_id, AlgoOrder.state, AlgoOrder.sz).where(
+                    AlgoOrder.order_id == oid
+                )
+            )
+        }
+        status = c.scalar(select(Proposal.status).where(Proposal.id == order.proposal_id))
+    return order, algos, str(status)
+
+
+async def test_cancelling_an_unfilled_entry_goes_through_the_lifecycle_and_cancels_its_protection(
+    engine: Engine, rds: redis.Redis, world: dict[str, Any]
+) -> None:
+    """The entry is cancelled by clOrdId and read back; with nothing filled the stand-alone OCO on OKX
+    is cancelled, the attached row (no algoId yet) is marked canceled too, and the proposal is
+    ``cancelled``."""
+    a, _ = world["insts"]
+    oid = seed_entry(engine, a)
+    order, _, _ = entry_state(engine, oid)
+    rid_hex = order.cl_ord_id[1:]
+    oco = {**algo(a, "8802", "oco"), "algoClOrdId": "o" + rid_hex}
+    with respx.mock(base_url=BASE, assert_all_called=False) as router:
+        mock_okx(router, world["insts"], orders=[], algos=[oco], positions=[])
+        router.post("/api/v5/trade/cancel-order").mock(
+            return_value=ok([{"ordId": "4001", "clOrdId": order.cl_ord_id, "sCode": "0", "sMsg": ""}])
+        )
+        router.get("/api/v5/trade/order").mock(return_value=ok([order_detail(a, "0")]))
+        report = await close_cancel.cancel_order(
+            ENV, str(oid), engine=engine, redis_client=rds, client_factory=factory, sleep=FakeSleep()
+        )
+        assert posts(router, "trade/cancel-order") == [{"instId": a, "clOrdId": order.cl_ord_id}]
+        sent = [r["algoId"] for batch in posts(router, "trade/cancel-algos") for r in batch]
+        assert sent == ["8802"]
+    assert report["status"] == "cancelled" and report["cancelled_orders"] == 1
+    assert report["filled_sz"] == "0"
+    order, algos, status = entry_state(engine, oid)
+    assert order.state == "canceled"
+    assert algos == {"s": ("canceled", D(5)), "o": ("canceled", D(5))}
+    assert status == "cancelled"
+    cancelled = [e for e in envelopes(rds, "atlas.orders") if e.type == "order.cancelled"]
+    assert len(cancelled) == 1 and cancelled[0].payload["filled_sz"] == "0"
+
+
+async def test_cancelling_a_partly_filled_entry_amends_its_stop_to_the_filled_size(
+    engine: Engine, rds: redis.Redis, world: dict[str, Any]
+) -> None:
+    """2 of 5 filled: the attached stop (now on OKX) is the keeper and is amended to 2, the duplicate
+    stand-alone OCO is cancelled, and the proposal is partially_filled."""
+    a, _ = world["insts"]
+    oid = seed_entry(engine, a)
+    order, _, _ = entry_state(engine, oid)
+    rid_hex = order.cl_ord_id[1:]
+    attached = {**algo(a, "8801", "oco"), "algoClOrdId": "s" + rid_hex, "ordId": "4001"}
+    oco = {**algo(a, "8802", "oco"), "algoClOrdId": "o" + rid_hex}
+    with respx.mock(base_url=BASE, assert_all_called=False) as router:
+        mock_okx(router, world["insts"], orders=[], algos=[attached, oco], positions=[])
+        router.post("/api/v5/trade/cancel-order").mock(
+            return_value=ok([{"ordId": "4001", "clOrdId": order.cl_ord_id, "sCode": "0", "sMsg": ""}])
+        )
+        router.get("/api/v5/trade/order").mock(return_value=ok([order_detail(a, "2")]))
+        router.post("/api/v5/trade/amend-algos").mock(
+            return_value=ok([{"algoId": "8801", "algoClOrdId": "s" + rid_hex, "sCode": "0", "sMsg": ""}])
+        )
+        report = await close_cancel.cancel_order(
+            ENV, str(oid), engine=engine, redis_client=rds, client_factory=factory, sleep=FakeSleep()
+        )
+        assert posts(router, "trade/amend-algos") == [{"instId": a, "algoId": "8801", "newSz": "2"}]
+        sent = [r["algoId"] for batch in posts(router, "trade/cancel-algos") for r in batch]
+        assert sent == ["8802"]
+    assert report["status"] == "cancelled"
+    assert report["filled_sz"] == "2"
+    assert report["protection"]["status"] == "amended"
+    assert report["protection"]["target_sz"] == "2"
+    order, algos, status = entry_state(engine, oid)
+    assert order.state == "canceled" and order.filled_sz == D(2)
+    assert algos["s"] == ("live", D(2))
+    assert algos["o"][0] == "canceled"
+    assert status == "partially_filled"
+
+
+async def test_an_entry_cancel_refused_every_retry_is_failed_with_the_human_message(
+    engine: Engine, rds: redis.Redis, world: dict[str, Any]
 ) -> None:
     a, _ = world["insts"]
     oid = seed_entry(engine, a)
+    sleep = FakeSleep()
     with respx.mock(base_url=BASE, assert_all_called=False) as router:
         mock_okx(router, world["insts"], orders=[], algos=[], positions=[])
-        router.post("/api/v5/trade/cancel-order").mock(
-            return_value=ok([{"ordId": "4001", "clOrdId": "", "sCode": "0", "sMsg": ""}])
+        router.post("/api/v5/trade/cancel-order").mock(return_value=refused_row("51008", ordId="4001"))
+        report = await close_cancel.cancel_order(
+            ENV, str(oid), engine=engine, redis_client=rds, client_factory=factory, sleep=sleep
         )
-        router.get("/api/v5/trade/order").mock(return_value=ok([order_detail(a, filled)]))
-        report = await control.cancel_order(
-            ENV, str(oid), engine=engine, redis_client=rds, client_factory=factory, sleep=FakeSleep()
-        )
-        assert posts(router, "trade/cancel-order") == [{"instId": a, "ordId": "4001"}]
-        sent = [r["algoId"] for batch in posts(router, "trade/cancel-algos") for r in batch]
-        assert sent == cancelled_algos
-    assert report["status"] == "cancelled"
-    assert report["filled_sz"] == filled
-    with engine.connect() as c:
-        order = c.execute(select(Order.state, Order.filled_sz).where(Order.id == oid)).one()
-        algo_states = dict(
-            (r.algo_id, r.state)
-            for r in c.execute(select(AlgoOrder.algo_id, AlgoOrder.state).where(AlgoOrder.order_id == oid))
-        )
-    assert order.state == "canceled"
-    assert order.filled_sz == D(filled)
-    if filled == "0":
-        assert algo_states == {"8801": "canceled", "8802": "canceled"}
-    else:
-        assert algo_states == {"8801": "live", "8802": "live"}
-        assert report["stops_kept"] == 2
+        assert len(posts(router, "trade/cancel-order")) == 3
+        assert posts(router, "trade/cancel-algos") == []
+    assert report["status"] == "failed"
+    assert report["failed"][0]["message"] == human_message("51008", "nope")
+    assert len(sleep.sleeps) == 2
+    order, algos, status = entry_state(engine, oid)
+    assert order.state == "live" and status == "sent"
+    assert algos == {"s": ("live", D(5)), "o": ("live", D(5))}
 
 
 async def test_cancelling_an_unknown_or_closed_order_sends_nothing(
@@ -680,8 +785,8 @@ async def test_cancelling_an_unknown_or_closed_order_sends_nothing(
         c.execute(update(Order).where(Order.id == oid).values(state="filled", filled_sz=D(5)))
     with respx.mock(base_url=BASE, assert_all_called=False) as router:
         for target, status in ((str(oid), 409), (str(uuid.uuid4()), 404), ("nope", 404)):
-            with pytest.raises(control.ControlError) as exc:
-                await control.cancel_order(
+            with pytest.raises(ControlError) as exc:
+                await close_cancel.cancel_order(
                     ENV, target, engine=engine, redis_client=rds, client_factory=factory, sleep=FakeSleep()
                 )
             assert exc.value.status == status
