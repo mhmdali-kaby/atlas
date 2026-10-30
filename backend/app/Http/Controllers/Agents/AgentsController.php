@@ -11,6 +11,7 @@ use App\Support\Doctor\CheckResult;
 use App\Support\Doctor\Doctor;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * ATL-113, brief §14.7/§16: the Agents page's read API. Agent settings are written through
@@ -30,30 +31,49 @@ class AgentsController extends Controller
      * Decision #242: the Doctor's three `claude` CLI checks. Only check names, statuses and the
      * Doctor's own translated detail lines are returned: never an API key value (the key check
      * reports variable names only) and never the account email (scrubbed as a second guard).
+     *
+     * ATL-122 (security round 11, finding 2): spawning the `claude` CLI on every request could
+     * fall back to a paid model turn (see Doctor::claudeChecks()). The checks are cached for
+     * `agents_api.claude_status_cache_seconds` (default 60s) so a burst of calls shares one run,
+     * and the route carries `throttle:claude-status` so repeated misses cannot bypass that.
+     * `logged_in` is `null` ("unknown") when the login check itself is unknown, not a pass/fail.
      */
     public function claudeStatus(Doctor $doctor): JsonResponse
     {
-        $checks = [];
-        foreach ($doctor->claudeChecks() as $check) {
-            $checks[$check->name] = $check;
-        }
+        $seconds = config('atlas_defaults.agents_api.claude_status_cache_seconds');
+        $seconds = is_int($seconds) ? $seconds : 60;
 
-        $passed = static fn (string $name): bool => ($checks[$name] ?? null)?->status === CheckResult::PASS;
+        $data = Cache::remember('agents.claude-status', $seconds, function () use ($doctor): array {
+            $checks = [];
+            foreach ($doctor->claudeChecks() as $check) {
+                $checks[$check->name] = $check;
+            }
 
-        return response()->json(['data' => [
-            'ok' => $passed('claude_cli') && $passed('claude_cli_login') && $passed('claude_api_key'),
-            'installed' => $passed('claude_cli'),
-            'logged_in' => $passed('claude_cli_login'),
-            'api_key_env_clear' => $passed('claude_api_key'),
-            'login_command' => 'claude login',
-            'checks' => array_values(array_map(
-                static fn (CheckResult $check): array => [
-                    ...$check->toArray(),
-                    'detail' => (string) preg_replace(self::EMAIL_PATTERN, '[hidden]', $check->detail),
-                ],
-                $checks,
-            )),
-            'checked_at' => CarbonImmutable::now()->utc()->toIso8601ZuluString('microsecond'),
-        ]]);
+            $passed = static fn (string $name): bool => ($checks[$name] ?? null)?->status === CheckResult::PASS;
+            $loginStatus = ($checks['claude_cli_login'] ?? null)?->status;
+            $loggedIn = match ($loginStatus) {
+                CheckResult::PASS => true,
+                CheckResult::FAIL => false,
+                default => null,
+            };
+
+            return [
+                'ok' => $passed('claude_cli') && $loggedIn === true && $passed('claude_api_key'),
+                'installed' => $passed('claude_cli'),
+                'logged_in' => $loggedIn,
+                'api_key_env_clear' => $passed('claude_api_key'),
+                'login_command' => 'claude login',
+                'checks' => array_values(array_map(
+                    static fn (CheckResult $check): array => [
+                        ...$check->toArray(),
+                        'detail' => (string) preg_replace(self::EMAIL_PATTERN, '[hidden]', $check->detail),
+                    ],
+                    $checks,
+                )),
+                'checked_at' => CarbonImmutable::now()->utc()->toIso8601ZuluString('microsecond'),
+            ];
+        });
+
+        return response()->json(['data' => $data]);
     }
 }

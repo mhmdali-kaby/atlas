@@ -68,7 +68,8 @@ export interface ClaudeCheck {
 export interface ClaudeStatus {
   ok: boolean
   installed: boolean
-  logged_in: boolean
+  /** null means the login check itself could not be confirmed (ATL-122): render as "unknown". */
+  logged_in: boolean | null
   api_key_env_clear: boolean
   login_command: string
   checks: ClaudeCheck[]

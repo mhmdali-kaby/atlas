@@ -106,4 +106,9 @@ describe('Claude status', () => {
     expect(claudeView(claude({ ok: false, logged_in: false, api_key_env_clear: false }))).toBe('logged_out')
     expect(claudeView(claude({ ok: false, api_key_env_clear: false }))).toBe('api_key')
   })
+
+  // ATL-122: logged_in: null means the login check could not be confirmed, not a known failure.
+  it('renders a null login as unknown, not logged out', () => {
+    expect(claudeView(claude({ ok: false, logged_in: null }))).toBe('login_unknown')
+  })
 })

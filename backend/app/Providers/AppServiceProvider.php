@@ -62,5 +62,15 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(is_int($perMinute) ? $perMinute : 20)
                 ->by('data-sources-write|'.($user !== null ? (string) $user->getAuthIdentifier() : $request->ip()));
         });
+
+        // ATL-122 (security round 11, finding 2): GET /api/agents/claude-status spawns the
+        // claude CLI; its result is cached, but this still bounds how often a miss can run it.
+        RateLimiter::for('claude-status', function (Request $request): Limit {
+            $perMinute = config('atlas_defaults.agents_api.claude_status_per_minute');
+            $user = $request->user();
+
+            return Limit::perMinute(is_int($perMinute) ? $perMinute : 6)
+                ->by('claude-status|'.($user !== null ? (string) $user->getAuthIdentifier() : $request->ip()));
+        });
     }
 }
