@@ -67,6 +67,7 @@ async def test_options_handed_to_the_client_carry_no_key(
         assert key not in os.environ
 
 
+@pytest.mark.stand_in_cli
 async def test_real_sdk_subprocess_env_has_neither_key(
     keys_in_environ: None,
     monkeypatch: pytest.MonkeyPatch,

@@ -10,6 +10,7 @@ import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 
+import claude_agent_sdk
 import pytest
 from atlas_agents.registry import AgentSpec
 from atlas_shared import testing
@@ -29,6 +30,24 @@ class Recorder:
 
     def of(self, type_: str) -> list[EventEnvelope]:
         return [e for _s, e in self.events if e.type == type_]
+
+
+class RealClaudeClientConstructedError(AssertionError):
+    """A test reached the real Claude CLI client (decision #245: no pytest calls the CLI)."""
+
+
+@pytest.fixture(autouse=True)
+def _no_real_claude_client(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Every agents test fails if anything constructs claude_agent_sdk.ClaudeSDKClient, except a
+    test marked ``stand_in_cli``, which points the client at a stand-in script, never at `claude`."""
+    marker = request.node.get_closest_marker("stand_in_cli")
+    if marker is not None:
+        return
+
+    def refuse(self: object, *args: object, **kwargs: object) -> None:
+        raise RealClaudeClientConstructedError("a test constructed the real ClaudeSDKClient")
+
+    monkeypatch.setattr(claude_agent_sdk.ClaudeSDKClient, "__init__", refuse)
 
 
 @pytest.fixture(scope="session")

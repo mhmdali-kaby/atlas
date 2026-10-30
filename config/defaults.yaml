@@ -599,6 +599,14 @@ agents:
     strategist: { model: strong }
     devils_advocate: { model: strong }
     portfolio_manager: {}
+  # ATL-92, brief §7.11/§9: the eval harness (python -m atlas_agents.evals).
+  #   max_drop_points: `run` exits 1 when the overall pass rate (percent) is more than this many
+  #     points below the agent's committed evals/<agent>/baseline.json.
+  #   guard: the no_invented_numbers checker. auto = atlas_agents.numguard when installed, else the
+  #     harness's built-in stub; numguard / stub force one.
+  evals:
+    max_drop_points: "5"
+    guard: auto
   # ATL-87, brief §7.3: the history tools (atlas_agents.tools.history) and the Historian's
   # verdict rules (atlas_agents.schemas.enforce_verdict_rules).
   #   <tool>.bar / lookback_bars: the series each tool loads when the caller gives no bar/lookback,

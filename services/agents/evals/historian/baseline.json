@@ -1,0 +1,137 @@
+{
+  "agent": "historian",
+  "mode": "fake",
+  "label": "example-fake",
+  "started_at": "2026-10-29T11:50:20.450487+00:00",
+  "finished_at": "2026-10-29T11:50:20.619245+00:00",
+  "cases": [
+    {
+      "case_id": "btc_regime_1h",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "stub: 10 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = weakly_supports"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 72"
+        }
+      ],
+      "tool_calls": 2,
+      "tokens_in": 2600,
+      "tokens_out": 240,
+      "turns": 3
+    },
+    {
+      "case_id": "btc_stats_1h",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "stub: 14 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = weakly_supports"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 72"
+        }
+      ],
+      "tool_calls": 4,
+      "tokens_in": 4200,
+      "tokens_out": 380,
+      "turns": 5
+    },
+    {
+      "case_id": "doge_no_data",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "stub: 5 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = does_not_support"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 0"
+        }
+      ],
+      "tool_calls": 2,
+      "tokens_in": 1500,
+      "tokens_out": 160,
+      "turns": 3
+    }
+  ],
+  "overall": {
+    "passed": 15,
+    "total": 15,
+    "pass_rate": 100.0
+  },
+  "baseline": {
+    "path": "/Users/mhmd/Work/atlas/wt-task-atl-92/services/agents/evals/historian/baseline.json",
+    "pass_rate": null,
+    "max_drop_points": 5.0,
+    "ok": true
+  }
+}
