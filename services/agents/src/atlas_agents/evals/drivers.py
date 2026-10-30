@@ -13,6 +13,14 @@ eval scores what the owner would see:
   and conviction (and conviction_before_cap) are the Scout's own judgments, not data it could have
   invented, so they join the pool too. The case prompt is only a label.
 
+* ``technical_analyst`` runs :func:`atlas_agents.technical_analyst.analyse` for ``inputs.inst_id``
+  (ATL-137): code builds the TA table from the snapshot, refuses on stale candles, the model answers
+  the code-built prompt, and the code rules check the card. The transcript is the posted card (its
+  ``meta`` moved to ``Transcript.meta``) and text plus anything the agent posted itself; the tool
+  outputs are the run's plus the TA table and the numbers code derived (R per target, expected R,
+  the corrections' figures) and the model's own quality_score. A stale-data refusal is scored as an
+  ``ok`` run with ``meta.model_ran = False`` and the data alert as its card.
+
 ``inputs.replies`` in ``case.yaml``::
 
     inputs:
@@ -25,6 +33,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Awaitable, Callable, Mapping
+from decimal import Decimal
 from typing import Any, cast
 
 from atlas_shared.db import owner_day
@@ -36,6 +45,8 @@ from atlas_agents.registry import AgentHost
 from atlas_agents.session import RunResult
 from atlas_agents.supervisor import Supervisor
 from atlas_agents.tools import ToolContext
+from atlas_agents.tools.ta_table import SOURCE as TA_TABLE_SOURCE
+from atlas_agents.tools.ta_table import build_ta_table
 
 Driver = Callable[[Supervisor, EvalCase], Awaitable[tuple[RunResult | None, props.Transcript]]]
 
@@ -170,11 +181,99 @@ async def market_scout_driver(
     )
 
 
-DRIVERS: dict[str, Driver] = {"market_scout": market_scout_driver}
+# -- technical_analyst -------------------------------------------------------------------------------
+
+
+def _derived(card: Mapping[str, Any], corrections: list[Any]) -> dict[str, Any]:
+    """Numbers code computed from the card (or the model judged), for the number guard's pool."""
+    zone = card.get("entry_zone")
+    return {
+        "as_of": None,
+        "source": "code:technical_analyst checks",
+        "data": {
+            "entry_mid": [str((Decimal(str(zone[0])) + Decimal(str(zone[1]))) / 2)] if zone else [],
+            "r_multiples": [t.get("r_multiple") for t in card.get("targets") or [] if isinstance(t, Mapping)],
+            "expected_r": card.get("expected_r"),
+            "est_slippage_bps": card.get("est_slippage_bps"),
+            "quality_score": card.get("quality_score"),
+            "corrections": corrections,
+        },
+    }
+
+
+async def technical_analyst_driver(
+    supervisor: Supervisor, case: EvalCase
+) -> tuple[RunResult | None, props.Transcript]:
+    from atlas_agents import technical_analyst as ta_agent
+    inst_id = str(case.inputs["inst_id"])
+    why = str(case.inputs.get("why") or f"Eval {case.case_id}: analyse {inst_id}.")
+    host = _RecordingHost(supervisor)
+    result = await ta_agent.analyse(
+        cast(AgentHost, host), inst_id, trigger="eval", correlation_id=f"eval-{case.case_id}", why=why
+    )
+    if result is None:
+        if host.prompt is not None:
+            return None, props.Transcript(status="error", error="the run returned nothing", prompt=case.prompt)
+        table, _ = await build_ta_table(supervisor.tool_context(ta_agent.SLUG), inst_id)
+        if not table.get("stale"):
+            return None, props.Transcript(status="error", error=f"{inst_id} was not analysed", prompt=case.prompt)
+        alert = ta_agent.data_alert(inst_id, table, why)
+        refused = RunResult(run_id=uuid.uuid5(uuid.NAMESPACE_URL, f"eval/{case.case_id}"), status="ok")
+        return refused, props.Transcript(
+            status="ok",
+            text=str(alert["content_md"]),
+            card=dict(alert["card"]),
+            tool_outputs=[{"as_of": table.get("data_as_of"), "source": TA_TABLE_SOURCE, "data": table}],
+            prompt=case.prompt,
+            meta={"model_ran": False},
+        )
+    base = transcript(result, host.prompt or case.prompt)
+    message = result.message or {}
+    raw_card = message.get("card")
+    card = dict(raw_card) if isinstance(raw_card, Mapping) else None
+    meta: dict[str, Any] = {"model_ran": True}
+    outputs = list(base.tool_outputs)
+    reviewer = host.reviewer
+    if isinstance(reviewer, ta_agent.SetupReviewer):
+        outputs.append({"as_of": reviewer.table.get("data_as_of"), "source": TA_TABLE_SOURCE, "data": reviewer.table})
+    if card is not None:
+        card_meta = card.pop("meta", None) or {}
+        meta["corrections"] = list(card_meta.get("corrections") or [])
+        meta["unmatched_numbers"] = list(card_meta.get("unmatched_numbers") or [])
+        outputs.append(_derived(card, meta["corrections"]))
+    posted = [
+        str(args.get("content_md", ""))
+        for name, args in base.tool_calls
+        if name in props.POST_TOOLS and args.get("content_md")
+    ]
+    text = "\n\n".join([str(message.get("content_md", "")), *posted]).strip()
+    return result, props.Transcript(
+        status=result.status,
+        text=text,
+        card=card,
+        tool_calls=base.tool_calls,
+        tool_outputs=outputs,
+        error=result.error,
+        prompt=base.prompt,
+        meta=meta,
+    )
+
+
+DRIVERS: dict[str, Driver] = {
+    "market_scout": market_scout_driver,
+    "technical_analyst": technical_analyst_driver,
+}
 
 
 def driver_for(agent: str) -> Driver:
     return DRIVERS.get(agent, default_driver)
 
 
-__all__ = ["DRIVERS", "Driver", "default_driver", "driver_for", "market_scout_driver"]
+__all__ = [
+    "DRIVERS",
+    "Driver",
+    "default_driver",
+    "driver_for",
+    "market_scout_driver",
+    "technical_analyst_driver",
+]
