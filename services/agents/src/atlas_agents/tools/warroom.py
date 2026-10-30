@@ -13,8 +13,16 @@ match, stores the row and broadcasts it. The tools never write Postgres themselv
   with ``mention_depth`` = the current run's depth + 1 (ATL-101; the supervisor stops a chain at
   ``agents.mentions.max_depth``). Every message carries the current run's correlation id.
 * Content is capped at ``warroom.content_max_chars``; longer content is refused, not cut.
-* ``cast_vote``, ``submit_proposal`` and ``request_human_input`` answer
-  ``not_available_in_phase_1`` (votes, proposals and owner questions arrive with Phase 2).
+* ``submit_proposal`` (ATL-153) validates a TradeProposal (entry, Strategist only) or a position
+  action (amend_stop|amend_targets|partial_close|close, Portfolio Manager only, on an open position),
+  runs the §7.6 checklist in code for an entry (:mod:`atlas_agents.proposals`), and only when every
+  item passes inserts the ``proposals`` row (under_review), posts a ``proposal`` card and publishes
+  ``proposal.opened`` on ``atlas.proposals``. ``action="revise"`` creates the one allowed revision
+  (version + 1, parent cancelled); ``action="withdraw"`` cancels and publishes ``proposal.withdrawn``.
+  These two tools write Postgres themselves; the bridge does not store proposals or votes.
+* ``cast_vote`` (ATL-153) upserts the agent's one vote on an under_review/voting proposal version and
+  publishes ``proposal.vote_cast``.
+* ``request_human_input`` answers ``not_available_in_phase_1``.
 * In replay the tools refuse (``not_available_in_replay``) unless the context was given a
   publisher other than the real bus, so an eval can never post into the live War Room.
 """
@@ -22,15 +30,20 @@ match, stores the row and broadcasts it. The tools never write Postgres themselv
 from __future__ import annotations
 
 import uuid
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import datetime
+from decimal import Decimal
 from typing import Any, Final, get_args
 
+from atlas_shared.db import Proposal
 from atlas_shared.defaults import DEFAULTS
 from atlas_shared.events import EventEnvelope
+from atlas_shared.proposals import PositionAction, TradeProposal
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import column, or_, select, table
+from sqlalchemy.orm import Session
 
+from atlas_agents import proposals as props
 from atlas_agents.schemas import CARD_TYPES, NewsBrief, PriceMoveAtr, card_rule_violations
 from atlas_agents.tools import framework
 from atlas_agents.tools.catalogue import (
@@ -47,6 +60,7 @@ from atlas_agents.tools.framework import ToolContext, ToolError, ToolResult, atl
 from atlas_agents.tools.news_status import cluster_statuses
 
 WARROOM_STREAM: Final = "atlas.warroom"
+PROPOSALS_STREAM: Final = "atlas.proposals"
 MESSAGE_EVENT: Final = "warroom.message"
 SOURCE: Final = "atlas.warroom"
 NOT_IN_PHASE_1: Final = "not_available_in_phase_1"
@@ -330,16 +344,253 @@ def _phase_1(name: str) -> ToolError:
     return ToolError(NOT_IN_PHASE_1, f"warroom.{name} is not available in Phase 1")
 
 
-@atlas_tool("warroom", "submit_proposal", SubmitProposalInput, StubOutput)
+class ProposalOut(BaseModel):
+    proposal_id: str
+    version: int
+    status: str
+    kind: str
+    inst_id: str
+    parent_id: str | None = None
+    cycle_id: str | None = None
+    message_id: str | None = None
+    """The envelope id of the War Room ``proposal`` card (submit and revise)."""
+    checklist: list[dict[str, Any]] = []
+    """The six §7.6 items as checked (entries only)."""
+
+
+def _proposal_event(ctx: ToolContext, type_: str, payload: dict[str, Any]) -> EventEnvelope:
+    return EventEnvelope(
+        type=type_,
+        ts=ctx.now(),
+        env=ctx.env,
+        source=f"agent:{ctx.agent}",
+        correlation_id=ctx.run.correlation_id or ctx.correlation_id,
+        payload=payload,
+    )
+
+
+def _save_and_announce(
+    ctx: ToolContext,
+    session: Session,
+    row: Proposal,
+    checklist: Sequence[props.ChecklistItem],
+    summary_md: str | None,
+    *,
+    cancel: Proposal | None = None,
+) -> ToolResult:
+    """Commit ``row`` (and cancel the revised parent), then post the card and publish proposal.opened."""
+    summary = _check_content(summary_md) if summary_md else props.default_summary(row)
+    if cancel is not None:
+        cancel.status = "cancelled"
+        cancel.updated_at = ctx.now()
+        session.flush()  # the parent leaves the pending set before its revision is inserted
+    session.add(row)
+    session.flush()
+    card = props.proposal_card(row, checklist, summary)
+    session.commit()
+    message = message_envelope(ctx, kind="proposal", content_md=summary, card=card)
+    ctx.publish(WARROOM_STREAM, message)
+    ctx.publish(
+        PROPOSALS_STREAM,
+        _proposal_event(
+            ctx,
+            "proposal.opened",
+            {
+                "proposal_id": card["proposal_id"],
+                "version": card["version"],
+                "parent_id": card["parent_id"],
+                "cycle_id": card["cycle_id"],
+                "kind": card["kind"],
+                "author": card["author"],
+                "inst_id": card["inst_id"],
+                "side": card["side"],
+                "status": card["status"],
+                "message_id": str(message.id),
+                "card": card,
+            },
+        ),
+    )
+    return ToolResult(
+        data=ProposalOut(
+            proposal_id=card["proposal_id"],
+            version=card["version"],
+            status=card["status"],
+            kind=card["kind"],
+            inst_id=card["inst_id"],
+            parent_id=card["parent_id"],
+            cycle_id=card["cycle_id"],
+            message_id=str(message.id),
+            checklist=card["checklist"],
+        ),
+        as_of=ctx.now(),
+        source="postgres:proposals",
+    )
+
+
+def _validated(
+    ctx: ToolContext,
+    session: Session,
+    kind: str,
+    raw: Mapping[str, Any] | None,
+    exclude: uuid.UUID | None,
+) -> tuple[TradeProposal | PositionAction, list[props.ChecklistItem]]:
+    """The parsed proposal and its passing checklist; ToolError with every failure otherwise."""
+    model = props.parse(kind, raw)
+    if isinstance(model, TradeProposal):
+        checklist = props.run_checklist(session, ctx, model, exclude_id=exclude)
+        error = props.checklist_error(checklist)
+        if error is not None:
+            raise error
+        return model, checklist
+    if not props.open_positions(session, ctx, model.inst_id):
+        raise ToolError(
+            "no_open_position",
+            f"{kind} needs an open position; there is none on {model.inst_id} at the last account sync",
+        )
+    return model, []
+
+
+def _submit(ctx: ToolContext, args: SubmitProposalInput) -> ToolResult:
+    if args.proposal_id is not None:
+        raise ToolError("invalid_proposal", "proposal_id is only for revise and withdraw")
+    props.check_author(ctx.agent, args.kind)
+    with ctx.session_factory() as session:
+        model, checklist = _validated(ctx, session, args.kind, args.proposal, None)
+        row = props.new_row(ctx, args.kind, model, cycle_id=props.resolve_cycle(session, ctx))
+        return _save_and_announce(ctx, session, row, checklist, args.summary_md)
+
+
+def _revise(ctx: ToolContext, args: SubmitProposalInput) -> ToolResult:
+    if args.proposal_id is None:
+        raise ToolError("invalid_proposal", "revise needs proposal_id")
+    cfg = props.checklist_config()
+    with ctx.session_factory() as session:
+        parent = props.load_proposal(session, ctx, args.proposal_id)
+        if parent.author != ctx.agent:
+            raise ToolError("not_author", f"proposal {parent.id} was written by {parent.author}")
+        if args.kind != parent.kind:
+            raise ToolError("invalid_proposal", f"a revision keeps the proposal's kind ({parent.kind})")
+        has_child = session.scalar(select(Proposal.id).where(Proposal.parent_id == parent.id)) is not None
+        if has_child or parent.version - 1 >= int(cfg["max_revisions"]):
+            raise ToolError(
+                "revision_limit",
+                f"proposal {parent.id} has already been revised; a proposal may be revised only "
+                f"{int(cfg['max_revisions'])} time(s). Withdraw it instead.",
+            )
+        props.require_open(parent, cfg, "revise")
+        model, checklist = _validated(ctx, session, args.kind, args.proposal, parent.id)
+        if model.inst_id != parent.inst_id:
+            raise ToolError("invalid_proposal", f"a revision keeps the instrument ({parent.inst_id})")
+        row = props.new_row(
+            ctx, args.kind, model, cycle_id=parent.cycle_id, version=parent.version + 1, parent_id=parent.id
+        )
+        return _save_and_announce(ctx, session, row, checklist, args.summary_md, cancel=parent)
+
+
+def _withdraw(ctx: ToolContext, args: SubmitProposalInput) -> ToolResult:
+    if args.proposal_id is None:
+        raise ToolError("invalid_proposal", "withdraw needs proposal_id")
+    if args.proposal is not None:
+        raise ToolError("invalid_proposal", "withdraw takes only proposal_id")
+    cfg = props.checklist_config()
+    with ctx.session_factory() as session:
+        row = props.load_proposal(session, ctx, args.proposal_id)
+        if row.author != ctx.agent:
+            raise ToolError("not_author", f"proposal {row.id} was written by {row.author}")
+        props.require_open(row, cfg, "withdraw")
+        row.status = "cancelled"
+        row.updated_at = ctx.now()
+        out = ProposalOut(
+            proposal_id=str(row.id),
+            version=row.version,
+            status=row.status,
+            kind=row.kind,
+            inst_id=row.inst_id,
+            parent_id=str(row.parent_id) if row.parent_id else None,
+            cycle_id=str(row.cycle_id) if row.cycle_id else None,
+        )
+        session.commit()
+    ctx.publish(
+        PROPOSALS_STREAM,
+        _proposal_event(
+            ctx,
+            "proposal.withdrawn",
+            {
+                "proposal_id": out.proposal_id,
+                "version": out.version,
+                "inst_id": out.inst_id,
+                "status": out.status,
+            },
+        ),
+    )
+    return ToolResult(data=out, as_of=ctx.now(), source="postgres:proposals")
+
+
+@atlas_tool("warroom", "submit_proposal", SubmitProposalInput, ProposalOut)
 async def submit_proposal(ctx: ToolContext, args: SubmitProposalInput) -> ToolResult:
-    """Submit a TradeProposal (Phase 2: not available yet)."""
-    raise _phase_1("submit_proposal")
+    """Submit, revise or withdraw a trade proposal. You cannot place orders: a saved proposal goes
+    to the team vote and then the Risk Engine.
+    action "submit" (default), kind "entry" (Strategist only): proposal = TradeProposal JSON
+    {inst_id, side buy|sell, order_type market|limit|post_only, entry?, entry_zone? [low, high],
+    stop (REQUIRED), take_profits [{price, pct}] (1-3), time_stop_minutes?, size_suggestion_pct_equity,
+    leverage_suggestion, expected_r_multiple, probability_estimate 0-1, rationale_md, invalidation,
+    evidence [{type, id}]}. Code checks all six §7.6 items (on today's watchlist or pinned; a
+    TechnicalSetup that is not "none" and < 60 min old; no contradicting CONFIRMED news and no
+    importance-5 event in the blackout window; Historian not "contradicts"; R >= min R and
+    p x R - (1 - p) > 0.2; no open position or pending proposal on the same side) and returns every
+    failure; nothing is saved unless all pass.
+    kind amend_stop|amend_targets|partial_close|close (Portfolio Manager only, on an open position):
+    proposal = {inst_id, stop?, take_profits?, close_pct?, rule, rationale_md, evidence}.
+    action "revise" + proposal_id + proposal: one revision per proposal (a new version; the old one
+    is cancelled). action "withdraw" + proposal_id: cancels your proposal.
+    summary_md: optional human summary for the War Room card (max 150 words)."""
+    _publishable(ctx)
+    if args.action == "submit":
+        return _submit(ctx, args)
+    if args.action == "revise":
+        return _revise(ctx, args)
+    return _withdraw(ctx, args)
 
 
-@atlas_tool("warroom", "cast_vote", CastVoteInput, StubOutput)
+class VoteOut(BaseModel):
+    vote_id: str
+    proposal_id: str
+    version: int
+    agent: str
+    vote: str
+    confidence: float
+    fix: str | None = None
+
+
+@atlas_tool("warroom", "cast_vote", CastVoteInput, VoteOut)
 async def cast_vote(ctx: ToolContext, args: CastVoteInput) -> ToolResult:
-    """Vote on a proposal (Phase 2: not available yet)."""
-    raise _phase_1("cast_vote")
+    """Vote on a proposal version that is under review or voting: take, skip or change (put the fix
+    you ask for in "fix"), with your confidence 0-1 and the reason. Voting again on the same version
+    replaces your earlier vote."""
+    _publishable(ctx)
+    if args.vote == "change" and not (args.fix and args.fix.strip()):
+        raise ToolError("invalid_vote", "a 'change' vote needs the fix you ask for in 'fix'")
+    cfg = props.checklist_config()
+    confidence = Decimal(str(args.confidence)).quantize(Decimal("0.0001"))
+    fix = args.fix.strip() if args.fix and args.vote == "change" else None
+    with ctx.session_factory() as session:
+        proposal = props.load_proposal(session, ctx, args.proposal_id)
+        props.require_open(proposal, cfg, "a vote")
+        vote_id = props.upsert_vote(
+            session, ctx, proposal, vote=args.vote, confidence=confidence, reason=args.reason, fix=fix
+        )
+        out = VoteOut(
+            vote_id=str(vote_id),
+            proposal_id=str(proposal.id),
+            version=proposal.version,
+            agent=ctx.agent,
+            vote=args.vote,
+            confidence=float(confidence),
+            fix=fix,
+        )
+        session.commit()
+    ctx.publish(PROPOSALS_STREAM, _proposal_event(ctx, "proposal.vote_cast", out.model_dump()))
+    return ToolResult(data=out, as_of=ctx.now(), source="postgres:votes")
 
 
 @atlas_tool("warroom", "request_human_input", RequestHumanInput, StubOutput)
