@@ -22,6 +22,12 @@ The body is read with the same streamed cap every collector uses (:func:`atlas_i
 read_capped`): a ``Content-Length`` over the cap is rejected before any read, and an
 unbounded/chunked body is aborted the moment the cap is passed, so neither a malicious nor merely
 huge page can grow this process's memory without bound.
+
+``Extractor.host_check`` (ATL-100) is an optional extra policy on top of the SSRF guard above, run
+for the initial host and every redirect hop before anything else for that hop: this module stays
+generic (the ingest pipeline passes none), and ``atlas_agents.tools.news`` wires its
+``agents.web.allow_domains``/``deny_domains`` policy into it for the agent-facing ``fetch_article``
+tool.
 """
 
 from __future__ import annotations
@@ -49,6 +55,7 @@ MAX_REDIRECTS = 3
 
 HostResolver = Callable[[str, int], Awaitable[Sequence[str]]]
 PeerVerifier = Callable[[httpx.Response, Sequence[str]], bool]
+HostCheck = Callable[[str], bool]
 
 
 async def resolve_host_addresses(host: str, port: int) -> Sequence[str]:
@@ -97,6 +104,12 @@ class Extractor:
     """Overrides :func:`peer_matches`, the post-connect DNS-rebinding check. Tests only:
     production always verifies the connection really landed on an address the host check
     approved."""
+    host_check: HostCheck | None = None
+    """An extra per-host policy, checked for the initial host and again for every redirect
+    target, before any DNS resolution or request for that hop (ATL-100, security round 9): a
+    caller-supplied domain allow/deny list, for example. ``None`` (the default) imposes no extra
+    policy; the SSRF checks above still apply either way. A host this rejects is treated exactly
+    like one that fails the SSRF check: added to ``skip_hosts`` and the fetch returns ``None``."""
 
     def timeout_for(self, host: str) -> float:
         return self.host_timeouts.get(host, self.timeout_seconds)
@@ -123,6 +136,10 @@ class Extractor:
                 return None
             host = (parts.hostname or "").lower()
             if not host or host in skip_hosts:
+                return None
+            if self.host_check is not None and not self.host_check(host):
+                skip_hosts.add(host)
+                logger.info("article host blocked by domain policy", extra={"host": host})
                 return None
             port = parts.port or (443 if parts.scheme == "https" else 80)
             allowed_addresses = await self._resolve_safe_addresses(host, port)

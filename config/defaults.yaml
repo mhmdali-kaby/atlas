@@ -684,6 +684,17 @@ agents:
       - '\bmcp__\w+'
       - '"(?:tool_use|tool_call|function_call)"'
       - '\b(?:submit_proposal|cast_vote|post_message|place_order)\s*\('
+  # ATL-100, brief §6.1/§7.10 (security round 9, low): news.fetch_article's live-fetch domain
+  # policy (atlas_agents.tools.news.domain_allowed). Checked against the URL's host before the
+  # guarded SSRF fetch (atlas_ingest.extract.Extractor) and against every redirect hop's host
+  # inside it, so a denied or non-allow-listed host is never requested. A host matches an entry
+  # when it equals it or is a subdomain of it ("coindesk.com" matches "www.coindesk.com").
+  # deny_domains wins over allow_domains; an empty allow_domains allows any public host that is
+  # not denied. Never applied to a stored article body (fetch_article's "stored" origin) or to
+  # web_search. No Settings UI field yet (comes with the Settings -> Agents screen in Patch E).
+  web:
+    allow_domains: []
+    deny_domains: []
   # ATL-88, brief §6.1: live warroom.thinking events while a run streams (atlas_agents.streaming).
   #   max_events_per_second: per run; deltas that arrive faster are coalesced into one event.
   #   event_text_max_chars: thinking/text in one event is cut to this (the final message's

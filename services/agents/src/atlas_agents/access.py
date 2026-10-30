@@ -7,12 +7,15 @@ agent's own tool list in §7.x where the cell is a summary:
   (Strategist) and "mark, candles" (PM) name the tools.
 * atlas_data: "read" and "all read" are both every atlas_data tool — every tool on that server is
   read-only (settings come only as a numbers-only snapshot), so the two wordings grant the same set.
-* news: "all" (Scout, News) and "all read" (Devil's Advocate) = every news tool except web_search,
-  which belongs to the "web search" column; "calendar" (Historian) = the economic and earnings
-  calendars; "sentiment" (Derivatives) = search_news (sentiment fields, §7.5); "read" (Strategist,
-  PM) = every news tool except fetch_article (article bodies) and web_search.
-* web search: built-in WebSearch and WebFetch plus news.web_search, for Market Scout and News
-  Intelligence only.
+* news: "all" (Scout, News) = every news tool except web_search, which belongs to the "web search"
+  column; "calendar" (Historian) = the economic and earnings calendars; "sentiment" (Derivatives) =
+  search_news (sentiment fields, §7.5); "read" (Strategist, PM, and Devil's Advocate — ATL-100,
+  security round 9, low: a stress-tester needs to read evidence, not fetch arbitrary live pages) =
+  every news tool except fetch_article (article bodies) and web_search.
+* web search: built-in WebSearch plus news.web_search, for Market Scout and News Intelligence only.
+  WebFetch is granted to no agent (ATL-100): it has no domain policy and no stored-article path;
+  news.fetch_article is the one guarded live-fetch tool, checked against
+  agents.web.allow_domains/deny_domains.
 * history: "all" = every history tool; otherwise the named tools.
 * memory: "read" = read_journal + read_notebook; "notebook" (Orchestrator) = read_notebook +
   append_notebook; "read + notebook" (Historian) = read + append_notebook; "read journal" (Technical)
@@ -44,10 +47,14 @@ from atlas_agents.tools import build_mcp_servers, fq_name, registered_tools
 from atlas_agents.tools.catalogue import CATALOGUE
 from atlas_agents.tools.framework import ToolContext
 
-WEB_TOOLS: Final = ("WebSearch", "WebFetch")
+WEB_TOOLS: Final = ("WebSearch",)
+"""The CLI's built-in web tool(s) for Market Scout and News Intelligence (brief §6.1). WebFetch is
+deliberately absent (ATL-100, security round 9): news.fetch_article is the agents' only live-fetch
+path, and it is checked against a domain allow/deny list; an unguarded WebFetch would not be."""
 
 # Every built-in tool of the Claude Code CLI the agents run on. All are disallowed for every agent
-# (WebSearch/WebFetch excepted for the two web agents). Unknown names are harmless to the CLI.
+# (WebSearch excepted for the two web agents; WebFetch is disallowed for everyone — ATL-100).
+# Unknown names are harmless to the CLI.
 BUILTIN_TOOLS: Final = (
     "Agent",
     "Task",
@@ -195,7 +202,9 @@ MATRIX: Final[dict[str, AgentAccess]] = {
         {
             "okx_market": _OKX_ALL,
             "atlas_data": _ATLAS_DATA,
-            "news": _NEWS_ALL,
+            # _NEWS_READ, not _NEWS_ALL: no fetch_article (ATL-100, security round 9, low) — a
+            # stress-tester reads the team's stored evidence, it does not need its own live fetch.
+            "news": _NEWS_READ,
             "history": _HISTORY_ALL,
             "memory": _MEMORY_READ,
             "warroom": (*_WARROOM_BASE, "cast_vote"),
@@ -222,8 +231,8 @@ def _access(agent: str) -> AgentAccess:
 
 
 def allowed_tools(agent: str) -> list[str]:
-    """Every tool ``agent`` may call: fully qualified MCP names, plus WebSearch/WebFetch for the two
-    web agents. Raises if the matrix names a tool that is not registered."""
+    """Every tool ``agent`` may call: fully qualified MCP names, plus WebSearch for the two web
+    agents. Raises if the matrix names a tool that is not registered."""
     access = _access(agent)
     mcp = access.mcp_tools()
     missing = sorted(set(mcp) - set(registered_tools()))

@@ -135,6 +135,63 @@ async def test_redirect_to_a_loopback_target_is_never_followed() -> None:
     assert internal_hits == []  # the redirect target was never requested
 
 
+# ---- ATL-100 (security round 9, low): a caller-supplied host_check (a domain allow/deny policy,
+# for news.fetch_article) is checked on every hop exactly like the SSRF host check, so a page
+# that redirects from a host it allows to one it denies is never requested at the denied host ----
+
+
+async def test_host_check_blocks_a_redirect_to_a_denied_host_with_no_second_request() -> None:
+    hits: list[str] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        hits.append(request.url.host)
+        if request.url.host == "allowed.example":
+            return httpx.Response(302, headers={"location": "http://denied.example/secret"})
+        return httpx.Response(200, headers={"content-type": "text/html"}, content=CHUNK_OK_ARTICLE.encode())
+
+    async def lie_everywhere(_host: str, _port: int) -> Sequence[str]:
+        return [PUBLIC_FAKE_ADDRESS]
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as http:
+        extractor = Extractor(
+            http=http,
+            timeout_seconds=2,
+            max_bytes=2_000_000,
+            resolve_host=lie_everywhere,
+            verify_peer=lambda _response, _allowed: True,  # this test is about host_check, not peers
+            host_check=lambda host: host != "denied.example",
+        )
+        result = await extractor.article_text("http://allowed.example/start", set())
+
+    assert result is None
+    assert hits == ["allowed.example"]  # the redirect target was never requested
+
+
+async def test_host_check_blocks_the_initial_host_too() -> None:
+    hits: list[str] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        hits.append(request.url.host)
+        return httpx.Response(200, headers={"content-type": "text/html"}, content=CHUNK_OK_ARTICLE.encode())
+
+    async def lie_everywhere(_host: str, _port: int) -> Sequence[str]:
+        return [PUBLIC_FAKE_ADDRESS]
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as http:
+        extractor = Extractor(
+            http=http,
+            timeout_seconds=2,
+            max_bytes=2_000_000,
+            resolve_host=lie_everywhere,
+            verify_peer=lambda _response, _allowed: True,
+            host_check=lambda _host: False,
+        )
+        result = await extractor.article_text("http://denied.example/start", set())
+
+    assert result is None
+    assert hits == []  # blocked before any request, like the SSRF host check
+
+
 # ---- AC1: a public DNS answer at check time that differs from the real connection (DNS
 # rebinding, e.g. a TTL-0 attacker record) is still blocked, from the live socket itself ---------
 
