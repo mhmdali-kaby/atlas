@@ -132,6 +132,7 @@ decisions where the brief was silent, as the brief asks.
   purpose (kill-switch flatten, a close order), is never replaced. Limit and post_only entries still
   open `executor.entry_timeout_minutes` after they were created are cancelled; a partial fill keeps
   its stop and the proposal stays `partially_filled`, an unfilled one becomes `expired`.
+- **Kill switch reads OKX, not the DB, and resume leaves `data_stale` alone (ATL-147).** The kill lists pending orders, algo orders and positions from OKX so it also catches orders Atlas does not know; per decision #251 it keeps SL/OCO algos unless their position was closed by flatten. OKX's "already gone" answers (51400/51401/51402, 51023) count as done, not failed. Resume clears every breaker except the self-clearing `data_stale`, which would re-trip at once while data is still stale.
 - **Position actions get their own risk checks (ATL-184, `trading_core/risk/position_actions.py`).**
   A Portfolio Manager amend_stop/amend_targets/partial_close/close runs seven checks instead of the
   nine entry checks: env_state, position_open, stop_tightens, stop_vs_mark, targets_vs_mark,

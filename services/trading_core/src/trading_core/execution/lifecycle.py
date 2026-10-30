@@ -12,6 +12,8 @@
   size and the proposal stays ``partially_filled``. The sweep also re-settles any filled entry whose
   stored protection does not match its filled size, which is how a restart in the middle of a resize
   finishes it.
+- **The owner's cancel** (``cancel``, from ``POST /internal/orders/{id}/cancel``): the same steps as
+  the timeout, under the same lock; with nothing filled the proposal becomes ``cancelled``.
 
 Protection rules. OKX is asked first (``orders-algo-pending``): our protective algos are the pending
 SL/OCO orders carrying a stop whose ``algoClOrdId`` is derived from the risk check (``s`` attached,
@@ -26,10 +28,9 @@ that already has the filled size is left alone: no amend, no cancel, no place. A
 from __future__ import annotations
 
 import asyncio
-import dataclasses
 import logging
 import uuid
-from collections.abc import Callable, Sequence
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
@@ -37,10 +38,9 @@ from typing import Any, Literal
 
 import redis
 from atlas_shared import bus
-from atlas_shared.db import AlgoOrder, Connection, Order, Proposal
+from atlas_shared.db import AlgoOrder, Order, Proposal
 from atlas_shared.defaults import DEFAULTS
-from atlas_shared.events import EventEnvelope
-from sqlalchemy import Engine, select, text
+from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 
 from trading_core.execution.config import (
@@ -51,11 +51,18 @@ from trading_core.execution.config import (
     WARROOM_SOURCE,
     derived_id,
 )
+from trading_core.execution.okx_access import (
+    OkxFactory,
+    default_factory,
+    executor_settings,
+    load_creds,
+    publish,
+    single_attempt,
+    warroom_payload,
+)
 from trading_core.execution.order_store import OrderUpsert, fill_payload
-from trading_core.execution.plan import _CredSnapshot
 from trading_core.execution.recorder import _OKX_ORDER_STATES, _Recorder, _s
-from trading_core.okx.client import OkxClient, RetryPolicy
-from trading_core.okx.connection import client_for_connection
+from trading_core.okx.client import OkxClient
 from trading_core.okx.errors import OkxClientError
 from trading_core.okx.trade import AlgoOrderRequest, OkxTradeClient, OkxTradeError
 from trading_core.okx.trade_models import AlgoOrderDetail, OrderDetail
@@ -73,9 +80,11 @@ _FROM = {
     "partially_filled": frozenset({"risk_checked", "awaiting_owner", "sent"}),
     "filled": frozenset({"risk_checked", "awaiting_owner", "sent", "partially_filled"}),
     "expired": frozenset({"risk_checked", "awaiting_owner", "sent"}),
+    "cancelled": frozenset({"risk_checked", "awaiting_owner", "sent"}),
 }
 
-OkxFactory = Callable[..., OkxClient]
+Sleep = Callable[[float], Awaitable[None]]
+EndReason = Literal["timeout", "owner"]
 ProtectStatus = Literal["nothing", "in_sync", "amended", "placed", "skipped", "failed"]
 
 
@@ -88,6 +97,24 @@ class ProtectResult:
     algo_cl_ord_id: str | None = None
     canceled: tuple[str, ...] = ()
     detail: str = ""
+
+
+@dataclass(frozen=True)
+class EntryCancel:
+    """What ``cancel``/``expire`` did to one Atlas entry.
+
+    ``status``: ``cancelled`` (OKX confirms it is no longer open; ``noop`` when it already was not),
+    ``not_open`` (the stored entry is not live/partially_filled: nothing sent), ``failed`` (the cancel
+    request failed every attempt; ``code``/``message`` carry OKX's error) or ``unconfirmed`` (cancel
+    sent, but OKX's read-back still shows it open or could not be read)."""
+
+    status: Literal["cancelled", "not_open", "failed", "unconfirmed"]
+    attempts: int = 0
+    noop: bool = False
+    code: str | None = None
+    message: str | None = None
+    filled_sz: Decimal | None = None
+    protection: ProtectResult | None = None
 
 
 @dataclass(frozen=True)
@@ -165,13 +192,6 @@ def _rank(entry: _Entry, row: AlgoOrderDetail) -> int:
     return ids.index(row.algo_cl_ord_id) if row.algo_cl_ord_id in ids else len(ids)
 
 
-def _default_factory(app_key: str) -> OkxFactory:
-    def build(creds: Any, **kwargs: Any) -> OkxClient:
-        return client_for_connection(creds, app_key, **kwargs)
-
-    return build
-
-
 class EntryLifecycle:
     """Fill handling and entry timeouts for one env. One instance per process: its per-order locks
     are what keep the WebSocket callback and the sweep from resizing the same stop at once."""
@@ -189,7 +209,7 @@ class EntryLifecycle:
         self.engine = engine
         self.env = env
         self._rds = redis_client
-        self._factory = client_factory or _default_factory(app_key)
+        self._factory = client_factory or default_factory(app_key)
         self.now: Callable[[], datetime] = now or (lambda: datetime.now(UTC))
         self._locks: dict[uuid.UUID, asyncio.Lock] = {}
 
@@ -204,54 +224,22 @@ class EntryLifecycle:
     def _lock(self, order_id: uuid.UUID) -> asyncio.Lock:
         return self._locks.setdefault(order_id, asyncio.Lock())
 
-    def _creds(self) -> _CredSnapshot | None:
-        with Session(self.engine) as s:
-            conn = s.scalar(
-                select(Connection).where(
-                    Connection.exchange == "okx",
-                    Connection.env == self.env,
-                    Connection.last_verified_at.is_not(None),
-                )
-            )
-            if conn is None:
-                return None
-            return _CredSnapshot(conn.env, conn.api_key, conn.api_secret, conn.passphrase)
-
     def _client(self) -> OkxClient | None:
-        creds = self._creds()
+        with Session(self.engine) as s:
+            creds = load_creds(s, self.env, verified_only=True)
         if creds is None:
             log.warning("no verified OKX connection; protection not checked", extra={"env": self.env})
             return None
         # One attempt per call: every step re-reads OKX before acting, and the sweep retries.
-        retry = dataclasses.replace(RetryPolicy.from_defaults(), max_attempts=1)
-        return self._factory(creds, retry=retry)
+        return self._factory(creds, retry=single_attempt())
 
     def _publish(
         self, stream: str, type_: str, payload: dict[str, Any], correlation_id: str, source: str = SOURCE
     ) -> None:
-        envelope = EventEnvelope.model_validate(
-            {
-                "type": type_,
-                "env": self.env,
-                "source": source,
-                "correlation_id": correlation_id,
-                "payload": payload,
-            }
-        )
-        try:
-            bus.publish(stream, envelope, client=self.rds)
-        except redis.RedisError:
-            log.warning("event publish failed", extra={"type": type_})
-
-    def _settings(self) -> dict[str, Any]:
-        with self.engine.connect() as c:
-            row = c.execute(text("SELECT data FROM settings WHERE env = :e"), {"e": self.env}).first()
-        data = row[0] if row is not None and isinstance(row[0], dict) else {}
-        nested = data.get("executor")
-        return nested if isinstance(nested, dict) else data
+        publish(self.rds, stream, type_, self.env, payload, source=source, correlation_id=correlation_id)
 
     def entry_timeout(self) -> timedelta:
-        value = self._settings().get("entry_timeout_minutes")
+        value = executor_settings(self.engine, self.env).get("entry_timeout_minutes")
         minutes = int(value if value is not None else DEFAULTS["executor"]["entry_timeout_minutes"])
         return timedelta(minutes=max(1, minutes))
 
@@ -301,21 +289,7 @@ class EntryLifecycle:
         self._publish(
             "atlas.warroom",
             "warroom.message",
-            {
-                "thread": {"kind": "main", "key": "main"},
-                "author_type": "system",
-                "author": "executor",
-                "kind": "fill",
-                "content_md": content,
-                "card": card,
-                "reply_to": None,
-                "mentions": [],
-                "reasoning_md": None,
-                "tool_calls": None,
-                "tokens_in": None,
-                "tokens_out": None,
-                "cost_usd": None,
-            },
+            warroom_payload("executor", "fill", content, card),
             correlation,
             source=WARROOM_SOURCE,
         )
@@ -666,53 +640,67 @@ class EntryLifecycle:
 
     async def expire(self, order_id: uuid.UUID, trade: OkxTradeClient) -> bool:
         """Cancel one timed-out entry. True when OKX confirmed it is no longer open."""
+        return (await self._end(order_id, trade, "timeout")).status == "cancelled"
+
+    async def cancel(
+        self,
+        order_id: uuid.UUID,
+        trade: OkxTradeClient,
+        *,
+        attempts: int = 1,
+        backoff: Callable[[int], float] | None = None,
+        sleep: Sleep = asyncio.sleep,
+    ) -> EntryCancel:
+        """The owner cancels one Atlas entry: the same steps as the timeout, under the same per-order
+        lock. Nothing filled → its protection is cancelled and the proposal is ``cancelled``; a partial
+        fill keeps one stop, amended to the filled size. The cancel request is tried ``attempts`` times."""
+        return await self._end(order_id, trade, "owner", attempts=attempts, backoff=backoff, sleep=sleep)
+
+    async def _end(
+        self,
+        order_id: uuid.UUID,
+        trade: OkxTradeClient,
+        reason: EndReason,
+        *,
+        attempts: int = 1,
+        backoff: Callable[[int], float] | None = None,
+        sleep: Sleep = asyncio.sleep,
+    ) -> EntryCancel:
         async with self._lock(order_id):
             with Session(self.engine) as s:
                 entry = _load_entry(s, order_id)
             if entry is None or entry.state not in OPEN_ENTRY_STATES:
-                return False
-            try:
-                await trade.cancel_order(entry.inst_id, cl_ord_id=entry.cl_ord_id)
-            except OkxTradeError as err:
-                if err.s_code not in CANCEL_NOOP_CODES:
-                    log.warning("entry timeout cancel failed", extra={"code": err.s_code})
-                    return False
-            except OkxClientError as err:
-                log.warning("entry timeout cancel failed", extra={"error": type(err).__name__})
-                return False
+                return EntryCancel("not_open")
+            sent = await self._send_cancel(entry, trade, max(1, attempts), backoff, sleep)
+            if sent.status == "failed":
+                return sent
             detail = await self._lookup(entry, trade)
             if detail is None or detail.state in OPEN_ENTRY_STATES:
-                return False
+                return EntryCancel("unconfirmed", sent.attempts, message="OKX still shows the order open.")
             rec = _Recorder(self.engine, self.rds, entry.ctx, self.now)
             self._sync(rec, entry, detail)
             with Session(self.engine) as s:
                 entry = _load_entry(s, order_id)
             assert entry is not None
-            timeout = self.entry_timeout()
+            minutes = int(self.entry_timeout().total_seconds() // 60)
+            ended = f"timed out after {minutes} min" if reason == "timeout" else "cancelled by the owner"
+            result: ProtectResult | None = None
             if entry.filled_sz > 0:
                 result = await self._settle(entry, trade)
                 protected = (
                     f" The stop covers the filled {_s(entry.filled_sz)}."
-                    if result.status
-                    in (
-                        "in_sync",
-                        "amended",
-                        "placed",
-                    )
+                    if result.status in ("in_sync", "amended", "placed")
                     else ""
                 )
                 content = (
-                    f"{entry.inst_id} entry timed out after {int(timeout.total_seconds() // 60)} min: "
+                    f"{entry.inst_id} entry {ended}: "
                     f"{_s(entry.filled_sz)} of {_s(entry.sz)} filled, the rest cancelled.{protected}"
                 )
             else:
                 await self._cancel_unfilled_protection(entry, trade, rec)
-                self._proposal_status(entry, "expired")
-                content = (
-                    f"{entry.inst_id} entry timed out after {int(timeout.total_seconds() // 60)} min "
-                    "with nothing filled; cancelled."
-                )
-            payload = {
+                self._proposal_status(entry, "expired" if reason == "timeout" else "cancelled")
+                content = f"{entry.inst_id} entry {ended} with nothing filled; cancelled."
+            payload: dict[str, Any] = {
                 "order_id": str(entry.id),
                 "proposal_id": str(entry.proposal_id),
                 "cl_ord_id": entry.cl_ord_id,
@@ -722,11 +710,45 @@ class EntryLifecycle:
                 "sz": _s(entry.sz),
                 "filled_sz": _s(entry.filled_sz),
                 "state": entry.state,
-                "timeout_minutes": int(timeout.total_seconds() // 60),
             }
-            self._publish(ORDERS_STREAM, "order.expired", payload, entry.correlation_id)
-            rec.warroom("order", content, {"type": "entry_expired", **payload})
-            return True
+            if reason == "timeout":
+                payload["timeout_minutes"] = minutes
+                self._publish(ORDERS_STREAM, "order.expired", payload, entry.correlation_id)
+                rec.warroom("order", content, {"type": "entry_expired", **payload})
+            else:
+                payload["protection"] = result.status if result is not None else None
+                self._publish(ORDERS_STREAM, "order.cancelled", payload, entry.correlation_id)
+                rec.warroom("order", content, {"type": "entry_cancelled", **payload})
+            return EntryCancel(
+                "cancelled", sent.attempts, sent.noop, sent.code, filled_sz=entry.filled_sz, protection=result
+            )
+
+    @staticmethod
+    async def _send_cancel(
+        entry: _Entry,
+        trade: OkxTradeClient,
+        attempts: int,
+        backoff: Callable[[int], float] | None,
+        sleep: Sleep,
+    ) -> EntryCancel:
+        """``trade/cancel-order`` by clOrdId, retried; OKX's "already gone" answers count as done."""
+        code: str | None = None
+        message = ""
+        for attempt in range(1, attempts + 1):
+            if attempt > 1 and backoff is not None:
+                await sleep(backoff(attempt - 1))
+            try:
+                await trade.cancel_order(entry.inst_id, cl_ord_id=entry.cl_ord_id)
+                return EntryCancel("cancelled", attempt)
+            except OkxTradeError as err:
+                if err.s_code in CANCEL_NOOP_CODES:
+                    return EntryCancel("cancelled", attempt, noop=True, code=err.s_code)
+                code, message = err.s_code, err.human_message
+            except OkxClientError as err:
+                code, message = None, "OKX could not be reached."
+                log.warning("entry cancel failed", extra={"error": type(err).__name__})
+            log.warning("entry cancel failed", extra={"code": code, "attempt": attempt})
+        return EntryCancel("failed", attempts, code=code, message=message)
 
     async def _lookup(self, entry: _Entry, trade: OkxTradeClient) -> OrderDetail | None:
         try:
@@ -783,4 +805,4 @@ def sweep_job(lifecycle: EntryLifecycle) -> Callable[[], Any]:
     return run
 
 
-__all__ = ["JOB", "EntryLifecycle", "ProtectResult", "sweep_job"]
+__all__ = ["JOB", "EntryCancel", "EntryLifecycle", "ProtectResult", "sweep_job"]

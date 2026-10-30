@@ -28,6 +28,7 @@ from trading_core.backfill.runner import backfill_job
 from trading_core.config import Settings
 from trading_core.connection_test import router as connection_test_router
 from trading_core.execution.api import router as execution_router
+from trading_core.execution.control_api import router as control_router
 from trading_core.execution.lifecycle import JOB as LIFECYCLE_JOB
 from trading_core.execution.lifecycle import EntryLifecycle, sweep_job
 from trading_core.execution.reconcile import JOB as RECONCILE_JOB
@@ -348,6 +349,7 @@ def create_app(
     application.include_router(quality_router)
     application.include_router(risk_router)
     application.include_router(execution_router)
+    application.include_router(control_router)
     application.include_router(approvals_router)
     if extra_internal is not None:
         application.include_router(extra_internal)
