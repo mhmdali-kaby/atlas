@@ -1069,6 +1069,24 @@ return [
                 ],
                 'valid_minutes' => 15,
             ],
+            'prescore' => [
+                'shortlist_size' => 25,
+                'weights' => [
+                    'momentum_z' => '0.25',
+                    'vol_expansion_z' => '0.20',
+                    'catalyst_score' => '0.20',
+                    'liquidity_score' => '0.15',
+                    'derivatives_signal' => '0.10',
+                    'regime_clarity' => '0.10',
+                ],
+                'clip_z' => 3,
+                'earnings_points' => 3,
+                'oi_scale_pct' => 10,
+                'correlation' => [
+                    'threshold' => '0.8',
+                    'lookback_days' => 30,
+                ],
+            ],
         ],
     ],
 ];

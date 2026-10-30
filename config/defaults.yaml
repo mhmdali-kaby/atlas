@@ -817,3 +817,28 @@ agents:
       calendar_min_importance: 3
       calendar_countries: [US, USD]
       valid_minutes: 15
+    # ATL-105, brief §7.1 step 3: the pre-score (atlas_agents.scout.prescore; components defined in
+    # its docstring). score = sum(weight x component z). Each component's raw value is z-scored
+    # cross-sectionally across every feature-table row (population std), clipped to +/- clip_z; a
+    # null raw value contributes 0 and is listed in the row's null_components. shortlist_size rows
+    # are kept by score (ties by inst_id); owner-pinned instruments are always added, marked pinned.
+    #   earnings_points: added to catalyst_score's raw value when the instrument has its own
+    #     earnings in the catalyst window. oi_scale_pct: |OI 24h change %| / this is one
+    #     derivatives_signal part (|funding_z_7d| is the other).
+    #   correlation: shortlist pairs whose 30-day daily-return correlation is above threshold are
+    #     flagged (step 4: at most 2 correlated picks).
+    prescore:
+      shortlist_size: 25
+      weights:
+        momentum_z: "0.25"
+        vol_expansion_z: "0.20"
+        catalyst_score: "0.20"
+        liquidity_score: "0.15"
+        derivatives_signal: "0.10"
+        regime_clarity: "0.10"
+      clip_z: 3
+      earnings_points: 3
+      oi_scale_pct: 10
+      correlation:
+        threshold: "0.8"
+        lookback_days: 30

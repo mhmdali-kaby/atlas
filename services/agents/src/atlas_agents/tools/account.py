@@ -22,6 +22,7 @@ from __future__ import annotations
 import itertools
 import math
 import uuid
+from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any, Final
@@ -574,6 +575,9 @@ class CorrelationsOut(BaseModel):
     reason: str | None = None
 
 
+CORRELATION_METHOD: Final = "pearson on daily log returns of closed 1D candle closes"
+
+
 def pearson(xs: list[float], ys: list[float]) -> float | None:
     n = len(xs)
     if n < 2:
@@ -587,14 +591,21 @@ def pearson(xs: list[float], ys: list[float]) -> float | None:
     return sxy / math.sqrt(sxx * syy)
 
 
-@atlas_tool("atlas_data", "get_correlations", GetCorrelationsInput, CorrelationsOut)
-async def get_correlations(ctx: ToolContext, args: GetCorrelationsInput) -> ToolResult:
+@dataclass(frozen=True)
+class CorrelationResult:
+    pairs: list[CorrelationPair]
+    missing: list[str]
+    candle_ts: list[datetime]
+
+
+def compute_correlations(ctx: ToolContext, inst_ids: list[str], lookback_days: int) -> CorrelationResult:
     """Pairwise Pearson correlation of daily log returns between inst_ids over the last
-    lookback_days, from closed 1D candles, on the days both instruments have a return (n). corr is
-    null when n is too small or a series is flat. Sorted by |corr|, highest first."""
+    lookback_days, from closed 1D candles (bounded by ctx.now()), on the days both instruments have
+    a return (n). corr is null when n < market.min_correlation_obs or a series is flat. Sorted by
+    |corr|, highest first. Shared by the get_correlations tool and the Market Scout shortlist."""
     bar = "1D"
-    inst_ids = list(dict.fromkeys(args.inst_ids))
-    start = ctx.now() - timedelta(days=args.lookback_days + 1)
+    inst_ids = list(dict.fromkeys(inst_ids))
+    start = ctx.now() - timedelta(days=lookback_days + 1)
     with ctx.session_factory() as session:
         candles = session.execute(
             select(Candle.inst_id, Candle.ts, Candle.c)
@@ -623,18 +634,35 @@ async def get_correlations(ctx: ToolContext, args: GetCorrelationsInput) -> Tool
             pairs.append(CorrelationPair(a=a, b=b, corr=corr, n=len(common)))
     pairs.sort(key=lambda p: (p.corr is None, -abs(p.corr or 0.0), p.a, p.b))
     missing = [i for i in inst_ids if i not in returns]
+    return CorrelationResult(pairs=pairs, missing=missing, candle_ts=[ts for _i, ts, _c in candles])
+
+
+@atlas_tool("atlas_data", "get_correlations", GetCorrelationsInput, CorrelationsOut)
+async def get_correlations(ctx: ToolContext, args: GetCorrelationsInput) -> ToolResult:
+    """Pairwise Pearson correlation of daily log returns between inst_ids over the last
+    lookback_days, from closed 1D candles, on the days both instruments have a return (n). corr is
+    null when n is too small or a series is flat. Sorted by |corr|, highest first."""
+    result = compute_correlations(ctx, list(args.inst_ids), args.lookback_days)
     return ToolResult(
         data=CorrelationsOut(
             lookback_days=args.lookback_days,
-            method="pearson on daily log returns of closed 1D candle closes",
-            pairs=pairs,
-            missing=missing,
+            method=CORRELATION_METHOD,
+            pairs=result.pairs,
+            missing=result.missing,
             order="abs(corr) desc",
-            reason=None if pairs else "fewer than two of the instruments have closed 1D candles",
+            reason=None if result.pairs else "fewer than two of the instruments have closed 1D candles",
         ),
-        as_of=newest([ts for _i, ts, _c in candles], ctx),
+        as_of=newest(result.candle_ts, ctx),
         source=src("candles"),
     )
 
 
-__all__ = ["SETTINGS_SNAPSHOT_KEYS", "load_settings", "pearson"]
+__all__ = [
+    "CORRELATION_METHOD",
+    "SETTINGS_SNAPSHOT_KEYS",
+    "CorrelationPair",
+    "CorrelationResult",
+    "compute_correlations",
+    "load_settings",
+    "pearson",
+]
