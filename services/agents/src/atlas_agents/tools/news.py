@@ -19,6 +19,7 @@ fetch and on every redirect hop.
 
 from __future__ import annotations
 
+import contextvars
 import uuid
 from collections.abc import Awaitable, Callable, Sequence
 from datetime import date, datetime, timedelta
@@ -443,9 +444,19 @@ def _host_matches(host: str, domains: Sequence[str]) -> bool:
     return False
 
 
+# The (allow, deny) lists in force for the current fetch_article call (ATL-114): set from
+# ``ToolContext.web_policy`` — the owner's merged settings — for the URL's own host and for every
+# redirect hop inside guarded_fetch (``Extractor.host_check`` runs in the same task). None outside
+# a call: config/defaults.yaml.
+_WEB_POLICY: contextvars.ContextVar[tuple[Sequence[str], Sequence[str]] | None] = contextvars.ContextVar(
+    "atlas_web_policy", default=None
+)
+
+
 def domain_allowed(host: str) -> bool:
     """Whether a live fetch of ``host`` is allowed, by ``agents.web.allow_domains``/
-    ``deny_domains`` in config/defaults.yaml (ATL-100, security round 9, low: Devil's Advocate —
+    ``deny_domains`` — the owner's settings during a fetch_article call (ATL-114), else
+    config/defaults.yaml (ATL-100, security round 9, low: Devil's Advocate —
     and, before news.fetch_article existed as the guarded path, the CLI's own WebFetch — could
     reach any public URL with no domain policy at all). A host matches an entry when it equals it
     or is a subdomain of it, ignoring a trailing "." (an absolute-FQDN host like
@@ -454,10 +465,14 @@ def domain_allowed(host: str) -> bool:
     allows any public host that is not denied. Checked on the URL's own host and, via
     ``Extractor.host_check``, on every redirect hop inside :func:`guarded_fetch` — never on a
     stored article body."""
-    conf = DEFAULTS["agents"]["web"]
-    if _host_matches(host, conf["deny_domains"]):
+    policy = _WEB_POLICY.get()
+    if policy is None:
+        conf = DEFAULTS["agents"]["web"]
+        allow, deny = conf["allow_domains"], conf["deny_domains"]
+    else:
+        allow, deny = policy
+    if _host_matches(host, deny):
         return False
-    allow = conf["allow_domains"]
     return not allow or _host_matches(host, allow)
 
 
@@ -533,9 +548,13 @@ async def fetch_article(ctx: ToolContext, args: FetchArticleInput) -> ToolResult
     host = (parsed.raw_host or b"").decode("ascii", errors="ignore").lower()
     if parsed.scheme not in ("http", "https") or not host:
         raise ToolError("invalid_url", "only http and https URLs can be fetched")
-    if not domain_allowed(host):
-        raise ToolError("domain_denied", "this host is not allowed by the agents.web domain policy")
-    text = await _fetcher(url)
+    token = _WEB_POLICY.set(ctx.web_policy() if ctx.web_policy is not None else None)
+    try:
+        if not domain_allowed(host):
+            raise ToolError("domain_denied", "this host is not allowed by the agents.web domain policy")
+        text = await _fetcher(url)
+    finally:
+        _WEB_POLICY.reset(token)
     if text is None:
         raise ToolError(
             "fetch_refused",
