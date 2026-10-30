@@ -212,3 +212,11 @@ def test_agent_state_unique_per_agent_and_env(session: Session) -> None:
     session.add(AgentState(agent=AGENT, env="demo"))
     with pytest.raises(IntegrityError):
         session.commit()
+
+
+def test_owner_day_is_the_one_baghdad_day_helper() -> None:
+    """usage_day and watchlists.baghdad_today are the same function, not copies."""
+    from atlas_shared.db import owner_day
+
+    assert usage_day is owner_day
+    assert owner_day(datetime(2026, 10, 30, 22, 30, tzinfo=UTC)) == date(2026, 10, 31)

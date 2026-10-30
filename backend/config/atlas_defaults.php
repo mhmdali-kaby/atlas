@@ -973,5 +973,70 @@ return [
             'batch' => 50,
             'max_depth' => 2,
         ],
+        'scout' => [
+            'universe' => [
+                'enabled_markets' => [
+                    'spot',
+                    'crypto_perp',
+                    'stock_perp',
+                    'commodity_perp',
+                ],
+                'blocklist' => [],
+                'min_listed_days' => 7,
+                'usd_quote_ccys' => [
+                    'USDT',
+                    'USDC',
+                    'USD',
+                ],
+            ],
+            'features' => [
+                'daily_bars' => 400,
+                'hourly_bars' => 800,
+                'return_days' => [
+                    1,
+                    3,
+                    7,
+                    30,
+                ],
+                'atr_bars' => 100,
+                'vol_ratio' => [
+                    'short_returns' => 24,
+                    'long_returns' => 720,
+                ],
+                'volume_z_days' => 30,
+                'ma_days' => [
+                    20,
+                    50,
+                    200,
+                ],
+                'breakout_days' => 20,
+                'funding_z_days' => 7,
+                'min_funding_obs' => 3,
+                'oi_hours' => 24,
+                'long_short_period' => '1H',
+                'long_short_max_age_hours' => 48,
+                'corr_days' => 30,
+                'min_corr_obs' => 20,
+                'references' => [
+                    'btc' => [
+                        'BTC-USDT-SWAP',
+                        'BTC-USDT',
+                    ],
+                    'spy' => [
+                        'SPY-USDT-SWAP',
+                        'US100-USDT-SWAP',
+                        'SPY-USDC-SWAP',
+                    ],
+                ],
+                'news_hours' => 24,
+                'catalyst_hours' => 48,
+                'calendar_min_importance' => 3,
+                'calendar_countries' => [
+                    'US',
+                    'USD',
+                ],
+                'valid_minutes' => 15,
+            ],
+        ],
     ],
 ];
