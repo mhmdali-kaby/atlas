@@ -82,6 +82,22 @@ decisions where the brief was silent, as the brief asks.
   fail code, or a pending SL/OCO algo for it exists on OKX; a partially filled entry is also accepted
   on its attached SL, since OKX may create the algo only at full fill. With no confirmed stop the entry
   is cancelled and whatever filled is closed with a reduce-only market order.
+- **Circuit breaker rules the brief leaves open** (ATL-145, `trading_core/risk/breakers.py`). A
+  breaker pauses new orders by being active in `trading_state.breakers`; it does not set
+  `trading_state.paused`, which stays the owner's/kill switch's flag. Only `data_stale` clears itself
+  (after `circuit_breakers.data_stale.clear_after_fresh_seconds` of fresh tickers on every held and
+  watchlist instrument, measured from the first 15 s pass that saw them fresh); all others wait for
+  the owner's resume. Each trip may carry a cause key (the Baghdad day for `daily_loss`, the ISO week
+  for `weekly_loss`, the newest losing close for `consecutive_losses`, instrument + bar for
+  `volatility_halt`, agent + Baghdad day for `agent_budget`); after the owner clears it, the same
+  cause does not trip it again, so a resume is not undone 15 s later by the loss already
+  acknowledged. Risk Engine check 6 still rejects while the loss itself is over the limit. OKX errors
+  counted are every error a trade-client call ends in after its own retries (network and HTTP errors
+  included) plus refused batch rows, except `circuit_breakers.okx_errors.ignored_codes` (51016 and
+  51400-51402, which are normal recovery). `volatility_halt` compares the newest closed 1m log
+  return with the standard deviation of the 1m returns before it in the last 24 h (at least 60),
+  and only judges a bar that closed within 3 minutes and follows its predecessor with no gap.
+  "Agent budget exceeded" is `system.agent_state` with `reason: over_budget`.
 - **Orchestrator cycle rules the brief leaves open** (ATL-160, `atlas_agents/orchestrator/cycle.py`).
   Slots run every 30 min from 08:10 while the slot is at or before 23:00 Baghdad (08:10 … 22:40);
   a slot is caught up only inside its own interval, runs once (`cycles` is unique on env + slot_at)

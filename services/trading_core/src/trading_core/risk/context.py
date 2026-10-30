@@ -323,6 +323,52 @@ def _consecutive_losses(session: Session, env: str) -> int:
     return count
 
 
+@dataclass(frozen=True, slots=True)
+class LossFigures:
+    """Check 6's inputs: the day/week loss in USD against its start equity, and the losing streak.
+    The circuit breakers (ATL-145) read the same figures, so the two can never disagree."""
+
+    equity: Decimal | None
+    day_loss_usd: Decimal
+    day_base_usd: Decimal | None
+    week_loss_usd: Decimal
+    week_base_usd: Decimal | None
+    consecutive_losses: int
+    day_start: datetime
+    week_start: datetime
+
+
+def loss_figures(session: Session, env: str, now: datetime) -> LossFigures:
+    """Loss = first equity point since Baghdad midnight (or Monday) + net deposits since then -
+    current equity. With no equity point since the period began the loss is 0 and the base None."""
+    equity = session.scalar(
+        select(EquityPoint.total_eq_usd)
+        .where(EquityPoint.env == env)
+        .order_by(EquityPoint.ts.desc())
+        .limit(1)
+    )
+    day_start, week_start = _owner_midnight(now, week=False), _owner_midnight(now, week=True)
+
+    def loss(since: datetime) -> tuple[Decimal, Decimal | None]:
+        base = _equity_at_or_after(session, env, since)
+        if base is None or equity is None:
+            return Decimal(0), base
+        return base + _net_flows(session, env, since) - equity, base
+
+    day_loss, day_base = loss(day_start)
+    week_loss, week_base = loss(week_start)
+    return LossFigures(
+        equity=equity,
+        day_loss_usd=day_loss,
+        day_base_usd=day_base,
+        week_loss_usd=week_loss,
+        week_base_usd=week_base,
+        consecutive_losses=_consecutive_losses(session, env),
+        day_start=day_start,
+        week_start=week_start,
+    )
+
+
 def _used_today(session: Session, env: str, since: datetime, statuses: list[str]) -> tuple[Decimal, int]:
     """Approved notional and trade count of proposals that reached the Executor today (latest risk
     check per proposal)."""
@@ -374,12 +420,8 @@ def load_context(
     )
     inst = _instrument_info(inst_row) if inst_row is not None else None
 
-    equity = session.scalar(
-        select(EquityPoint.total_eq_usd)
-        .where(EquityPoint.env == env)
-        .order_by(EquityPoint.ts.desc())
-        .limit(1)
-    )
+    losses = loss_figures(session, env, now)
+    equity = losses.equity
     available = Decimal(0)
     usdc_rate = None
     if inst is not None:
@@ -402,17 +444,7 @@ def load_context(
 
     positions = _positions(session, env)
     held = {x.inst_id for x in positions}
-    day_start, week_start = _owner_midnight(now, week=False), _owner_midnight(now, week=True)
-    used_usd, trades = _used_today(session, env, day_start, [str(s) for s in cfg["used_statuses"]])
-
-    def loss(since: datetime) -> tuple[Decimal, Decimal | None]:
-        base = _equity_at_or_after(session, env, since)
-        if base is None or equity is None:
-            return Decimal(0), base
-        return base + _net_flows(session, env, since) - equity, base
-
-    day_loss, day_base = loss(day_start)
-    week_loss, week_base = loss(week_start)
+    used_usd, trades = _used_today(session, env, losses.day_start, [str(s) for s in cfg["used_statuses"]])
     window = EngineSettings.from_settings_data(settings[1]).event_blackout_minutes
     events = session.execute(
         select(
@@ -446,20 +478,22 @@ def load_context(
         correlations=_correlations(session, env, p.inst_id, held, now, cfg),
         used_exposure_today_usd=used_usd,
         trades_today=trades,
-        day_loss_usd=day_loss,
-        day_base_usd=day_base,
-        week_loss_usd=week_loss,
-        week_base_usd=week_base,
-        consecutive_losses=_consecutive_losses(session, env),
+        day_loss_usd=losses.day_loss_usd,
+        day_base_usd=losses.day_base_usd,
+        week_loss_usd=losses.week_loss_usd,
+        week_base_usd=losses.week_base_usd,
+        consecutive_losses=losses.consecutive_losses,
         events=tuple(ScheduledEvent(n, c, int(i), t) for n, c, i, t in events),
     )
 
 
 __all__ = [
     "InstrumentInfo",
+    "LossFigures",
     "ProposalInfo",
     "RiskContext",
     "RiskEngineError",
     "ensure_trading_state",
     "load_context",
+    "loss_figures",
 ]

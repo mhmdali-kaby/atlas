@@ -149,6 +149,32 @@ risk_rules:
   used_statuses: [sent, partially_filled, filled, closed]
   evaluable_statuses: [passed, risk_checked]
 
+# ATL-145, brief §10: circuit breakers (trading_core/risk/breakers.py). Fixed engineering values;
+# the owner limits they enforce (loss limits, max_consecutive_losses, volatility_halt_sigma,
+# market_data_max_age_seconds) come from Settings.
+#   evaluate_interval_seconds: the loop that re-checks every breaker.
+#   okx_errors: threshold errors from the trade client within window_seconds trip it; ignored_codes
+#   are answers that are part of normal recovery (51016 duplicate clOrdId after a lost answer;
+#   51400-51402 cancel of an order already gone).
+#   data_stale: clears itself once every held/watchlist instrument has been fresh this long.
+#   volatility: sigma of the 1m log returns over lookback_hours, needing min_returns of them; the
+#   newest closed 1m bar must have opened within max_bar_age_seconds to be judged.
+#   stream_block_ms: how long one XREAD of atlas.system/atlas.market waits for events.
+circuit_breakers:
+  evaluate_interval_seconds: 15
+  okx_errors:
+    threshold: 3
+    window_seconds: 300
+    ignored_codes: ["51016", "51400", "51401", "51402"]
+  data_stale:
+    clear_after_fresh_seconds: 60
+  volatility:
+    bar: 1m
+    lookback_hours: 24
+    min_returns: 60
+    max_bar_age_seconds: 180
+  stream_block_ms: 1000
+
 # ATL-141, brief §4.4, §11: Executor parameters (trading_core/execution), editable in Settings.
 #   entry_timeout_minutes: an unfilled limit entry is cancelled after this long.
 #   td_mode_perps: OKX tdMode for perps (one of td_modes_perps); spot always uses "cash".
