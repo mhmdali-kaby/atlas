@@ -155,3 +155,10 @@ decisions where the brief was silent, as the brief asks.
   not proposed again. Immediate runs: a news alert or fill on a held instrument, a circuit breaker,
   and once 30 min before an importance-4+ event. Limit warnings (70% of the daily/weekly loss or
   open-position limit) are code, at most once per hour per limit.
+- **ATL-148: shared api limiter; the kill switch has its own.** Every `/api` route now sits behind
+  a per-user `throttle:api` (`system_api.api_per_minute`, 1200). `POST /api/system/pause|resume|kill`
+  remove it and use `system-control` (30/min per user), so a flood of other requests can never make
+  the kill switch answer 429. Kill takes a fixed `confirm: "KILL"` the sheet sends on Stop (decision
+  #251: the owner never types it). The owner's control calls always write one audit row, also when
+  trading_core is down (503). "Active env" for these routes and the orders list is
+  `atlas_defaults.env.default` until the live switch exists.
