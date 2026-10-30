@@ -373,5 +373,90 @@
       "writing": "{{name}} is writing an answer.",
       "stopped": "{{name}} stopped. {{why}}"
     }
+  },
+  "news_brief": {
+    "form": {
+      "morning_brief": "Morning brief",
+      "instrument_brief": "News brief",
+      "alert_analysis": "Alert analysis"
+    },
+    "top": "Top stories",
+    "topSub": "Since yesterday’s brief",
+    "cal": "Next {{n}} hours",
+    "calSub": "Baghdad time",
+    "flow": "Most news flow",
+    "flowSub": "Last {{n}} hours",
+    "stories": "Stories",
+    "storiesSub": "Last {{n}} hours",
+    "upcoming": "Upcoming catalysts",
+    "watch": "What to watch",
+    "showAll": "Show all {{n}}",
+    "showFewer": "Show fewer",
+    "moreSrc_one": "and {{count}} more source",
+    "moreSrc_other": "and {{count}} more sources",
+    "fewerSrc": "Fewer sources",
+    "pub": "{{time}} ({{utc}})",
+    "timeTip": "{{baghdad}} in Baghdad, {{utc}} UTC",
+    "readOn": "Read on {{host}} (opens in a new tab)",
+    "sinceSr": "since first seen",
+    "moveTip": "{{inst}} has moved {{v}} since this story was first seen at {{time}}.",
+    "moveNone": "No candles for {{inst}} since this story was first seen.",
+    "tip": {
+      "confirmed": "Confirmed: {{sources}}.",
+      "one": "Reported by one reputable outlet, {{sources}}. A second would confirm it.",
+      "rumour": "Unverified: no reputable or official source has carried this yet."
+    },
+    "by": "by {{sources}}",
+    "col": {
+      "time": "Time",
+      "event": "Event",
+      "imp": "Importance",
+      "forecast": "Forecast",
+      "previous": "Previous",
+      "affected": "Most affected",
+      "inst": "Instrument",
+      "count": "Stories",
+      "senti": "Net sentiment"
+    },
+    "day": {
+      "today": "Today, {{date}}",
+      "tomorrow": "Tomorrow, {{date}}"
+    },
+    "passed": "Already happened",
+    "sent": "Net sentiment, {{n}} hours",
+    "priced": {
+      "label": "Priced in",
+      "yes": "Yes",
+      "partly": "Partly",
+      "no": "Not yet",
+      "yesTip": "The price has already moved about as far as news like this usually moves it.",
+      "partlyTip": "Part of the likely move is already in the price.",
+      "noTip": "The price hasn’t reacted to this news yet."
+    },
+    "since": "Since first seen",
+    "status": "Status",
+    "sources": "Sources",
+    "none": "None",
+    "empty": {
+      "stories": "No new stories in the last {{n}} hours.",
+      "top": "No new stories since yesterday’s brief.",
+      "events": "Nothing scheduled in the next {{n}} hours."
+    },
+    "deg": {
+      "title": "No {{classes}} news is coming in",
+      "titleSince": "No {{classes}} news since {{time}}",
+      "body": "Every {{classes}} news source is down, so this brief may miss stories. Market Scout caps {{classes}} conviction at {{cap}} until a source works again.",
+      "bodySince": "Every {{classes}} news source has been down since then, so this brief may miss later stories. Market Scout caps {{classes}} conviction at {{cap}} until a source works again.",
+      "action": "Open Data sources"
+    },
+    "class": {
+      "crypto": "crypto",
+      "stock": "stock",
+      "etf": "ETF",
+      "index": "index",
+      "commodity": "commodity"
+    },
+    "count_one": "{{count}} story",
+    "count_other": "{{count}} stories"
   }
 }
