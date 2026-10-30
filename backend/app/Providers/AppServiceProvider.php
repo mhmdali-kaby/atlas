@@ -45,6 +45,15 @@ class AppServiceProvider extends ServiceProvider
             });
         }
 
+        // ATL-128: owner manual risk checks, per user. Each writes a proposal and a risk check.
+        RateLimiter::for('risk-check', function (Request $request): Limit {
+            $perMinute = config('atlas_defaults.risk_api.checks_per_minute');
+            $user = $request->user();
+
+            return Limit::perMinute(is_int($perMinute) ? $perMinute : 20)
+                ->by('risk-check|'.($user !== null ? (string) $user->getAuthIdentifier() : $request->ip()));
+        });
+
         // ATL-103: owner watchlist pin/remove/restore, per user.
         RateLimiter::for('watchlists-write', function (Request $request): Limit {
             $perMinute = config('atlas_defaults.watchlists_api.writes_per_minute');

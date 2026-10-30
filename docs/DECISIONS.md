@@ -70,3 +70,15 @@ decisions where the brief was silent, as the brief asks.
   zone bound farthest from the stop. Only proposals in `risk_rules.evaluable_statuses` (`passed`, and
   `risk_checked` so an owner Edit can re-run the check) are evaluated; any other status is refused
   before anything is written, so a cancelled, rejected or filled proposal cannot re-enter approval.
+- **Executor rules the brief leaves open** (ATL-143, `trading_core/execution/executor.py`). The
+  Executor refuses a risk check whose `settings_version` is not the current one (any settings save
+  means the check must be re-run), one that is not the newest check of its proposal, `advise_only`,
+  and `awaiting_owner` unless the caller says `approved_by: "owner"`. Client order IDs are derived
+  from the risk check id (one letter + its last 31 hex digits: `e` entry, `s` attached SL/TP, `f` bare
+  entry after attach was refused, `o` OCO, `c` emergency close), so a retry or restart can never mint a
+  second order. The attached algo carries the stop and TP1 for the whole size; splitting TP2/TP3 is
+  the Portfolio Manager's job. "Attach refused" means one of `executor.attach_refused_codes` (default
+  `51010`). A stop counts as confirmed when an unfilled entry still carries its attached SL with no
+  fail code, or a pending SL/OCO algo for it exists on OKX; a partially filled entry is also accepted
+  on its attached SL, since OKX may create the algo only at full fill. With no confirmed stop the entry
+  is cancelled and whatever filled is closed with a reduce-only market order.

@@ -154,6 +154,12 @@ DEFAULTS: Final[dict[str, Any]] = {
         "stop_verify_seconds": 3,
         "order_max_retries": 3,
         "emergency_stop_atr_mult": "2.0",
+        "retry_backoff_base_seconds": "0.5",
+        "retry_backoff_max_seconds": 4,
+        "stop_verify_poll_seconds": "0.5",
+        "attach_refused_codes": [
+            "51010",
+        ],
     },
     "okx": {
         "environments": {
@@ -690,6 +696,9 @@ DEFAULTS: Final[dict[str, Any]] = {
             "long_short_ratio": None,
             "taker_volume": None,
         },
+    },
+    "risk_api": {
+        "checks_per_minute": 20,
     },
     "data_api": {
         "resync_per_minute": 1,
