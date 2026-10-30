@@ -663,3 +663,98 @@ class WatchlistItem(_Stamped, Base):
     )
     removed_by_owner_at: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
     data_as_of: Mapped[datetime] = mapped_column(_tz())
+
+
+def _jsonb_list() -> Any:
+    """jsonb NOT NULL DEFAULT '[]'."""
+    return mapped_column(JSONB, nullable=False, server_default=text("'[]'::jsonb"))
+
+
+def _text_blank() -> Any:
+    """text NOT NULL DEFAULT ''."""
+    return mapped_column(Text, nullable=False, server_default=text("''"))
+
+
+class Cycle(_Row, Base):
+    """One Orchestrator cycle (ATL-124, brief §7.9). state is CHECKed to the §7.9 machine:
+    cycle_start, research_requests_sent, research_collected, proposals_open, reviews_done, voting,
+    vote_closed, risk_check, awaiting_owner, executing, cycle_closed. deadlines maps a step name to
+    an ISO-8601 UTC deadline."""
+
+    __tablename__ = "cycles"
+
+    kind: Mapped[str] = mapped_column(String(32))
+    state: Mapped[str] = mapped_column(String(255), server_default=text("'cycle_start'"))
+    started_at: Mapped[datetime] = mapped_column(_tz())
+    deadlines: Mapped[Any] = _jsonb_obj()
+    closed_at: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
+
+
+class Proposal(_Row, Base):
+    """A TradeProposal (entry, from the Strategist) or a position action (amend_stop, amend_targets,
+    partial_close, close, from the Portfolio Manager). ATL-124, brief §5/§6.3/§8.
+
+    status is CHECKed to the §8 lifecycle (draft, under_review, voting, passed, rejected,
+    risk_checked, awaiting_owner, sent, partially_filled, filled, closed, cancelled, expired).
+    An entry must carry side, order_type and stop. A revision is a new row with version + 1 and
+    parent_id = the revised row (version 1 has no parent). Prices are in the instrument's quote
+    currency; size_suggestion_pct is % of equity; probability is 0..1."""
+
+    __tablename__ = "proposals"
+    __table_args__ = (UniqueConstraint("parent_id"),)
+
+    cycle_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("cycles.id", ondelete="SET NULL"), nullable=True
+    )
+    version: Mapped[int] = mapped_column(Integer, server_default=text("1"))
+    parent_id: Mapped[uuid.UUID | None] = mapped_column(Uuid, ForeignKey("proposals.id"), nullable=True)
+    kind: Mapped[str] = mapped_column(String(255), server_default=text("'entry'"))
+    author: Mapped[str] = mapped_column(String(64))
+    inst_id: Mapped[str] = mapped_column(String(64))
+    side: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    order_type: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    entry: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    entry_zone: Mapped[Any | None] = mapped_column(JSONB, nullable=True)
+    stop: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    take_profits: Mapped[Any] = _jsonb_list()
+    time_stop_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    size_suggestion_pct: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    leverage_suggestion: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    expected_r: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    probability: Mapped[Decimal | None] = mapped_column(Numeric(6, 4, asdecimal=True), nullable=True)
+    rationale_md: Mapped[str] = _text_blank()
+    invalidation: Mapped[str] = _text_blank()
+    evidence: Mapped[Any] = _jsonb_list()
+    status: Mapped[str] = mapped_column(String(255), server_default=text("'draft'"))
+
+
+class Vote(_Row, Base):
+    """One voter's vote on a proposal (take|skip|change); confidence is CHECKed to 0..1."""
+
+    __tablename__ = "votes"
+    __table_args__ = (UniqueConstraint("proposal_id", "agent"),)
+
+    proposal_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("proposals.id", ondelete="CASCADE"))
+    agent: Mapped[str] = mapped_column(String(64))
+    vote: Mapped[str] = mapped_column(String(255))
+    confidence: Mapped[Decimal] = mapped_column(Numeric(6, 4, asdecimal=True))
+    reason: Mapped[str] = _text_blank()
+
+
+class RiskCheck(_Row, Base):
+    """One Risk Engine run on a proposal (brief §10). result approved|resized|rejected; decision
+    send_now|awaiting_owner, and null exactly when the result is rejected (CHECKed). checks is the
+    ordered list of §10 check results. final_size is contracts after lotSz rounding;
+    final_notional_usd is USD."""
+
+    __tablename__ = "risk_checks"
+
+    proposal_id: Mapped[uuid.UUID] = mapped_column(Uuid, ForeignKey("proposals.id", ondelete="CASCADE"))
+    settings_version: Mapped[int] = mapped_column(Integer)
+    result: Mapped[str] = mapped_column(String(255))
+    checks: Mapped[Any] = _jsonb_list()
+    final_size: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    final_notional_usd: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    leverage: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decision: Mapped[str | None] = mapped_column(String(255), nullable=True)

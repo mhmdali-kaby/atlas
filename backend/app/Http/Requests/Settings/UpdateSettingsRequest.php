@@ -41,6 +41,9 @@ class UpdateSettingsRequest extends FormRequest
             $rules["changes.{$field}"] = $type === 'integer'
                 ? ['sometimes', 'integer:strict', "between:{$min},{$max}"]
                 : ['sometimes', 'string', self::decimalRange((string) $min, (string) $max, $exclusive)];
+            if (in_array($field, SettingsSchema::NULLABLE_FIELDS, true)) {
+                array_splice($rules["changes.{$field}"], 1, 0, ['nullable']);
+            }
         }
 
         // ATL-33 AC2: the schema's 1-4 range is every level the brief defines; this build phase
@@ -59,6 +62,19 @@ class UpdateSettingsRequest extends FormRequest
                 default => ['sometimes', 'integer:strict', 'between:'.implode(',', SettingsSchema::agentIntegerBounds($setting))],
             };
         }
+        // ATL-124: markets toggles and lists.
+        foreach (SettingsSchema::BOOLEAN_FIELDS as $field) {
+            $rules["changes.{$field}"] = ['sometimes', 'boolean:strict'];
+        }
+        foreach (SettingsSchema::MARKET_LIST_FIELDS as $field) {
+            $rules["changes.{$field}"] = ['sometimes', 'present', 'array', 'list'];
+            $rules["changes.{$field}.*"] = ['required', 'string', 'distinct', Rule::in(SettingsSchema::marketKinds())];
+        }
+        foreach (SettingsSchema::INSTRUMENT_LIST_FIELDS as $field) {
+            $rules["changes.{$field}"] = ['sometimes', 'present', 'array', 'list', 'max:'.SettingsSchema::marketListMax()];
+            $rules["changes.{$field}.*"] = ['required', 'string', 'max:64', self::instId()];
+        }
+
         foreach (SettingsSchema::WEB_DOMAIN_FIELDS as $field) {
             $key = 'changes.'.self::escape($field);
             $rules[$key] = ['sometimes', 'present', 'array', 'list', 'max:'.SettingsSchema::webDomainsMax()];
@@ -89,6 +105,15 @@ class UpdateSettingsRequest extends FormRequest
         return function (string $attribute, mixed $value, Closure $fail): void {
             if (SettingsSchema::normaliseHostname($value) === null) {
                 $fail(__('settings.hostname_format'));
+            }
+        };
+    }
+
+    private static function instId(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail): void {
+            if (SettingsSchema::normaliseInstId($value) === null) {
+                $fail(__('settings.inst_id_format'));
             }
         };
     }
@@ -127,11 +152,11 @@ class UpdateSettingsRequest extends FormRequest
     }
 
     /**
-     * @return array<string, bool|int|string|list<string>>
+     * @return array<string, bool|int|string|list<string>|null>
      */
     public function changes(): array
     {
-        /** @var array<string, bool|int|string|list<string>> $changes */
+        /** @var array<string, bool|int|string|list<string>|null> $changes */
         $changes = $this->validated('changes');
 
         return $changes;

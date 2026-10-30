@@ -58,7 +58,39 @@ final class SettingsSchema
         // 0 until the owner finishes the onboarding wizard, then 1 (ATL-19). Finishing always
         // writes it, so the version moves past 1 even when the owner keeps every default.
         'onboarding_completed' => ['integer', 0, 1, false],
+        // ATL-124, brief §14.4: money limits in USDT (decimal strings) and a daily trade count.
+        'bot_capital_cap_usdt' => ['decimal', '0', '1000000000000', true],
+        'max_usdt_per_trade' => ['decimal', '0', '1000000000000', true],
+        'max_new_exposure_per_day_usdt' => ['decimal', '0', '1000000000000', true],
+        'max_trades_per_day' => ['integer', 1, 1000, false],
+        // ATL-124, brief §10: Risk Engine parameters.
+        'min_stop_atr_mult' => ['decimal', '0', '20', true],
+        'max_stop_pct' => ['decimal', '0', '100', true],
+        'slippage_bps' => ['decimal', '0', '1000', false],
+        'liq_buffer_mult' => ['decimal', '1', '20', false],
+        'block_new_trades_minutes_before_high_impact_event' => ['integer', 0, 1440, false],
+        'volatility_halt_sigma' => ['decimal', '0', '100', true],
+        'market_data_max_age_seconds' => ['integer', 1, 3600, false],
+        'margin_buffer' => ['decimal', '0', '1', true],
     ];
+
+    /**
+     * ATL-124, decision #250: NUMERIC_FIELDS the owner may clear with JSON null. A null bot
+     * capital cap means "no cap": sizing equity is the account equity.
+     */
+    public const NULLABLE_FIELDS = ['bot_capital_cap_usdt'];
+
+    /** ATL-124, brief §14.5: on/off settings. */
+    public const BOOLEAN_FIELDS = ['avoid_stock_perps_outside_us_hours'];
+
+    /** ATL-124: the asset-class toggles that are on, a subset of markets.kinds. */
+    public const MARKET_LIST_FIELDS = ['enabled_markets'];
+
+    /** ATL-124: instId lists, stored upper-case and unique. The blocklist always wins. */
+    public const INSTRUMENT_LIST_FIELDS = ['whitelist', 'blocklist'];
+
+    /** An OKX instId: upper-case letters/digits in dash-separated segments (BTC-USDT-SWAP). */
+    public const INST_ID_PATTERN = '/^[A-Z0-9]+(-[A-Z0-9]+)*$/';
 
     /** ATL-113: the model tiers an agent can run on (agents.models in config/defaults.yaml). */
     public const AGENT_MODELS = ['strong', 'standard', 'routine'];
@@ -84,6 +116,9 @@ final class SettingsSchema
         return [
             'risk_profile',
             ...array_keys(self::NUMERIC_FIELDS),
+            ...self::BOOLEAN_FIELDS,
+            ...self::MARKET_LIST_FIELDS,
+            ...self::INSTRUMENT_LIST_FIELDS,
             ...array_keys(self::agentFields()),
             ...self::WEB_DOMAIN_FIELDS,
         ];
@@ -136,6 +171,36 @@ final class SettingsSchema
         return [is_int($min) ? $min : 1, is_int($max) ? $max : PHP_INT_MAX];
     }
 
+    /**
+     * Every asset-class toggle (markets.kinds).
+     *
+     * @return list<string>
+     */
+    public static function marketKinds(): array
+    {
+        $kinds = config('atlas_defaults.markets.kinds');
+
+        return is_array($kinds) ? array_values(array_map(strval(...), $kinds)) : [];
+    }
+
+    public static function marketListMax(): int
+    {
+        $max = config('atlas_defaults.markets.list_max');
+
+        return is_int($max) ? $max : 500;
+    }
+
+    /** An instId in its stored form (trimmed, upper-case), or null when it is not one. */
+    public static function normaliseInstId(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+        $id = strtoupper(trim($value));
+
+        return $id !== '' && strlen($id) <= 64 && preg_match(self::INST_ID_PATTERN, $id) === 1 ? $id : null;
+    }
+
     public static function webDomainsMax(): int
     {
         $max = config('atlas_defaults.agents.settings_bounds.web_domains_max');
@@ -147,7 +212,7 @@ final class SettingsSchema
      * The agent settings a fresh env starts with: agents.defaults overridden by each roster entry,
      * and agents.web's lists.
      *
-     * @return array<string, bool|int|string|list<string>>
+     * @return array<string, bool|int|string|list<string>|null>
      */
     public static function agentDefaults(): array
     {
@@ -206,7 +271,7 @@ final class SettingsSchema
      * The settings a fresh env starts with: the default risk profile, the default autonomy level
      * and the market defaults.
      *
-     * @return array<string, bool|int|string|list<string>>
+     * @return array<string, bool|int|string|list<string>|null>
      */
     public static function defaults(): array
     {
@@ -223,6 +288,22 @@ final class SettingsSchema
             'min_24h_volume_usd_commodity_perp' => config('atlas_defaults.markets.min_24h_volume_usd.commodity_perp'),
             'min_24h_volume_usd_spot' => config('atlas_defaults.markets.min_24h_volume_usd.spot'),
             'onboarding_completed' => 0,
+            'bot_capital_cap_usdt' => config('atlas_defaults.money_limits.bot_capital_cap_usdt'),
+            'max_usdt_per_trade' => config('atlas_defaults.money_limits.max_usdt_per_trade'),
+            'max_new_exposure_per_day_usdt' => config('atlas_defaults.money_limits.max_new_exposure_per_day_usdt'),
+            'max_trades_per_day' => config('atlas_defaults.money_limits.max_trades_per_day'),
+            'min_stop_atr_mult' => config('atlas_defaults.risk_engine.min_stop_atr_mult'),
+            'max_stop_pct' => config('atlas_defaults.risk_engine.max_stop_pct'),
+            'slippage_bps' => config('atlas_defaults.risk_engine.slippage_bps'),
+            'liq_buffer_mult' => config('atlas_defaults.risk_engine.liq_buffer_mult'),
+            'block_new_trades_minutes_before_high_impact_event' => config('atlas_defaults.risk_engine.block_new_trades_minutes_before_high_impact_event'),
+            'volatility_halt_sigma' => config('atlas_defaults.risk_engine.volatility_halt_sigma'),
+            'market_data_max_age_seconds' => config('atlas_defaults.risk_engine.market_data_max_age_seconds'),
+            'margin_buffer' => config('atlas_defaults.risk_engine.margin_buffer'),
+            'avoid_stock_perps_outside_us_hours' => config('atlas_defaults.markets.avoid_stock_perps_outside_us_hours'),
+            'enabled_markets' => config('atlas_defaults.markets.enabled_markets'),
+            'whitelist' => config('atlas_defaults.markets.whitelist'),
+            'blocklist' => config('atlas_defaults.markets.blocklist'),
         ]), ...self::agentDefaults()];
     }
 
@@ -260,12 +341,13 @@ final class SettingsSchema
 
     /**
      * Brings values to their canonical form: decimals as plain decimal strings, integers as int,
-     * agent switches as bool, models as their tier, domain lists as unique stored hostnames
-     * (entries that are not hostnames are dropped; validation refuses them first).
+     * agent switches and boolean fields as bool, models as their tier, domain lists as unique
+     * stored hostnames, instId lists as unique upper-case instIds, enabled_markets in markets.kinds
+     * order (invalid entries are dropped; validation refuses them first).
      * Unknown keys are dropped.
      *
      * @param  array<string, mixed>  $values
-     * @return array<string, bool|int|string|list<string>>
+     * @return array<string, bool|int|string|list<string>|null>
      */
     public static function normalise(array $values): array
     {
@@ -289,6 +371,31 @@ final class SettingsSchema
 
                 continue;
             }
+            if (in_array($field, self::BOOLEAN_FIELDS, true)) {
+                $out[$field] = $value === true;
+
+                continue;
+            }
+            if (in_array($field, self::MARKET_LIST_FIELDS, true)) {
+                $kinds = self::marketKinds();
+                $on = is_array($value) ? $value : [];
+                // Stored in markets.kinds order, so the same set always compares equal.
+                $out[$field] = array_values(array_filter($kinds, fn (string $kind): bool => in_array($kind, $on, true)));
+
+                continue;
+            }
+            if (in_array($field, self::INSTRUMENT_LIST_FIELDS, true)) {
+                $ids = [];
+                foreach (is_array($value) ? $value : [] as $entry) {
+                    $id = self::normaliseInstId($entry);
+                    if ($id !== null && ! in_array($id, $ids, true)) {
+                        $ids[] = $id;
+                    }
+                }
+                $out[$field] = $ids;
+
+                continue;
+            }
             if (isset($agentFields[$field])) {
                 $out[$field] = match ($agentFields[$field]) {
                     'boolean' => $value === true,
@@ -301,7 +408,9 @@ final class SettingsSchema
             if (! isset(self::NUMERIC_FIELDS[$field])) {
                 continue;
             }
-            $out[$field] = self::numeric($field, $value);
+            $out[$field] = $value === null && in_array($field, self::NULLABLE_FIELDS, true)
+                ? null
+                : self::numeric($field, $value);
         }
 
         return $out;

@@ -33,6 +33,7 @@ from typing import Any, Final
 from atlas_shared import bus
 from atlas_shared.defaults import DEFAULTS
 from atlas_shared.events import EventEnvelope
+from atlas_shared.market_data import MarketSnapshot, read_snapshot
 from claude_agent_sdk import McpServerConfig, SdkMcpTool, create_sdk_mcp_server
 from pydantic import BaseModel, ConfigDict, ValidationError
 from sqlalchemy import ColumnElement, true
@@ -64,6 +65,17 @@ def _utcnow() -> datetime:
 def _bus_publish(stream: str, envelope: EventEnvelope) -> object:
     """The real publisher: XADD to Redis through atlas_shared.bus."""
     return bus.publish(stream, envelope)
+
+
+_md_client: Any = None
+
+
+def _read_market_snapshot(env: str, inst_id: str) -> MarketSnapshot:
+    """The real reader: trading_core's live WebSocket snapshot in Redis (ATL-125)."""
+    global _md_client
+    if _md_client is None:
+        _md_client = bus.make_client()
+    return read_snapshot(_md_client, env, inst_id)
 
 
 @dataclass
@@ -100,6 +112,9 @@ class ToolContext:
     """``() -> (allow_domains, deny_domains)``: the owner's ``agents.web`` lists as the supervisor
     last merged them from settings (ATL-114). None (a context built outside the supervisor) means
     the config/defaults.yaml lists."""
+    market_snapshot: Callable[[str, str], MarketSnapshot] = _read_market_snapshot
+    """``(env, inst_id) -> MarketSnapshot``: trading_core's live market data in Redis (ATL-125).
+    Tests pass a fake."""
 
     def __post_init__(self) -> None:
         if self.replay_as_of is not None and self.replay_as_of.utcoffset() is None:

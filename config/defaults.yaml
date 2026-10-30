@@ -76,6 +76,42 @@ markets:
   max_instruments_per_day: 5
   max_instruments_per_day_min: 1
   max_instruments_per_day_max: 10
+  # ATL-124, brief §14.5: Settings -> Markets. `kinds` is every asset-class toggle; enabled_markets
+  # is the toggles that are on (dated futures and options start off). whitelist / blocklist are
+  # instIds (stored upper-case); the blocklist always wins. list_max caps each list's length.
+  kinds: [spot, crypto_perp, stock_perp, commodity_perp, futures, options]
+  enabled_markets: [spot, crypto_perp, stock_perp, commodity_perp]
+  whitelist: []
+  blocklist: []
+  avoid_stock_perps_outside_us_hours: true
+  list_max: 500
+
+# ATL-124, brief §14.4: Settings -> Money limits, in USDT. The Risk Engine uses whichever of the
+# percentage (risk profile) and USDT limit is smaller. The brief gives no numbers; these start small
+# on purpose (decision recorded in docs/DECISIONS.md) and the owner raises them in Settings.
+money_limits:
+  bot_capital_cap_usdt: "10000"
+  max_usdt_per_trade: "1000"
+  max_new_exposure_per_day_usdt: "5000"
+  max_trades_per_day: 10
+
+# ATL-124, brief §10: Risk Engine parameters (trading_core/risk), editable in Settings.
+#   min_stop_atr_mult: stop distance >= this x ATR(1H). max_stop_pct: stop distance <= this % of entry.
+#   slippage_bps: assumed slippage in the risk sizing. liq_buffer_mult: the estimated liquidation
+#   price must sit at least this x the stop distance beyond the stop.
+#   block_new_trades_minutes_before_high_impact_event: importance-5 event blackout (0 = off).
+#   volatility_halt_sigma: 1-minute move that trips the circuit breaker on a held instrument.
+#   market_data_max_age_seconds: older market data is stale (check 1). margin_buffer: margin must
+#   be <= available balance x this.
+risk_engine:
+  min_stop_atr_mult: "0.8"
+  max_stop_pct: "8"
+  slippage_bps: "2"
+  liq_buffer_mult: "2.0"
+  block_new_trades_minutes_before_high_impact_event: 15
+  volatility_halt_sigma: "6"
+  market_data_max_age_seconds: 30
+  margin_buffer: "0.9"
 
 # Brief §4.1. Checked against the OKX v5 docs (https://www.okx.com/docs-v5/en/) at build time.
 okx:
@@ -134,6 +170,30 @@ candle_poller:
   page_limit: 100
 candle_grid:
   offset_minutes: { "1m": 0, "5m": 0, "15m": 0, "1H": 0, "4H": 0, "1D": 960 }
+
+# ATL-125, brief §4.1/§4.2 + decision #249 (F): trading_core's public + business WebSocket market
+# feed. URLs come from okx.environments.<env>.ws_public_url / ws_business_url. Subscriptions cover
+# always_subscribe + today's (Asia/Baghdad) watchlist + open positions, re-read every
+# subscriptions_refresh_seconds. An instrument with no message for market_data_max_age_seconds is
+# stale. The latest ticker, mark price, books5 and last-message time per instrument live in the
+# Redis hash <key_prefix>:<env>:<instId> (see atlas_shared.market_data). market.tick is published
+# at most once per tick_publish_min_interval_seconds per instrument; candle.closed once per bar.
+# Reconnects wait min(reconnect_max_seconds, reconnect_base_seconds * 2^attempt), scaled by a
+# random factor in [1 - reconnect_jitter, 1].
+market_ws:
+  ping_interval_seconds: 25
+  market_data_max_age_seconds: 30
+  reconnect_base_seconds: 1
+  reconnect_max_seconds: 60
+  reconnect_jitter: "0.5"
+  subscriptions_refresh_seconds: 15
+  tick_publish_min_interval_seconds: 1
+  stale_check_seconds: 5
+  always_subscribe: ["BTC-USDT-SWAP"]
+  public_channels: [tickers, mark-price, books5]
+  business_channels: [candle1m, candle5m, candle1H]
+  key_prefix: "atlas:md"
+  snapshot_ttl_seconds: 86400
 
 # ATL-47, brief §7.3 data-quality checks, every interval_seconds and on demand
 # (POST /internal/quality/check). Each run looks at the last window_bars bars of every candle series
