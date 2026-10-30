@@ -365,6 +365,10 @@ class NewsSource(_Stamped, Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     poll_seconds: Mapped[int] = mapped_column(Integer)
     requires_key: Mapped[bool] = mapped_column(Boolean, default=False)
+    reputable: Mapped[bool] = mapped_column(Boolean, default=False)
+    """ATL-106: a newsroom with editorial standards; 2+ distinct reputable sources make a story CONFIRMED."""
+    official: Mapped[bool] = mapped_column(Boolean, default=False)
+    """ATL-106: the venue's own channel (OKX announcements); one official source makes a story CONFIRMED."""
     api_key: Mapped[str | None] = mapped_column(Text, nullable=True)
     consecutive_failures: Mapped[int] = mapped_column(Integer, default=0)
     disabled_until: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)

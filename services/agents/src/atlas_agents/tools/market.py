@@ -37,6 +37,7 @@ from atlas_shared.db import (
 from atlas_shared.defaults import DEFAULTS
 from pydantic import BaseModel
 from sqlalchemy import ColumnElement, and_, func, select
+from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.orm import Session
 
 from atlas_agents.tools.catalogue import (
@@ -82,6 +83,28 @@ def closed_bars(ctx: ToolContext, bar: str) -> ColumnElement[bool]:
         Candle.ts <= ctx.now() - bar_delta(bar),
         ctx.bound(Candle.ts),
     )
+
+
+def latest_closed_candles(
+    session: Session, ctx: ToolContext, inst_ids: Sequence[str], bar: str
+) -> dict[str, Candle]:
+    """inst_id -> its newest :func:`closed_bars` candle of ``bar``, in one query (DISTINCT ON).
+    Instruments with no such candle are absent."""
+    wanted = sorted(set(inst_ids))
+    if not wanted:
+        return {}
+    rows = session.scalars(
+        select(Candle)
+        .where(closed_bars(ctx, bar), Candle.inst_id.in_(wanted))
+        .ext(distinct_on(Candle.inst_id))
+        .order_by(Candle.inst_id, Candle.ts.desc())
+    ).all()
+    return {row.inst_id: row for row in rows}
+
+
+def latest_closed_candle(session: Session, ctx: ToolContext, inst_id: str, bar: str) -> Candle | None:
+    """The newest :func:`closed_bars` candle of ``inst_id``/``bar``, or None."""
+    return latest_closed_candles(session, ctx, [inst_id], bar).get(inst_id)
 
 
 def listed(ctx: ToolContext) -> ColumnElement[bool]:
@@ -622,12 +645,7 @@ async def get_mark_price(ctx: ToolContext, args: InstIdInput) -> ToolResult:
     stale data."""
     bar = str(market_config()["mark_price_bar"])
     with ctx.session_factory() as session:
-        candle = session.scalars(
-            select(Candle)
-            .where(closed_bars(ctx, bar), Candle.inst_id == args.inst_id)
-            .order_by(Candle.ts.desc())
-            .limit(1)
-        ).first()
+        candle = latest_closed_candle(session, ctx, args.inst_id, bar)
     proxy = f"close of the newest closed {bar} candle, not OKX's mark price"
     if candle is None:
         return ToolResult(
