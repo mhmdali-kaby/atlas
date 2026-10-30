@@ -297,6 +297,10 @@ data_api:
 
 # ATL-66: Settings → Data sources API. The owner may set a source's poll interval only inside
 # these bounds; writes (toggle, poll, set/remove key) are throttled per user.
+# ATL-103: owner watchlist pin/remove/restore writes per user per minute.
+watchlists_api:
+  writes_per_minute: 30
+
 data_sources_api:
   poll_seconds_min: 60
   poll_seconds_max: 86400
@@ -774,6 +778,10 @@ agents:
   #     calendar_countries: economic events from these countries are catalysts for every instrument;
   #     earnings match a stock/etf instrument's base currency. valid_minutes: valid_until - as_of.
   scout:
+    # ATL-103, brief §8 + decision #247 (3): minutes after a watchlist is saved during which the owner
+    # may pin, remove or restore items (POST /api/watchlists/...). Market Scout stamps
+    # watchlists.edit_window_ends_at = created_at + this; Laravel uses the same rule when it is null.
+    watchlist_edit_window_minutes: 10
     universe:
       enabled_markets: [spot, crypto_perp, stock_perp, commodity_perp]
       blocklist: []
