@@ -37,6 +37,7 @@ from trading_core.okx.client import OkxClient
 from trading_core.okx.errors import OkxClientError, OkxError, OkxNetworkError
 from trading_core.okx.ratelimit import RateLimiter
 from trading_core.risk.api import router as risk_router
+from trading_core.risk.breakers import BreakerMonitor, Breakers
 from trading_core.scheduler import Scheduler
 from trading_core.security import PROTECTED_PREFIX, InternalSignatureMiddleware
 from trading_core.sync.account import STREAM as ACCOUNT_JOB
@@ -233,6 +234,7 @@ def create_app(
     engine: Engine | None = None,
     market_feed: MarketFeed | None = None,
     private_feed: PrivateFeed | None = None,
+    breaker_monitor: BreakerMonitor | None = None,
 ) -> FastAPI:
     settings = settings or Settings.from_env()
     if not settings.internal_shared_secret:
@@ -248,6 +250,10 @@ def create_app(
     pfeed = private_feed
     if pfeed is None and scheduler is None and settings.run_private_ws:
         pfeed = default_private_feed(settings.env, db, settings.app_key)
+    # Circuit breakers (ATL-145): the 15 s loop, the bus events and the OKX error hook. Same rule.
+    monitor = breaker_monitor
+    if monitor is None and scheduler is None:
+        monitor = BreakerMonitor(Breakers(db, settings.env))
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -257,9 +263,13 @@ def create_app(
                 await feed.start()
             if pfeed is not None:
                 await pfeed.start()
+            if monitor is not None:
+                await monitor.start()
         try:
             yield
         finally:
+            if monitor is not None:
+                await monitor.stop()
             if pfeed is not None:
                 await pfeed.stop()
             if feed is not None:
@@ -279,6 +289,7 @@ def create_app(
     application.state.engine = db
     application.state.market_feed = feed
     application.state.private_feed = pfeed
+    application.state.breaker_monitor = monitor
 
     @application.get("/health")
     async def health() -> dict[str, str]:
