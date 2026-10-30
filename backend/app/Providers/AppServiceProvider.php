@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -22,6 +24,11 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // ATL-148: pause / resume / kill, and closing a position. Atlas has a single owner (brief §5,
+        // multi-user ready): any signed-in user is that owner. Agents never come through here.
+        Gate::define('control-trading', fn (User $user): bool => true);
+        Gate::define('close-position', fn (User $user): bool => true);
+
         // Owner login: 5 attempts per minute per client IP; the 6th gets 429.
         RateLimiter::for('login', fn (Request $request): Limit => Limit::perMinute(5)->by('login|'.$request->ip()));
 
@@ -89,6 +96,35 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute(is_int($perMinute) ? $perMinute : 6)
                 ->by('claude-status|'.($user !== null ? (string) $user->getAuthIdentifier() : $request->ip()));
+        });
+
+        // ATL-148: the shared limiter on every /api route (bootstrap/app.php throttleApi). The kill
+        // switch, pause and resume opt out of it (routes/api/system.php) and use system-control
+        // instead, so a flood of other requests can never make the kill switch answer 429.
+        RateLimiter::for('api', function (Request $request): Limit {
+            $perMinute = config('atlas_defaults.system_api.api_per_minute');
+            $user = $request->user();
+
+            return Limit::perMinute(is_int($perMinute) ? $perMinute : 1200)
+                ->by('api|'.($user !== null ? (string) $user->getAuthIdentifier() : $request->ip()));
+        });
+
+        // ATL-148: kill switch, pause and resume, per user, on a counter of their own.
+        RateLimiter::for('system-control', function (Request $request): Limit {
+            $perMinute = config('atlas_defaults.system_api.control_per_minute');
+            $user = $request->user();
+
+            return Limit::perMinute(is_int($perMinute) ? $perMinute : 30)
+                ->by('system-control|'.($user !== null ? (string) $user->getAuthIdentifier() : $request->ip()));
+        });
+
+        // ATL-148: owner order cancel and position close, per user.
+        RateLimiter::for('trades-write', function (Request $request): Limit {
+            $perMinute = config('atlas_defaults.system_api.trades_per_minute');
+            $user = $request->user();
+
+            return Limit::perMinute(is_int($perMinute) ? $perMinute : 30)
+                ->by('trades-write|'.($user !== null ? (string) $user->getAuthIdentifier() : $request->ip()));
         });
     }
 }

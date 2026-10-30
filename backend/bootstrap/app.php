@@ -16,6 +16,9 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Sanctum SPA cookie auth for requests from the stateful origins in config/sanctum.php.
         $middleware->statefulApi();
+        // ATL-148: shared per-user limiter on every /api route (AppServiceProvider 'api'). The kill
+        // switch routes remove it with withoutMiddleware('throttle:api').
+        $middleware->throttleApi();
         $middleware->append(SecurityHeaders::class);
         // There is no server-rendered login page (the SPA owns it), so guests are never
         // redirected; unauthenticated API calls get a JSON 401 even without Accept: application/json.

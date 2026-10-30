@@ -621,6 +621,16 @@ proposals_api:
   list_limit: 50
   list_max_limit: 200
 
+# ATL-148: /api/system (health, pause, resume, kill) and the owner's order cancel / position close.
+# control_per_minute is the kill switch's own limiter (pause, resume, kill), per user; those routes are
+# excluded from the shared api limiter (api_per_minute, every other /api route, per user or IP) so a
+# flood of other requests can never make the kill switch answer 429. trades_per_minute covers
+# POST /api/orders/{id}/cancel and POST /api/portfolio/positions/{id}/close.
+system_api:
+  control_per_minute: 30
+  trades_per_minute: 30
+  api_per_minute: 1200
+
 # ATL-162: trading_core's approval sweeper. Every sweep_seconds it rejects awaiting_owner proposals
 # whose approval_expires_at has passed (autonomy.on_approval_timeout) and posts one reminder when
 # reminder_fraction of the approval window has gone by.
@@ -1369,7 +1379,20 @@ agents:
   #     da_card_type, card.proposal_id, integer card.risk_rating 1-5). The vote fails when the
   #     newest rating on any version of the proposal is above da_max_rating, or there is none.
   #   closable_statuses: close_vote refuses a proposal in any other status.
+  #   ATL-182: when the cycle opens a vote (and again for each revised version), code starts one
+  #     vote run per run_voters agent that is enabled, available and within budget and has not yet
+  #     voted on that version, on the agent's routine model. voter_cards: the research_report card
+  #     type each one reads as its own latest card (news_brief names its instruments in inst_ids).
+  #     voter_run_timeout_seconds: each run's own deadline is min(vote deadline, run start + this);
+  #     warroom.cast_vote refuses a vote after either deadline, so a late run casts nothing.
   votes:
+    run_voters: [technical_analyst, derivatives_sentiment, news_intelligence, historian]
+    voter_cards:
+      technical_analyst: technical_setup
+      derivatives_sentiment: positioning_report
+      news_intelligence: news_brief
+      historian: history_verdict
+    voter_run_timeout_seconds: 150
     voters: [technical_analyst, derivatives_sentiment, news_intelligence, historian, devils_advocate]
     scores: { take: "1", change_applied: "0.5", change: "0", skip: "0" }
     missing_confidence: "0.5"

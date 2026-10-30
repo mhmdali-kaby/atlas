@@ -766,6 +766,11 @@ DEFAULTS: Final[dict[str, Any]] = {
         "list_limit": 50,
         "list_max_limit": 200,
     },
+    "system_api": {
+        "control_per_minute": 30,
+        "trades_per_minute": 30,
+        "api_per_minute": 1200,
+    },
     "approvals": {
         "sweep_seconds": 15,
         "reminder_fraction": "0.5",
@@ -1610,6 +1615,19 @@ DEFAULTS: Final[dict[str, Any]] = {
             "cycle_max_instruments": 10,
         },
         "votes": {
+            "run_voters": [
+                "technical_analyst",
+                "derivatives_sentiment",
+                "news_intelligence",
+                "historian",
+            ],
+            "voter_cards": {
+                "technical_analyst": "technical_setup",
+                "derivatives_sentiment": "positioning_report",
+                "news_intelligence": "news_brief",
+                "historian": "history_verdict",
+            },
+            "voter_run_timeout_seconds": 150,
             "voters": [
                 "technical_analyst",
                 "derivatives_sentiment",

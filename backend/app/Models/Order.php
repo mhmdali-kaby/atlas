@@ -28,6 +28,9 @@ use Illuminate\Support\Carbon;
  * @property int|null $lever
  * @property string $state
  * @property string $purpose
+ * @property 'atlas'|'external' $origin
+ * @property 'net'|'long'|'short'|null $pos_side
+ * @property string $td_mode
  * @property bool $reduce_only
  * @property string|null $last_error_code
  * @property string|null $last_error_msg
@@ -38,6 +41,9 @@ use Illuminate\Support\Carbon;
 class Order extends Model
 {
     use HasUuids;
+
+    /** States in which an order is still working on OKX and can be cancelled (ATL-147). */
+    public const OPEN_STATES = ['new', 'sending', 'live', 'partially_filled'];
 
     protected $dateFormat = 'Y-m-d H:i:s.uP';
 
