@@ -14,7 +14,8 @@ database, no bus) so each rule is unit-testable:
 * :func:`enforce` applies, in this order: drop instruments that are blocklisted, removed by the
   owner today, or not in the shortlist; trim correlated groups; carry today's owner pins; cap every
   conviction at ``partial_conviction_cap`` when the evidence is partial, and the convictions of
-  picks in an asset class whose news sources are all down (:func:`degraded_asset_classes`);
+  picks in an asset class whose news sources are all down (``degraded_classes``, from
+  :func:`atlas_agents.news_intelligence.degraded_asset_classes`);
   renumber ranks 1..n. Every change is listed in ``corrections``; every capped pick is in ``caps``
   with its conviction before the cap and why (``partial_evidence`` wins over ``news_class_down``).
 """
@@ -93,45 +94,6 @@ def answer_problems(answer: ScoutAnswer, *, max_picks: int, shortlist_ids: Seque
     if not answer.picks and not (answer.no_pick_reason or "").strip():
         problems.append("with no picks, give no_pick_reason")
     return problems
-
-
-# -- news sources down per asset class (brief §7.2 failure behaviour) ---------------------------------
-
-
-@dataclass(frozen=True)
-class SourceHealth:
-    """The columns of a ``news_sources`` row that decide whether it can deliver anything."""
-
-    category: str
-    enabled: bool
-    requires_key: bool
-    has_key: bool
-    disabled_until: datetime | None
-
-
-def source_down(source: SourceHealth, now: datetime) -> bool:
-    """Laravel's ``SourceStatus::DOWN`` (ATL-66): disabled, needs_key, or degraded (inside the
-    failure back-off window)."""
-    if not source.enabled:
-        return True
-    if source.requires_key and not source.has_key:
-        return True
-    return source.disabled_until is not None and source.disabled_until > now
-
-
-def degraded_asset_classes(
-    sources: Iterable[SourceHealth], now: datetime, categories: Mapping[str, Sequence[str]]
-) -> list[str]:
-    """Asset classes (keys of ``categories``, ``agents.scout.news_categories``) none of whose news
-    source categories has a source up. Like ``SourceStatus::summary``'s ``all_down``, a class with
-    no source at all counts as down. Sorted."""
-    rows = list(sources)
-    out: list[str] = []
-    for asset_class, cats in categories.items():
-        wanted = set(cats)
-        if not any(s.category in wanted and not source_down(s, now) for s in rows):
-            out.append(asset_class)
-    return sorted(out)
 
 
 # -- correlation (step 4) ----------------------------------------------------------------------------
@@ -381,15 +343,12 @@ __all__ = [
     "Pair",
     "RejectedCandidate",
     "ScoutAnswer",
-    "SourceHealth",
     "TeammateReply",
     "answer_problems",
     "correlated_groups",
     "correlation_violations",
-    "degraded_asset_classes",
     "enforce",
     "publish_config",
-    "source_down",
     "status_for",
     "trim_correlated",
 ]

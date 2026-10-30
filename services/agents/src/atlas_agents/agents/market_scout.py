@@ -36,14 +36,14 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Any, Final
 
-from atlas_shared.db import NewsSource, ResearchReport, Watchlist, WatchlistItem, owner_day
+from atlas_shared.db import ResearchReport, Watchlist, WatchlistItem, owner_day
 from atlas_shared.events import EventEnvelope
 from claude_agent_sdk.types import Message
 from pydantic import ValidationError
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
-from atlas_agents import events, historian, numguard
+from atlas_agents import events, historian, news_intelligence, numguard
 from atlas_agents.mentions import MentionRequest, max_depth
 from atlas_agents.registry import HOOKS, AgentHost, ScheduleFire
 from atlas_agents.schemas import WatchlistPick
@@ -56,11 +56,9 @@ from atlas_agents.scout.publish import (
     Evidence,
     Pair,
     ScoutAnswer,
-    SourceHealth,
     TeammateReply,
     answer_problems,
     correlation_violations,
-    degraded_asset_classes,
     enforce,
     publish_config,
     status_for,
@@ -239,47 +237,14 @@ def _settings_data(session: Session, ctx: ToolContext) -> Mapping[str, Any] | No
     return data
 
 
-def news_categories() -> dict[str, list[str]]:
-    """``agents.news_intelligence.asset_class_categories``: asset class -> news_sources categories."""
-    from atlas_shared.defaults import DEFAULTS
-
-    raw: Mapping[str, Any] = DEFAULTS["agents"]["news_intelligence"]["asset_class_categories"]
-    return {str(k): [str(c) for c in v] for k, v in raw.items()}
-
-
-def news_degraded_classes(session: Session, ctx: ToolContext) -> list[str]:
-    """Asset classes none of whose news sources is up now (see :func:`degraded_asset_classes`).
-    news_sources holds current health only, so a replay reads it as it is today."""
-    rows = session.execute(
-        select(
-            NewsSource.category,
-            NewsSource.enabled,
-            NewsSource.requires_key,
-            NewsSource.api_key.is_not(None),
-            NewsSource.disabled_until,
-        )
-    ).all()
-    sources = [
-        SourceHealth(
-            category=str(r[0]),
-            enabled=bool(r[1]),
-            requires_key=bool(r[2]),
-            has_key=bool(r[3]),
-            disabled_until=r[4],
-        )
-        for r in rows
-    ]
-    return degraded_asset_classes(sources, ctx.now(), news_categories())
-
-
 def prepare(ctx: ToolContext, day: date) -> Prepared:
     """Step 1 (synchronous, DB-bound: call it with ``asyncio.to_thread``)."""
     with ctx.session_factory() as session:
         pinned_items, removed, version = _owner_edits(session, ctx, day)
         config = load_config(session, ctx)
         max_picks = _max_picks(_settings_data(session, ctx))
-        degraded = news_degraded_classes(session, ctx)
         reused = _reusable_table(session, ctx)
+    degraded = news_intelligence.degraded_asset_classes(ctx)
     if reused is None:
         table = build_feature_table(ctx, build_universe(ctx))
         with ctx.session_factory() as session:

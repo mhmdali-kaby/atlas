@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+from atlas_agents import news_intelligence
 from atlas_agents import testing as fake
 from atlas_agents.agents import market_scout
 from atlas_agents.registry import REGISTRY, discover_hooks
@@ -28,16 +29,14 @@ from atlas_agents.scout.features import FeatureTable, InstrumentFeatures
 from atlas_agents.scout.prescore import CorrelatedPair, build_shortlist
 from atlas_agents.scout.publish import (
     Pair,
-    SourceHealth,
     correlated_groups,
-    degraded_asset_classes,
     enforce,
     trim_correlated,
 )
 from atlas_agents.scout.universe import Rejected
 from atlas_agents.supervisor import Supervisor
 from atlas_agents.tools import ToolContext
-from atlas_shared.db import AgentRun, AgentState, AgentUsageDaily, NewsSource, Watchlist, WatchlistItem
+from atlas_shared.db import AgentRun, AgentState, AgentUsageDaily, Watchlist, WatchlistItem
 from atlas_shared.events import EventEnvelope
 from sqlalchemy import Engine, delete, select, text
 from sqlalchemy.orm import Session
@@ -109,7 +108,7 @@ def _prepared(
     blocklist: list[str] | None = None,
     table_age: timedelta = timedelta(minutes=1),
     rejected: list[Rejected] | None = None,
-    sources: list[SourceHealth] | None = None,
+    degraded: list[str] | None = None,
 ) -> market_scout.Prepared:
     as_of = now - table_age
     ids = INSTS if rows is None else rows
@@ -145,20 +144,8 @@ def _prepared(
         report_id=None,
         blocklist=blocklist or [],
         max_picks=5,
-        degraded_asset_classes=degraded_asset_classes(
-            sources if sources is not None else _sources(), now, market_scout.news_categories()
-        ),
+        degraded_asset_classes=degraded or [],
     )
-
-
-def _sources(*, crypto_down: bool = False) -> list[SourceHealth]:
-    """One crypto and one markets news source, each up unless asked otherwise."""
-    future = datetime(2100, 1, 1, tzinfo=UTC)
-    return [
-        SourceHealth("crypto_news", True, False, False, future if crypto_down else None),
-        SourceHealth("crypto_news", True, True, not crypto_down, None),
-        SourceHealth("markets_news", True, False, False, None),
-    ]
 
 
 def _pick(inst_id: str, rank: int, conviction: float, as_of: datetime) -> dict[str, Any]:
@@ -451,9 +438,7 @@ async def test_a_silent_historian_makes_the_watchlist_partial_with_convictions_c
 async def test_every_crypto_news_source_down_caps_only_crypto_picks(
     engine: Engine, now: datetime, cleanup: list[Bridge], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setattr(
-        market_scout, "prepare", lambda ctx, day: _prepared(now, sources=_sources(crypto_down=True))
-    )
+    monkeypatch.setattr(market_scout, "prepare", lambda ctx, day: _prepared(now, degraded=["crypto"]))
     bridge = Bridge(engine, now, answer={"news_intelligence", "historian"})
     cleanup.append(bridge)
     client = fake.FakeClaudeClient([_answer(now, [("SOL-USDT-SWAP", 0.8), ("XAU-USDT-SWAP", 0.7)])])
@@ -661,23 +646,6 @@ def test_empty_reason_counts_the_filter_checks() -> None:
     assert reason == "No instrument passed the universe filter: 1 rejected (by check: age 1)."
 
 
-def test_a_class_is_degraded_only_when_none_of_its_sources_is_up() -> None:
-    now = datetime(2034, 1, 1, 5, tzinfo=UTC)
-    cats = {"crypto": ["crypto_news"], "stock": ["markets_news"], "commodity": ["markets_news"]}
-    later, earlier = now + timedelta(minutes=5), now - timedelta(minutes=5)
-    down = [
-        SourceHealth("crypto_news", False, False, False, None),  # disabled
-        SourceHealth("crypto_news", True, True, False, None),  # needs_key
-        SourceHealth("crypto_news", True, False, False, later),  # degraded
-        SourceHealth("markets_news", True, False, False, earlier),  # back-off over: up
-    ]
-    assert degraded_asset_classes(down, now, cats) == ["crypto"]
-    # One crypto source up is enough; a class with no source at all is down.
-    up = [*down, SourceHealth("crypto_news", True, True, True, None)]
-    assert degraded_asset_classes(up, now, cats) == []
-    assert degraded_asset_classes([], now, {"crypto": ["crypto_news"]}) == ["crypto"]
-
-
 def test_partial_evidence_wins_over_news_class_down_and_other_classes_keep_their_conviction() -> None:
     def common(**kw: Any) -> Any:
         return enforce(
@@ -708,13 +676,20 @@ def test_partial_evidence_wins_over_news_class_down_and_other_classes_keep_their
     }
 
 
-def test_news_degraded_classes_reads_news_sources(engine: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
-    """The DB loader. Inside one transaction that is rolled back, the sentiment category holds only
-    this test's rows: one source in its failure back-off and one keyed source with no key."""
-    now = datetime(2034, 1, 1, 5, tzinfo=UTC)
-    monkeypatch.setattr(
-        market_scout, "news_categories", lambda: {"testclass": ["sentiment"], "other": ["no_such"]}
-    )
+def test_prepare_takes_degraded_classes_from_news_intelligence(
+    engine: Engine, now: datetime, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """prepare() asks news_intelligence.degraded_asset_classes (one rule for News and Scout)."""
+    table = _prepared(now).table
+    asked: list[ToolContext] = []
+
+    def degraded(ctx: ToolContext) -> list[str]:
+        asked.append(ctx)
+        return ["crypto"]
+
+    monkeypatch.setattr(news_intelligence, "degraded_asset_classes", degraded)
+    monkeypatch.setattr(market_scout, "_reusable_table", lambda session, ctx: (table, "report"))
+    monkeypatch.setattr(market_scout, "shortlist_correlations", lambda ctx, shortlist: shortlist)
     ctx = ToolContext(
         env=ENV,
         session_factory=lambda: Session(engine),
@@ -723,29 +698,6 @@ def test_news_degraded_classes_reads_news_sources(engine: Engine, monkeypatch: p
         clock=lambda: now,
         publish=lambda stream, envelope: None,
     )
-    tag = uuid.uuid4().hex[:8]
-    with Session(engine) as db:
-        try:
-            db.execute(delete(NewsSource).where(NewsSource.category == "sentiment"))
-            for n, (requires_key, until) in enumerate([(False, now + timedelta(minutes=10)), (True, None)]):
-                db.execute(
-                    text(
-                        "INSERT INTO news_sources (id, key, provider, kind, category, name, enabled, "
-                        "poll_seconds, requires_key, api_key, disabled_until, consecutive_failures, "
-                        "created_at, updated_at) VALUES (:id, :key, 'test', 'sentiment', 'sentiment', "
-                        ":key, true, 300, :rk, NULL, :until, 0, :ts, :ts)"
-                    ),
-                    {
-                        "id": str(uuid.uuid4()),
-                        "key": f"t{tag}{n}",
-                        "rk": requires_key,
-                        "until": until,
-                        "ts": now,
-                    },
-                )
-            assert market_scout.news_degraded_classes(db, ctx) == ["other", "testclass"]
-            # After the back-off window that source is up again; a class with no source stays down.
-            later = dataclasses.replace(ctx, clock=lambda: now + timedelta(minutes=11))
-            assert market_scout.news_degraded_classes(db, later) == ["other"]
-        finally:
-            db.rollback()
+    prepared = market_scout.prepare(ctx, (now + timedelta(hours=3)).date())
+    assert prepared.degraded_asset_classes == ["crypto"] and asked == [ctx]
+    assert {r.inst_id for r in prepared.shortlist.rows} == set(INSTS)

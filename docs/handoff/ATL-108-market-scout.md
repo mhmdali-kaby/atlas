@@ -50,11 +50,11 @@ Code: `services/agents/src/atlas_agents/agents/market_scout.py` (pipeline + hook
    partial, else each pick whose asset class (from the feature table, else the pick) is in
    `degraded_asset_classes`. Then renumber ranks 1..n. A pick above the cap gets
    `conviction_before_cap` and `cap_reason` on the card (`partial_evidence` wins when both apply).
-3a. `degraded_asset_classes` is computed in `prepare()` from `news_sources`: a class in
-   `agents.news_intelligence.asset_class_categories` is degraded when no source in its categories is
-   up (up = enabled, not requires_key-without-key, not inside `disabled_until`; the same rule as
-   Laravel's `SourceStatus::DOWN`). A class with no source row is degraded. The news-down cap alone
-   does **not** make the status `partial_evidence`.
+3a. `degraded_asset_classes` is set in `prepare()` from
+   `atlas_agents.news_intelligence.degraded_asset_classes(ctx)` (ATL-107's rule, the same list News
+   puts on its brief): classes of `agents.news_intelligence.asset_class_categories` with no news
+   source available, in config order (not sorted). The news-down cap alone does **not** make the
+   status `partial_evidence`.
 4. Status: `empty` when no picks remain, else `partial_evidence` when evidence is partial, else
    `published`. Saved by `save_watchlist` with `created_at = now`, `edit_window_ends_at = created_at
    + watchlist_edit_window_minutes` (10). The carried pins get `pinned_by_owner = true` again.
