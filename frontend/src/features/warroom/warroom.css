@@ -515,3 +515,149 @@ bdi.fig, bdi.tok { white-space: nowrap; }
   .wr-column { padding-inline: 24px; }
   .composer-wrap { padding-inline: 24px; }
 }
+
+/* ===== Historian cards (ATL-96, design v7 "Historian cards and live reasoning" §5-§7) ===== */
+.hv-card {
+  margin-top: 8px; max-width: 640px; padding: 12px 16px 14px; display: grid; gap: 10px;
+  border-radius: var(--radius-card); background: var(--bg-tertiary);
+  box-shadow: 0 0 0 0.5px var(--hairline-color), var(--shadow-1);
+  container-type: inline-size; grid-template-columns: minmax(0, 1fr);
+}
+.dark .hv-card { background: var(--bg-secondary); }
+.hv-head { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.hv-tile { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; flex: none; background: var(--fill-3); color: var(--label-secondary); margin-inline-end: -2px; }
+.hv-tile svg { width: 14px; height: 14px; }
+.hv-kind { font-weight: 600; color: var(--label); }
+.hv-asof { margin-inline-start: auto; white-space: nowrap; border-radius: 6px; cursor: default; }
+.hv-asof:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.hv-q { font-size: var(--fs-headline); line-height: var(--lh-headline); letter-spacing: var(--tr-headline); font-weight: 600; max-width: 58ch; text-wrap: pretty; }
+
+/* the verdict: the one coloured thing on the card, always icon + words */
+.hv-verdict { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; }
+.verdict {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding-block: 3px; padding-inline: 9px 12px;
+  border-radius: var(--radius-full); font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); letter-spacing: var(--tr-subheadline); font-weight: 600;
+}
+.verdict svg { width: 17px; height: 17px; flex: none; }
+.v-supports { background: var(--profit-wash); color: var(--profit-ink); }
+.v-weakly_supports { color: var(--profit-ink); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--profit) 50%, transparent); }
+.v-does_not_support { background: var(--fill-3); color: var(--label); }
+.v-does_not_support svg { color: var(--label-secondary); }
+.v-contradicts { background: var(--loss-wash); color: var(--loss-ink); }
+.hv-corr { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); border-radius: 6px; cursor: help; }
+.hv-corr svg { width: 14px; height: 14px; flex: none; }
+.hv-corr:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.hv-key { font-size: var(--fs-callout); line-height: var(--lh-callout); letter-spacing: var(--tr-callout); max-width: 58ch; text-wrap: pretty; }
+
+/* evidence: the sample, then what followed */
+.hv-evidence { display: grid; gap: 10px; padding-top: 12px; border-top: 0.5px solid var(--separator); }
+.hv-sample { display: flex; flex-wrap: wrap; align-items: center; row-gap: 6px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.hv-seg { display: inline-flex; align-items: center; }
+.hv-seg .inst-tok, .hv-n { white-space: nowrap; }
+.hv-seg + .hv-seg::before { content: ""; width: 1px; height: 12px; margin-inline: 9px; background: var(--separator-strong); }
+.hv-seg .inst-tok { color: var(--label); }
+.hv-n { color: var(--label); font-weight: 600; }
+.hv-weak, .hv-noise {
+  display: inline-flex; align-items: center; gap: 4px; height: 20px; padding-inline: 6px 8px; border-radius: var(--radius-full);
+  font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 600; white-space: nowrap;
+}
+.hv-weak { margin-inline-start: 10px; background: var(--warning-wash); color: var(--warning-ink); cursor: help; }
+.hv-weak svg, .hv-noise svg { width: 12px; height: 12px; flex: none; }
+.hv-weak:focus-visible, .hv-rule:focus-visible, .hv-table [tabindex]:focus-visible, .rt-new:focus-visible, .hv-corr:focus-visible, .hv-asof:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 4px; }
+
+.hv-dist { overflow-x: auto; margin-inline: -6px; }
+.hv-table { width: 100%; border-collapse: collapse; font-size: var(--fs-footnote); line-height: 18px; font-variant-numeric: tabular-nums; }
+.hv-table th, .hv-table td { padding: 3px 6px; text-align: start; vertical-align: middle; white-space: nowrap; font-weight: 400; }
+.hv-table thead th, .hv-table thead td { padding-block: 0 5px; font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 500; color: var(--label-secondary); vertical-align: bottom; }
+.hv-table thead .hv-tip { border-bottom: 1px dotted var(--separator-strong); cursor: help; }
+.hv-table .hv-num { text-align: end; }
+.hv-table tr.is-cases > * { border-top: 0.5px solid var(--separator); }
+.hv-table .hv-h { font-weight: 600; color: var(--label); padding-inline-end: 14px; }
+.hv-table thead .hv-h { font-weight: 500; color: var(--label-secondary); }
+.hv-table tr.is-base > *:not(.hv-strip-cell) { color: var(--label-secondary); }
+.hv-table tr.is-base .hv-who .hv-tip { cursor: help; }
+.hv-mid .fig { display: inline; }
+.hv-none { color: var(--label-secondary); }
+.hv-strip-cell { width: 144px; padding-inline-start: 16px !important; }
+.hv-strip { display: block; overflow: visible; }
+.hv-strip .zero { stroke: var(--separator-strong); stroke-width: 1; stroke-dasharray: 2 2; }
+.hv-strip .b-cases { fill: color-mix(in srgb, var(--accent) 40%, transparent); }
+.hv-strip .b-cases-med { fill: var(--accent); }
+.hv-strip.is-weak .b-cases { stroke: color-mix(in srgb, var(--accent) 65%, transparent); stroke-width: 1; }
+.hv-strip .hatch { fill: color-mix(in srgb, var(--accent) 80%, transparent); }
+.hv-strip .b-base { fill: var(--fill-1); }
+.hv-strip .b-base-med { fill: var(--label-secondary); }
+.hv-axis { display: flex; justify-content: space-between; width: 144px; color: var(--label-secondary); font-variant-numeric: tabular-nums; }
+@container (max-width: 520px) { .hv-strip-cell { display: none; } }
+
+.hv-ctx { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); }
+.hv-ctx dt { color: var(--label-secondary); }
+.hv-ctx dd { display: flex; flex-wrap: wrap; align-items: center; row-gap: 4px; min-width: 0; }
+.hv-comma { white-space: pre; }
+.hv-rg { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.hv-rg svg { width: 14px; height: 14px; flex: none; color: var(--label-secondary); }
+[dir='rtl'] .hv-rg svg { transform: scaleX(-1); }   /* trend arrows point the reading way */
+.hv-rule { color: var(--label-secondary); border-bottom: 1px dotted var(--separator-strong); cursor: help; }
+.hv-noise { margin-inline-start: 10px; }
+.hv-noise.is-inside { background: var(--warning-wash); color: var(--warning-ink); }
+.hv-noise.is-ok { background: var(--fill-3); color: var(--label-secondary); }
+.hv-warn { display: flex; align-items: flex-start; gap: 8px; padding: 8px 10px; border-radius: 8px; background: var(--warning-wash); color: var(--warning-ink); font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 600; }
+.hv-warn svg { width: 15px; height: 15px; flex: none; margin-top: 1px; }
+.hv-notes { font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.hv-notes-h { display: flex; align-items: center; gap: 6px; font-weight: 600; color: var(--label); }
+.hv-notes-h svg { width: 14px; height: 14px; color: var(--label-secondary); }
+.hv-notes ul { margin-top: 3px; padding-inline-start: 20px; list-style: disc; display: grid; gap: 2px; }
+.hv-notes li::marker { color: var(--label-tertiary); }
+.hv-unv-note { display: flex; align-items: flex-start; gap: 6px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--warning-ink); }
+.hv-unv-note svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
+
+/* a number no tool returned (brief §7.11): wash + underline + icon, never colour alone */
+mark.unv {
+  display: inline; padding: 0 2px; border-radius: 4px; color: inherit; cursor: help; white-space: nowrap;
+  background: var(--warning-wash); box-shadow: inset 0 -1.5px 0 var(--warning);
+}
+mark.unv .unv-ic { display: inline-block; width: 11px; height: 11px; margin-inline-start: 2px; vertical-align: -1px; color: var(--warning-ink); }
+mark.unv:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* ---- Regime table ------------------------------------------------------ */
+.rt-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+.rt-sub { font-size: var(--fs-footnote); line-height: var(--lh-footnote); letter-spacing: 0; font-weight: 400; color: var(--label-secondary); }
+.rt-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.rt-chip {
+  display: inline-flex; align-items: center; gap: 5px; height: 28px; padding-inline: 10px; border-radius: var(--radius-full);
+  background: var(--fill-4); box-shadow: inset 0 0 0 0.5px var(--hairline-color); font-size: var(--fs-footnote); color: var(--label);
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+.rt-chip svg { width: 14px; height: 14px; color: var(--label-secondary); }
+.rt-chip-n { color: var(--label-secondary); }
+.rt-chip:hover { background: var(--fill-3); }
+.rt-chip[aria-pressed="true"] { background: var(--accent-solid); color: #fff; box-shadow: none; }
+.rt-chip[aria-pressed="true"] svg, .rt-chip[aria-pressed="true"] .rt-chip-n { color: rgba(255, 255, 255, 0.85); }
+[dir='rtl'] .rt-chip svg { transform: scaleX(-1); }
+.rt-scroll { overflow-x: auto; margin-inline: -6px; padding-inline: 6px; }
+.rt-table { width: 100%; border-collapse: collapse; font-size: var(--fs-footnote); line-height: 18px; font-variant-numeric: tabular-nums; }
+.rt-table th, .rt-table td { padding: 5px 6px; text-align: start; white-space: nowrap; font-weight: 400; border-top: 0.5px solid var(--separator); }
+.rt-table thead th { border-top: 0; padding-block: 0 3px; }
+.rt-table .rt-prob, .rt-table .rt-days { text-align: end; }
+.rt-table tbody tr:hover > * { background: var(--fill-4); }
+.rt-sort { display: inline-flex; align-items: center; gap: 3px; margin-inline: -4px; padding: 3px 4px; border-radius: 6px; font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 500; color: var(--label-secondary); }
+.rt-sort:hover { color: var(--label); background: var(--fill-4); }
+.rt-sort.is-on { color: var(--label); font-weight: 600; }
+.rt-sort-ic { width: 12px; height: 12px; opacity: 0.5; }
+.rt-sort.is-on .rt-sort-ic { opacity: 1; }
+.rt-rank { width: 30px; color: var(--label-secondary); }
+.rt-meter { display: inline-block; width: 40px; height: 4px; margin-inline-end: 8px; vertical-align: middle; border-radius: 2px; background: var(--fill-2); overflow: hidden; }
+.rt-meter i { display: block; height: 100%; border-radius: 2px; background: var(--label-secondary); }
+.rt-prob .fig { display: inline-block; min-width: 3.4ch; text-align: end; }
+.rt-new { display: inline-block; width: 6px; height: 6px; margin-inline-end: 6px; vertical-align: 1px; border-radius: 50%; background: var(--accent); cursor: help; }
+.rt-more { justify-self: start; display: inline-flex; align-items: center; gap: 4px; margin-inline-start: -6px; padding: 4px 6px; border-radius: 6px; font-size: var(--fs-footnote); font-weight: 500; color: var(--accent-ink); }
+.rt-more svg { width: 13px; height: 13px; }
+.rt-more:hover { background: var(--fill-4); }
+
+
+/* design v7 review (390 px): the horizon table scrolls sideways; while columns sit past the inline
+   end, an edge fade says so (it mirrors in RTL). */
+.hv-dist.has-more { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); }
+[dir='rtl'] .hv-dist.has-more { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 32px), transparent); }
+.hv-dist:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 6px; }
+@media (prefers-reduced-motion: reduce) { .rt-sort-ic { transition: none; } }

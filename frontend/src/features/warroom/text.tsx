@@ -1,6 +1,7 @@
 import { Fragment, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { excerptSource, parseBlocks, tokenize, type Piece, type Token } from './tokens'
+import { UntracedMark, useIsUntraced } from './Untraced'
 
 /* Renders free text with its bidi islands (tokens.ts, design v4 War Room §9). */
 
@@ -43,12 +44,19 @@ function TokenNode({ token, flat }: { token: Token; flat: boolean }) {
         <InstrumentId id={token.text} />
       )
     case 'fig':
-      return (
-        <bdi dir="ltr" className={flat ? 'tok' : 'fig'}>
-          {token.text}
-        </bdi>
-      )
+      return <Figure text={token.text} flat={flat} />
   }
+}
+
+/** A figure island; inside an UntracedScope, one the number guard could not trace is marked. */
+function Figure({ text, flat }: { text: string; flat: boolean }) {
+  const isUntraced = useIsUntraced()
+  const island = (
+    <bdi dir="ltr" className={flat ? 'tok' : 'fig'}>
+      {text}
+    </bdi>
+  )
+  return !flat && isUntraced(text) ? <UntracedMark>{island}</UntracedMark> : island
 }
 
 function renderPieces(pieces: Array<Piece>, flat: boolean): ReactNode[] {

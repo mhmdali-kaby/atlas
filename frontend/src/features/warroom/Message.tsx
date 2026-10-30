@@ -24,8 +24,12 @@ import type { WarroomMessage } from './api'
 import { discardMessage, isLocal, retryMessage, type LocalMessage } from './live'
 import { MessageActions, MessageMenu } from './MessageActions'
 import { Medallion, SystemMedallion } from './Medallion'
+import { HistoryVerdictCard } from './HistoryVerdictCard'
+import { readHistoryVerdict, readRegimeTable, unmatchedOf } from './historian'
 import { NewsAlertCard } from './NewsAlertCard'
 import { readNewsAlert } from './newsAlert'
+import { RegimeTableCard } from './RegimeTableCard'
+import { UntracedScope } from './Untraced'
 import { Excerpt, Inline, Markdown } from './text'
 import { continues, shapeOf, useAuthorName } from './shape'
 import { formatFullTime, formatTime } from './time'
@@ -40,6 +44,7 @@ import { formatFullTime, formatTime } from './time'
 const KIND_ICON: Record<string, LucideIcon> = {
   watchlist: ListChecks,
   research_report: FileText,
+  regime_table: Layers,
   news_alert: Newspaper,
   proposal: ChessKnight,
   vote_summary: UsersRound,
@@ -59,6 +64,43 @@ const CARDS: Partial<Record<string, (m: WarroomMessage, lang: Lang) => ReactNode
     const alert = readNewsAlert(m.card)
     return alert ? <NewsAlertCard alert={alert} lang={lang} /> : null
   },
+  // The Historian's answer (design v7 Historian cards §5): its content_md above the card, with
+  // untraced numbers marked in both (brief §7.11, ATL-91 unmatched_numbers).
+  research_report: (m, lang) => {
+    const card = readHistoryVerdict(m.card)
+    if (!card) return null
+    const unmatched = unmatchedOf(m)
+    return (
+      <>
+        <AgentBody message={m} />
+        <HistoryVerdictCard card={card} unmatched={unmatched} lang={lang} />
+      </>
+    )
+  },
+  // The Historian's 07:30 regime table (design v7 §7).
+  regime_table: (m, lang) => {
+    const card = readRegimeTable(m.card)
+    if (!card) return null
+    return (
+      <>
+        <AgentBody message={m} />
+        <RegimeTableCard card={card} lang={lang} />
+      </>
+    )
+  },
+}
+
+/** An agent's content_md, with the figures the number guard could not trace marked. */
+function AgentBody({ message: m }: { message: WarroomMessage }) {
+  if (!m.content_md.trim()) return null
+  const raws = unmatchedOf(m)
+    .filter((u) => u.location === 'text')
+    .map((u) => u.raw)
+  return (
+    <UntracedScope raws={raws}>
+      <Markdown text={m.content_md} />
+    </UntracedScope>
+  )
 }
 
 function Time({ ts, lang }: { ts: string; lang: Lang }) {

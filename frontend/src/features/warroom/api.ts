@@ -39,6 +39,8 @@ export interface WarroomMessage {
   tokens_in: number | null
   tokens_out: number | null
   cost_usd: string | null
+  /** ATL-89: the number guard's untraced numbers (ATL-91 to_meta()), or null without card meta. */
+  unmatched_numbers?: unknown[] | null
   created_at: string
 }
 
