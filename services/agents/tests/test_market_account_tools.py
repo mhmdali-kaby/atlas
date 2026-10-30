@@ -442,6 +442,7 @@ async def test_every_tool_has_as_of_and_source_and_an_unsubscribed_orderbook_is_
         "get_mark_price": {"inst_id": inst},
         "get_instrument_spec": {"inst_id": inst},
         "get_ta_table": {"inst_id": inst},
+        "get_positioning_features": {"inst_id": inst},
         "get_correlations": {"inst_ids": [inst, "NOPE-USDT-SWAP"]},
         "get_watchlist": {},
     }

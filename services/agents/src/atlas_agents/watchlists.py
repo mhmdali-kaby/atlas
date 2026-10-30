@@ -4,7 +4,8 @@
 pick against :class:`~atlas_agents.schemas.WatchlistPick` before it touches the database, so an
 invalid pick writes nothing, and it writes both tables inside one savepoint, so a database error
 leaves neither. Each call adds a new version for (env, date): the current watchlist is the highest
-version (``atlas_data.get_watchlist`` reads it).
+version (``atlas_data.get_watchlist`` reads it). :func:`current_watchlist` + :func:`listed_ids` are
+the shared readers of that current version for the agents (owner-removed items left out).
 
 ``date`` is the Asia/Baghdad business day (:func:`baghdad_today`), never a UTC date.
 """
@@ -15,13 +16,16 @@ import uuid
 from collections.abc import Mapping, Sequence
 from datetime import UTC, date, datetime
 from decimal import Decimal
-from typing import Any, Final, Literal, get_args
+from typing import TYPE_CHECKING, Any, Final, Literal, get_args
 
 from atlas_shared.db import Watchlist, WatchlistItem, owner_day
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from atlas_agents.schemas import WatchlistPick
+
+if TYPE_CHECKING:
+    from atlas_agents.tools import ToolContext
 
 WatchlistStatus = Literal["draft", "published", "partial_evidence", "empty"]
 STATUSES: Final[frozenset[str]] = frozenset(get_args(WatchlistStatus))
@@ -133,4 +137,34 @@ def save_watchlist(
     return watchlist
 
 
-__all__ = ["STATUSES", "WatchlistError", "WatchlistStatus", "baghdad_today", "save_watchlist"]
+def current_watchlist(session: Session, ctx: ToolContext, day: date) -> Watchlist | None:
+    """The latest version of ``day``'s watchlist in ``ctx.env`` saved within ``ctx.bound``."""
+    return session.scalars(
+        select(Watchlist)
+        .where(Watchlist.env == ctx.env, Watchlist.date == day, ctx.bound(Watchlist.created_at))
+        .order_by(Watchlist.version.desc())
+        .limit(1)
+    ).first()
+
+
+def listed_ids(session: Session, watchlist: Watchlist | None) -> list[str]:
+    """Instruments on ``watchlist`` that the owner has not removed, in rank order."""
+    if watchlist is None:
+        return []
+    items = session.scalars(
+        select(WatchlistItem)
+        .where(WatchlistItem.watchlist_id == watchlist.id, WatchlistItem.removed_by_owner_at.is_(None))
+        .order_by(WatchlistItem.rank)
+    ).all()
+    return [i.inst_id for i in items]
+
+
+__all__ = [
+    "STATUSES",
+    "WatchlistError",
+    "WatchlistStatus",
+    "baghdad_today",
+    "current_watchlist",
+    "listed_ids",
+    "save_watchlist",
+]
