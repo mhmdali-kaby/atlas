@@ -29,7 +29,7 @@ SOURCE: Final = (
 )
 
 
-def _features(ctx: ToolContext, inst_id: str) -> DerivativesFeatures:
+def features_for(ctx: ToolContext, inst_id: str) -> DerivativesFeatures:
     as_of = ctx.now()
     with ctx.session_factory() as session:
         known = session.scalar(
@@ -47,7 +47,7 @@ def _features(ctx: ToolContext, inst_id: str) -> DerivativesFeatures:
 async def build_positioning_features(ctx: ToolContext, inst_id: str) -> tuple[dict[str, Any], datetime]:
     """(the features as JSON-ready data, their as_of). Raises ToolError not_found for an unknown
     instrument."""
-    features = await asyncio.to_thread(_features, ctx, inst_id)
+    features = await asyncio.to_thread(features_for, ctx, inst_id)
     return features.model_dump(mode="json"), features.data_as_of
 
 
@@ -81,4 +81,10 @@ async def get_positioning_features(ctx: ToolContext, args: InstIdInput) -> ToolR
     return ToolResult(data=PositioningFeaturesOut.model_validate(plain), as_of=as_of, source=SOURCE)
 
 
-__all__ = ["SOURCE", "PositioningFeaturesOut", "build_positioning_features", "get_positioning_features"]
+__all__ = [
+    "SOURCE",
+    "PositioningFeaturesOut",
+    "build_positioning_features",
+    "features_for",
+    "get_positioning_features",
+]

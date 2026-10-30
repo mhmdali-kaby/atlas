@@ -26,9 +26,8 @@ from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 
-from atlas_shared.db import Watchlist, WatchlistItem, owner_day
+from atlas_shared.db import owner_day
 from atlas_shared.events import EventEnvelope
-from sqlalchemy import select
 
 from atlas_agents import events
 from atlas_agents import technical_analyst as ta_agent
@@ -41,6 +40,7 @@ from atlas_agents.registry import HOOKS, AgentHost, ScheduleFire
 from atlas_agents.session import RunResult, Trigger
 from atlas_agents.tools import ToolContext
 from atlas_agents.tools.framework import ToolError
+from atlas_agents.watchlists import current_watchlist, listed_ids
 
 log = logging.getLogger(__name__)
 
@@ -135,23 +135,7 @@ def _start(
 def watchlist_instruments(ctx: ToolContext) -> list[str]:
     """Today's (Asia/Baghdad) watchlist, best rank first, owner-removed items left out. Synchronous."""
     with ctx.session_factory() as session:
-        wl_id = session.scalar(
-            select(Watchlist.id)
-            .where(
-                Watchlist.env == ctx.env,
-                Watchlist.date == owner_day(ctx.now()),
-                ctx.bound(Watchlist.created_at),
-            )
-            .order_by(Watchlist.version.desc())
-            .limit(1)
-        )
-        if wl_id is None:
-            return []
-        rows = session.scalars(
-            select(WatchlistItem.inst_id)
-            .where(WatchlistItem.watchlist_id == wl_id, WatchlistItem.removed_by_owner_at.is_(None))
-            .order_by(WatchlistItem.rank)
-        ).all()
+        rows = listed_ids(session, current_watchlist(session, ctx, owner_day(ctx.now())))
     return list(dict.fromkeys(rows))
 
 

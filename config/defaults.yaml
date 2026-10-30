@@ -1219,7 +1219,8 @@ agents:
   #     trigger: |OI change| over extreme_oi_window_hours > extreme_oi_change_pct, or |funding z|
   #     (any of extreme_funding_z_keys) > extreme_funding_z.
   #   regime_windows_hours: the card's regime is the quadrant of the first of these windows that
-  #     has one ("flat" when none has, or the data is unreliable).
+  #     has one ("flat" when none has). Unreliable data does not force "flat": zero taker volume
+  #     alone leaves the OI quadrants, so a card can carry a quadrant with data_reliable false.
   derivatives_sentiment:
     watchlist_max_runs: 10
     mention_max_instruments: 3

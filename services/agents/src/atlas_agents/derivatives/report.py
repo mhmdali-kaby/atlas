@@ -45,7 +45,7 @@ from atlas_agents.session import Review, RunResult, Trigger
 from atlas_agents.tools import ToolContext
 from atlas_agents.tools.framework import ToolError
 from atlas_agents.tools.positioning import SOURCE as FEATURES_SOURCE
-from atlas_agents.tools.positioning import _features
+from atlas_agents.tools.positioning import features_for
 from atlas_agents.tools.warroom import MAIN_THREAD
 
 SLUG: Final = "derivatives_sentiment"
@@ -67,7 +67,7 @@ def output_retries(defaults: Mapping[str, Any] = DEFAULTS) -> int:
 
 async def load_features(ctx: ToolContext, inst_id: str) -> DerivativesFeatures:
     """The instrument's features as of ``ctx.now()``. Raises ToolError not_found for an unknown one."""
-    return await asyncio.to_thread(_features, ctx, inst_id)
+    return await asyncio.to_thread(features_for, ctx, inst_id)
 
 
 # -- the code rules ----------------------------------------------------------------------------------
