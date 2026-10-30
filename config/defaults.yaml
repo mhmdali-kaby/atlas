@@ -306,7 +306,7 @@ private_ws:
     - { channel: orders-algo, instType: ANY }
     - { channel: liquidation-warning, instType: ANY }
   no_connection_retry_seconds: 60
-  snapshot_min_interval_seconds: 5
+  snapshot_min_interval_seconds: 30
 
 # ATL-47, brief §7.3 data-quality checks, every interval_seconds and on demand
 # (POST /internal/quality/check). Each run looks at the last window_bars bars of every candle series

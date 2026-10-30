@@ -324,7 +324,7 @@ return [
             ],
         ],
         'no_connection_retry_seconds' => 60,
-        'snapshot_min_interval_seconds' => 5,
+        'snapshot_min_interval_seconds' => 30,
     ],
     'quality' => [
         'interval_seconds' => 900,

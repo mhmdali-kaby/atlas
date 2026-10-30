@@ -719,3 +719,78 @@ async def test_no_credentials_keeps_the_socket_closed_and_marks_it_disconnected(
         assert md.read_private(rds, ENV).is_stale(clock.now())
     finally:
         await feed.stop()
+
+
+# -- the snapshot tick is the REST sync's writer (review round 1) -------------------------------------
+
+
+async def test_snapshot_tick_unrealised_pnl_matches_the_rest_sync_for_a_coin_margined_position(
+    engine: Engine, rds: redis.Redis, okx: FakePrivateOkx
+) -> None:
+    """Futures mode: the account push has no upl, one position is USDT-settled (upl 2 USDT) and one is
+    coin-margined (upl 0.01 BTC). Only the USD-settled one counts, exactly as sync.account.upl_usd."""
+    from trading_core.okx.models import AccountBalance, Position
+    from trading_core.sync.account import upl_usd
+
+    t1 = T0 + timedelta(days=1)
+    usdt_inst = _inst()
+    coin_inst = f"PW{uuid.uuid4().hex[:6].upper()}-USD-SWAP"
+    coin_pos = {**_position(coin_inst, pos="5"), "ccy": "BTC", "upl": "0.01"}
+    account = {**_account(), "upl": "", "uTime": str(md.to_ms(t1))}
+    with engine.connect() as conn:
+        prior = (
+            conn.execute(select(SyncStatus).where(SyncStatus.env == ENV, SyncStatus.stream == "account"))
+            .mappings()
+            .first()
+        )
+    clock = FakeClock(t1)
+    feed = _feed(engine, rds, okx, clock)
+    try:
+        await _started(feed, okx)
+        await okx.push("positions", [_position(usdt_inst), coin_pos], instType="ANY")
+        await okx.push("account", [account])
+        await _until(lambda: len(_events(rds, "atlas.account", "account.balance")) == 1)
+        await _settle()
+        with engine.connect() as conn:
+            point = (
+                conn.execute(select(EquityPoint).where(EquityPoint.env == ENV, EquityPoint.ts == t1))
+                .mappings()
+                .one()
+            )
+            status = (
+                conn.execute(select(SyncStatus).where(SyncStatus.env == ENV, SyncStatus.stream == "account"))
+                .mappings()
+                .one()
+            )
+            pos = (
+                conn.execute(
+                    select(PositionSnapshot).where(
+                        PositionSnapshot.env == ENV, PositionSnapshot.taken_at == t1
+                    )
+                )
+                .mappings()
+                .all()
+            )
+        rest = upl_usd(
+            AccountBalance.model_validate(account),
+            [Position.model_validate(_position(usdt_inst)), Position.model_validate(coin_pos)],
+        )
+        assert rest == Decimal("2")
+        assert point["upl_usd"] == rest  # the coin-margined 0.01 BTC is not added to USD
+        assert {p["inst_id"] for p in pos} == {usdt_inst, coin_inst}
+        assert status["last_success_at"] == t1
+        # The feed never claims "reconciled with OKX": that stays the REST sync's stamp.
+        assert status["reconciled_at"] == (prior["reconciled_at"] if prior is not None else None)
+    finally:
+        await feed.stop()
+        with engine.begin() as conn:
+            conn.execute(
+                delete(PositionSnapshot).where(PositionSnapshot.env == ENV, PositionSnapshot.taken_at == t1)
+            )
+            conn.execute(
+                delete(BalanceSnapshot).where(BalanceSnapshot.env == ENV, BalanceSnapshot.taken_at == t1)
+            )
+            conn.execute(delete(EquityPoint).where(EquityPoint.env == ENV, EquityPoint.ts == t1))
+            conn.execute(delete(SyncStatus).where(SyncStatus.env == ENV, SyncStatus.stream == "account"))
+            if prior is not None:
+                conn.execute(insert(SyncStatus).values(dict(prior)))

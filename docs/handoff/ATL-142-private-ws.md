@@ -34,8 +34,8 @@ with `eqUsd`/`totalEq`, which the balance snapshot needs.
 
 | channel | DB | events |
 | --- | --- | --- |
-| orders | upsert `orders`: match `cl_ord_id`, then `(env, ord_id)`; unknown → insert `origin='external'`, `purpose='entry'`. Updates `ord_id, state, filled_sz (=accFillSz), sz, avg_px, fee, fee_ccy, lever, raw`. `fillSz>0` + `tradeId` → insert `fills` ON CONFLICT (env, inst_id, trade_id) DO NOTHING | `account.order` every push; `account.fill` only for a new fill row; `order.state_changed` on `atlas.orders` when the state moved (insert counts, from_state null) |
-| orders-algo | upsert `algo_orders`: match `algo_cl_ord_id`, then `(env, algo_id)`; unknown → insert external. Existing rows get `algo_id, state, raw` only | `account.algo_order`; `algo_order.state_changed` on `atlas.orders` |
+| orders | upsert `orders` (via `order_store`, below): match `(env, cl_ord_id)`, then `(env, ord_id)`; unknown → insert `origin='external'`, `purpose='entry'`. Updates `ord_id, state, filled_sz (=accFillSz), sz, avg_px, fee, fee_ccy, lever, raw`. `fillSz>0` + `tradeId` → insert `fills` ON CONFLICT (env, inst_id, trade_id) DO NOTHING | `account.order` every push; `account.fill` only for a new fill row; `order.state_changed` on `atlas.orders` when the state moved (insert counts, from_state null) |
+| orders-algo | upsert `algo_orders`: match `(env, algo_cl_ord_id)`, then `(env, algo_id)`; unknown → insert external. Existing rows get `algo_id, state, raw` only | `account.algo_order`; `algo_order.state_changed` on `atlas.orders` |
 | positions | in-memory, first push per connection = full snapshot; pos 0 drops it | `account.position` `{channel:"positions", positions:[…]}` |
 | account | in-memory latest balance | `account.balance` `{channel:"account", total_eq, upl, u_time, balances:[{ccy, eq, cash_bal, avail_bal, frozen_bal, eq_usd, upl}]}` |
 | balance_and_position | none (posData has no mark/upl) | `account.balance` `{channel:"balance_and_position", event_type, balances:[{ccy, cash_bal}]}` and `account.position` `{…, positions:[{inst_id, inst_type, pos_side, mgn_mode, pos, avg_px}]}` |
@@ -62,14 +62,35 @@ Order payload (`account.order`, and the base of `order.state_changed`):
 `account.fill`: `fill_id, order_id, trade_id, ord_id, cl_ord_id, inst_id, side, pos_side, fill_px,
 fill_sz, fee, fee_ccy, exec_type, fill_pnl, ts`.
 
+## Order persistence is shared: `trading_core.execution.order_store`
+
+**Reconciliation should call these, not write its own upsert.** Plain functions, one transaction each:
+
+- `upsert_order(engine, env, okx_row, now) -> OrderUpsert | None` — matches `(env, cl_ord_id)`, then
+  `(env, ord_id)`; unknown → insert `origin='external'`; `fillSz>0` + `tradeId` → one `fills` row
+  (deduped). None only for an unknown row with no size. `OrderUpsert`: `order_id, prev_state, state,
+  filled_sz, origin, late, new_fill, state_changed`.
+- `upsert_algo(engine, env, okx_row, now) -> AlgoUpsert` — `(env, algo_cl_ord_id)`, then `(env, algo_id)`.
+  `algo_order_id` is None for types not stored.
+- `order_payload(u)`, `fill_payload(u)`, `algo_payload(u)` build the event payloads (now with a
+  `"late"` flag).
+- **Late pushes:** a row whose `uTime` is older than the stored `raw.uTime` changes nothing but
+  `ord_id`/`updated_at` (no state or filled_sz regression, `state_changed` false); its fill is still
+  inserted. A REST row from `orders-history` goes through the same rule.
+- **clOrdId is unique across envs** in the schema. An imported row whose clOrdId the other env
+  already holds is inserted with `cl_ord_id` null (the id stays in `raw.clOrdId`); the other env's row
+  is never touched.
+
 ## Snapshot ticks
 
 Once a connection has both an `account` push and its first `positions` push, every change writes one
-tick in the REST account sync's shape: trading `balances_snapshots` from the account push, the
-newest REST tick's **funding** rows copied with the new `taken_at`, `positions_snapshots`,
-`equity_curve` (trading totalEq + funding eq_usd), and `sync_status(stream=account).last_success_at`
-(not `reconciled_at` — that stays the REST sync's). At most once per
-`private_ws.snapshot_min_interval_seconds` (5); a skipped change is flushed by the 5 s stale check.
+tick through **the REST sync's writer**, `trading_core.sync.account.write_tick(engine, env, now,
+balance, positions, funding_rows=None, reconciled=False)`: trading `balances_snapshots`, the newest
+stored **funding** rows re-stamped (`funding_rows=None`), `positions_snapshots`, `equity_curve`
+(`upl_usd` from `sync.account.upl_usd` — account upl, else USD-settled positions only), and
+`sync_status(stream=account).last_success_at` (not `reconciled_at`: `reconciled=False`). At most once
+per `private_ws.snapshot_min_interval_seconds` (30); a skipped change is flushed by the 5 s stale check.
+The events carry the live values in between.
 
 ## Freshness (Redis)
 
