@@ -959,6 +959,7 @@ DEFAULTS: Final[dict[str, Any]] = {
         "mentions": {
             "block_ms": 5000,
             "batch": 50,
+            "max_depth": 2,
         },
     },
 }

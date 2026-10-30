@@ -2,13 +2,18 @@
 
 It is also the long-running process's brain (``python -m atlas_agents``, ATL-93):
 
+* Agents are not named here. Each module in ``atlas_agents.agents`` registers a mention handler
+  and schedule hooks with ``atlas_agents.registry.HOOKS``; :func:`discover_hooks` finds them
+  (ATL-101, decision #247).
 * :meth:`Supervisor.handle_envelope` takes every ``atlas.warroom`` envelope; a ``warroom.message``
-  that mentions an enabled agent with a mention handler (today: the Historian) starts that agent's
-  run. :meth:`Supervisor.consume_warroom` feeds it from Redis with XREAD.
-* :meth:`Supervisor.tick` runs the daily jobs (``agents.schedule``, Asia/Baghdad wall clock) once
-  per Baghdad day, at the scheduled time or at the first tick after it. "Done today" is read from
+  that mentions an enabled agent with a mention handler starts that agent's run, whether the owner,
+  the system or another agent wrote it. Chains stop at ``agents.mentions.max_depth`` (see
+  :mod:`atlas_agents.mentions`). :meth:`Supervisor.consume_warroom` feeds it from Redis with XREAD.
+* :meth:`Supervisor.tick` fires the schedule hooks. A daily hook (Asia/Baghdad wall clock) runs once
+  per Baghdad day, at its time or at the first tick after it. "Done today" is read from
   ``agent_runs`` (trigger ``schedule``, correlation_id ``<job>:<YYYY-MM-DD>``), so a restart later
-  the same day does not run a job again. :meth:`Supervisor.serve` loops both.
+  the same day does not run a job again. An interval hook runs every ``every_seconds`` (tracked in
+  memory, so also at the first tick). :meth:`Supervisor.serve` loops both.
 
 Runs of one agent never overlap: each agent has its own lock.
 """
@@ -16,6 +21,7 @@ Runs of one agent never overlap: each agent has its own lock.
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import dataclasses
 import logging
 import uuid
@@ -33,16 +39,28 @@ from atlas_shared.events import EventEnvelope
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from atlas_agents import access, events, historian, prompts, streaming
-from atlas_agents.registry import REGISTRY, AgentSpec, enabled_agents
+from atlas_agents import access, events, mentions, prompts, streaming
+from atlas_agents.registry import (
+    REGISTRY,
+    AgentHooks,
+    AgentSpec,
+    ScheduleFire,
+    ScheduleHook,
+    discover_hooks,
+    enabled_agents,
+)
 from atlas_agents.session import AgentSession, ClientFactory, RunResult, Trigger, default_client_factory
 from atlas_agents.tools import ToolContext
+from atlas_agents.tools.framework import RunScope
 
 log = logging.getLogger(__name__)
 
 SessionBuilder = Callable[[AgentSpec], AgentSession]
 Clock = Callable[[], datetime]
 WARROOM_STREAM: Final = "atlas.warroom"
+
+# The mention depth of the run a mention handler starts (0 outside a handler).
+_MENTION_DEPTH: contextvars.ContextVar[int] = contextvars.ContextVar("atlas_mention_depth", default=0)
 
 
 class AgentUnavailableError(LookupError):
@@ -81,6 +99,7 @@ class Supervisor:
         replay_as_of: datetime | None = None,
         prompts_dir: Path | None = None,
         clock: Clock | None = None,
+        hooks: Mapping[str, AgentHooks] | None = None,
     ) -> None:
         sessions = sessionmaker(bind=engine)
         enabled = enabled_agents(registry)
@@ -91,6 +110,10 @@ class Supervisor:
         self._publish = publisher
         self._replay_as_of = replay_as_of
         self._clock: Clock = clock or (lambda: datetime.now(UTC))
+        # Mention handlers and schedule hooks by slug (atlas_agents.agents.*, ATL-101).
+        self.hooks: dict[str, AgentHooks] = dict(hooks if hooks is not None else discover_hooks())
+        self._scopes: dict[str, RunScope] = {}
+        self._last_fired: dict[tuple[str, str], datetime] = {}
 
         def build(spec: AgentSpec) -> AgentSession:
             # Tools come only from the §7.10 matrix (atlas_agents.access); replay bounds every query.
@@ -120,6 +143,13 @@ class Supervisor:
         self.sessions: dict[str, AgentSession] = {spec.slug: make(spec) for spec in enabled}
         self._locks: dict[str, asyncio.Lock] = {slug: asyncio.Lock() for slug in self.sessions}
 
+    @property
+    def replaying(self) -> bool:
+        return self._replay_as_of is not None
+
+    def publish(self, stream: str, envelope: EventEnvelope) -> None:
+        self._publish(stream, envelope)
+
     def tool_context(self, agent: str) -> ToolContext:
         return ToolContext(
             env=self.env,
@@ -127,51 +157,67 @@ class Supervisor:
             agent=agent,
             replay_as_of=self._replay_as_of,
             clock=self._clock,
+            run=self._scope(agent),
         )
+
+    def _scope(self, agent: str) -> RunScope:
+        """The one RunScope every ToolContext of ``agent`` shares; :meth:`run` sets it."""
+        return self._scopes.setdefault(agent, RunScope())
 
     async def run(self, agent: str, prompt: str, **kwargs: Any) -> RunResult:
         """Run ``prompt`` on ``agent``. Raises only AgentUnavailableError; every other failure is a
-        RunResult with status ``error``."""
+        RunResult with status ``error``. Started from a mention handler, the run takes the mention's
+        depth, so a ``warroom.mention`` it writes is one deeper (see :mod:`atlas_agents.mentions`)."""
         session = self.sessions.get(agent)
         if session is None:
             raise AgentUnavailableError(agent)
         trigger: Trigger = kwargs.pop("trigger", "manual")
+        scope = self._scope(agent)
         async with self._locks[agent]:
+            scope.correlation_id = kwargs.get("correlation_id")
+            scope.mention_depth = _MENTION_DEPTH.get()
             try:
                 return await session.run(prompt, trigger=trigger, **kwargs)
             except Exception as exc:  # e.g. Postgres down: log it, keep the process alive
                 log.exception("agent %s: run failed outside the session", agent)
                 await session.close()
                 return RunResult(run_id=uuid.uuid4(), status="error", error=f"{type(exc).__name__}: {exc}")
+            finally:
+                scope.correlation_id = None
+                scope.mention_depth = 0
 
     # -- mentions ---------------------------------------------------------------------------------
 
     async def handle_envelope(self, envelope: EventEnvelope) -> list[RunResult]:
-        """Start the run of every enabled agent with a mention handler that ``envelope`` mentions."""
+        """Start the run of every enabled agent with a mention handler that ``envelope`` mentions.
+        A mention at depth ``agents.mentions.max_depth`` or deeper starts no run and is logged."""
         results: list[RunResult] = []
-        if historian.SLUG in self.sessions:
-            request = historian.mention_from_envelope(envelope, historian.SLUG, self.env)
-            if request is not None:
-                results.append(await self.answer_historian_mention(request))
+        limit = mentions.max_depth()
+        for slug, hooks in self.hooks.items():
+            if hooks.on_mention is None or slug not in self.sessions:
+                continue
+            request = mentions.mention_from_envelope(envelope, slug, self.env)
+            if request is None:
+                continue
+            if request.depth >= limit:
+                log.warning(
+                    "agents: mention chain stopped at depth %d (max_depth %d): %s -> %s, event %s, corr %s",
+                    request.depth,
+                    limit,
+                    request.author,
+                    slug,
+                    request.event_id,
+                    request.correlation_id,
+                )
+                continue
+            token = _MENTION_DEPTH.set(request.depth)
+            try:
+                result = await hooks.on_mention(self, request)
+            finally:
+                _MENTION_DEPTH.reset(token)
+            if result is not None:
+                results.append(result)
         return results
-
-    async def answer_historian_mention(self, request: historian.MentionRequest) -> RunResult:
-        """One @Historian answer: a research_report reply whose card validates as HistoryVerdict."""
-        reply_to, thread_id = await asyncio.to_thread(
-            historian.resolve_parent, self.tool_context(historian.SLUG), request
-        )
-        reviewer = historian.VerdictReviewer(request, reply_to=reply_to, thread_id=thread_id)
-        return await self.run(
-            historian.SLUG,
-            historian.mention_prompt(request),
-            trigger="mention",
-            task=f"answer {request.author}",
-            correlation_id=request.correlation_id,
-            reviewer=reviewer,
-            max_follow_ups=historian.output_retries(),
-            thread_id=thread_id,
-            reply_to=reply_to,
-        )
 
     async def consume_warroom(
         self,
@@ -224,59 +270,49 @@ class Supervisor:
             ).first()
         return found is not None
 
-    def due(self, job: str, now: datetime) -> date | None:
-        """The Baghdad day ``job`` is due for at ``now``, or None (not yet time today)."""
+    def due(self, job: str, now: datetime, at: time | None = None) -> date | None:
+        """The Baghdad day daily ``job`` is due for at ``now``, or None (not yet time today). ``at``
+        defaults to ``agents.schedule.<job>``."""
         local = now.astimezone(owner_zone())
-        if local.time() < job_time(job):
+        if local.time() < (at if at is not None else job_time(job)):
             return None
         return local.date()
 
     async def tick(self, now: datetime | None = None) -> list[RunResult]:
-        """Run every daily job that is due and not yet done today."""
+        """Fire every schedule hook of an enabled agent that is due."""
         at = now or self._clock()
         results: list[RunResult] = []
-        if historian.SLUG in self.sessions:
-            day = self.due(historian.REGIME_JOB, at)
-            if day is not None and not await asyncio.to_thread(
-                self._job_done, historian.SLUG, historian.REGIME_JOB, day
-            ):
-                result = await self.post_regime_table(day)
+        for slug, hooks in self.hooks.items():
+            if slug not in self.sessions:
+                continue
+            for hook in hooks.schedule:
+                fire = await self._fire_if_due(slug, hook, at)
+                if fire is None:
+                    continue
+                if not hook.daily:
+                    self._last_fired[(slug, hook.name)] = at
+                try:
+                    result = await hook.run(self, fire)
+                except Exception:  # one broken hook must not stop the others
+                    log.exception("agents: schedule hook %s of %s failed", hook.name, slug)
+                    continue
                 if result is not None:
                     results.append(result)
         return results
 
-    async def post_regime_table(self, day: date) -> RunResult | None:
-        """The 07:30 regime table: computed in code, commented by the Historian, posted as kind
-        regime_table. If the run fails the table is still posted, without commentary."""
-        table = await historian.build_regime_table(self.tool_context(historian.SLUG))
-        if table is None:
-            log.warning("historian: no instrument with 24h volume in %s; no regime table %s", self.env, day)
+    async def _fire_if_due(self, slug: str, hook: ScheduleHook, at: datetime) -> ScheduleFire | None:
+        if hook.every_seconds is None:
+            day = self.due(hook.name, at, hook.time_of_day())
+            if day is None or await asyncio.to_thread(self._job_done, slug, hook.name, day):
+                return None
+            correlation_id = job_correlation_id(hook.name, day)
+            return ScheduleFire(name=hook.name, at=at, day=day, correlation_id=correlation_id)
+        last = self._last_fired.get((slug, hook.name))
+        if last is not None and (at - last).total_seconds() < hook.every_seconds:
             return None
-        result = await self.run(
-            historian.SLUG,
-            historian.regime_prompt(table),
-            trigger="schedule",
-            task="regime table",
-            correlation_id=job_correlation_id(historian.REGIME_JOB, day),
-            reviewer=historian.RegimeTableReviewer(table),
-            max_follow_ups=0,
-        )
-        if result.status != "ok" and self._replay_as_of is None:
-            payload = historian.message_payload(
-                historian.SLUG, historian.fallback_regime_message(table, result.status), str(result.run_id)
-            )
-            envelope = events.envelope(
-                type_="warroom.message",
-                env=self.env,
-                agent=historian.SLUG,
-                payload=payload,
-                correlation_id=job_correlation_id(historian.REGIME_JOB, day),
-            )
-            try:
-                self._publish(WARROOM_STREAM, envelope)
-            except Exception:
-                log.warning("historian: could not publish the fallback regime table", exc_info=True)
-        return result
+        stamp = at.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        day = at.astimezone(owner_zone()).date()
+        return ScheduleFire(name=hook.name, at=at, day=day, correlation_id=f"{hook.name}:{stamp}")
 
     async def serve(self, client: redis.Redis, *, stop: asyncio.Event) -> None:
         """The process loop: the mention consumer plus a schedule tick every tick_seconds."""
