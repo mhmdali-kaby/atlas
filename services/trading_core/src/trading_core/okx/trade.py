@@ -383,20 +383,29 @@ class OkxTradeClient(OkxTradeReadClient):
         *,
         algo_id: str | None = None,
         algo_cl_ord_id: str | None = None,
-        new_sz: Decimal,
+        new_sz: Decimal | None = None,
+        new_sl_trigger_px: Decimal | None = None,
+        new_tp_trigger_px: Decimal | None = None,
         req_id: str | None = None,
     ) -> AlgoAck:
-        """POST trade/amend-algos: change a pending TP/SL (conditional/OCO) order's size. Prices are not
-        sent, so OKX keeps the stop and take-profit exactly where they are."""
+        """POST trade/amend-algos: change a pending TP/SL (conditional/OCO) order's size and/or its
+        stop-loss / take-profit trigger. Only what is given is sent: a size-only amend keeps both prices
+        exactly where they are. A new trigger is market on trigger (``newSlOrdPx``/``newTpOrdPx`` -1)."""
         path = "trade/amend-algos"
         if (algo_id is None) == (algo_cl_ord_id is None):
             raise ValueError("give exactly one of algo_id or algo_cl_ord_id")
+        if new_sz is None and new_sl_trigger_px is None and new_tp_trigger_px is None:
+            raise ValueError("give new_sz, new_sl_trigger_px or new_tp_trigger_px")
         body = _compact(
             {
                 "instId": inst_id,
                 "algoId": algo_id,
                 "algoClOrdId": algo_cl_ord_id,
                 "newSz": _opt_dec("new_sz", new_sz),
+                "newSlTriggerPx": _opt_dec("new_sl_trigger_px", new_sl_trigger_px),
+                "newSlOrdPx": MARKET_PX if new_sl_trigger_px is not None else None,
+                "newTpTriggerPx": _opt_dec("new_tp_trigger_px", new_tp_trigger_px),
+                "newTpOrdPx": MARKET_PX if new_tp_trigger_px is not None else None,
                 "reqId": _cl_id("req_id", req_id),
             }
         )

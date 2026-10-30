@@ -401,7 +401,7 @@ def test_due_slot_every_30_min_from_0810_to_2300() -> None:
 
 def test_orchestrator_registers_the_schedule_and_cycle_now_hooks() -> None:
     got = discover_hooks()["orchestrator"]
-    assert [h.name for h in got.schedule] == [hooks.SCHEDULE_JOB]
+    assert [h.name for h in got.schedule] == [hooks.SCHEDULE_JOB, hooks.STATUS_JOB]
     assert hooks.CYCLE_NOW_EVENT in got.on_event
 
 

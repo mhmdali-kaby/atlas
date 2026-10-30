@@ -273,6 +273,8 @@ class ScoresInput(ToolInput):
 
 
 # -- orchestration (brief §7.9) -------------------------------------------------------------------
+# §7.9 also names open_vote/close_vote; the vote is opened and closed by code (ATL-154/ATL-160), so
+# no agent has them and they are not in the catalogue (ATL-161).
 
 
 class StartCycleInput(ToolInput):
@@ -283,16 +285,6 @@ class AssignInput(ToolInput):
     agent: str
     task: str = Field(max_length=4000)
     deadline: datetime
-
-
-class OpenVoteInput(ToolInput):
-    proposal_id: str
-    voters: list[str]
-    deadline: datetime
-
-
-class ProposalIdInput(ToolInput):
-    proposal_id: str
 
 
 class SetAgentStateInput(ToolInput):
@@ -366,8 +358,6 @@ CATALOGUE: Final[dict[str, dict[str, type[ToolInput]]]] = {
     "orchestration": {
         "start_cycle": StartCycleInput,
         "assign": AssignInput,
-        "open_vote": OpenVoteInput,
-        "close_vote": ProposalIdInput,
         "set_agent_state": SetAgentStateInput,
         "summarise_thread": ThreadIdInput,
     },

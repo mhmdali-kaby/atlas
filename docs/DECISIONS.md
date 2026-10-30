@@ -144,6 +144,34 @@ decisions where the brief was silent, as the brief asks.
   picks between a long and a short in long/short mode; two positions and no side is refused as
   ambiguous. No vote; the autonomy decision is the entries' one. evaluate() leaves the row
   `risk_checked` for both kinds; the caller moves it to awaiting_owner/advise_only/rejected.
+- **Orchestrator agent: code classifies and acknowledges, the model only routes** (ATL-161,
+  `atlas_agents/orchestrator/classify.py`, `owner.py`, `why.py`, `status.py`, `loops.py`). The Orchestrator is now enabled by
+  default, so the ATL-160 analysis cycles run without the owner turning it on. An owner message with
+  no @mention (or an @Orch one) is classified by keyword rules; a limit change or an approval is
+  decisive and gets a fixed code answer ("Only the owner can change that in Settings → <section>
+  (<setting>)…" / "Approvals count only from the Approve / Reject buttons…") with no model run. Every
+  other message gets a code acknowledgement at once (its latency is stored in `agent_scores`,
+  agent `orchestrator`, `data.ack_latency_seconds`, hit_rate = share within 10 s), then one model
+  run answers a JSON routing object and code posts its line and the assignment (an @mention of the
+  agent with a deadline, in the owner's thread). §7.9's `open_vote`/`close_vote` are not tools: the
+  vote is code. Loop stop counts replies (`reply_to` set) in one thread alternating between the same
+  two agents; the 4th gets a code summary (each side's last point) and `cycle.call_vote`, which makes
+  a running cycle stop waiting for the Devil's Advocate review and open the vote; a proposal already
+  voting is unaffected. "Where we are" is a code card every 2 h from 08:10 to 23:00 Baghdad (08:10 …
+  22:10), never after 23:00. Other slash commands than `/why` are left to their own handlers.
+- **Executing a position action re-checks against OKX, amends in place, closes before cancelling
+  (ATL-185, `trading_core/execution/position_action.py`).** Right before sending, the seven ATL-184
+  checks run again on the position and pending algos OKX returns, so a stop that would widen the stop
+  OKX holds now is not sent (a `rejected` risk check is written and the proposal is `rejected` /
+  `risk_rejected`). amend_stop amends every live SL/OCO on the position in place and places a new SL
+  only when OKX shows none; amend_targets moves only the first target (the TP leg of the OCO, else a
+  TP-only order), like entries; partial_close sends one reduce-only market order then shrinks every
+  larger algo to the remainder; close is `trade/close-position`, then that position's algos are
+  cancelled (a refused close cancels nothing). Client ids derive from the risk check (`x` close,
+  `n` new stop, `t` new TP). A close order records `raw.reduces_order_id`, and EntryLifecycle sizes
+  the entry's protection to filled − reduced, so its sweep keeps the resized stop. Done actions end
+  `filled` (a close OKX has not reported filled stays `sent`), which is what the PM reads as
+  tp1_filled.
 - **Analyst vote runs** (ATL-182, `atlas_agents/orchestrator/voters.py`). When the cycle opens a vote,
   and again for each version revised during the vote, code starts one routine-model run per
   `agents.votes.run_voters` agent (Technical, Derivatives, News, Historian) that is enabled, not in
@@ -166,3 +194,10 @@ decisions where the brief was silent, as the brief asks.
   not proposed again. Immediate runs: a news alert or fill on a held instrument, a circuit breaker,
   and once 30 min before an importance-4+ event. Limit warnings (70% of the daily/weekly loss or
   open-position limit) are code, at most once per hour per limit.
+- **ATL-148: shared api limiter; the kill switch has its own.** Every `/api` route now sits behind
+  a per-user `throttle:api` (`system_api.api_per_minute`, 1200). `POST /api/system/pause|resume|kill`
+  remove it and use `system-control` (30/min per user), so a flood of other requests can never make
+  the kill switch answer 429. Kill takes a fixed `confirm: "KILL"` the sheet sends on Stop (decision
+  #251: the owner never types it). The owner's control calls always write one audit row, also when
+  trading_core is down (503). "Active env" for these routes and the orders list is
+  `atlas_defaults.env.default` until the live switch exists.

@@ -143,6 +143,13 @@ class _Entry:
     sz: Decimal
     filled_sz: Decimal
     state: str
+    reduced_sz: Decimal = Decimal(0)
+    """Contracts already taken off this entry's position by Atlas closes (ATL-185 partial_close)."""
+
+    @property
+    def protect_sz(self) -> Decimal:
+        """What the protection must cover: the filled size less what Atlas has since closed."""
+        return max(Decimal(0), self.filled_sz - self.reduced_sz)
 
     @property
     def ctx(self) -> _Ctx:
@@ -184,7 +191,31 @@ def _load_entry(session: Session, order_id: Any) -> _Entry | None:
         sz=Decimal(row.sz).normalize(),
         filled_sz=Decimal(row.filled_sz or 0).normalize(),
         state=row.state,
+        reduced_sz=reduced_sz(session, row.env, row.id),
     )
+
+
+# A close order counts once OKX has it: its filled size, or its whole size while it is still working.
+_REDUCING_STATES = ("live", "partially_filled")
+
+
+def reduced_sz(session: Session, env: str, entry_id: uuid.UUID) -> Decimal:
+    """Contracts Atlas position-action closes (``purpose = close``, ``raw.reduces_order_id``) have
+    taken off the position this entry opened (ATL-185)."""
+    total = Decimal(0)
+    for filled, sz, state in session.execute(
+        select(Order.filled_sz, Order.sz, Order.state).where(
+            Order.env == env,
+            Order.origin == "atlas",
+            Order.purpose == "close",
+            Order.raw["reduces_order_id"].astext == str(entry_id),
+        )
+    ):
+        done = Decimal(filled or 0)
+        if state in _REDUCING_STATES:
+            done = max(done, Decimal(sz or 0))
+        total += done
+    return total.normalize()
 
 
 def _rank(entry: _Entry, row: AlgoOrderDetail) -> int:
@@ -357,7 +388,7 @@ class EntryLifecycle:
             )
 
     async def _protect(self, entry: _Entry, trade: OkxTradeClient) -> ProtectResult:
-        target = entry.filled_sz
+        target = entry.protect_sz
         if target <= 0:
             return ProtectResult("nothing", target)
         try:
@@ -411,7 +442,7 @@ class EntryLifecycle:
     async def _place(
         self, entry: _Entry, trade: OkxTradeClient, rec: _Recorder, stored: Sequence[AlgoOrder]
     ) -> ProtectResult:
-        target = entry.filled_sz
+        target = entry.protect_sz
         template = next((r for r in stored if r.sl_trigger_px is not None or r.trigger_px is not None), None)
         if template is None:
             self._alert(rec, entry, "protection_missing", "No stored stop to protect the fill with.", target)
@@ -611,8 +642,11 @@ class EntryLifecycle:
                 )
                 if self._protection_ended(algos, has_close) is not None:
                     continue
+                want = Decimal(order.filled_sz) - reduced_sz(s, order.env, order.id)
+                if want <= 0:
+                    continue  # Atlas closed all of it (ATL-185): nothing left to protect.
                 live = [a for a in algos if a.state in ("new", "sending", "live")]
-                if len(live) != 1 or Decimal(live[0].sz or 0) != Decimal(order.filled_sz):
+                if len(live) != 1 or Decimal(live[0].sz or 0) != want:
                     out.append(order.id)
         return out
 
