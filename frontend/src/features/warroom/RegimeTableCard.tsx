@@ -3,8 +3,9 @@ import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatFixed, type Lang } from '../../lib/format'
 import { REGIME_ORDER, type RegimeRow, type RegimeTableCard as Card } from './historian'
-import { AsOf, Fig, RegimeLabel, RuleBased } from './HistoryVerdictCard'
-import { fillSlots, probability, slot, useSpanText } from './historianFormat'
+import { AsOf, Fig, RegimeLabel, RuleBased } from './historianParts'
+import { probability, useSpanText } from './historianFormat'
+import { fillSlots, slot } from './slots'
 import { InstrumentId } from './text'
 
 /*

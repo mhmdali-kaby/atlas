@@ -1,8 +1,8 @@
 import { ArrowDownRight, ArrowUpRight, ExternalLink, Newspaper } from 'lucide-react'
-import { Fragment, type ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { formatDecimal, formatFixed, type Lang } from '../../lib/format'
 import type { NewsAlert } from './newsAlert'
+import { fillSlots, slot } from './slots'
 import { InstrumentId } from './text'
 import { formatFullTime, formatTime } from './time'
 
@@ -13,26 +13,6 @@ import { formatFullTime, formatTime } from './time'
  * rule 7): the headline and source render as plain React text, never markdown or HTML, and the
  * only link is the article URL, kept only when it is http(s).
  */
-
-/*
- * Untrusted values never go through <Trans>, which parses its interpolated string for tags: a
- * source name like "<strong>x</strong>" would become markup. The template is translated with
- * private-use slot markers and split around them; the values are placed as React children.
- */
-const SLOT = { source: '\uE000source\uE000', time: '\uE000time\uE000', host: '\uE000host\uE000' } as const
-
-function fill(template: string, nodes: Record<string, ReactNode>): ReactNode[] {
-  const out: ReactNode[] = []
-  const re = /\uE000[a-z]+\uE000/g
-  let last = 0
-  for (const m of template.matchAll(re)) {
-    if (m.index > last) out.push(<Fragment key={`t${last}`}>{template.slice(last, m.index)}</Fragment>)
-    out.push(nodes[m[0]] ?? m[0])
-    last = m.index + m[0].length
-  }
-  if (last < template.length) out.push(<Fragment key={`t${last}`}>{template.slice(last)}</Fragment>)
-  return out
-}
 
 /** Sentiment as a signed value: sign + arrow + a spoken word, never colour alone; |s| < 0.05 is neutral. */
 function Sentiment({ value, lang }: { value: number; lang: Lang }) {
@@ -102,9 +82,9 @@ export function NewsAlertCard({ alert: a, lang }: { alert: NewsAlert; lang: Lang
       <div className="news-foot">
         <span data-testid="news-by">
           {a.publishedAt ? (
-            fill(t('news.by', { source: SLOT.source, time: SLOT.time }), {
-              [SLOT.source]: <bdi key="s">{a.sourceName}</bdi>,
-              [SLOT.time]: (
+            fillSlots(t('news.by', { source: slot('source'), time: slot('time') }), {
+              source: <bdi key="s">{a.sourceName}</bdi>,
+              time: (
                 <time key="t" className="num" dateTime={a.publishedAt} title={formatFullTime(a.publishedAt, lang)}>
                   {formatTime(a.publishedAt, lang)}
                 </time>
@@ -117,8 +97,8 @@ export function NewsAlertCard({ alert: a, lang }: { alert: NewsAlert; lang: Lang
         {a.url && host && (
           <a className="news-link" href={a.url.href} target="_blank" rel="noopener noreferrer" data-testid="news-link">
             <span>
-              {fill(t('news.read', { host: SLOT.host }), {
-                [SLOT.host]: (
+              {fillSlots(t('news.read', { host: slot('host') }), {
+                host: (
                   <bdi key="h" dir="ltr">
                     {host}
                   </bdi>
