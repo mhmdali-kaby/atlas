@@ -35,7 +35,7 @@ from typing import Any, Final
 from atlas_shared.events import EventEnvelope
 
 from atlas_agents.mentions import MentionRequest
-from atlas_agents.orchestrator import cycle, loops, owner, status
+from atlas_agents.orchestrator import classify, cycle, loops, owner, status, why
 from atlas_agents.registry import HOOKS, AgentHost, ScheduleFire
 from atlas_agents.session import RunResult
 
@@ -104,19 +104,19 @@ async def on_cycle_now(host: AgentHost, envelope: EventEnvelope) -> RunResult | 
 # -- the owner (ATL-161) ------------------------------------------------------------------------------
 
 
-async def take_owner_message(host: AgentHost, message: owner.OwnerMessage) -> owner.Classification | None:
+async def take_owner_message(host: AgentHost, message: owner.OwnerMessage) -> classify.Classification | None:
     """Acknowledge now; start the routing or /why run in the background. None for a slash command
     (``/why`` runs in the background; the others are not the Orchestrator's)."""
     if host.replaying:
         return None
-    target = owner.why_target(message.content)
+    target = why.why_target(message.content)
     if target is not None:
-        _background(owner.answer_why(host, message, target), f"/why {target}")
+        _background(why.answer_why(host, message, target), f"/why {target}")
         return None
     if message.content.lstrip().startswith("/"):
         return None  # /pause, /cycle now, ... have their own handlers (ATL-163)
     guess = await owner.handle_owner_message(host, message)
-    if guess.kind not in owner.DECISIVE:
+    if guess.kind not in classify.DECISIVE:
         _background(owner.route(host, message, guess), "routing an owner message")
     return guess
 

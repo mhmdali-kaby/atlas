@@ -15,11 +15,14 @@ For ATL-163 (slash commands), ATL-164/ATL-180 (War Room cards), ATL-169 (Portfol
   acknowledges at once, then a background model run routes it with an assignment.
 - Nothing here votes, proposes, approves, or writes settings.
 
-## Owner message flow (`atlas_agents/orchestrator/owner.py`)
+## Owner message flow (`atlas_agents/orchestrator/classify.py` → `owner.py`; `/why` in `why.py`)
 
-1. `classify(content)` → `instruction | question | approval | limit_change_request | chat`.
+1. `classify.classify(content)` → `instruction | question | approval | limit_change_request | chat`.
    `limit_change_request` (a change verb or a number with x/%/USDT + a limit keyword) and `approval`
-   are decisive. `LimitRef(setting, section)` names the Settings page, e.g. leverage →
+   are decisive. A question (trailing ?/؟ or a question word first) is never an approval, and is a
+   limit change only when a change verb is followed by a value ("can you set leverage to 20x?");
+   "What leverage do we use?" and "Why did the Risk Engine not approve it?" are questions and go to
+   the model. `LimitRef(setting, section)` names the Settings page, e.g. leverage →
    `("Max leverage", "Risk")`.
 2. Code posts one message immediately, `reply_to` = the owner's row id, same thread:
 

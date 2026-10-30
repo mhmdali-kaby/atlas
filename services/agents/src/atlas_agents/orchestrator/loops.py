@@ -34,6 +34,8 @@ CARD_TYPE: Final = "loop_summary"
 _KEEP: Final = 20
 _QUOTE_CHARS: Final = 220
 _PARENT_HOPS: Final = 6
+_MAX_THREADS: Final = 256
+"""Threads (and stopped exchanges) remembered; the oldest are forgotten first."""
 
 
 @dataclass(frozen=True)
@@ -56,7 +58,13 @@ class LoopHit:
 
 
 _threads: dict[tuple[str, str], list[_Reply]] = {}
-_stopped: set[tuple[str, str, tuple[str, str]]] = set()
+_stopped: dict[tuple[str, str, tuple[str, str]], None] = {}
+"""Stopped exchanges, oldest first (a dict keeps insertion order)."""
+
+
+def _trim(store: dict[Any, Any]) -> None:
+    while len(store) > _MAX_THREADS:
+        del store[next(iter(store))]
 
 
 def max_replies(defaults: Mapping[str, Any] = DEFAULTS) -> int:
@@ -100,7 +108,9 @@ def observe(envelope: EventEnvelope) -> LoopHit | None:
         return None
     card = payload.get("card") if isinstance(payload.get("card"), Mapping) else {}
     pid = card.get("proposal_id") if isinstance(card, Mapping) else None
-    replies = _threads.setdefault(slot, [])
+    replies = _threads.pop(slot, [])
+    _threads[slot] = replies  # newest last, so _trim forgets the least recently active thread
+    _trim(_threads)
     replies.append(
         _Reply(
             author=author,
@@ -117,7 +127,9 @@ def observe(envelope: EventEnvelope) -> LoopHit | None:
     stop_key = (envelope.env, key, (pair[0], pair[1]))
     if stop_key in _stopped:
         return None
-    _stopped.add(stop_key)
+    _stopped[stop_key] = None
+    _trim(_stopped)
+    _threads.pop(slot, None)
     thread = payload.get("thread") if isinstance(payload.get("thread"), Mapping) else None
     return LoopHit(
         env=envelope.env,

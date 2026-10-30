@@ -197,6 +197,8 @@ class CycleRunner:
         defaults: Mapping[str, Any] = DEFAULTS,
     ) -> None:
         self.host = host
+        self.cycle_items: list[_Open] = []
+        """The cycle's proposals, so their early-vote marks are dropped when it ends."""
         base = host.tool_context(SLUG)
         self.ctx: ToolContext = dataclasses.replace(base, publish=host.publish, run=RunScope())
         self.clock: CycleClock = clock or WallClock(base.now)
@@ -564,6 +566,7 @@ class CycleRunner:
 
         await self.strategist_step(cycle_id)
         items = await asyncio.to_thread(self.cycle_proposals, cycle_id)
+        self.cycle_items = list(items)
         review_deadline = self.clock.now() + timedelta(seconds=float(self.cfg["review_timeout_seconds"]))
         self.transition(
             cycle_id,
@@ -620,6 +623,7 @@ class CycleRunner:
 
         vote_deadline = self.clock.now() + timedelta(seconds=float(self.cfg["vote_seconds"]))
         await asyncio.to_thread(self._open_votes, items)
+        forget_vote_calls(self.host.env, items)
         self.transition(
             cycle_id,
             "voting",
@@ -750,6 +754,13 @@ def call_vote(env: str, proposal_id: str) -> bool:
     return running(env)
 
 
+def forget_vote_calls(env: str, items: Sequence[_Open]) -> None:
+    """Drop the early-vote marks of ``items``: their vote has opened, or their cycle has closed."""
+    for item in items:
+        _vote_called.discard((env, str(item.root)))
+        _vote_called.discard((env, str(item.head)))
+
+
 def running(env: str) -> bool:
     task = _running.get(env)
     return task is not None and not task.done()
@@ -771,6 +782,8 @@ def launch(runner: CycleRunner, cycle_id: uuid.UUID) -> asyncio.Task[Any]:
                 runner.close(cycle_id, "error", "the cycle failed; see the agents log")
             except Exception:
                 log.exception("orchestrator: could not close cycle %s", cycle_id)
+        finally:
+            forget_vote_calls(runner.host.env, runner.cycle_items)
 
     task = asyncio.create_task(go())
     _running[runner.host.env] = task

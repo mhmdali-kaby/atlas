@@ -145,7 +145,7 @@ decisions where the brief was silent, as the brief asks.
   ambiguous. No vote; the autonomy decision is the entries' one. evaluate() leaves the row
   `risk_checked` for both kinds; the caller moves it to awaiting_owner/advise_only/rejected.
 - **Orchestrator agent: code classifies and acknowledges, the model only routes** (ATL-161,
-  `atlas_agents/orchestrator/owner.py`, `status.py`, `loops.py`). The Orchestrator is now enabled by
+  `atlas_agents/orchestrator/classify.py`, `owner.py`, `why.py`, `status.py`, `loops.py`). The Orchestrator is now enabled by
   default, so the ATL-160 analysis cycles run without the owner turning it on. An owner message with
   no @mention (or an @Orch one) is classified by keyword rules; a limit change or an approval is
   decisive and gets a fixed code answer ("Only the owner can change that in Settings → <section>
