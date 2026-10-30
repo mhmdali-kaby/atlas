@@ -441,3 +441,63 @@ def test_the_check_makes_zero_requests_to_okx(engine: Engine, rds: redis.Redis, 
     assert len(mock.calls) == 0
     with engine.connect() as c:
         assert c.scalar(select(func.count()).select_from(Proposal).where(Proposal.inst_id == world)) == 1
+
+
+# --- ATL-160: POST /internal/risk/evaluate/{id} checks an existing proposal (the Orchestrator's call) ---
+
+
+def _agent_proposal(engine: Engine, inst_id: str, status: str) -> uuid.UUID:
+    pid = uuid.uuid4()
+    with engine.begin() as c:
+        c.execute(
+            insert(Proposal).values(
+                id=pid,
+                env=ENV,
+                version=1,
+                kind="entry",
+                author="strategist",
+                inst_id=inst_id,
+                side="buy",
+                order_type="limit",
+                entry=D(4000),
+                stop=D(3960),
+                take_profits=[{"price": "4100", "pct": "100"}],
+                size_suggestion_pct=D(5),
+                leverage_suggestion=3,
+                expected_r=D("2.5"),
+                probability=D("0.5"),
+                status=status,
+                created_at=AT,
+                updated_at=AT,
+            )
+        )
+    return pid
+
+
+def _evaluate(tc: TestClient, pid: str, headers: dict[str, str] | None = None) -> Any:
+    path = f"/internal/risk/evaluate/{pid}"
+    hdrs = headers if headers is not None else signed_headers(SECRET, "POST", path, b"")
+    return tc.post(path, content=b"", headers=hdrs)
+
+
+def test_evaluate_checks_a_passed_proposal_once_and_writes_no_new_proposal(
+    engine: Engine, rds: redis.Redis, world: str
+) -> None:
+    pid = _agent_proposal(engine, world, "passed")
+    resp = _evaluate(client(engine, rds), str(pid))
+    assert resp.status_code == 200, resp.text
+    out = resp.json()
+    assert out["proposal_id"] == str(pid) and out["decision"] == "awaiting_owner"
+    props, checks = _rows(engine, world)
+    assert [p.id for p in props] == [pid] and props[0].status == "risk_checked"
+    assert len(checks) == 1 and str(checks[0].id) == out["risk_check_id"]
+
+
+def test_evaluate_refuses_unsigned_and_not_passed(engine: Engine, rds: redis.Redis, world: str) -> None:
+    tc = client(engine, rds)
+    pid = _agent_proposal(engine, world, "under_review")
+    assert _evaluate(tc, str(pid), headers={}).status_code == 401
+    resp = _evaluate(tc, str(pid))
+    assert resp.status_code == 409 and resp.json()["error"] == "risk_engine_error"
+    assert _evaluate(tc, "not-a-uuid").status_code == 404
+    assert _rows(engine, world)[1] == []

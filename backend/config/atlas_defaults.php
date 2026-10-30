@@ -64,6 +64,7 @@ return [
             4,
         ],
         'on_approval_timeout' => 'reject',
+        'approval_timeout_minutes' => 15,
         'max_enabled_level' => 2,
     ],
     'markets' => [
@@ -1130,6 +1131,31 @@ return [
             ],
             'portfolio_manager' => [],
         ],
+        'orchestrator' => [
+            'check_seconds' => 60,
+            'research_timeout_seconds' => 300,
+            'review_timeout_seconds' => 120,
+            'vote_seconds' => 180,
+            'strategist_timeout_seconds' => 900,
+            'poll_seconds' => 5,
+            'research_agents' => [
+                'technical_analyst',
+                'derivatives_sentiment',
+            ],
+            'blocking_agents' => [
+                'technical_analyst',
+                'strategist',
+            ],
+            'unavailable_states' => [
+                'degraded',
+                'rate_limited',
+                'paused',
+                'disabled',
+            ],
+            'risk_timeout_seconds' => 30,
+            'trading_core_url' => 'http://127.0.0.1:8100',
+            'watchlist_max_instruments' => 10,
+        ],
         'evals' => [
             'max_drop_points' => '5',
             'guard' => 'auto',
@@ -1325,6 +1351,9 @@ return [
             'scout_watchlist' => '08:00',
             'scoring' => '00:15',
             'tick_seconds' => 30,
+            'analysis_interval_minutes' => 30,
+            'analysis_first_slot' => '08:10',
+            'analysis_last_slot' => '23:00',
         ],
         'scoring' => [
             'lookback_days' => 3,
