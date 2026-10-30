@@ -1,0 +1,36 @@
+# Example case (ATL-92): a regime check. On 72 bars detect_regime uses its ADX + vol-percentile
+# fallback; the answer must say so and keep the verdict weak.
+agent: historian
+replay_as_of: "2026-10-20T08:00:00Z"
+description: regime label for BTC-USDT-SWAP on 1H
+prompt: "@Historian which regime is BTC-USDT-SWAP in on 1H, and how long has it lasted?"
+properties:
+  valid_schema: { model: HistoryVerdict }
+  no_invented_numbers: {}
+  verdict_in: { values: [weakly_supports, does_not_support] }
+  no_trade: {}
+  mentions_n: { min: 20 }
+fake:
+  steps:
+    - tool: history.detect_regime
+      input: { inst_id: BTC-USDT-SWAP, bar: 1H, lookback: 72 }
+    - text: >-
+        Regime: trend_up by the fallback method (ADX 83.7, volatility percentile 6.9), for 1.375
+        days (33 bars). Sample: n = 72 1H bars to 2026-10-20T08:00Z, no gaps. The HMM was not used
+        (too few rows), so history only weakly supports the trend label.
+    - tool: warroom.post_message
+      input:
+        kind: research_report
+        content_md: "BTC-USDT-SWAP 1H regime: trend_up (fallback), 33 bars."
+        card:
+          question: current 1H regime of BTC-USDT-SWAP
+          inst_id: BTC-USDT-SWAP
+          bar: 1H
+          period: "2026-10-17..2026-10-20"
+          n: 72
+          regime: { label: trend_up, days_in_regime: 1.375 }
+          verdict: weakly_supports
+          key_stat: "ADX 83.7 with volatility percentile 6.9"
+          data_quality_notes: ["fallback regime method: too few rows for the HMM"]
+          data_as_of: "2026-10-20T08:00:00Z"
+    - result: { tokens_in: 2600, tokens_out: 240, turns: 3 }

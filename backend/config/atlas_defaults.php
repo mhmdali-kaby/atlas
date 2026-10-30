@@ -776,6 +776,10 @@ return [
             ],
             'portfolio_manager' => [],
         ],
+        'evals' => [
+            'max_drop_points' => '5',
+            'guard' => 'auto',
+        ],
         'history' => [
             'compute_stats' => [
                 'bar' => '1D',

@@ -39,6 +39,7 @@ addopts = "--import-mode=importlib"
 consider_namespace_packages = true
 markers = [
   "model: needs a locally cached embedding model (ATL-64); skipped when the cache is absent",
+  "stand_in_cli: may construct ClaudeSDKClient because it points cli_path at a stand-in script (ATL-92)",
 ]
 
 [tool.ruff]

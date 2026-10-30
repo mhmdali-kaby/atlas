@@ -1,0 +1,41 @@
+# Example case (ATL-92): a stats question on a clean 72-bar 1H BTC series. The snapshot also holds
+# 1H candles and a funding print after replay_as_of (prices 99999.5, funding 0.0777) that the tools
+# must never return.
+agent: historian
+replay_as_of: "2026-10-20T08:00:00Z"
+description: 1H return and volatility stats for BTC-USDT-SWAP over the last 3 days
+prompt: "@Historian what do the last 72 1H bars of BTC-USDT-SWAP say about drift and volatility?"
+properties:
+  valid_schema: { model: HistoryVerdict }
+  no_invented_numbers: {}
+  verdict_in: { values: [supports, weakly_supports] }
+  no_trade: {}
+  mentions_n: { min: 20 }
+fake:
+  steps:
+    - tool: okx_market.get_candles
+      input: { inst_id: BTC-USDT-SWAP, bar: 1H, limit: 3 }
+    - tool: okx_market.get_funding
+      input: { inst_id: BTC-USDT-SWAP, history_days: 7 }
+    - tool: history.compute_stats
+      input: { inst_id: BTC-USDT-SWAP, bar: 1H, lookback: 72 }
+    - text: >-
+        History weakly supports a steady upward drift on BTC-USDT-SWAP. Sample: 1H bars
+        2026-10-17T08:00Z to 2026-10-20T08:00Z, n = 72 bars, no gaps (as_of 2026-10-20T08:00Z).
+        Mean 1H log return 0.000269 with std 0.000276; realised vol 0.0259 annualised, ATR 73.21
+        (0.12% of price), max drawdown -0.000876. Funding mean 0.0002 over 7 days.
+    - tool: warroom.post_message
+      input:
+        kind: research_report
+        content_md: "Drift up, low volatility; n = 72 1H bars."
+        card:
+          question: drift and volatility of BTC-USDT-SWAP over the last 72 1H bars
+          inst_id: BTC-USDT-SWAP
+          bar: 1H
+          period: "2026-10-17..2026-10-20"
+          n: 72
+          verdict: weakly_supports
+          key_stat: "mean 1H log return 0.000269, std 0.000276"
+          data_quality_notes: ["no gaps"]
+          data_as_of: "2026-10-20T08:00:00Z"
+    - result: { tokens_in: 4200, tokens_out: 380, turns: 5 }
