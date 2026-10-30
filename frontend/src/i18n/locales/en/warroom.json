@@ -127,7 +127,8 @@
     "fill": "Fill",
     "position_update": "Position update",
     "post_mortem": "Post-mortem",
-    "system_alert": "System alert"
+    "system_alert": "System alert",
+    "regime_table": "Regime table"
   },
   "composer": {
     "label": "Message",
@@ -212,6 +213,112 @@
       "supply_shock": "Supply shock",
       "other": "Other"
     }
+  },
+  "hv": {
+    "asOf": "Data as of {{time}}",
+    "verdictSr": "History’s verdict:",
+    "v": {
+      "supports": "Supports",
+      "weakly_supports": "Weakly supports",
+      "does_not_support": "Doesn’t support",
+      "contradicts": "Contradicts"
+    },
+    "corr": {
+      "capped": "Capped from {{from}}: {{cases}}",
+      "cappedTip": "Atlas caps a verdict at Weakly supports when fewer than 20 cases back it.",
+      "changed": "Changed from {{from}}: {{cases}}",
+      "changedTip": "Atlas needs at least 20 cases for a strong verdict either way, so it changed this one.",
+      "changedOtherTip": "Atlas changed this verdict because the evidence didn’t meet its rules.",
+      "gapped": "Lowered from {{from}}: the backtest data has a gap",
+      "gappedTip": "Atlas doesn’t accept a backtest claim on data with an unrepaired gap."
+    },
+    "cases_one": "{{count}} case",
+    "cases_other": "{{count}} cases",
+    "noCases": "No matching cases",
+    "noCasesTip": "History has no situation like this one in the period searched.",
+    "weak": "Weak evidence",
+    "weakTip": "Fewer than 20 cases: a hint, not a pattern.",
+    "bar": {
+      "1m": "1-minute bars",
+      "5m": "5-minute bars",
+      "15m": "15-minute bars",
+      "1H": "Hourly bars",
+      "4H": "4-hour bars",
+      "1D": "Daily bars"
+    },
+    "period": "{{from}} to {{to}}",
+    "sample": "Sample",
+    "table": "What followed, by horizon, against the base rate",
+    "col": {
+      "horizon": "Horizon",
+      "median": "Median",
+      "mid80": "Middle 80%",
+      "mid80Tip": "10th to 90th percentile: 8 in 10 cases ended inside this range.",
+      "rose": "Rose",
+      "roseTip": "Share of cases where the price was higher at the end of the horizon."
+    },
+    "row": {
+      "cases": "These cases",
+      "base": "Base rate",
+      "baseTip": "Any {{h}} in the same period, for comparison."
+    },
+    "noBase": "No base rate",
+    "range": "{{a}} to {{b}}",
+    "h_one": "{{count}} hour",
+    "h_other": "{{count}} hours",
+    "stripTip": "These cases: median {{a}}. Base rate: median {{b}}.",
+    "regime": "Regime",
+    "stop": "Stop",
+    "stopLine": "{{stop}} ATR from entry. The median 4-hour range is {{range}} ATR.",
+    "stopState": {
+      "inside_noise": "Inside normal noise",
+      "ok": "Clear of normal noise"
+    },
+    "overfit": "Probably overfit. The rule did much worse on data it wasn’t tuned on.",
+    "notes": "Data notes",
+    "unv": "Not found in any tool output",
+    "unvLong": "Atlas didn’t find this number in any tool output from this answer.",
+    "unvNote_one": "{{count}} number in this answer isn’t in the tools’ data. It’s marked.",
+    "unvNote_other": "{{count}} numbers in this answer aren’t in the tools’ data. They’re marked.",
+    "more": "Scroll for more columns"
+  },
+  "rg": {
+    "label": {
+      "trend_up": "Trending up",
+      "trend_down": "Trending down",
+      "range": "Ranging",
+      "high_vol": "High volatility",
+      "low_vol": "Low volatility",
+      "no_data": "No data",
+      "insufficient_data": "Too little data"
+    },
+    "likely": "{{p}} likely",
+    "rule": "Rule-based",
+    "ruleTip": "Labelled by rule (ADX and the volatility percentile), so there is no probability.",
+    "for": "for {{d}}",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days",
+    "hours_one": "{{count}} hour",
+    "hours_other": "{{count}} hours",
+    "underHour": "under an hour",
+    "changed": "Changed in the last 24 hours"
+  },
+  "rt": {
+    "title": "Market regimes",
+    "sub_one": "{{count}} instrument, by 24-hour volume",
+    "sub_other": "{{count}} instruments, by 24-hour volume",
+    "filter": "Show regime",
+    "all": "All",
+    "col": {
+      "rank": "Volume rank",
+      "inst": "Instrument",
+      "regime": "Regime",
+      "prob": "Probability",
+      "days": "In regime"
+    },
+    "showAll": "Show all {{n}}",
+    "showFewer": "Show fewer",
+    "caption": "Regime of each instrument. Select a column header to sort."
   },
   "reason": {
     "show": "Show reasoning",
