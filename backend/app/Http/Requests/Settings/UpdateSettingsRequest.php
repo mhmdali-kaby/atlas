@@ -110,7 +110,7 @@ class UpdateSettingsRequest extends FormRequest
     {
         $attributes = [];
         foreach (SettingsSchema::fields() as $field) {
-            $attributes['changes.'.self::escape($field)] = $field;
+            $attributes["changes.{$field}"] = $field;
         }
 
         return $attributes;
