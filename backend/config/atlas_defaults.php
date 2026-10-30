@@ -145,6 +145,29 @@ return [
             'risk_checked',
         ],
     ],
+    'circuit_breakers' => [
+        'evaluate_interval_seconds' => 15,
+        'okx_errors' => [
+            'threshold' => 3,
+            'window_seconds' => 300,
+            'ignored_codes' => [
+                '51016',
+                '51400',
+                '51401',
+                '51402',
+            ],
+        ],
+        'data_stale' => [
+            'clear_after_fresh_seconds' => 60,
+        ],
+        'volatility' => [
+            'bar' => '1m',
+            'lookback_hours' => 24,
+            'min_returns' => 60,
+            'max_bar_age_seconds' => 180,
+        ],
+        'stream_block_ms' => 1000,
+    ],
     'executor' => [
         'entry_timeout_minutes' => 30,
         'td_mode_perps' => 'isolated',
