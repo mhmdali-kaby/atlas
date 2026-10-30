@@ -39,7 +39,7 @@ two agents that are allowed it; ``tools`` (the CLI's base built-in set) is that 
 from __future__ import annotations
 
 import dataclasses
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Final, cast
 
@@ -51,6 +51,7 @@ from atlas_agents.registry import REGISTRY, UnknownAgentError
 from atlas_agents.tools import build_mcp_servers, fq_name, registered_tools
 from atlas_agents.tools.catalogue import CATALOGUE
 from atlas_agents.tools.framework import ToolContext
+from atlas_agents.tools.news import _host_matches as _news_host_matches
 
 WEB_TOOLS: Final = ("WebSearch",)
 """The CLI's built-in web tool(s) for Market Scout and News Intelligence (brief §6.1). WebFetch is
@@ -257,16 +258,47 @@ def disallowed_tools(agent: str) -> list[str]:
     return [name for name in BUILTIN_TOOLS if name not in keep]
 
 
-def _effective_allow_domains(ctx: ToolContext) -> tuple[str, ...]:
-    """The ``agents.web.allow_domains`` in force for ``ctx`` right now: the owner's settings as
-    the supervisor last merged them (``ToolContext.web_policy``, ATL-114) when the context
-    carries one, else config/defaults.yaml — read fresh on every call, not once at session build,
-    so a change in Settings -> Agents takes effect on the very next WebSearch call."""
+def _effective_web_policy(ctx: ToolContext) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """The ``agents.web.allow_domains``/``deny_domains`` in force for ``ctx`` right now: the
+    owner's settings as the supervisor last merged them (``ToolContext.web_policy``, ATL-114)
+    when the context carries one, else config/defaults.yaml — read fresh on every call, not once
+    at session build, so a change in Settings -> Agents takes effect on the very next WebSearch
+    call. The same source ``news.domain_allowed`` reads for ``fetch_article``."""
     if ctx.web_policy is not None:
-        allow, _deny = ctx.web_policy()
-        return tuple(allow)
+        allow, deny = ctx.web_policy()
+        return tuple(allow), tuple(deny)
     conf = DEFAULTS["agents"]["web"]
-    return tuple(conf["allow_domains"])
+    return tuple(conf["allow_domains"]), tuple(conf["deny_domains"])
+
+
+def _effective_allow_domains(ctx: ToolContext) -> tuple[str, ...]:
+    """The allow half of :func:`_effective_web_policy`, unfiltered by the deny list. Kept for
+    callers that only need the raw allow list."""
+    allow, _deny = _effective_web_policy(ctx)
+    return allow
+
+
+def _prune_allow_for_deny(allow: Sequence[str], deny: Sequence[str]) -> tuple[str, ...]:
+    """``allow`` with every entry dropped that ``deny_domains`` already covers entirely (an entry
+    equal to, or a subdomain of, a deny entry) — the same "equal to or under" relation
+    ``news._host_matches`` applies to an actual host, applied here to one domain-list entry
+    against another. Dropping these is safe: nothing under them is reachable anyway, so there is
+    no need to ask the WebSearch tool to carve out an exception for them."""
+    return tuple(a for a in allow if not _news_host_matches(a, deny))
+
+
+def _deny_conflict(allow: Sequence[str], deny: Sequence[str]) -> tuple[str, str] | None:
+    """The first ``(deny_entry, allow_entry)`` pair where ``deny_entry`` is a subdomain of a
+    remaining ``allow_entry`` (after :func:`_prune_allow_for_deny`), or ``None``. That shape
+    ("allow example.com, but deny bad.example.com") cannot be expressed through
+    ``allowed_domains`` alone — the WebSearch tool takes either an allow list or a block list, not
+    both — so it is a genuine conflict in the owner's settings, not something this hook can
+    silently resolve by only passing ``allowed_domains``."""
+    for d in deny:
+        for a in allow:
+            if _news_host_matches(d, (a,)):
+                return d, a
+    return None
 
 
 def _web_search_hook(
@@ -277,14 +309,32 @@ def _web_search_hook(
     alert could trigger it). ``allowed_tools`` grants WebSearch as a whole-tool entry, which the
     SDK auto-approves before a ``can_use_tool`` callback is even consulted (its own documented
     shadowing rule) — a hook is the one gate that still runs on every call. Injects
-    ``allowed_domains`` from the same effective ``agents.web.allow_domains`` fetch_article is
-    checked against, and denies the call outright when that list is empty (which now means "no
-    host is allowed", not "any" — see ``news.domain_allowed``)."""
+    ``allowed_domains`` from the same effective ``agents.web.allow_domains``/``deny_domains``
+    fetch_article is checked against (ATL-123, security round 12, low: this hook used to read only
+    the allow list, so the owner's block list had no effect on WebSearch at all). Denies the call
+    outright when the resulting allow list is empty (which now means "no host is allowed", not
+    "any" — see ``news.domain_allowed``), or when a deny entry conflicts with a remaining allow
+    entry in a way ``allowed_domains`` alone cannot express. Always drops any ``allowed_domains``/
+    ``blocked_domains`` the model supplied itself and replaces them with the computed list."""
 
     async def hook(input_data: HookInput, _tool_use_id: str | None, _context: HookContext) -> HookJSONOutput:
         if input_data.get("tool_name") != "WebSearch":
             return {}
-        allow = _effective_allow_domains(ctx)
+        raw_allow, deny = _effective_web_policy(ctx)
+        allow = _prune_allow_for_deny(raw_allow, deny)
+        conflict = _deny_conflict(allow, deny)
+        if conflict is not None:
+            denied, allowed = conflict
+            return {
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "deny",
+                    "permissionDecisionReason": (
+                        f"agents.web.deny_domains entry {denied!r} is a subdomain of allowed "
+                        f"domain {allowed!r}; allowed_domains cannot express that exception"
+                    ),
+                }
+            }
         if not allow:
             return {
                 "hookSpecificOutput": {
@@ -294,7 +344,8 @@ def _web_search_hook(
                 }
             }
         raw_input = cast("dict[str, Any]", input_data.get("tool_input", {}))
-        tool_input = {**raw_input, "allowed_domains": list(allow)}
+        tool_input = {k: v for k, v in raw_input.items() if k not in ("allowed_domains", "blocked_domains")}
+        tool_input["allowed_domains"] = list(allow)
         return {
             "hookSpecificOutput": {
                 "hookEventName": "PreToolUse",
