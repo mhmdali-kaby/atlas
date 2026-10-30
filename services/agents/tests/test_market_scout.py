@@ -17,14 +17,17 @@ from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
+import pandas as pd
 import pytest
 from atlas_agents import news_intelligence
 from atlas_agents import testing as fake
 from atlas_agents.agents import market_scout
-from atlas_agents.registry import REGISTRY, discover_hooks
+from atlas_agents.registry import REGISTRY, AgentHooks, discover_hooks
 from atlas_agents.schemas import WatchlistPick
+from atlas_agents.scout import rerun
 from atlas_agents.scout.features import FeatureTable, InstrumentFeatures
 from atlas_agents.scout.prescore import CorrelatedPair, build_shortlist
 from atlas_agents.scout.publish import (
@@ -36,9 +39,11 @@ from atlas_agents.scout.publish import (
 from atlas_agents.scout.universe import Rejected
 from atlas_agents.supervisor import Supervisor
 from atlas_agents.tools import ToolContext
-from atlas_shared.db import AgentRun, AgentState, AgentUsageDaily, Watchlist, WatchlistItem
+from atlas_agents.watchlists import save_watchlist
+from atlas_shared.db import AgentRun, AgentState, AgentUsageDaily, Candle, Watchlist, WatchlistItem
 from atlas_shared.events import EventEnvelope
 from sqlalchemy import Engine, delete, select, text
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
 ENV = "demo"
@@ -341,8 +346,10 @@ def _cards(bridge: Bridge) -> list[EventEnvelope]:
 
 def test_market_scout_is_enabled_and_scheduled_at_0800() -> None:
     assert REGISTRY[SLUG].enabled
-    (hook,) = discover_hooks()[SLUG].schedule
-    assert hook.name == "scout_watchlist" and hook.time_of_day().isoformat() == "08:00:00"
+    hooks = {h.name: h for h in discover_hooks()[SLUG].schedule}
+    assert set(hooks) == {"scout_watchlist", "scout_spike_check"}  # ATL-109 added the spike check
+    hook = hooks["scout_watchlist"]
+    assert hook.daily and hook.time_of_day().isoformat() == "08:00:00"
     assert discover_hooks()[SLUG].on_mention is not None
 
 
@@ -701,3 +708,350 @@ def test_prepare_takes_degraded_classes_from_news_intelligence(
     prepared = market_scout.prepare(ctx, (now + timedelta(hours=3)).date())
     assert prepared.degraded_asset_classes == ["crypto"] and asked == [ctx]
     assert {r.inst_id for r in prepared.shortlist.rows} == set(INSTS)
+
+
+# == ATL-109: intraday re-runs ========================================================================
+
+NOON = timedelta(hours=4)  # _now() is 08:00 Baghdad; +4h = 12:00 Baghdad
+
+
+class Clock:
+    def __init__(self, at: datetime) -> None:
+        self.at = at
+
+    def __call__(self) -> datetime:
+        return self.at
+
+
+def _rerun_supervisor(
+    engine: Engine,
+    bridge: Bridge,
+    client: fake.FakeClaudeClient,
+    clock: Clock,
+    tmp_path: Path,
+    *,
+    only_spike_hook: bool = False,
+) -> Supervisor:
+    hooks = discover_hooks()[SLUG]
+    if only_spike_hook:  # keep the 08:00 job out of tick(): these tests run after 08:00
+        spike = tuple(h for h in hooks.schedule if h.name == market_scout.SPIKE_JOB)
+        hooks = AgentHooks(slug=SLUG, schedule=spike)
+    return Supervisor(
+        env=ENV,
+        engine=engine,
+        registry={SLUG: dataclasses.replace(REGISTRY[SLUG], enabled=True)},
+        client_factory=fake.factory(client),
+        publisher=bridge,
+        prompts_dir=tmp_path,
+        clock=clock,
+        hooks={SLUG: hooks},
+    )
+
+
+ALERT_HEADLINE = "Fed announces emergency rate cut"
+
+
+def _alert(bridge: Bridge, importance: int) -> tuple[EventEnvelope, str]:
+    """An ingest news.alert and its War Room row id (stored the way atlas:bridge does)."""
+    envelope = EventEnvelope(
+        type="news.alert",
+        env=ENV,
+        source="ingest",
+        correlation_id=f"news-{uuid.uuid4()}",
+        payload={"headline": ALERT_HEADLINE, "importance": importance, "inst_ids": ["BTC-USDT-SWAP"]},
+    )
+    row = bridge._store(
+        event_id=str(envelope.id),
+        author="ingest",
+        kind="news_alert",
+        content=ALERT_HEADLINE,
+        card=None,
+        reply_to=None,
+    )
+    return envelope, row
+
+
+def _seed_v1(engine: Engine, now: datetime, picks: list[str], pinned: list[str]) -> Watchlist:
+    """Version 1 of the test day's watchlist, saved at 08:01 Baghdad."""
+    day = (now + timedelta(hours=3)).date()
+    with Session(engine) as db:
+        wl = save_watchlist(
+            db,
+            ENV,
+            day,
+            [_pick(i, n, 0.6, now) for n, i in enumerate(picks, start=1)],
+            "published",
+            data={"trigger": "schedule"},
+            created_at=now + timedelta(minutes=1),
+        )
+        for item in db.scalars(select(WatchlistItem).where(WatchlistItem.watchlist_id == wl.id)).all():
+            item.pinned_by_owner = item.inst_id in pinned
+        db.commit()
+        db.refresh(wl)
+        db.expunge(wl)
+    return wl
+
+
+def _cards_of(bridge: Bridge) -> list[dict[str, Any]]:
+    return [e.payload for e in _cards(bridge)]
+
+
+def _closes(end: datetime, n: int, last_return: float, step: float = 0.01) -> pd.Series[float]:
+    """n + 1 hourly closes ending at ``end``: returns alternate +-step, the last one is last_return."""
+    price = 100.0
+    values = [price]
+    for k in range(1, n):
+        price *= 1 + (step if k % 2 else -step)
+        values.append(price)
+    values.append(price * (1 + last_return))
+    index = pd.DatetimeIndex([end - timedelta(hours=n - k) for k in range(n + 1)])
+    return pd.Series(values, index=index)
+
+
+# -- pure rules ---------------------------------------------------------------------------------------
+
+
+def test_the_rerun_window_is_0810_to_2300_baghdad() -> None:
+    day = datetime(2034, 3, 1, tzinfo=UTC)  # Baghdad = UTC+3
+    assert not rerun.in_window(day.replace(hour=5, minute=9))  # 08:09
+    assert rerun.in_window(day.replace(hour=5, minute=10))  # 08:10
+    assert rerun.in_window(day.replace(hour=19, minute=59))  # 22:59
+    assert not rerun.in_window(day.replace(hour=20))  # 23:00
+    assert not rerun.in_window(day.replace(hour=23))  # 02:00 the next day
+
+
+def test_only_importance_5_alerts_qualify() -> None:
+    assert rerun.alert_qualifies({"importance": 5})
+    assert not rerun.alert_qualifies({"importance": 4})
+    assert not rerun.alert_qualifies({"importance": None})
+    assert not rerun.alert_qualifies({"importance": True})
+
+
+def test_measure_spike_divides_the_last_return_by_the_previous_stdev() -> None:
+    end = datetime(2034, 3, 1, 8, tzinfo=UTC)
+    measured = rerun.measure_spike(_closes(end, 720, 0.035), end, lookback=720, minimum=100)
+    assert measured is not None
+    sigma, ret, stdev, n = measured
+    assert ret == pytest.approx(0.035) and stdev == pytest.approx(0.01, rel=1e-3) and n == 719
+    assert sigma == pytest.approx(3.5, rel=1e-3)
+    # A feed that is behind (the last bar is not the latest closed one), or too short a history: None.
+    late = end + timedelta(hours=1)
+    assert rerun.measure_spike(_closes(end, 720, 0.035), late, lookback=720, minimum=100) is None
+    assert rerun.measure_spike(_closes(end, 50, 0.035), end, lookback=720, minimum=100) is None
+
+
+def test_the_spike_check_is_an_interval_hook() -> None:
+    hook = next(h for h in discover_hooks()[SLUG].schedule if h.name == market_scout.SPIKE_JOB)
+    assert not hook.daily and hook.every_seconds == rerun.check_seconds() == 300
+    assert news_intelligence.ALERT_EVENT in discover_hooks()[SLUG].on_event
+
+
+# -- AC1: importance-5 alert at 12:00 -----------------------------------------------------------------
+
+
+async def test_an_importance_5_alert_at_noon_schedules_one_rerun_and_importance_4_none(
+    engine: Engine, now: datetime, cleanup: list[Bridge], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    noon = now + NOON
+    monkeypatch.setattr(market_scout, "prepare", lambda ctx, day: _prepared(noon))
+    bridge = Bridge(engine, noon, answer={"news_intelligence", "historian"})
+    cleanup.append(bridge)
+    client = fake.FakeClaudeClient([_answer(noon, [("SOL-USDT-SWAP", 0.7)])])
+    sup = _rerun_supervisor(engine, bridge, client, Clock(noon), tmp_path)
+
+    four, _row = _alert(bridge, importance=4)
+    assert await sup.handle_envelope(four) == []
+    await market_scout.settled()
+    assert client.queries == [] and _cards(bridge) == []
+
+    five, _row = _alert(bridge, importance=5)
+    await sup.handle_envelope(five)
+    await market_scout.settled()
+
+    assert len(client.queries) == 1
+    assert "INTRADAY RE-RUN" in client.queries[0]
+    assert ALERT_HEADLINE not in client.queries[0]  # the untrusted headline never reaches the model
+    (card,) = [p["card"] for p in _cards_of(bridge)]
+    assert card["trigger"]["kind"] == "news_alert" and card["trigger"]["importance"] == 5
+
+
+# -- AC2: a 3.5-sigma 1H move -------------------------------------------------------------------------
+
+
+@pytest.fixture
+def candles(engine: Engine) -> Iterator[list[str]]:
+    seeded: list[str] = []
+    yield seeded
+    with engine.begin() as conn:
+        for inst in seeded:
+            conn.execute(text("DELETE FROM candles WHERE inst_id = :i"), {"i": inst})
+
+
+def _seed_spike(engine: Engine, inst_id: str, at: datetime, last_return: float, seeded: list[str]) -> None:
+    """31 days of confirmed 1H bars alternating +-1 %, the latest closed bar moving ``last_return``."""
+    closes = _closes(rerun.latest_closed_bar(at), 31 * 24, last_return)
+    rows = [
+        {
+            "env": ENV,
+            "inst_id": inst_id,
+            "bar": "1H",
+            "ts": ts.to_pydatetime(),
+            "o": Decimal(str(c)),
+            "h": Decimal(str(c)),
+            "l": Decimal(str(c)),
+            "c": Decimal(str(c)),
+            "vol": Decimal(1),
+            "confirmed": True,
+        }
+        for ts, c in closes.items()
+    ]
+    with engine.begin() as conn:
+        conn.execute(insert(Candle), rows)
+    seeded.append(inst_id)
+
+
+async def test_a_3_5_sigma_move_off_the_watchlist_reruns_and_on_the_watchlist_does_not(
+    engine: Engine,
+    now: datetime,
+    cleanup: list[Bridge],
+    candles: list[str],
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    noon = now + NOON
+    tag = uuid.uuid4().hex[:6].upper()
+    listed, other = f"WL{tag}-USDT-SWAP", f"SPK{tag}-USDT-SWAP"
+    _seed_v1(engine, now, [listed], pinned=[])
+    _seed_spike(engine, listed, noon, 0.035, candles)
+    universe = [listed]
+
+    def build_universe(ctx: ToolContext) -> SimpleNamespace:
+        return SimpleNamespace(kept=[SimpleNamespace(inst_id=i) for i in universe])
+
+    monkeypatch.setattr(market_scout, "build_universe", build_universe)
+    monkeypatch.setattr(market_scout, "prepare", lambda ctx, day: _prepared(noon))
+    bridge = Bridge(engine, noon, answer={"news_intelligence", "historian"})
+    cleanup.append(bridge)
+    client = fake.FakeClaudeClient([_answer(noon, [("SOL-USDT-SWAP", 0.7)])])
+    sup = _rerun_supervisor(engine, bridge, client, Clock(noon), tmp_path, only_spike_hook=True)
+
+    # Only the watchlist instrument moved 3.5 sigma: nothing.
+    assert await sup.tick(noon) == []
+    await market_scout.settled()
+    assert client.queries == [] and _cards(bridge) == []
+
+    # The same move on an instrument that is not on the watchlist: one re-run.
+    _seed_spike(engine, other, noon, 0.035, candles)
+    universe.append(other)
+    await _rerun_supervisor(engine, bridge, client, Clock(noon), tmp_path, only_spike_hook=True).tick(noon)
+    await market_scout.settled()
+
+    assert len(client.queries) == 1
+    (card,) = [p["card"] for p in _cards_of(bridge)]
+    trigger = card["trigger"]
+    assert set(trigger) == {"kind", "inst_id", "sigma", "bar", "bar_ts", "at"}
+    assert trigger["kind"] == "vol_spike" and trigger["inst_id"] == other and trigger["bar"] == "1H"
+    assert trigger["sigma"] == pytest.approx(3.5, abs=0.01)
+    bar_close = rerun.latest_closed_bar(noon) + timedelta(hours=1)
+    assert trigger["at"] == bar_close.isoformat()
+    assert card["version"] == 2
+    assert set(card["changes"]) == {"since", "version", "added", "dropped"}
+    assert card["changes"]["added"] == ["SOL-USDT-SWAP"] and card["changes"]["dropped"] == [listed]
+
+
+# -- AC3: debounce and the night ----------------------------------------------------------------------
+
+
+async def test_two_triggers_20_minutes_apart_rerun_once_and_02_00_runs_none(
+    engine: Engine, now: datetime, cleanup: list[Bridge], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    noon = now + NOON
+    monkeypatch.setattr(market_scout, "prepare", lambda ctx, day: _prepared(noon))
+    bridge = Bridge(engine, noon, answer={"news_intelligence", "historian"})
+    cleanup.append(bridge)
+    client = fake.FakeClaudeClient([_answer(noon, [("SOL-USDT-SWAP", 0.7)]), _answer(noon, [])])
+    clock = Clock(noon - timedelta(hours=10))  # 02:00 Baghdad the same day
+    sup = _rerun_supervisor(engine, bridge, client, clock, tmp_path)
+
+    await sup.handle_envelope(_alert(bridge, importance=5)[0])
+    await market_scout.settled()
+    assert client.queries == [] and _cards(bridge) == []
+
+    clock.at = noon
+    await sup.handle_envelope(_alert(bridge, importance=5)[0])
+    await market_scout.settled()
+    clock.at = noon + timedelta(minutes=20)
+    await sup.handle_envelope(_alert(bridge, importance=5)[0])
+    await market_scout.settled()
+    assert len(client.queries) == 1 and len(_cards(bridge)) == 1
+
+    # A restarted supervisor still sees the saved re-run: the debounce is not only in memory.
+    restarted = _rerun_supervisor(engine, bridge, client, clock, tmp_path)
+    await restarted.handle_envelope(_alert(bridge, importance=5)[0])
+    await market_scout.settled()
+    assert len(client.queries) == 1
+
+
+# -- AC4 + card shapes: version 2 keeps owner pins and names the trigger -------------------------------
+
+
+async def test_the_rerun_saves_version_2_with_owner_pins_and_a_card_naming_the_trigger(
+    engine: Engine, now: datetime, cleanup: list[Bridge], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    noon = now + NOON
+    v1 = _seed_v1(engine, now, ["SOL-USDT-SWAP", "TSLA-USDT-SWAP"], pinned=["TSLA-USDT-SWAP"])
+
+    def prepare(ctx: ToolContext, day: Any) -> market_scout.Prepared:
+        with ctx.session_factory() as session:
+            pinned, removed, version = market_scout._owner_edits(session, ctx, day)
+        return dataclasses.replace(
+            _prepared(noon), pinned_items=pinned, removed=removed, previous_version=version
+        )
+
+    monkeypatch.setattr(market_scout, "prepare", prepare)
+    bridge = Bridge(engine, noon, answer={"news_intelligence", "historian"})
+    cleanup.append(bridge)
+    client = fake.FakeClaudeClient([_answer(noon, [("ETH-USDT-SWAP", 0.6)])])
+    sup = _rerun_supervisor(engine, bridge, client, Clock(noon), tmp_path)
+
+    alert, alert_row = _alert(bridge, importance=5)
+    await sup.handle_envelope(alert)
+    await market_scout.settled()
+
+    wl, items = _saved(engine, now)
+    assert wl.version == 2 and v1.version == 1
+    assert [(i.inst_id, i.pinned_by_owner) for i in items] == [
+        ("ETH-USDT-SWAP", False),
+        ("TSLA-USDT-SWAP", True),
+    ]
+    (payload,) = _cards_of(bridge)
+    card = payload["card"]
+    assert card["version"] == 2 and card["previous_version"] == 1
+    assert card["correlation_id"].startswith("scout_rerun:news_alert:")
+    assert card["trigger"] == {
+        "kind": "news_alert",
+        "message_id": alert_row,
+        "event_id": str(alert.id),
+        "headline": ALERT_HEADLINE,
+        "importance": 5,
+        "at": alert.ts.astimezone(UTC).isoformat(),
+    }
+    assert card["changes"] == {
+        "since": v1.created_at.astimezone(UTC).isoformat(),
+        "version": 1,
+        "added": ["ETH-USDT-SWAP"],
+        "dropped": ["SOL-USDT-SWAP"],
+    }
+    assert wl.data["trigger"] == card["trigger"] and wl.data["changes"] == card["changes"]
+    assert payload["content_md"].startswith(
+        f"**Intraday re-run** (importance-5 news alert: {ALERT_HEADLINE}). "
+        "Added: ETH-USDT-SWAP. Dropped: SOL-USDT-SWAP."
+    )
+    with Session(engine) as db:
+        triggers = db.scalars(
+            select(AgentRun.trigger).where(
+                AgentRun.agent == SLUG,
+                AgentRun.correlation_id == card["correlation_id"],
+            )
+        ).all()
+    assert list(triggers) == ["alert"]

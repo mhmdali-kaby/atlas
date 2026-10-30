@@ -319,9 +319,10 @@ def test_news_intelligence_is_enabled_and_registers_mention_schedule_and_alert_h
     assert [h.name for h in hooks.schedule] == ["news_morning_brief"]
     assert hooks.schedule[0].time_of_day().isoformat() == "07:30:00"
     assert set(hooks.on_event) == {"news.alert"}
-    # Only News Intelligence reacts to news.alert.
+    # News Intelligence analyses every alert; the only other listener is Market Scout's code-only
+    # intraday re-run trigger (ATL-109, importance 5), which starts no News run.
     others = [slug for slug, h in discover_hooks().items() if slug != SLUG and "news.alert" in h.on_event]
-    assert others == []
+    assert others == ["market_scout"]
     assert DEFAULTS["agents"]["news_intelligence"]["alerts_per_hour"] == 6
 
 

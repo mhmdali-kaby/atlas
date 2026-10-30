@@ -854,6 +854,19 @@ agents:
     max_correlated_picks: 2
     history_days: 5
     link_seconds: 5
+    # ATL-109, brief §7.1 step 6: intraday re-runs (atlas_agents.scout.rerun), code triggers only.
+    # A news.alert of importance >= rerun_alert_importance, or a universe instrument not on today's
+    # watchlist whose latest closed 1H bar's |return| > spike_sigma x the stdev of its previous
+    # spike_lookback_days of 1H returns (at least spike_min_returns of them), re-runs the watchlist.
+    # The spike check runs every spike_check_seconds. Re-runs start only inside rerun_window
+    # (Asia/Baghdad, start inclusive, end exclusive) and at most once per rerun_min_minutes.
+    spike_sigma: "3"
+    rerun_min_minutes: 60
+    rerun_window: { start: "08:10", end: "23:00" }
+    rerun_alert_importance: 5
+    spike_check_seconds: 300
+    spike_lookback_days: 30
+    spike_min_returns: 100
     universe:
       enabled_markets: [spot, crypto_perp, stock_perp, commodity_perp]
       blocklist: []

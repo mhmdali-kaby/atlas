@@ -33,7 +33,7 @@ import time
 import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Any, Final
 
 from atlas_shared.db import ResearchReport, Watchlist, WatchlistItem, owner_day
@@ -48,6 +48,7 @@ from atlas_agents.mentions import MentionRequest, max_depth
 from atlas_agents.registry import HOOKS, AgentHost, ScheduleFire
 from atlas_agents.schemas import WatchlistPick
 from atlas_agents.scout import features as scout_features
+from atlas_agents.scout import rerun
 from atlas_agents.scout.features import FeatureTable, build_feature_table, save_feature_table
 from atlas_agents.scout.prescore import Shortlist, build_shortlist, prescore_config, shortlist_correlations
 from atlas_agents.scout.publish import (
@@ -75,8 +76,8 @@ from atlas_agents.scout.universe import build_universe, load_config
 from atlas_agents.session import Review, RunResult
 from atlas_agents.tools import ToolContext
 from atlas_agents.tools.account import compute_correlations, get_positions
-from atlas_agents.tools.framework import NoInput
-from atlas_agents.tools.warroom import MAIN_THREAD
+from atlas_agents.tools.framework import NoInput, ToolError
+from atlas_agents.tools.warroom import MAIN_THREAD, _parent
 from atlas_agents.watchlists import save_watchlist
 
 log = logging.getLogger(__name__)
@@ -87,6 +88,10 @@ HISTORIAN: Final = "historian"
 JOB: Final = "scout_watchlist"
 WARROOM_STREAM: Final = "atlas.warroom"
 SOURCE: Final = "atlas.scout_watchlist"
+RERUN_JOB: Final = "scout_rerun"
+SPIKE_JOB: Final = "scout_spike_check"
+ALERT_ROW_TRIES: Final = int(news_intelligence.config()["alert_parent_tries"])
+ALERT_ROW_WAIT_SECONDS: Final = int(news_intelligence.config()["alert_parent_wait_ms"]) / 1000
 
 _tasks: set[asyncio.Task[Any]] = set()
 
@@ -356,8 +361,16 @@ class Inputs:
     evidence: Evidence
     positions: list[dict[str, Any]]
     recent: list[dict[str, Any]]
+    rerun: Mapping[str, Any] | None = None
+    """The intraday re-run trigger (ATL-109), or None. Its headline is never shown to the model."""
 
     def data(self) -> dict[str, Any]:
+        out = self._data()
+        if self.rerun is not None:
+            out["intraday_rerun_trigger"] = {k: v for k, v in self.rerun.items() if k != "headline"}
+        return out
+
+    def _data(self) -> dict[str, Any]:
         p = self.prepared
         return {
             "shortlist": [_row_json(r) for r in p.shortlist.rows],
@@ -413,6 +426,13 @@ def scout_prompt(inputs: Inputs) -> str:
             f"\n\nEVERY NEWS SOURCE IS DOWN for: {', '.join(p.degraded_asset_classes)}. Atlas caps the "
             f"conviction of picks in those asset classes at {_cap():g}."
         )
+    if inputs.rerun is not None:
+        partial += (
+            "\n\nTHIS IS AN INTRADAY RE-RUN (brief §7.1 step 6), triggered by "
+            f"{_trigger_words(inputs.rerun)}; see intraday_rerun_trigger. Re-check today's picks "
+            "against it: keep, add or drop instruments on the evidence. The new version replaces "
+            "today's current watchlist."
+        )
     return (
         "It is time for today's watchlist (brief §7.1). Atlas computed the shortlist (top by "
         "pre-score, plus owner pins), the 48h calendar, open positions and your recent watchlists; "
@@ -454,6 +474,33 @@ def _summary(
     return "\n".join(lines)
 
 
+def _trigger_words(trigger: Mapping[str, Any]) -> str:
+    if trigger.get("kind") == rerun.VOL_SPIKE:
+        return (
+            f"a volatility spike: {trigger.get('inst_id')} moved {trigger.get('sigma')} sigma on the "
+            f"1H bar that closed at {trigger.get('at')}"
+        )
+    return f"an importance-{trigger.get('importance')} news alert (event {trigger.get('event_id')})"
+
+
+def rerun_line(trigger: Mapping[str, Any], changes: Mapping[str, Any] | None) -> str:
+    """The card text's first line on a re-run: what triggered it and what changed (code-written)."""
+    if trigger.get("kind") == rerun.VOL_SPIKE:
+        why = (
+            f"{trigger.get('inst_id')} moved {trigger.get('sigma')} sigma on the 1H bar closed at "
+            f"{trigger.get('at')}"
+        )
+    else:
+        headline = str(trigger.get("headline") or "").strip() or "(no headline)"
+        why = f"importance-{trigger.get('importance')} news alert: {headline}"
+    line = f"**Intraday re-run** ({why})."
+    if changes is not None:
+        added = ", ".join(changes.get("added") or []) or "none"
+        dropped = ", ".join(changes.get("dropped") or []) or "none"
+        line += f" Added: {added}. Dropped: {dropped}."
+    return line
+
+
 def _card_pick(pick: WatchlistPick, pinned: Sequence[str], caps: Mapping[str, Cap]) -> dict[str, Any]:
     out: dict[str, Any] = {**pick.model_dump(mode="json"), "pinned_by_owner": pick.inst_id in pinned}
     cap = caps.get(pick.inst_id)
@@ -482,10 +529,17 @@ def save_and_card(
     data: dict[str, Any],
     caps: Mapping[str, Cap] | None = None,
 ) -> Saved:
-    """Save the watchlist (new version for the day) and return its card. Synchronous."""
+    """Save the watchlist (new version for the day) and return its card. Synchronous.
+
+    On an intraday re-run (``data["trigger"]`` is a mapping, ATL-109) the card and the saved data
+    also get ``changes`` against the version this one replaces."""
     created = ctx.now()
     window = created + timedelta(minutes=_int("watchlist_edit_window_minutes"))
     with ctx.session_factory() as session:
+        if isinstance(data.get("trigger"), Mapping):
+            previous = rerun.current_watchlist(session, ctx, day)
+            previous_ids = rerun.listed_ids(session, previous)
+            data = {**data, "changes": rerun.changes(previous, previous_ids, [p.inst_id for p in picks])}
         wl = save_watchlist(
             session,
             ctx.env,
@@ -519,6 +573,12 @@ def save_and_card(
         **data,
     }
     return Saved(watchlist_id, version, status, card)
+
+
+_UNGUARDED_CARD_KEYS: Final = frozenset(
+    {"watchlist_id", "version", "created_at", "edit_window_ends_at", "date", "trigger", "changes"}
+)
+"""Card keys written by code that the number guard does not check (runtime ids, the re-run trigger)."""
 
 
 class WatchlistReviewer:
@@ -650,12 +710,11 @@ class WatchlistReviewer:
                     "data": {"content_md": reply.content_md, "card": reply.card},
                 }
             )
-        plain = {
-            k: v
-            for k, v in saved.card.items()
-            if k not in {"watchlist_id", "version", "created_at", "edit_window_ends_at", "date"}
-        }
+        plain = {k: v for k, v in saved.card.items() if k not in _UNGUARDED_CARD_KEYS}
         saved.card["meta"] = numguard.check(summary, plain, outputs).to_meta()
+        trigger = saved.card.get("trigger")
+        if isinstance(trigger, Mapping):  # code-written, so outside the number guard
+            summary = f"{rerun_line(trigger, saved.card.get('changes'))}\n{summary}"
         return Review(
             message={
                 "kind": CARD_TYPE,
@@ -768,6 +827,9 @@ async def _post_empty(
         "tokens_out": None,
         "cost_usd": None,
     }
+    trigger = saved.card.get("trigger")
+    if isinstance(trigger, Mapping):
+        payload["content_md"] = f"{rerun_line(trigger, saved.card.get('changes'))}\n{payload['content_md']}"
     _publish(
         host,
         events.envelope(
@@ -779,17 +841,26 @@ async def _post_empty(
 
 
 async def run_watchlist(
-    host: AgentHost, *, trigger: str, correlation_id: str, day: date | None = None, depth: int = 0
+    host: AgentHost,
+    *,
+    trigger: str,
+    correlation_id: str,
+    day: date | None = None,
+    depth: int = 0,
+    trigger_detail: Mapping[str, Any] | None = None,
 ) -> RunResult | None:
     """The whole pipeline (module docstring). Returns the Scout run, or None when the model was not
-    called (already done for this correlation id, or an empty shortlist)."""
+    called (already done for this correlation id, or an empty shortlist).
+
+    ``trigger_detail`` (ATL-109 intraday re-runs) replaces the card's ``trigger`` string with that
+    object, adds ``changes`` against the previous version, and tells the model why it re-runs."""
     ctx = host.tool_context(SLUG)
     today = day or owner_day(ctx.now())
     if trigger == "schedule" and await asyncio.to_thread(_already_done, ctx, today, correlation_id):
         return None
     prepared = await asyncio.to_thread(prepare, ctx, today)
     base: dict[str, Any] = {
-        "trigger": trigger,
+        "trigger": dict(trigger_detail) if trigger_detail is not None else trigger,
         "correlation_id": correlation_id,
         "feature_table_report_id": prepared.report_id,
         "feature_table_as_of": prepared.table.as_of.isoformat(),
@@ -853,7 +924,14 @@ async def run_watchlist(
     )
     positions = await _positions(ctx)
     recent = await asyncio.to_thread(_recent_picks, ctx, today)
-    inputs = Inputs(prepared=prepared, replies=replies, evidence=evidence, positions=positions, recent=recent)
+    inputs = Inputs(
+        prepared=prepared,
+        replies=replies,
+        evidence=evidence,
+        positions=positions,
+        recent=recent,
+        rerun=trigger_detail,
+    )
     base["evidence"] = evidence.model_dump(mode="json")
     reviewer = WatchlistReviewer(ctx, today, inputs, base)
     result = await host.run(
@@ -896,9 +974,121 @@ async def answer_mention(host: AgentHost, request: MentionRequest) -> RunResult 
     return None
 
 
+# -- intraday re-runs (ATL-109, brief §7.1 step 6) ----------------------------------------------------
+
+
+def _last_rerun(ctx: ToolContext, day: date) -> datetime | None:
+    with ctx.session_factory() as session:
+        return rerun.last_saved_rerun(session, ctx, day, SLUG)
+
+
+async def _alert_row(ctx: ToolContext, event_id: str) -> str | None:
+    """The alert's warroom_messages row id (the bridge stores it from the same stream, so retry a
+    few times like News Intelligence does), or None."""
+    tries = 1 if ctx.replaying else ALERT_ROW_TRIES
+    for attempt in range(tries):
+        try:
+            row_id, _thread = await asyncio.to_thread(_parent, ctx, event_id)
+            return row_id
+        except ToolError:
+            if attempt + 1 < tries:
+                await asyncio.sleep(ALERT_ROW_WAIT_SECONDS)
+    return None
+
+
+async def request_rerun(
+    host: AgentHost, trigger: Mapping[str, Any], *, now: datetime, alert_event_id: str | None = None
+) -> asyncio.Task[RunResult | None] | None:
+    """Start an intraday re-run in the background, unless ``now`` is outside ``rerun_window`` or a
+    re-run started less than ``rerun_min_minutes`` ago. Returns the task, or None when debounced.
+
+    Background, like an @Scout mention: the teammates' replies arrive through the War Room consumer
+    that delivers the alert."""
+    if not rerun.in_window(now):
+        log.info("market_scout: %s re-run skipped: outside the re-run window", trigger.get("kind"))
+        return None
+    ctx = host.tool_context(SLUG)
+    day = owner_day(now)
+    saved = await asyncio.to_thread(_last_rerun, ctx, day)
+    if rerun.DEBOUNCE.blocked(host, now, saved, rerun.min_minutes()):
+        log.info("market_scout: %s re-run skipped: debounced (rerun_min_minutes)", trigger.get("kind"))
+        return None
+    rerun.DEBOUNCE.mark(host, now)
+    correlation_id = f"{RERUN_JOB}:{trigger.get('kind')}:{uuid.uuid4()}"
+
+    async def go() -> RunResult | None:
+        detail = dict(trigger)
+        if alert_event_id is not None:
+            detail["message_id"] = await _alert_row(ctx, alert_event_id)
+        try:
+            return await run_watchlist(
+                host, trigger="alert", correlation_id=correlation_id, day=day, trigger_detail=detail
+            )
+        except Exception:
+            log.exception("market_scout: intraday re-run %s failed", correlation_id)
+            return None
+
+    task = asyncio.create_task(go())
+    _tasks.add(task)
+    task.add_done_callback(_tasks.discard)
+    return task
+
+
+async def settled() -> None:
+    """Wait for every background watchlist run (mentions, re-runs) to finish (tests, shutdown)."""
+    while _tasks:
+        await asyncio.gather(*list(_tasks), return_exceptions=True)
+
+
+@HOOKS.event(SLUG, news_intelligence.ALERT_EVENT)
+async def rerun_on_alert(host: AgentHost, envelope: EventEnvelope) -> RunResult | None:
+    """An importance-5 ``news.alert`` re-runs today's watchlist (in the background)."""
+    payload = envelope.payload
+    if not rerun.alert_qualifies(payload):
+        return None
+    ctx = host.tool_context(SLUG)
+    headline = payload.get("headline")
+    trigger = rerun.news_trigger(
+        message_id=None,
+        event_id=str(envelope.id),
+        headline=headline if isinstance(headline, str) else None,
+        importance=int(payload["importance"]),
+        at=envelope.ts,
+    )
+    await request_rerun(host, trigger, now=ctx.now(), alert_event_id=str(envelope.id))
+    return None
+
+
+def _spikes(ctx: ToolContext, day: date) -> list[rerun.Spike]:
+    universe = build_universe(ctx)
+    with ctx.session_factory() as session:
+        listed = rerun.listed_ids(session, rerun.current_watchlist(session, ctx, day))
+        return rerun.find_spikes(session, ctx, [k.inst_id for k in universe.kept], exclude=listed)
+
+
+@HOOKS.schedule(SLUG, SPIKE_JOB, every_seconds=rerun.check_seconds())
+async def rerun_on_spike(host: AgentHost, fire: ScheduleFire) -> RunResult | None:
+    """Every ``spike_check_seconds``: a > ``spike_sigma`` 1H move on a universe instrument that is
+    not on today's watchlist re-runs it (the strongest spike names the trigger)."""
+    ctx = host.tool_context(SLUG)
+    now = ctx.now()
+    if not rerun.in_window(now):
+        return None
+    day = owner_day(now)
+    saved = await asyncio.to_thread(_last_rerun, ctx, day)
+    if rerun.DEBOUNCE.blocked(host, now, saved, rerun.min_minutes()):
+        return None  # skip the candle scan while debounced
+    spikes = await asyncio.to_thread(_spikes, ctx, day)
+    if spikes:
+        await request_rerun(host, rerun.spike_trigger(spikes[0]), now=now)
+    return None
+
+
 __all__ = [
     "JOB",
+    "RERUN_JOB",
     "SLUG",
+    "SPIKE_JOB",
     "Inputs",
     "Prepared",
     "Reply",
@@ -908,8 +1098,13 @@ __all__ = [
     "news_targets",
     "prepare",
     "publish_watchlist",
+    "request_rerun",
+    "rerun_line",
+    "rerun_on_alert",
+    "rerun_on_spike",
     "run_watchlist",
     "save_and_card",
     "scout_prompt",
+    "settled",
     "wait_for_replies",
 ]
