@@ -776,6 +776,8 @@ agents:
   #     source of those categories is disabled, needs_key or degraded (disabled_until in the future),
   #     the class is listed in the brief card's degraded_asset_classes.
   #   mention_lookback_hours: the window an instrument brief covers (brief: last 72h).
+  #   alert_parent_tries / alert_parent_wait_ms: atlas:bridge stores the alert message from the same
+  #     stream, so the analysis looks it up this many times, this far apart, before replying in Main.
   #   morning_brief: the code-computed context of the 07:30 brief. top_stories clusters by max
   #     importance then item count over lookback_hours; events_hours of economic events at or above
   #     min_event_importance (at most max_events); top_instruments by item count over lookback_hours.
@@ -788,6 +790,8 @@ agents:
       index: [markets_news]
       commodity: [markets_news]
     mention_lookback_hours: 72
+    alert_parent_tries: 10
+    alert_parent_wait_ms: 500
     morning_brief:
       lookback_hours: 24
       top_stories: 10

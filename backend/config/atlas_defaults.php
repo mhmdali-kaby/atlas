@@ -1030,6 +1030,8 @@ return [
                 ],
             ],
             'mention_lookback_hours' => 72,
+            'alert_parent_tries' => 10,
+            'alert_parent_wait_ms' => 500,
             'morning_brief' => [
                 'lookback_hours' => 24,
                 'top_stories' => 10,

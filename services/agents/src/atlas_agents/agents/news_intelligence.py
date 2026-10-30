@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from typing import Final
 
 from atlas_shared.events import EventEnvelope
 
@@ -26,8 +25,8 @@ from atlas_agents.tools.warroom import _parent
 
 log = logging.getLogger(__name__)
 
-PARENT_TRIES: Final = 10
-PARENT_WAIT_SECONDS: Final = 0.5
+PARENT_TRIES = int(news.config()["alert_parent_tries"])
+PARENT_WAIT_SECONDS = int(news.config()["alert_parent_wait_ms"]) / 1000
 
 
 @HOOKS.mention(news.SLUG)
@@ -79,12 +78,11 @@ async def morning_brief(host: AgentHost, fire: ScheduleFire) -> RunResult:
     )
 
 
-async def _alert_parent(
-    ctx: ToolContext, event_id: str, *, tries: int = PARENT_TRIES
-) -> tuple[str | None, str | None]:
+async def _alert_parent(ctx: ToolContext, event_id: str) -> tuple[str | None, str | None]:
     """(row id, thread id) of the alert's War Room message. The bridge stores it from the same
-    stream, so it may land a moment after we read the envelope: look a few times, then reply in
-    Main with no reply_to."""
+    stream, so it may land a moment after we read the envelope: look up to PARENT_TRIES times
+    (once in replay), then reply in Main with no reply_to."""
+    tries = 1 if ctx.replaying else PARENT_TRIES
     for attempt in range(tries):
         try:
             return await asyncio.to_thread(_parent, ctx, event_id)
