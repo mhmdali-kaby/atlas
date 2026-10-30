@@ -13,6 +13,7 @@ from __future__ import annotations
 import ast
 import json
 import os
+import re
 import uuid
 from collections.abc import Iterator
 from dataclasses import replace
@@ -321,28 +322,30 @@ def test_autonomy_level_sets_the_decision(level: int, decision: str) -> None:
 
 TC_SRC = Path(__file__).resolve().parents[1] / "src" / "trading_core"
 ALLOWED = ("risk", "execution", "okx")  # okx/ is the trade client itself
-TRADE_NAMES = {"OkxTradeClient", "OkxTradeError"}
+WRITE_MODULE = "trading_core.okx.trade"  # trade_read and trade_models are read-only and allowed
+WRITE_NAMES = {"OkxTradeClient", "trade"}
+WRITE_PATH = re.compile(
+    r"^(/api/v5/)?(trade/(order|batch-orders|amend-order|cancel-order|close-position|order-algo"
+    r"|cancel-algos)|account/set-leverage)$"
+)
 
 
 def _trade_imports(path: Path) -> list[str]:
+    """Every import of the OKX write client and every OKX write-endpoint path in one source file."""
     tree = ast.parse(path.read_text(encoding="utf-8"))
     hits: list[str] = []
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            hits += [a.name for a in node.names if a.name.startswith("trading_core.okx.trade")]
+            hits += [a.name for a in node.names if a.name == WRITE_MODULE]
         elif isinstance(node, ast.ImportFrom):
             mod = node.module or ""
             names = {a.name for a in node.names}
-            if mod.startswith("trading_core.okx.trade") or (
-                mod == "trading_core.okx"
-                and ("trade" in names or "trade_models" in names or names & TRADE_NAMES)
-            ):
+            if node.level:
+                if mod.split(".")[-1:] == ["trade"] or names & WRITE_NAMES:
+                    hits.append("." * node.level + mod)
+            elif mod == WRITE_MODULE or (mod == "trading_core.okx" and names & WRITE_NAMES):
                 hits.append(mod)
-            if node.level and ("trade" in mod.split(".") or names & TRADE_NAMES):
-                hits.append("." * node.level + mod)
-        elif (
-            isinstance(node, ast.Constant) and isinstance(node.value, str) and "/api/v5/trade/" in node.value
-        ):
+        elif isinstance(node, ast.Constant) and isinstance(node.value, str) and WRITE_PATH.match(node.value):
             hits.append(node.value)
     return hits
 
@@ -362,10 +365,30 @@ def test_the_import_guard_catches_a_trade_import(tmp_path: Path) -> None:
     bad = tmp_path / "bad.py"
     bad.write_text(
         "from trading_core.okx import OkxTradeClient\nimport trading_core.okx.trade\n"
-        "PATH = '/api/v5/trade/order'\n",
+        "from trading_core.okx.trade import OrderRequest\nfrom .trade import OkxTradeClient\n"
+        "PATH = '/api/v5/trade/order'\nCANCEL = 'trade/cancel-algos'\nLEV = 'account/set-leverage'\n",
         encoding="utf-8",
     )
-    assert len(_trade_imports(bad)) == 3
+    assert len(_trade_imports(bad)) == 7
+
+
+def test_the_import_guard_allows_read_only_trade_calls(tmp_path: Path) -> None:
+    ok = tmp_path / "ok.py"
+    ok.write_text(
+        "from trading_core.okx.trade_read import OkxTradeReadClient\n"
+        "from trading_core.okx.trade_models import FillDetail\n"
+        "PATHS = ['trade/fills-history', '/api/v5/trade/orders-pending', 'account/max-size']\n",
+        encoding="utf-8",
+    )
+    assert _trade_imports(ok) == []
+    assert _trade_imports(TC_SRC / "sync" / "history.py") == []
+
+
+def test_the_import_guard_catches_a_write_import_from_sync(tmp_path: Path) -> None:
+    src = (TC_SRC / "sync" / "history.py").read_text(encoding="utf-8")
+    bad = tmp_path / "history.py"
+    bad.write_text(src + "\nfrom trading_core.okx.trade import OkxTradeClient\n", encoding="utf-8")
+    assert _trade_imports(bad) == [WRITE_MODULE]
 
 
 # --- evaluate() against Postgres + Redis (AC1, AC4) --------------------------------------------

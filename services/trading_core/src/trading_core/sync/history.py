@@ -35,8 +35,8 @@ from sqlalchemy.dialects.postgresql import insert
 
 from trading_core.okx import OkxClient
 from trading_core.okx.models import PositionHistory
-from trading_core.okx.trade import OkxTradeClient
 from trading_core.okx.trade_models import FillDetail
+from trading_core.okx.trade_read import OkxTradeReadClient
 from trading_core.sync.account import (
     NO_CONNECTION,
     AppKeyMissing,
@@ -127,7 +127,7 @@ async def fetch_history(
         since,
         limit,
     )
-    trade = OkxTradeClient(okx)
+    trade = OkxTradeReadClient(okx)
     fills: list[FillDetail] = []
     for inst_type in _CFG["history_fill_inst_types"]:
 
