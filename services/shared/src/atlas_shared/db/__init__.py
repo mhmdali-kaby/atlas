@@ -35,6 +35,8 @@ from atlas_shared.db.models import (
     SyncStatus,
     TakerVolume,
     Vector,
+    Watchlist,
+    WatchlistItem,
 )
 
 __all__ = [
@@ -70,6 +72,8 @@ __all__ = [
     "SyncStatus",
     "TakerVolume",
     "Vector",
+    "Watchlist",
+    "WatchlistItem",
     "add_usage",
     "database_url",
     "make_engine",
