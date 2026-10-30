@@ -1,7 +1,8 @@
 import { CircleAlert } from 'lucide-react'
-import { createContext, useContext, useId, type ReactNode } from 'react'
+import { useContext, useId, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { normaliseRaw } from './historian'
+import { UntracedContext, useUntracedDescId } from './untracedContext'
 
 /*
  * Untraced numbers (design v7 Historian cards §6, brief §7.11): a figure the number guard
@@ -9,38 +10,24 @@ import { normaliseRaw } from './historian'
  * underline and an icon — never colour alone — and is focusable with an accessible description.
  */
 
-interface UntracedValue {
-  /** Raw figures from `unmatched_numbers` with location "text", minus normalised to −. */
-  raws: string[]
-  /** The id of the hidden "Not found in any tool output" element the marks describe themselves by. */
-  descId: string
-}
-
-const UntracedContext = createContext<UntracedValue | null>(null)
-
-/** The description every mark in this message points at. */
-export function useUntracedDescId(): string | null {
-  return useContext(UntracedContext)?.descId ?? null
-}
-
-/** True when a figure island in the message body carries one of the untraced raws. */
-export function useIsUntraced(): (figure: string) => boolean {
-  const ctx = useContext(UntracedContext)
-  return (figure) => Boolean(ctx && ctx.raws.some((raw) => raw !== '' && figure.includes(raw)))
-}
-
 /**
  * Wraps one message (body + card): figures in its text that match `raws` are marked, and the
  * hidden description the marks point at is rendered once inside it.
  */
 export function UntracedScope({ raws, children }: { raws: string[]; children: ReactNode }) {
   const { t } = useTranslation('warroom')
-  const descId = useId()
+  const ownId = useId()
+  // A nested scope (the card's key stat) reuses the outer description: its own hidden element would
+  // sit inside the text and, being Arabic in ar, turn the paragraph's dir="auto" to RTL.
+  const outer = useContext(UntracedContext)
+  const descId = outer?.descId ?? ownId
   return (
     <UntracedContext.Provider value={{ raws: raws.map(normaliseRaw), descId }}>
-      <span id={descId} className="sr-only">
-        {t('hv.unv')}
-      </span>
+      {!outer && (
+        <span id={descId} className="sr-only">
+          {t('hv.unv')}
+        </span>
+      )}
       {children}
     </UntracedContext.Provider>
   )

@@ -631,8 +631,8 @@ mark.unv:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .rt-chip svg { width: 14px; height: 14px; color: var(--label-secondary); }
 .rt-chip-n { color: var(--label-secondary); }
 .rt-chip:hover { background: var(--fill-3); }
-.rt-chip[aria-pressed="true"] { background: var(--accent-solid); color: #fff; box-shadow: none; }
-.rt-chip[aria-pressed="true"] svg, .rt-chip[aria-pressed="true"] .rt-chip-n { color: rgba(255, 255, 255, 0.85); }
+.rt-chip[aria-pressed="true"] { background: var(--accent-solid); color: var(--on-solid); box-shadow: none; }
+.rt-chip[aria-pressed="true"] svg, .rt-chip[aria-pressed="true"] .rt-chip-n { color: var(--on-accent-secondary); }
 [dir='rtl'] .rt-chip svg { transform: scaleX(-1); }
 .rt-scroll { overflow-x: auto; margin-inline: -6px; padding-inline: 6px; }
 .rt-table { width: 100%; border-collapse: collapse; font-size: var(--fs-footnote); line-height: 18px; font-variant-numeric: tabular-nums; }
@@ -657,7 +657,7 @@ mark.unv:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 
 /* design v7 review (390 px): the horizon table scrolls sideways; while columns sit past the inline
    end, an edge fade says so (it mirrors in RTL). */
-.hv-dist.has-more { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); }
-[dir='rtl'] .hv-dist.has-more { -webkit-mask-image: linear-gradient(to left, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to left, #000 calc(100% - 32px), transparent); }
+.hv-dist.has-more { -webkit-mask-image: linear-gradient(to right, black calc(100% - 56px), transparent); mask-image: linear-gradient(to right, black calc(100% - 56px), transparent); }
+[dir='rtl'] .hv-dist.has-more { -webkit-mask-image: linear-gradient(to left, black calc(100% - 56px), transparent); mask-image: linear-gradient(to left, black calc(100% - 56px), transparent); }
 .hv-dist:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 6px; }
 @media (prefers-reduced-motion: reduce) { .rt-sort-ic { transition: none; } }

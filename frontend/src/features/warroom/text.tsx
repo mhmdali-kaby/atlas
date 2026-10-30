@@ -1,7 +1,8 @@
 import { Fragment, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { excerptSource, parseBlocks, tokenize, type Piece, type Token } from './tokens'
-import { UntracedMark, useIsUntraced } from './Untraced'
+import { UntracedMark } from './Untraced'
+import { useIsUntraced } from './untracedContext'
 
 /* Renders free text with its bidi islands (tokens.ts, design v4 War Room §9). */
 

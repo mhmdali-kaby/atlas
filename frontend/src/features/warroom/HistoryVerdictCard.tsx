@@ -16,9 +16,11 @@ import {
   type LucideIcon,
   type LucideProps,
 } from 'lucide-react'
-import { Fragment, useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { formatFixed, formatSigned, type Lang } from '../../lib/format'
+import { formatFixed, type Lang } from '../../lib/format'
+import { useNow } from '../portfolio/hooks'
+import { fillSlots, pctSigned, pctWhole, probability, slot, useSpanText } from './historianFormat'
 import {
   isSmallSampleRule,
   KNOWN_REGIMES,
@@ -42,28 +44,6 @@ import { UntracedMark, UntracedScope } from './Untraced'
 
 // ---------------------------------------------------------------------------------- formats
 
-/** A signed return given as a fraction: 0.0094 → "+0.94%", −0.0383 → "−3.83%". */
-export const pctSigned = (v: number, lang: Lang) => formatSigned(v * 100, 'percent', lang)
-/** A 0–100 share → "58%". */
-export const pctWhole = (v: number, lang: Lang) => `${formatFixed(v, 0, lang)}%`
-/** A 0–1 probability → "71%". */
-export const probability = (p: number, lang: Lang) => `${formatFixed(p * 100, 0, lang)}%`
-
-/** A translated template split around {{slot}} placeholders, each placed as a React node. */
-export function fillSlots(template: string, nodes: Record<string, ReactNode>): ReactNode[] {
-  const out: ReactNode[] = []
-  let last = 0
-  for (const m of template.matchAll(/([a-z]+)/g)) {
-    if (m.index > last) out.push(<Fragment key={`t${last}`}>{template.slice(last, m.index)}</Fragment>)
-    out.push(<Fragment key={`s${m.index}`}>{nodes[m[1]!] ?? null}</Fragment>)
-    last = m.index + m[0].length
-  }
-  if (last < template.length) out.push(<Fragment key={`t${last}`}>{template.slice(last)}</Fragment>)
-  return out
-}
-/** The slot marker passed to t() for a value that fillSlots replaces. */
-export const slot = (name: string) => `${name}`
-
 export function Fig({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <bdi dir="ltr" className={className ? `fig num ${className}` : 'fig num'}>
@@ -72,20 +52,11 @@ export function Fig({ children, className }: { children: ReactNode; className?: 
   )
 }
 
-/** days_in_regime → "6 days", "10 hours", "under an hour". */
-export function useSpanText() {
-  const { t } = useTranslation('warroom')
-  return (d: number) => {
-    if (d < 1 / 24) return t('rg.underHour')
-    if (d < 1) return t('rg.hours', { count: Math.round(d * 24) })
-    return t('rg.days', { count: Math.round(d) })
-  }
-}
-
 /** "Data as of 14:33" today in Baghdad, "Data as of 27 Oct, 18:40" on another day. */
 export function AsOf({ ts, lang }: { ts: string; lang: Lang }) {
   const { t } = useTranslation('warroom')
-  const today = baghdadDay(ts) === baghdadDay(Date.now())
+  const now = useNow(60_000)
+  const today = baghdadDay(ts) === baghdadDay(now)
   const when = today ? formatTime(ts, lang) : `${formatDate(ts, lang)}${lang === 'ar' ? '، ' : ', '}${formatTime(ts, lang)}`
   return (
     <time className="hv-asof" dateTime={ts} tabIndex={0} title={formatFullTime(ts, lang)} data-testid="hv-asof">
@@ -307,7 +278,7 @@ function useMoreAtEnd() {
 function HorizonTable({ card, lang, mark }: { card: Card; lang: Lang; mark: MarkFn }) {
   const { t } = useTranslation('warroom')
   const id = useId().replace(/:/g, '')
-  const scroller = useMoreAtEnd()
+  const { ref: distRef, more, onScroll } = useMoreAtEnd()
   const weak = card.n < MIN_N
   const cell = (path: string, text: string) => mark(path, <Fig>{text}</Fig>)
   const cells = (q: Dist | null, root: string, h: string) =>
@@ -329,14 +300,14 @@ function HorizonTable({ card, lang, mark }: { card: Card; lang: Lang; mark: Mark
     )
   return (
     <div
-      ref={scroller.ref}
-      onScroll={scroller.onScroll}
-      className={scroller.more ? 'hv-dist has-more' : 'hv-dist'}
+      ref={distRef}
+      onScroll={onScroll}
+      className={more ? 'hv-dist has-more' : 'hv-dist'}
       data-testid="hv-dist"
       // A scroller with content past its edge must be reachable by keyboard (axe scrollable-region-focusable).
-      tabIndex={scroller.more ? 0 : undefined}
-      aria-label={scroller.more ? t('hv.more') : undefined}
-      role={scroller.more ? 'region' : undefined}
+      tabIndex={more ? 0 : undefined}
+      aria-label={more ? t('hv.more') : undefined}
+      role={more ? 'region' : undefined}
     >
       <table className="hv-table">
         <caption className="sr-only">{t('hv.table')}</caption>

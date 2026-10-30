@@ -3,7 +3,8 @@ import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatFixed, type Lang } from '../../lib/format'
 import { REGIME_ORDER, type RegimeRow, type RegimeTableCard as Card } from './historian'
-import { AsOf, Fig, fillSlots, probability, RegimeLabel, RuleBased, slot, useSpanText } from './HistoryVerdictCard'
+import { AsOf, Fig, RegimeLabel, RuleBased } from './HistoryVerdictCard'
+import { fillSlots, probability, slot, useSpanText } from './historianFormat'
 import { InstrumentId } from './text'
 
 /*
@@ -32,7 +33,7 @@ const KEY: Record<Col, (r: RegimeRow) => number | string | null> = {
   days: (r) => r.days,
 }
 
-export function sortRows(rows: RegimeRow[], col: Col, dir: Dir): RegimeRow[] {
+function sortRows(rows: RegimeRow[], col: Col, dir: Dir): RegimeRow[] {
   const key = KEY[col]
   return [...rows].sort((a, b) => {
     const va = key(a)
