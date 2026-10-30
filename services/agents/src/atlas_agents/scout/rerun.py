@@ -29,12 +29,13 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 from atlas_quant import load_candles
-from atlas_shared.db import Watchlist, WatchlistItem
+from atlas_shared.db import Watchlist
 from atlas_shared.defaults import DEFAULTS
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from atlas_agents.tools import ToolContext
+from atlas_agents.watchlists import current_watchlist, listed_ids
 
 NEWS_ALERT: Final = "news_alert"
 VOL_SPIKE: Final = "vol_spike"
@@ -208,27 +209,6 @@ def find_spikes(
 
 
 # -- today's watchlist, changes, debounce -------------------------------------------------------------
-
-
-def current_watchlist(session: Session, ctx: ToolContext, day: date) -> Watchlist | None:
-    return session.scalars(
-        select(Watchlist)
-        .where(Watchlist.env == ctx.env, Watchlist.date == day, ctx.bound(Watchlist.created_at))
-        .order_by(Watchlist.version.desc())
-        .limit(1)
-    ).first()
-
-
-def listed_ids(session: Session, watchlist: Watchlist | None) -> list[str]:
-    """Instruments on ``watchlist`` that the owner has not removed, in rank order."""
-    if watchlist is None:
-        return []
-    items = session.scalars(
-        select(WatchlistItem)
-        .where(WatchlistItem.watchlist_id == watchlist.id, WatchlistItem.removed_by_owner_at.is_(None))
-        .order_by(WatchlistItem.rank)
-    ).all()
-    return [i.inst_id for i in items]
 
 
 def changes(

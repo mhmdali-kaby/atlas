@@ -1519,6 +1519,35 @@ return [
             'mention_max_instruments' => 3,
             'cycle_max_instruments' => 10,
         ],
+        'votes' => [
+            'voters' => [
+                'technical_analyst',
+                'derivatives_sentiment',
+                'news_intelligence',
+                'historian',
+                'devils_advocate',
+            ],
+            'scores' => [
+                'take' => '1',
+                'change_applied' => '0.5',
+                'change' => '0',
+                'skip' => '0',
+            ],
+            'missing_confidence' => '0.5',
+            'threshold' => '0.6',
+            'threshold_setting' => 'agents.vote_threshold',
+            'reliability_days' => 30,
+            'reliability_min' => '0.5',
+            'reliability_max' => '1.5',
+            'reliability_default' => '1',
+            'da_agent' => 'devils_advocate',
+            'da_card_type' => 'da_review',
+            'da_max_rating' => 4,
+            'closable_statuses' => [
+                'under_review',
+                'voting',
+            ],
+        ],
         'technical_analyst' => [
             'history_bars' => [
                 '1D' => 400,
@@ -1537,6 +1566,31 @@ return [
             'mention_max_instruments' => 3,
             'position_bar' => '1H',
             'zones_reported' => 8,
+        ],
+        'derivatives_sentiment' => [
+            'watchlist_max_runs' => 10,
+            'mention_max_instruments' => 3,
+            'debounce_minutes' => 60,
+            'funding_settlement_hours_utc' => [
+                0,
+                8,
+                16,
+            ],
+            'funding_delay_minutes' => 5,
+            'funding_grace_minutes' => 30,
+            'schedule_check_seconds' => 60,
+            'extreme_check_seconds' => 300,
+            'extreme_oi_window_hours' => 1,
+            'extreme_oi_change_pct' => '10',
+            'extreme_funding_z' => '2.5',
+            'extreme_funding_z_keys' => [
+                '7d',
+            ],
+            'regime_windows_hours' => [
+                24,
+                4,
+                1,
+            ],
         ],
         'ta_structure' => [
             'levels' => [

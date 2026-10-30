@@ -1250,6 +1250,34 @@ agents:
     positioning_author: derivatives_sentiment
     mention_max_instruments: 3
     cycle_max_instruments: 10
+  # ATL-154, brief §7.9: the weighted vote, computed in code (atlas_agents.votes.close_vote).
+  #   voters: the agents whose votes count; a voter with no vote counts as skip at
+  #     missing_confidence.
+  #   scores: points per vote. A "change" vote scores change_applied when it was cast on an earlier
+  #     version and the proposal was revised after it (the Strategist applied a fix), else change.
+  #   threshold: pass when weighted score / total weight >= this. The settings-table key
+  #     threshold_setting (flat, like the other agents.* settings) overrides it.
+  #   reliability_*: weight = confidence x the voter's reliability weight, read from the newest
+  #     agent_scores.data.reliability_weight within reliability_days, clamped to [min, max];
+  #     reliability_default when there is none.
+  #   da_*: the Devil's Advocate review card (warroom_messages author da_agent, card.type
+  #     da_card_type, card.proposal_id, integer card.risk_rating 1-5). The vote fails when the
+  #     newest rating on any version of the proposal is above da_max_rating, or there is none.
+  #   closable_statuses: close_vote refuses a proposal in any other status.
+  votes:
+    voters: [technical_analyst, derivatives_sentiment, news_intelligence, historian, devils_advocate]
+    scores: { take: "1", change_applied: "0.5", change: "0", skip: "0" }
+    missing_confidence: "0.5"
+    threshold: "0.6"
+    threshold_setting: agents.vote_threshold
+    reliability_days: 30
+    reliability_min: "0.5"
+    reliability_max: "1.5"
+    reliability_default: "1"
+    da_agent: devils_advocate
+    da_card_type: da_review
+    da_max_rating: 4
+    closable_statuses: [under_review, voting]
   technical_analyst:
     history_bars: { "1D": 400, "4H": 500, "1H": 500, "15m": 500, "5m": 300 }
     stale_bars: 2
@@ -1260,6 +1288,35 @@ agents:
     mention_max_instruments: 3
     position_bar: 1H
     zones_reported: 8
+  # ATL-136, brief §7.5: the Derivatives & Sentiment Analyst (atlas_agents.derivatives.report,
+  # hooks in atlas_agents.agents.derivatives). Disabled by default (roster).
+  #   watchlist_max_runs / mention_max_instruments: as for the Technical Analyst.
+  #   debounce_minutes: each trigger (watchlist, mention, funding, extreme) runs at most once per
+  #     instrument in this window (kept in the supervisor's memory; a restart resets it).
+  #   funding_settlement_hours_utc / funding_delay_minutes: runs for watchlist + held instruments
+  #     at each settlement + delay (00:05/08:05/16:05 UTC); funding_grace_minutes: a check later than
+  #     this after the slot (process was down) skips that slot instead of running late.
+  #   schedule_check_seconds: how often the funding slot and the extreme readings are checked.
+  #   extreme_check_seconds: how often the features of watched instruments are re-read for the code
+  #     trigger: |OI change| over extreme_oi_window_hours > extreme_oi_change_pct, or |funding z|
+  #     (any of extreme_funding_z_keys) > extreme_funding_z.
+  #   regime_windows_hours: the card's regime is the quadrant of the first of these windows that
+  #     has one ("flat" when none has). Unreliable data does not force "flat": zero taker volume
+  #     alone leaves the OI quadrants, so a card can carry a quadrant with data_reliable false.
+  derivatives_sentiment:
+    watchlist_max_runs: 10
+    mention_max_instruments: 3
+    debounce_minutes: 60
+    funding_settlement_hours_utc: [0, 8, 16]
+    funding_delay_minutes: 5
+    funding_grace_minutes: 30
+    schedule_check_seconds: 60
+    extreme_check_seconds: 300
+    extreme_oi_window_hours: 1
+    extreme_oi_change_pct: "10"
+    extreme_funding_z: "2.5"
+    extreme_funding_z_keys: ["7d"]
+    regime_windows_hours: [24, 4, 1]
   ta_structure:
     levels:
       lookback_bars: 120

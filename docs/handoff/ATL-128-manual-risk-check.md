@@ -4,14 +4,15 @@
 
 - The owner (or a test) posts a hand-written TradeProposal; trading_core stores it as a `proposals` row
   (`author = owner:manual`, `kind = entry`, `status = draft`, `cycle_id = null`, env = the env trading_core
-  runs) and calls ATL-127's `evaluate(..., allowed_statuses=("draft",))`. The row ends `risk_checked`, one
+  runs) and calls ATL-127's `evaluate(..., allowed_statuses=("draft",))`. `evaluate` marks it `risk_checked` (then it is closed, below), one
   `risk_checks` row is written and one `risk.decision` is published on `atlas.risk`, exactly as for an
   agent proposal. Nothing goes to OKX (a respx test blocks every host and counts zero calls).
 - `evaluate` gained one keyword, `allowed_statuses`, overriding `risk_rules.evaluable_statuses` for that
   call only. Nothing else uses it.
-- A manual proposal that comes back `risk_checked` with `decision = awaiting_owner` looks like any other
-  checked proposal. Whether the owner may approve/execute a manual one is for ATL-158/ATL-143 to decide;
-  filter on `author = 'owner:manual'` if it must not be.
+- Right after `evaluate`, the manual proposal is closed as `expired` (`risk.api.FINAL_STATUS`). A manual
+  check is a what-if: it is not in the Strategist's `pending_statuses`, so it never trips no_duplicate,
+  and not in `EXECUTABLE_PROPOSAL_STATUSES`, so the Executor refuses it. The `risk_checks` row and the
+  `risk.decision` event (which still says `decision = awaiting_owner` etc.) stay as the record.
 
 ## Laravel `POST /api/risk/check` (Sanctum, throttle `risk-check` = `risk_api.checks_per_minute`, 20)
 
