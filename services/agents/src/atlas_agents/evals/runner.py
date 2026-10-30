@@ -23,23 +23,18 @@ from typing import Any, cast
 
 from atlas_shared.defaults import DEFAULTS
 from atlas_shared.events import EventEnvelope
-from claude_agent_sdk import (
-    AssistantMessage,
-    ClaudeAgentOptions,
-    TextBlock,
-    ToolResultBlock,
-    ToolUseBlock,
-    UserMessage,
-)
+from claude_agent_sdk import ClaudeAgentOptions
 from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
 
 from atlas_agents.evals import properties as props
 from atlas_agents.evals.case import EvalCase, discover, evals_root, load_case
+from atlas_agents.evals.drivers import driver_for
 from atlas_agents.evals.fake import EvalFakeClient
 from atlas_agents.evals.snapshot import load_snapshot
+from atlas_agents.evals.transcript import transcript
 from atlas_agents.registry import REGISTRY
-from atlas_agents.session import ClaudeClient, ClientFactory, RunResult, default_client_factory
+from atlas_agents.session import ClaudeClient, ClientFactory, default_client_factory
 from atlas_agents.supervisor import Supervisor
 from atlas_agents.tools import ToolContext
 
@@ -56,55 +51,6 @@ class Recorder:
 
     def __call__(self, stream: str, envelope: EventEnvelope) -> None:
         self.events.append((stream, envelope))
-
-
-# -- transcript --------------------------------------------------------------------------------------
-
-
-def _tool_output(content: Any) -> list[dict[str, Any]]:
-    """A ToolResultBlock's content as JSON objects (the tools' {as_of, source, data} envelopes)."""
-    texts: list[str] = []
-    if isinstance(content, str):
-        texts.append(content)
-    elif isinstance(content, list):
-        texts.extend(str(item.get("text", "")) for item in content if isinstance(item, Mapping))
-    out: list[dict[str, Any]] = []
-    for text in texts:
-        try:
-            parsed = json.loads(text)
-        except json.JSONDecodeError:
-            parsed = None
-        out.append(parsed if isinstance(parsed, dict) else {"text": text})
-    return out
-
-
-def transcript(result: RunResult, prompt: str = "") -> props.Transcript:
-    calls: list[tuple[str, dict[str, Any]]] = []
-    outputs: list[dict[str, Any]] = []
-    texts: list[str] = []
-    for message in result.messages:
-        if isinstance(message, AssistantMessage):
-            for block in message.content:
-                if isinstance(block, TextBlock):
-                    texts.append(block.text)
-                elif isinstance(block, ToolUseBlock):
-                    calls.append((block.name, dict(block.input)))
-        elif isinstance(message, UserMessage) and isinstance(message.content, list):
-            for block in message.content:
-                if isinstance(block, ToolResultBlock):
-                    outputs.extend(_tool_output(block.content))
-    # What the War Room shows is the run's text plus anything posted with post_message/reply.
-    posted = [str(args.get("content_md", "")) for name, args in calls if name in props.POST_TOOLS]
-    text = "\n\n".join(t for t in [*texts, *posted] if t)
-    return props.Transcript(
-        status=result.status,
-        text=text,
-        card=props.card_from(text, calls),
-        tool_calls=calls,
-        tool_outputs=outputs,
-        error=result.error,
-        prompt=prompt,
-    )
 
 
 # -- one case ----------------------------------------------------------------------------------------
@@ -184,16 +130,11 @@ async def run_case(case: EvalCase, engine: Engine, *, fake: bool) -> CaseResult:
             replay_as_of=case.replay_as_of,
         )
         try:
-            result = await supervisor.run(
-                spec.slug,
-                case.prompt,
-                trigger="eval",
-                task=f"eval {case.case_id}",
-                correlation_id=f"eval-{case.case_id}",
-            )
+            result, t = await driver_for(spec.slug)(supervisor, case)
         finally:
             await supervisor.close()
-        t = transcript(result, case.prompt)
+        if result is None:
+            return _failed(case.case_id, list(case.properties), "error", t.error or "the agent was not run")
         return CaseResult(
             case_id=case.case_id,
             status=result.status,

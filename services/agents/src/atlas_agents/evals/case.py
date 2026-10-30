@@ -18,6 +18,7 @@ A case is a directory ``evals/<agent>/<case_id>/``::
       verdict_in: { values: [supports, weakly_supports] }
       no_trade: {}
       mentions_n: { min: 20 }
+    inputs: {}                                # optional, read by the agent's eval driver
     fake:                                     # used only with --fake
       steps:
         - tool: okx_market.get_candles        # run against the real tool, replay-bounded
@@ -78,6 +79,9 @@ class EvalCase(_Strict):
     properties: dict[str, dict[str, Any]]
     env: str = Field(default_factory=lambda: str(DEFAULTS["env"]["default"]))
     description: str | None = None
+    inputs: dict[str, Any] = Field(default_factory=dict)
+    """Agent-specific inputs for the agent's eval driver (``atlas_agents.evals.drivers``), e.g. the
+    teammates' scripted replies for market_scout. Ignored by the default driver."""
     fake: FakeScript | None = None
 
     # Set by load_case, not read from the file.
