@@ -806,6 +806,7 @@ DEFAULTS: Final[dict[str, Any]] = {
             },
             "news_intelligence": {
                 "model": "strong",
+                "enabled": True,
             },
             "historian": {
                 "model": "strong",
@@ -998,6 +999,7 @@ DEFAULTS: Final[dict[str, Any]] = {
         "output_retries": 1,
         "schedule": {
             "historian_regime_table": "07:30",
+            "news_morning_brief": "07:30",
             "scout_watchlist": "08:00",
             "tick_seconds": 30,
         },
@@ -1011,6 +1013,7 @@ DEFAULTS: Final[dict[str, Any]] = {
             "parent_wait_seconds": 3,
         },
         "news_intelligence": {
+            "alerts_per_hour": 6,
             "asset_class_categories": {
                 "crypto": [
                     "crypto_news",
@@ -1027,6 +1030,17 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "commodity": [
                     "markets_news",
                 ],
+            },
+            "mention_lookback_hours": 72,
+            "alert_parent_tries": 10,
+            "alert_parent_wait_ms": 500,
+            "morning_brief": {
+                "lookback_hours": 24,
+                "top_stories": 10,
+                "events_hours": 48,
+                "min_event_importance": 2,
+                "max_events": 30,
+                "top_instruments": 5,
             },
         },
         "scout": {

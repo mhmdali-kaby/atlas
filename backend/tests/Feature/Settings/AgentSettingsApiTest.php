@@ -65,11 +65,11 @@ it('starts every roster agent from the config/defaults.yaml agent defaults', fun
     }
 });
 
-it('versions agents.news_intelligence.enabled=false with history, audit and settings_changed', function (): void {
+it('versions agents.technical_analyst.enabled=false with history, audit and settings_changed', function (): void {
     $this->getJson('/api/settings?env=demo')->assertOk();
     // Start from enabled, so the PATCH below is a real change.
     $this->patchJson('/api/settings', [
-        'env' => 'demo', 'version' => 1, 'changes' => ['agents.news_intelligence.enabled' => true],
+        'env' => 'demo', 'version' => 1, 'changes' => ['agents.technical_analyst.enabled' => true],
     ])->assertOk()->assertJsonPath('data.version', 2);
 
     $setting = Setting::query()->where('env', 'demo')->firstOrFail();
@@ -78,33 +78,33 @@ it('versions agents.news_intelligence.enabled=false with history, audit and sett
     $eventsBefore = count(atl113SettingsEvents($setting->id));
 
     $response = $this->patchJson('/api/settings', [
-        'env' => 'demo', 'version' => 2, 'changes' => ['agents.news_intelligence.enabled' => false],
+        'env' => 'demo', 'version' => 2, 'changes' => ['agents.technical_analyst.enabled' => false],
     ])->assertOk();
 
     expect($response->json('data.version'))->toBe(3)
-        ->and($response->json('data.settings')['agents.news_intelligence.enabled'])->toBeFalse();
+        ->and($response->json('data.settings')['agents.technical_analyst.enabled'])->toBeFalse();
 
     $setting->refresh();
     expect($setting->version)->toBe(3)
-        ->and($setting->data['agents.news_intelligence.enabled'])->toBeFalse()
+        ->and($setting->data['agents.technical_analyst.enabled'])->toBeFalse()
         // Stored flat, with no nested "agents" object.
         ->and(array_key_exists('agents', $setting->data))->toBeFalse();
 
     $history = SettingsHistory::query()->where('settings_id', $setting->id)->where('version', 3)->firstOrFail();
     expect(SettingsHistory::query()->count())->toBe($historyBefore + 1)
-        ->and($history->diff)->toEqual(['agents.news_intelligence.enabled' => ['from' => true, 'to' => false]]);
+        ->and($history->diff)->toEqual(['agents.technical_analyst.enabled' => ['from' => true, 'to' => false]]);
 
     $audit = AuditLog::query()->where('action', 'settings.updated')->get()
         ->firstOrFail(fn (AuditLog $row): bool => ($row->after['version'] ?? null) === 3);
     expect(AuditLog::query()->where('action', 'settings.updated')->count())->toBe($auditBefore + 1)
-        ->and($audit->before['data']['agents.news_intelligence.enabled'])->toBeTrue()
-        ->and($audit->after['data']['agents.news_intelligence.enabled'])->toBeFalse();
+        ->and($audit->before['data']['agents.technical_analyst.enabled'])->toBeTrue()
+        ->and($audit->after['data']['agents.technical_analyst.enabled'])->toBeFalse();
 
     $events = atl113SettingsEvents($setting->id);
     expect($events)->toHaveCount($eventsBefore + 1);
     $last = end($events);
     expect($last['payload']['version'])->toBe(3)
-        ->and($last['payload']['changed_fields'])->toBe(['agents.news_intelligence.enabled'])
+        ->and($last['payload']['changed_fields'])->toBe(['agents.technical_analyst.enabled'])
         ->and($last['env'])->toBe('demo');
 });
 
