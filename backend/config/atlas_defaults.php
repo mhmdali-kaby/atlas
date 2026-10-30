@@ -767,6 +767,11 @@ return [
         'list_limit' => 50,
         'list_max_limit' => 200,
     ],
+    'system_api' => [
+        'control_per_minute' => 30,
+        'trades_per_minute' => 30,
+        'api_per_minute' => 1200,
+    ],
     'approvals' => [
         'sweep_seconds' => 15,
         'reminder_fraction' => '0.5',

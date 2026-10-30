@@ -621,6 +621,16 @@ proposals_api:
   list_limit: 50
   list_max_limit: 200
 
+# ATL-148: /api/system (health, pause, resume, kill) and the owner's order cancel / position close.
+# control_per_minute is the kill switch's own limiter (pause, resume, kill), per user; those routes are
+# excluded from the shared api limiter (api_per_minute, every other /api route, per user or IP) so a
+# flood of other requests can never make the kill switch answer 429. trades_per_minute covers
+# POST /api/orders/{id}/cancel and POST /api/portfolio/positions/{id}/close.
+system_api:
+  control_per_minute: 30
+  trades_per_minute: 30
+  api_per_minute: 1200
+
 # ATL-162: trading_core's approval sweeper. Every sweep_seconds it rejects awaiting_owner proposals
 # whose approval_expires_at has passed (autonomy.on_approval_timeout) and posts one reminder when
 # reminder_fraction of the approval window has gone by.
