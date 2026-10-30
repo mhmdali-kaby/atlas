@@ -1,0 +1,14 @@
+{
+  "code": "1",
+  "msg": "All operations failed",
+  "data": [
+    {
+      "clOrdId": "atlb1946ac9b2c64f2c8d0b6a1f3e9c7",
+      "ordId": "",
+      "tag": "",
+      "ts": "1793207736700",
+      "sCode": "51016",
+      "sMsg": "Duplicated clOrdId"
+    }
+  ]
+}

@@ -113,6 +113,21 @@ risk_engine:
   market_data_max_age_seconds: 30
   margin_buffer: "0.9"
 
+# ATL-141, brief §4.4, §11: Executor parameters (trading_core/execution), editable in Settings.
+#   entry_timeout_minutes: an unfilled limit entry is cancelled after this long.
+#   td_mode_perps: OKX tdMode for perps (one of td_modes_perps); spot always uses "cash".
+#   stop_verify_seconds: after an entry, the server-side stop must be seen on OKX within this long,
+#   or the position is market-closed and an alert raised. order_max_retries: tries per OKX call
+#   (network/5xx), always with the same clOrdId. emergency_stop_atr_mult: reconciliation places a
+#   stop this many ATR(1H) from entry on any position with no server-side stop and no proposal stop.
+executor:
+  entry_timeout_minutes: 30
+  td_mode_perps: isolated
+  td_modes_perps: [isolated, cross]
+  stop_verify_seconds: 3
+  order_max_retries: 3
+  emergency_stop_atr_mult: "2.0"
+
 # Brief §4.1. Checked against the OKX v5 docs (https://www.okx.com/docs-v5/en/) at build time.
 okx:
   environments:
@@ -299,11 +314,36 @@ okx_rest:
     rubik/stat/contracts/open-interest-volume: { requests: 5, per_seconds: 2 }
     rubik/stat/contracts/long-short-account-ratio: { requests: 5, per_seconds: 2 }
     rubik/stat/taker-volume: { requests: 5, per_seconds: 2 }
+    # ATL-141: trade and account-write endpoints (per user ID, OKX v5 docs, Oct 2026). GET and POST
+    # trade/order share one bucket (the stricter reading of OKX's separate 60/2 s limits).
+    trade/order: { requests: 60, per_seconds: 2 }
+    trade/batch-orders: { requests: 60, per_seconds: 2 }
+    trade/amend-order: { requests: 60, per_seconds: 2 }
+    trade/cancel-order: { requests: 60, per_seconds: 2 }
+    trade/close-position: { requests: 20, per_seconds: 2 }
+    trade/order-algo: { requests: 20, per_seconds: 2 }
+    trade/cancel-algos: { requests: 20, per_seconds: 2 }
+    trade/orders-pending: { requests: 60, per_seconds: 2 }
+    trade/orders-algo-pending: { requests: 20, per_seconds: 2 }
+    trade/orders-history: { requests: 40, per_seconds: 2 }
+    trade/fills: { requests: 60, per_seconds: 2 }
+    trade/fills-history: { requests: 10, per_seconds: 2 }
+    account/set-leverage: { requests: 20, per_seconds: 2 }
+    account/max-size: { requests: 20, per_seconds: 2 }
   # ATL-45: the largest `limit` OKX accepts per request on paged market endpoints.
   page_limits:
     market/candles: 300
     market/history-candles: 100
     public/funding-rate-history: 100
+    # ATL-141: trade read endpoints.
+    trade/orders-pending: 100
+    trade/orders-algo-pending: 100
+    trade/orders-history: 100
+    trade/fills: 100
+    trade/fills-history: 100
+    # ATL-141: most orders per trade/batch-orders and algo orders per trade/cancel-algos call.
+    trade/batch-orders: 20
+    trade/cancel-algos: 10
   # ATL-45: OKX codes that mean "too many requests". On these (and HTTP 429) the retry waits at least
   # one full rate-limit window of that endpoint before trying again.
   rate_limit_codes: ["50011"]

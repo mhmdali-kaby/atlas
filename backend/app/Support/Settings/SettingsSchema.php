@@ -72,6 +72,11 @@ final class SettingsSchema
         'volatility_halt_sigma' => ['decimal', '0', '100', true],
         'market_data_max_age_seconds' => ['integer', 1, 3600, false],
         'margin_buffer' => ['decimal', '0', '1', true],
+        // ATL-141, brief §4.4, §11: Executor parameters.
+        'entry_timeout_minutes' => ['integer', 1, 1440, false],
+        'stop_verify_seconds' => ['integer', 1, 60, false],
+        'order_max_retries' => ['integer', 1, 10, false],
+        'emergency_stop_atr_mult' => ['decimal', '0', '20', true],
     ];
 
     /**
@@ -82,6 +87,14 @@ final class SettingsSchema
 
     /** ATL-124, brief §14.5: on/off settings. */
     public const BOOLEAN_FIELDS = ['avoid_stock_perps_outside_us_hours'];
+
+    /**
+     * ATL-141: settings that take one value from a fixed list. Field => config key of the list.
+     * td_mode_perps is the OKX tdMode the Executor uses for perps (brief §11).
+     *
+     * @var array<string, string>
+     */
+    public const CHOICE_FIELDS = ['td_mode_perps' => 'atlas_defaults.executor.td_modes_perps'];
 
     /** ATL-124: the asset-class toggles that are on, a subset of markets.kinds. */
     public const MARKET_LIST_FIELDS = ['enabled_markets'];
@@ -117,6 +130,7 @@ final class SettingsSchema
             'risk_profile',
             ...array_keys(self::NUMERIC_FIELDS),
             ...self::BOOLEAN_FIELDS,
+            ...array_keys(self::CHOICE_FIELDS),
             ...self::MARKET_LIST_FIELDS,
             ...self::INSTRUMENT_LIST_FIELDS,
             ...array_keys(self::agentFields()),
@@ -181,6 +195,18 @@ final class SettingsSchema
         $kinds = config('atlas_defaults.markets.kinds');
 
         return is_array($kinds) ? array_values(array_map(strval(...), $kinds)) : [];
+    }
+
+    /**
+     * The values a CHOICE_FIELDS setting accepts.
+     *
+     * @return list<string>
+     */
+    public static function choices(string $field): array
+    {
+        $list = isset(self::CHOICE_FIELDS[$field]) ? config(self::CHOICE_FIELDS[$field]) : null;
+
+        return is_array($list) ? array_values(array_map(strval(...), $list)) : [];
     }
 
     public static function marketListMax(): int
@@ -304,6 +330,11 @@ final class SettingsSchema
             'enabled_markets' => config('atlas_defaults.markets.enabled_markets'),
             'whitelist' => config('atlas_defaults.markets.whitelist'),
             'blocklist' => config('atlas_defaults.markets.blocklist'),
+            'entry_timeout_minutes' => config('atlas_defaults.executor.entry_timeout_minutes'),
+            'td_mode_perps' => config('atlas_defaults.executor.td_mode_perps'),
+            'stop_verify_seconds' => config('atlas_defaults.executor.stop_verify_seconds'),
+            'order_max_retries' => config('atlas_defaults.executor.order_max_retries'),
+            'emergency_stop_atr_mult' => config('atlas_defaults.executor.emergency_stop_atr_mult'),
         ]), ...self::agentDefaults()];
     }
 
@@ -373,6 +404,11 @@ final class SettingsSchema
             }
             if (in_array($field, self::BOOLEAN_FIELDS, true)) {
                 $out[$field] = $value === true;
+
+                continue;
+            }
+            if (isset(self::CHOICE_FIELDS[$field])) {
+                $out[$field] = is_string($value) ? $value : '';
 
                 continue;
             }

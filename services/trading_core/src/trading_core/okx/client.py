@@ -4,8 +4,9 @@ Signs private requests, sends ``x-simulated-trading: 1`` in demo only, keeps a c
 ``public/time`` (refreshed every ``okx_rest.clock_sync_interval_seconds``), retries network errors, 5xx,
 429 and the retryable OKX codes with jittered exponential backoff, and rate-limits each endpoint with a
 token bucket. A 429 or an OKX "too many requests" code waits at least one rate-limit window of that endpoint
-before the retry. Public market-data methods (ATL-45) are unsigned. Read-only: there are no order, leverage,
-withdrawal or transfer methods here.
+before the retry. Public market-data methods (ATL-45) are unsigned. This class has read methods only;
+the signed POST transport (``_post``) is used by ``trading_core.okx.trade.OkxTradeClient`` (ATL-141), the
+only place order and leverage calls exist. There are no withdrawal or transfer methods anywhere.
 """
 
 from __future__ import annotations
@@ -204,16 +205,41 @@ class OkxClient:
         self, endpoint: str, params: Mapping[str, str | None] | None, *, signed: bool
     ) -> list[Any]:
         """GET ``/api/v5/<endpoint>`` and return the ``data`` list, or raise a typed error."""
-        if signed:
-            await self._ensure_clock()
         clean = {k: v for k, v in (params or {}).items() if v is not None and v != ""}
         request_path = API_PREFIX + endpoint + (("?" + urlencode(clean)) if clean else "")
+        return await self._send("GET", endpoint, request_path, "", signed=signed)
+
+    async def _post(self, endpoint: str, payload: object, *, partial_ok: bool = False) -> list[Any]:
+        """Signed POST of ``payload`` (JSON) to ``/api/v5/<endpoint>`` (ATL-141, trade endpoints).
+
+        Retries resend the identical body, so an order keeps its ``clOrdId`` (brief rule 8). With
+        ``partial_ok`` an OKX "operation failed" (``code`` 1) or "partially failed" (``code`` 2) answer
+        that carries per-item ``sCode`` rows is returned as data rather than raised, so the caller can
+        read each item's ``sCode``/``sMsg``.
+        """
+        body = json.dumps(payload, separators=(",", ":"))
+        return await self._send(
+            "POST", endpoint, API_PREFIX + endpoint, body, signed=True, partial_ok=partial_ok
+        )
+
+    async def _send(
+        self,
+        method: str,
+        endpoint: str,
+        request_path: str,
+        body: str,
+        *,
+        signed: bool,
+        partial_ok: bool = False,
+    ) -> list[Any]:
+        if signed:
+            await self._ensure_clock()
         attempts = self._retry.max_attempts
         last: Exception | None = None
         for attempt in range(1, attempts + 1):
             await self._limiter.acquire(endpoint)
             try:
-                return await self._once(request_path, signed)
+                return await self._once(method, request_path, body, signed, partial_ok)
             except _Retryable as r:
                 last = r.error
                 if attempt < attempts:
@@ -234,22 +260,27 @@ class OkxClient:
         assert last is not None
         raise last
 
-    async def _once(self, request_path: str, signed: bool) -> list[Any]:
+    async def _once(
+        self, method: str, request_path: str, body: str, signed: bool, partial_ok: bool
+    ) -> list[Any]:
         endpoint = request_path[len(API_PREFIX) :].split("?", 1)[0]
-        headers = self._headers("GET", request_path, "", signed)
+        headers = self._headers(method, request_path, body, signed)
         try:
-            resp = await self._http.get(request_path, headers=headers)
+            if method == "GET":
+                resp = await self._http.get(request_path, headers=headers)
+            else:
+                resp = await self._http.request(method, request_path, headers=headers, content=body)
         except httpx.TransportError as exc:
             raise _Retryable(OkxNetworkError(type(exc).__name__, path=endpoint)) from exc
 
-        body: Any = None
+        payload: Any = None
         try:
-            body = resp.json()
+            payload = resp.json()
         except (json.JSONDecodeError, ValueError):
-            body = None
+            payload = None
 
-        code = str(body.get("code")) if isinstance(body, dict) and "code" in body else None
-        msg = str(body.get("msg", "")) if isinstance(body, dict) else ""
+        code = str(payload.get("code")) if isinstance(payload, dict) and "code" in payload else None
+        msg = str(payload.get("msg", "")) if isinstance(payload, dict) else ""
 
         rate_limited = resp.status_code == 429 or code in self._retry.rate_limit_codes
         if resp.status_code == 429 or resp.status_code >= 500:
@@ -259,6 +290,16 @@ class OkxClient:
                 else OkxHttpError(resp.status_code, path=endpoint)
             )
             raise _Retryable(err, rate_limited=rate_limited)
+        if (
+            partial_ok
+            and code in ("1", "2")
+            and isinstance(payload, dict)
+            and isinstance(payload.get("data"), list)
+            and payload["data"]
+            and all(isinstance(row, dict) and "sCode" in row for row in payload["data"])
+        ):
+            rows: list[Any] = payload["data"]
+            return rows
         if code is not None and code != "0":
             err = OkxError(code, msg, path=endpoint, http_status=resp.status_code)
             if code in self._retry.retryable_codes or rate_limited:
@@ -266,9 +307,9 @@ class OkxClient:
             raise err
         if resp.status_code >= 400:
             raise OkxHttpError(resp.status_code, path=endpoint)
-        if not isinstance(body, dict) or not isinstance(body.get("data"), list):
+        if not isinstance(payload, dict) or not isinstance(payload.get("data"), list):
             raise OkxResponseError(f"unexpected OKX body shape on {endpoint}")
-        data: list[Any] = body["data"]
+        data: list[Any] = payload["data"]
         return data
 
     @staticmethod
