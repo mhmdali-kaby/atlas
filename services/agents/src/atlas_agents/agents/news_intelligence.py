@@ -16,17 +16,11 @@ import logging
 from atlas_shared.events import EventEnvelope
 
 from atlas_agents import news_intelligence as news
-from atlas_agents.mentions import MentionRequest, resolve_parent
+from atlas_agents.mentions import MentionRequest, resolve_alert_row, resolve_parent
 from atlas_agents.registry import HOOKS, AgentHost, ScheduleFire
 from atlas_agents.session import RunResult
-from atlas_agents.tools import ToolContext
-from atlas_agents.tools.framework import ToolError
-from atlas_agents.tools.warroom import _parent
 
 log = logging.getLogger(__name__)
-
-PARENT_TRIES = int(news.config()["alert_parent_tries"])
-PARENT_WAIT_SECONDS = int(news.config()["alert_parent_wait_ms"]) / 1000
 
 
 @HOOKS.mention(news.SLUG)
@@ -78,21 +72,6 @@ async def morning_brief(host: AgentHost, fire: ScheduleFire) -> RunResult:
     )
 
 
-async def _alert_parent(ctx: ToolContext, event_id: str) -> tuple[str | None, str | None]:
-    """(row id, thread id) of the alert's War Room message. The bridge stores it from the same
-    stream, so it may land a moment after we read the envelope: look up to PARENT_TRIES times
-    (once in replay), then reply in Main with no reply_to."""
-    tries = 1 if ctx.replaying else PARENT_TRIES
-    for attempt in range(tries):
-        try:
-            return await asyncio.to_thread(_parent, ctx, event_id)
-        except ToolError:
-            if attempt + 1 < tries:
-                await asyncio.sleep(PARENT_WAIT_SECONDS)
-    log.warning("news_intelligence: alert %s is not stored yet; the analysis goes to Main", event_id)
-    return None, None
-
-
 @HOOKS.event(news.SLUG, news.ALERT_EVENT)
 async def analyse_alert(host: AgentHost, envelope: EventEnvelope) -> RunResult | None:
     ctx = host.tool_context(news.SLUG)
@@ -104,7 +83,9 @@ async def analyse_alert(host: AgentHost, envelope: EventEnvelope) -> RunResult |
             news.alerts_per_hour(),
         )
         return None
-    reply_to, thread_id = await _alert_parent(ctx, str(envelope.id))
+    reply_to, thread_id = await resolve_alert_row(ctx, str(envelope.id))
+    if reply_to is None:
+        log.warning("news_intelligence: alert %s is not stored yet; the analysis goes to Main", envelope.id)
     data = await asyncio.to_thread(news.alert_data, ctx, envelope.payload)
     degraded = await asyncio.to_thread(news.degraded_asset_classes, ctx)
     reviewer = news.BriefReviewer(

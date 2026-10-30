@@ -15,6 +15,7 @@ from decimal import Decimal
 from typing import Any
 
 import pytest
+from atlas_agents import mentions
 from atlas_agents import news_intelligence as news
 from atlas_agents import testing as fake
 from atlas_agents.agents import news_intelligence as hooks_module
@@ -316,12 +317,14 @@ def test_news_intelligence_is_enabled_and_registers_mention_schedule_and_alert_h
     assert REGISTRY[SLUG].enabled
     hooks = discover_hooks()[SLUG]
     assert hooks.on_mention is hooks_module.answer_mention
-    assert [h.name for h in hooks.schedule] == ["news_morning_brief", "scoring"]  # scoring: ATL-110
-    assert hooks.schedule[0].time_of_day().isoformat() == "07:30:00"
+    schedule = {h.name: h for h in hooks.schedule}  # registration order follows import order
+    assert set(schedule) == {"news_morning_brief", "scoring"}  # scoring: ATL-110
+    assert schedule["news_morning_brief"].time_of_day().isoformat() == "07:30:00"
     assert set(hooks.on_event) == {"news.alert"}
-    # Only News Intelligence reacts to news.alert.
+    # News Intelligence analyses every alert; the only other listener is Market Scout's code-only
+    # intraday re-run trigger (ATL-109, importance 5), which starts no News run.
     others = [slug for slug, h in discover_hooks().items() if slug != SLUG and "news.alert" in h.on_event]
-    assert others == []
+    assert others == ["market_scout"]
     assert DEFAULTS["agents"]["news_intelligence"]["alerts_per_hour"] == 6
 
 
@@ -500,7 +503,7 @@ async def test_news_alerts_start_news_intelligence_only_and_the_seventh_in_an_ho
     assert "untrusted_source" in client.queries[0]
 
     # Alerts not yet stored by the bridge are answered in Main without waiting in this test.
-    monkeypatch.setattr(hooks_module, "PARENT_TRIES", 1)
+    monkeypatch.setattr(mentions, "ALERT_PARENT_TRIES", 1)
     for minute in range(1, 6):
         clock["now"] = NOW + timedelta(minutes=minute)
         (r,) = await sup.handle_envelope(_alert(cluster_id))

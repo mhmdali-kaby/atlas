@@ -1068,6 +1068,16 @@ return [
             'max_correlated_picks' => 2,
             'history_days' => 5,
             'link_seconds' => 5,
+            'spike_sigma' => '3',
+            'rerun_min_minutes' => 60,
+            'rerun_window' => [
+                'start' => '08:10',
+                'end' => '23:00',
+            ],
+            'rerun_alert_importance' => 5,
+            'spike_check_seconds' => 300,
+            'spike_lookback_days' => 30,
+            'spike_min_returns' => 100,
             'universe' => [
                 'enabled_markets' => [
                     'spot',
