@@ -2,7 +2,8 @@
 
 The owner's manual risk check: a hand-written :class:`~atlas_shared.proposals.TradeProposal` (JSON,
 Decimal fields) is stored as a ``proposals`` row (``author = owner:manual``, ``status = draft``, env =
-the env this trading_core runs) and run through :func:`trading_core.risk.engine.evaluate`. Nothing is
+the env this trading_core runs) and run through :func:`trading_core.risk.engine.evaluate`, then closed
+as ``expired`` so a what-if never blocks an agent proposal or reaches the Executor. Nothing is
 sent to OKX: evaluate reads Postgres and the market-data hash only, and this module imports no OKX
 client. The signature middleware already rejects unsigned and replayed calls with 401.
 
@@ -33,7 +34,7 @@ from atlas_shared.proposals import TradeProposal
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
-from sqlalchemy import Engine, delete
+from sqlalchemy import Engine, delete, update
 from sqlalchemy.orm import Session
 
 from trading_core.config import Settings
@@ -46,6 +47,9 @@ router = APIRouter(prefix=PROTECTED_PREFIX + "/risk")
 
 AUTHOR = "owner:manual"
 STATUS = "draft"
+# A manual check is a what-if: once evaluated it is closed at once, so it never counts as a pending
+# proposal (the Strategist's no_duplicate check) and can never be approved and sent by the Executor.
+FINAL_STATUS = "expired"
 
 
 def _s(value: Decimal | None) -> str | None:
@@ -118,11 +122,16 @@ def _run(
     with Session(engine) as session, session.begin():
         session.add(row)
     try:
-        return evaluate(pid, engine=engine, redis_client=rds, now=now, allowed_statuses=(STATUS,))
+        decision = evaluate(pid, engine=engine, redis_client=rds, now=now, allowed_statuses=(STATUS,))
     except RiskEngineError:
         with engine.begin() as c:
             c.execute(delete(Proposal).where(Proposal.id == pid))
         raise
+    with engine.begin() as c:
+        c.execute(
+            update(Proposal).where(Proposal.id == pid).values(status=FINAL_STATUS, updated_at=now())
+        )
+    return decision
 
 
 @router.post("/check", response_model=None)

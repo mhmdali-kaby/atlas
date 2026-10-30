@@ -342,10 +342,47 @@ def test_signed_proposal_returns_the_decision_and_stores_one_row_each(
     prop, check = props[0], checks[0]
     assert prop.author == "owner:manual" and prop.kind == "entry" and prop.env == ENV
     assert prop.stop == D(3960) and prop.cycle_id is None
-    assert prop.status == "risk_checked"  # was draft; evaluate marks it checked
+    assert prop.status == "expired"  # draft → risk_checked by evaluate → closed: a what-if only
     assert str(prop.id) == out["proposal_id"] and str(check.id) == out["risk_check_id"]
     assert check.final_size == D(250)
     assert rds.xlen("atlas.risk") == 1
+
+
+# --- QA round 1: a manual what-if check must not leave a pending proposal behind -------------------
+
+
+def test_a_manual_check_leaves_no_pending_or_executable_proposal(
+    engine: Engine, rds: redis.Redis, world: str
+) -> None:
+    from atlas_shared.defaults import DEFAULTS
+    from trading_core.execution.config import EXECUTABLE_PROPOSAL_STATUSES
+    from trading_core.risk.api import FINAL_STATUS
+
+    assert post(client(engine, rds), proposal_body(world)).status_code == 200
+    props, _ = _rows(engine, world)
+    pending = set(DEFAULTS["agents"]["strategist"]["checklist"]["pending_statuses"])
+    evaluable = set(DEFAULTS["risk_rules"]["evaluable_statuses"])
+    assert props[0].status == FINAL_STATUS
+    assert FINAL_STATUS not in pending | evaluable | set(EXECUTABLE_PROPOSAL_STATUSES)
+
+
+def test_a_manual_check_does_not_block_an_agent_proposal_on_the_same_side(
+    engine: Engine, rds: redis.Redis, world: str
+) -> None:
+    proposals = pytest.importorskip("atlas_agents.proposals")
+    framework = pytest.importorskip("atlas_agents.tools.framework")
+    from atlas_shared.proposals import TradeProposal
+
+    body = proposal_body(world)
+    assert post(client(engine, rds), body).status_code == 200
+    ctx = framework.ToolContext(
+        env=ENV, session_factory=lambda: Session(engine), agent="strategist", clock=lambda: AT
+    )
+    with Session(engine) as s:
+        item = proposals._check_duplicate(
+            s, ctx, TradeProposal.model_validate_json(body), proposals.checklist_config(), None
+        )
+    assert item.passed, item.detail
 
 
 def test_a_failing_check_returns_rejected_with_the_reason(
