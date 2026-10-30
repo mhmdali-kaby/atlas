@@ -53,6 +53,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from atlas_quant.data import DataQuality
 from atlas_quant.event_study import infer_bar
 from atlas_quant.grid import bar_delta, slot
+from atlas_quant.indicators import ema, rsi
 from atlas_quant.stats import periods_per_year
 
 CLOSE = "close"
@@ -170,23 +171,15 @@ def _cfg() -> Mapping[str, Any]:
     return cfg
 
 
-def _rsi(c: pd.Series[float], window: int) -> pd.Series[float]:
-    delta = c.diff()
-    gain = delta.clip(lower=0.0).ewm(alpha=1.0 / window, adjust=False, min_periods=window).mean()
-    loss = (-delta.clip(upper=0.0)).ewm(alpha=1.0 / window, adjust=False, min_periods=window).mean()
-    rs = gain / loss
-    return cast("pd.Series[float]", 100.0 - 100.0 / (1.0 + rs))
-
-
 def indicator_frame(rule: RuleSpec, c: pd.Series[float]) -> dict[str, pd.Series[float]]:
     out: dict[str, pd.Series[float]] = {CLOSE: c}
     for name, ind in rule.indicators.items():
         if ind.kind == "sma":
             out[name] = c.rolling(ind.window, min_periods=ind.window).mean()
         elif ind.kind == "ema":
-            out[name] = c.ewm(span=ind.window, adjust=False, min_periods=ind.window).mean()
+            out[name] = ema(c, ind.window)
         else:
-            out[name] = _rsi(c, ind.window)
+            out[name] = rsi(c, ind.window)
     return out
 
 

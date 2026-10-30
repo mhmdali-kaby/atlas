@@ -817,6 +817,32 @@ agents:
       atr_bars: 100
     news:
       latency_target_seconds: 90
+  # ATL-132, brief §7.4: the Technical Analyst's deterministic precompute (atlas_agents.ta), per
+  # timeframe. EMA/RSI/ATR/ADX are atlas_quant.indicators (the backtester's definitions).
+  #   slope_bars: EMA slope = (EMA_t / EMA_{t-k} - 1) x 100 / k, in % per bar.
+  #   zigzag_atr_mult: a swing is confirmed once price reverses this many ATR(atr_window) of that bar
+  #     (the ATR of the confirming bar) from the running extreme.
+  #   swings_reported: newest confirmed swings listed in the table.
+  #   divergence_max_age_bars: a divergence flag needs its later swing pivot within this many bars.
+  #   bb_width_lookback / squeeze_percentile: squeeze = Bollinger width's percentile among the last
+  #     bb_width_lookback widths (share <= current, x100) is below squeeze_percentile.
+  #   keltner: EMA(ema) ± mult x ATR(atr); breakout = the close outside a band.
+  ta:
+    timeframes: ["1D", "4H", "1H", "15m", "5m"]
+    ema_spans: [20, 50, 200]
+    slope_bars: 5
+    adx_window: 14
+    rsi_window: 14
+    macd: { fast: 12, slow: 26, signal: 9 }
+    roc_window: 10
+    atr_window: 14
+    zigzag_atr_mult: "1.5"
+    swings_reported: 10
+    divergence_max_age_bars: 60
+    bollinger: { window: 20, std: "2" }
+    bb_width_lookback: 180
+    squeeze_percentile: "10"
+    keltner: { ema: 20, atr: 10, mult: "2" }
   regime_table:
     top_n: 60
   mentions:
