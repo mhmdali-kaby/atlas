@@ -31,6 +31,9 @@ Every order state change is written to ``orders``/``algo_orders`` and published 
 the private WebSocket, ATL-142). The War Room gets a ``kind: order`` message for the result (OKX's
 refusal in plain English from ``trading_core.okx.error_messages``) and a ``system_alert`` when a
 position was left without a confirmed stop. Nothing here withdraws or transfers (brief rule 5).
+
+A risk check whose proposal is a Portfolio Manager position action (amend_stop, amend_targets,
+partial_close, close) is handed to :mod:`trading_core.execution.position_action` (ATL-185).
 """
 
 from __future__ import annotations
@@ -292,6 +295,21 @@ async def execute(
     except ValueError:
         return ExecutionResult("refused", "risk_check_not_found", "Not a risk check id.", str(risk_check_id))
     rds = redis_client if redis_client is not None else bus.make_client()
+    from trading_core.execution import position_action
+
+    if position_action.proposal_kind(engine, rc_id) in position_action.POSITION_KINDS:
+        # A Portfolio Manager amend/close (ATL-185): re-checked against OKX, then amended or reduced.
+        return await position_action.execute_position_action(
+            rc_id,
+            approved_by,
+            engine=engine,
+            rds=rds,
+            client_factory=client_factory,
+            app_key=app_key,
+            active_env=active_env,
+            sleep=sleep,
+            now=clock,
+        )
     try:
         with Session(engine) as session, session.begin():
             plan = _plan(session, rc_id, approved_by, active_env, clock())
