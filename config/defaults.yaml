@@ -946,7 +946,7 @@ agents:
     daily_turns: 300
     max_turns_per_run: 25
   roster:
-    orchestrator: {}
+    orchestrator: { enabled: true }  # ATL-161: on by default (runs the analysis cycles)
     market_scout: { model: strong, enabled: true }
     news_intelligence: { model: strong, enabled: true }
     historian: { model: strong, enabled: true }
@@ -980,6 +980,23 @@ agents:
     risk_timeout_seconds: 30
     trading_core_url: "http://127.0.0.1:8100"
     watchlist_max_instruments: 10
+    # ATL-161, brief §7.9: the Orchestrator agent (atlas_agents.orchestrator.owner/status/loops).
+    #   ack_target_seconds: owner-message acknowledgement target; every latency is stored in
+    #     agent_scores (orchestrator, data.ack_latency_seconds), hit_rate = share within target.
+    #   assign_deadline_minutes: deadline of an assign when the model gives none.
+    #   routing_retries: follow-ups when the routing answer is not valid JSON.
+    #   why_max_words: a /why answer has fewer words than this (links included).
+    #   why_max_messages: linked War Room messages a /why reads.
+    #   loop_max_replies: two agents replying to each other more than this many times on one
+    #     thread get a summary and an early vote.
+    #   where_we_are: the "Where we are" card, every every_minutes from first to last (Baghdad).
+    ack_target_seconds: 10
+    assign_deadline_minutes: 30
+    routing_retries: 1
+    why_max_words: 150
+    why_max_messages: 12
+    loop_max_replies: 3
+    where_we_are: { first: "08:10", last: "23:00", every_minutes: 120 }
   # ATL-92, brief §7.11/§9: the eval harness (python -m atlas_agents.evals).
   #   max_drop_points: `run` exits 1 when the overall pass rate (percent) is more than this many
   #     points below the agent's committed evals/<agent>/baseline.json.

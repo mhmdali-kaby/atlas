@@ -187,6 +187,8 @@ IMPLEMENTED = {
     # answer not_available_in_phase_1.
     *(("warroom", n) for n in CATALOGUE["warroom"]),
     *(("history", n) for n in CATALOGUE["history"]),
+    # ATL-161: the Orchestrator's four process tools.
+    *(("orchestration", n) for n in CATALOGUE["orchestration"]),
 }
 
 

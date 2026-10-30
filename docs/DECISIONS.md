@@ -144,6 +144,21 @@ decisions where the brief was silent, as the brief asks.
   picks between a long and a short in long/short mode; two positions and no side is refused as
   ambiguous. No vote; the autonomy decision is the entries' one. evaluate() leaves the row
   `risk_checked` for both kinds; the caller moves it to awaiting_owner/advise_only/rejected.
+- **Orchestrator agent: code classifies and acknowledges, the model only routes** (ATL-161,
+  `atlas_agents/orchestrator/classify.py`, `owner.py`, `why.py`, `status.py`, `loops.py`). The Orchestrator is now enabled by
+  default, so the ATL-160 analysis cycles run without the owner turning it on. An owner message with
+  no @mention (or an @Orch one) is classified by keyword rules; a limit change or an approval is
+  decisive and gets a fixed code answer ("Only the owner can change that in Settings → <section>
+  (<setting>)…" / "Approvals count only from the Approve / Reject buttons…") with no model run. Every
+  other message gets a code acknowledgement at once (its latency is stored in `agent_scores`,
+  agent `orchestrator`, `data.ack_latency_seconds`, hit_rate = share within 10 s), then one model
+  run answers a JSON routing object and code posts its line and the assignment (an @mention of the
+  agent with a deadline, in the owner's thread). §7.9's `open_vote`/`close_vote` are not tools: the
+  vote is code. Loop stop counts replies (`reply_to` set) in one thread alternating between the same
+  two agents; the 4th gets a code summary (each side's last point) and `cycle.call_vote`, which makes
+  a running cycle stop waiting for the Devil's Advocate review and open the vote; a proposal already
+  voting is unaffected. "Where we are" is a code card every 2 h from 08:10 to 23:00 Baghdad (08:10 …
+  22:10), never after 23:00. Other slash commands than `/why` are left to their own handlers.
 - **Executing a position action re-checks against OKX, amends in place, closes before cancelling
   (ATL-185, `trading_core/execution/position_action.py`).** Right before sending, the seven ATL-184
   checks run again on the position and pending algos OKX returns, so a stop that would widen the stop
