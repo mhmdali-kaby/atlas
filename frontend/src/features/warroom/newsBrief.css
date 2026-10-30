@@ -55,11 +55,6 @@
 .nb-inst .inst-tok { font-size: var(--fs-footnote); }
 .nb-move { color: var(--label-secondary); font-weight: 500; }
 .nb-senti { display: inline-flex; align-items: center; gap: 6px; margin-inline-start: auto; }
-.nb-card .signed { display: inline-flex; align-items: center; gap: 3px; font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; }
-.nb-card .signed svg { width: 0.9em; height: 0.9em; }
-.nb-card .signed.is-profit { color: var(--profit-ink); }
-.nb-card .signed.is-loss { color: var(--loss-ink); }
-.nb-card .signed.is-zero { color: var(--label); }
 [dir='rtl'] .nb-card .icon-dir { transform: scaleX(-1); }
 
 /* sources: name, Baghdad time (UTC), host link */

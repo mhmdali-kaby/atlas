@@ -1,4 +1,5 @@
 import type { WarroomMessage } from './api'
+import { httpUrl } from './url'
 
 /*
  * Reads a `news_alert` message's card: ATL-65's news.alert payload, stored verbatim by the bridge
@@ -19,17 +20,6 @@ export interface NewsAlert {
 }
 
 const str = (v: unknown): string | null => (typeof v === 'string' && v.trim() !== '' ? v : null)
-
-function httpUrl(v: unknown): URL | null {
-  const s = str(v)
-  if (!s) return null
-  try {
-    const u = new URL(s)
-    return u.protocol === 'https:' || u.protocol === 'http:' ? u : null
-  } catch {
-    return null
-  }
-}
 
 /** The card's fields, or null when the message carries no headline (GenericCard draws it then). */
 export function readNewsAlert(card: WarroomMessage['card']): NewsAlert | null {

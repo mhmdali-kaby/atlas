@@ -1,4 +1,5 @@
 import type { WarroomMessage } from './api'
+import { httpUrl } from './url'
 
 /*
  * Reads News Intelligence's `news_brief` card (research_report + card.type "news_brief"):
@@ -93,17 +94,6 @@ const importance = (v: unknown): number | null => {
 }
 /** A calendar value as written ("+0.3%", "226K", "EPS 0.62"); a number is shown as its digits. */
 const value = (v: unknown): string | null => (typeof v === 'number' && Number.isFinite(v) ? String(v) : str(v))
-
-export function httpUrl(v: unknown): URL | null {
-  const s = str(v)
-  if (!s) return null
-  try {
-    const u = new URL(s)
-    return u.protocol === 'https:' || u.protocol === 'http:' ? u : null
-  } catch {
-    return null
-  }
-}
 
 function source(v: unknown): NewsSource | null {
   if (!isObj(v)) return null
