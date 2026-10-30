@@ -113,6 +113,39 @@ risk_engine:
   market_data_max_age_seconds: 30
   margin_buffer: "0.9"
 
+# ATL-127, brief §10: fixed rules of the Risk Engine's checks (trading_core/risk/engine.py). Not
+# owner limits (those are in Settings above); these say how a check measures.
+#   us_session: the US cash session for avoid_stock_perps_outside_us_hours, in its own timezone, so
+#   DST comes from the tz database. weekdays are ISO (1 = Monday). Exchange holidays are not modelled.
+#   atr_bar/atr_window/atr_lookback_bars: ATR(1H) for check 3 (Wilder, atlas_quant), from closed bars.
+#   correlation_*: check 5's 30-day Pearson correlation of daily log returns; a pair with fewer
+#   overlapping returns than min_obs is "unknown" (not counted as correlated, listed in the check).
+#   maint_margin_ratio: maintenance margin assumed by check 7's isolated liquidation estimate.
+#   fallback_taker_fee_rate: used by sizing until trade-fee rates are stored per instType; the
+#   check records fee_source = "config_fallback" when it is used.
+#   high_impact_importance: check 8's blackout counts economic events at or above this importance.
+#   used_statuses: proposal statuses whose approved size counts as used today (daily exposure, trades).
+#   evaluable_statuses: the only proposal statuses evaluate() accepts. passed = the vote passed;
+#   risk_checked = an owner Edit re-runs the check (brief §12). Any other status (cancelled, rejected,
+#   expired, sent, filled ...) is refused before anything is written, so it cannot re-enter approval.
+risk_rules:
+  us_session:
+    timezone: America/New_York
+    open: "09:30"
+    close: "16:00"
+    weekdays: [1, 2, 3, 4, 5]
+  atr_bar: 1H
+  atr_window: 14
+  atr_lookback_bars: 120
+  correlation_threshold: "0.8"
+  correlation_lookback_days: 30
+  correlation_min_obs: 20
+  maint_margin_ratio: "0.005"
+  fallback_taker_fee_rate: "0.0005"
+  high_impact_importance: 5
+  used_statuses: [sent, partially_filled, filled, closed]
+  evaluable_statuses: [passed, risk_checked]
+
 # ATL-141, brief §4.4, §11: Executor parameters (trading_core/execution), editable in Settings.
 #   entry_timeout_minutes: an unfilled limit entry is cancelled after this long.
 #   td_mode_perps: OKX tdMode for perps (one of td_modes_perps); spot always uses "cash".
