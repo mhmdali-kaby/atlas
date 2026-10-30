@@ -14,7 +14,7 @@ export function Medallion({
   dot = false,
 }: {
   slug: string
-  size: 22 | 26 | 28 | 30 | 32 | 40 | 44
+  size: 22 | 26 | 28 | 30 | 32 | 36 | 40 | 44
   status?: AgentStatus
   dot?: boolean
 }) {
