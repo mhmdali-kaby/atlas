@@ -201,8 +201,14 @@ def local_server() -> Iterator[tuple[int, type[_Counting]]]:
 
 
 async def test_fetch_article_to_loopback_is_refused_without_a_request(
-    db: sessionmaker[Session], local_server: tuple[int, type[_Counting]]
+    db: sessionmaker[Session],
+    local_server: tuple[int, type[_Counting]],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    # The domain policy is not what this test is about (ATL-121: an empty allow list now denies
+    # everything, so every host it uses must be explicitly allowed here); it is the SSRF guard
+    # inside guarded_fetch that must refuse a loopback address regardless.
+    _set_web_policy(monkeypatch, allow=["127.0.0.1", "localhost", "::ffff:127.0.0.1"])
     port, handler = local_server
     ctx = _ctx(db)
     for url in (
@@ -227,6 +233,7 @@ async def test_fetch_article_rejects_non_http_schemes(db: sessionmaker[Session])
 async def test_fetch_article_uses_the_guard_and_quotes_fetched_text(
     db: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    _set_web_policy(monkeypatch, allow=["example.com"])
     seen: list[str] = []
 
     async def fake_guarded_fetch(url: str) -> str | None:
@@ -278,9 +285,12 @@ def _set_web_policy(
     )
 
 
-def test_domain_allowed_empty_allow_list_permits_any_host_not_denied(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_domain_allowed_empty_allow_list_permits_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
+    """ATL-121 (security round 11, medium): an empty allow_domains means no host is allowed, not
+    "any host not denied" — config/defaults.yaml now ships a non-empty default, so an empty list
+    reaching here is the owner's deliberate choice."""
     _set_web_policy(monkeypatch, deny=["evil.test"])
-    assert news_tools.domain_allowed("anything.example") is True
+    assert news_tools.domain_allowed("anything.example") is False
     assert news_tools.domain_allowed("evil.test") is False
     assert news_tools.domain_allowed("sub.evil.test") is False  # a subdomain of a denied host
 
@@ -412,10 +422,24 @@ async def test_fetch_article_denied_idn_domain_is_refused_for_either_spelling(
     assert called is False
 
 
-async def test_fetch_article_allows_a_host_not_on_either_list(
+async def test_fetch_article_with_both_lists_empty_allows_nothing(
     db: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _set_web_policy(monkeypatch)  # both lists empty: allow any public host
+    """ATL-121: both lists empty is no longer "allow any public host" — it is "allow nothing"."""
+    _set_web_policy(monkeypatch)  # both lists empty
+
+    async def must_not_fetch(url: str) -> str | None:
+        raise AssertionError("fetched with an empty allow list")
+
+    monkeypatch.setattr(news_tools, "_fetcher", must_not_fetch)
+    body = await _call(_ctx(db), "fetch_article", {"url": f"https://example.com/{RUN}"})
+    assert body["error"] == "domain_denied"
+
+
+async def test_fetch_article_allows_a_host_on_the_allow_list(
+    db: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _set_web_policy(monkeypatch, allow=["example.com"])
 
     async def fake_guarded_fetch(url: str) -> str | None:
         return "Fetched article text."
@@ -423,6 +447,79 @@ async def test_fetch_article_allows_a_host_not_on_either_list(
     monkeypatch.setattr(news_tools, "_fetcher", fake_guarded_fetch)
     body = await _call(_ctx(db), "fetch_article", {"url": f"https://example.com/{RUN}"})
     assert body["data"]["origin"] == "fetched"
+
+
+# -- ATL-121 (security round 11, medium): the real config/defaults.yaml policy ------------------------
+#
+# These use the real DEFAULTS (no _set_web_policy monkeypatch), exactly like a live agent session
+# with no owner override: ``access.allowed_tools("news_intelligence")`` grants fetch_article, and
+# the only thing standing between that and an arbitrary host is domain_allowed's default.
+
+
+async def test_fetch_article_refuses_an_unknown_host_under_the_real_defaults(
+    db: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The exact repro from the security report: fetch_article on a host nobody configured must
+    be refused by the shipped defaults, with no request made at all."""
+    from atlas_agents import access
+
+    assert fq_name("news", "fetch_article") in access.allowed_tools("news_intelligence")
+
+    async def must_not_fetch(url: str) -> str | None:
+        raise AssertionError("fetched an unknown host under the default policy")
+
+    monkeypatch.setattr(news_tools, "_fetcher", must_not_fetch)
+    body = await _call(_ctx(db), "fetch_article", {"url": "https://unknown.example/?eq=1"})
+    assert body["error"] == "domain_denied"
+
+
+async def test_fetch_article_fetches_a_configured_news_source_with_its_query_intact(
+    db: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``www.coindesk.com`` is a configured news_sources host (rss.coindesk): it is allowed under
+    the real defaults, and its query string is trusted and left alone."""
+    seen: list[str] = []
+
+    async def fake_guarded_fetch(url: str) -> str | None:
+        seen.append(url)
+        return "Fetched article text."
+
+    monkeypatch.setattr(news_tools, "_fetcher", fake_guarded_fetch)
+    url = f"https://www.coindesk.com/markets/{RUN}?utm_source=test&ref=abc#section"
+    body = await _call(_ctx(db), "fetch_article", {"url": url})
+    assert body["data"]["origin"] == "fetched"
+    assert seen == [url]
+    assert body["data"]["url"] == url
+
+
+async def test_fetch_article_strips_the_query_for_an_allowed_host_that_is_not_a_news_source(
+    db: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """``okx.com`` is allowed under the real defaults (decision: "plus okx.com") but is not the
+    host of any configured news_sources feed (that is ``www.okx.com``, via okx.announcements), so
+    a query string on it is not trusted: an agent could otherwise use it as a side channel to
+    leak data embedded in the query of an otherwise-allowed host."""
+    seen: list[str] = []
+
+    async def fake_guarded_fetch(url: str) -> str | None:
+        seen.append(url)
+        return "Fetched article text."
+
+    monkeypatch.setattr(news_tools, "_fetcher", fake_guarded_fetch)
+    body = await _call(
+        _ctx(db), "fetch_article", {"url": f"https://okx.com/leak/{RUN}?secret=abc#frag"}
+    )
+    assert body["data"]["origin"] == "fetched"
+    assert seen == [f"https://okx.com/leak/{RUN}"]
+    assert body["data"]["url"] == f"https://okx.com/leak/{RUN}"
+
+
+def test_news_source_hosts_are_computed_from_the_configured_sources() -> None:
+    hosts = news_tools._news_source_hosts()
+    assert "www.coindesk.com" in hosts
+    assert "finnhub.io" in hosts
+    assert "okx.com" not in hosts  # the bare apex is not any source's own host
+    assert "www.okx.com" in hosts
 
 
 # -- replay bounds, search, clusters, announcements --------------------------------------------------

@@ -10,6 +10,7 @@ from __future__ import annotations
 import dataclasses
 import re
 from datetime import UTC, datetime
+from typing import Any
 
 import pytest
 from atlas_agents import access
@@ -214,6 +215,64 @@ def test_web_tools_only_for_scout_and_news(agent: str) -> None:
         assert not web & allowed
         assert "WebSearch" in disallowed
         assert access.builtin_tools(agent) == []
+
+
+@pytest.mark.parametrize("agent", sorted(EXPECTED))
+def test_web_search_is_either_absent_or_gated_by_a_pretooluse_hook(agent: str, engine: Engine) -> None:
+    """ATL-121 (security round 11, medium): an ``allowed_tools`` entry that grants a whole tool
+    (``"WebSearch"``, no specifier) is auto-approved by the SDK before a ``can_use_tool`` callback
+    would even run, so a callback cannot gate it; a PreToolUse hook is the one thing that still
+    runs on every call. Every agent either has no WebSearch at all, or has a hook wired for it."""
+    options = access.build_options(agent, _ctx(agent, engine))
+    matchers = (options.hooks or {}).get("PreToolUse", [])
+    hooked = any(m.matcher == "WebSearch" and m.hooks for m in matchers)
+    if "WebSearch" in access.allowed_tools(agent):
+        assert hooked
+    else:
+        assert not hooked
+
+
+def _web_search_hook(options: ClaudeAgentOptions) -> Any:
+    (matcher,) = (options.hooks or {})["PreToolUse"]
+    (hook,) = matcher.hooks
+    return hook
+
+
+async def test_web_search_hook_denies_the_call_when_the_allow_list_is_empty(engine: Engine) -> None:
+    ctx = dataclasses.replace(_ctx("market_scout", engine), web_policy=lambda: ((), ()))
+    options = access.build_options("market_scout", ctx)
+    hook = _web_search_hook(options)
+    result = await hook({"tool_name": "WebSearch", "tool_input": {"query": "x"}}, "id", {"signal": None})
+    assert result["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+
+async def test_web_search_hook_injects_allowed_domains_from_the_effective_list(engine: Engine) -> None:
+    ctx = dataclasses.replace(
+        _ctx("news_intelligence", engine), web_policy=lambda: (("coindesk.com", "finnhub.io"), ())
+    )
+    options = access.build_options("news_intelligence", ctx)
+    hook = _web_search_hook(options)
+    result = await hook({"tool_name": "WebSearch", "tool_input": {"query": "gold"}}, "id", {"signal": None})
+    out = result["hookSpecificOutput"]
+    assert out["permissionDecision"] == "allow"
+    assert out["updatedInput"] == {"query": "gold", "allowed_domains": ["coindesk.com", "finnhub.io"]}
+
+
+async def test_web_search_hook_ignores_calls_to_other_tools(engine: Engine) -> None:
+    ctx = dataclasses.replace(_ctx("market_scout", engine), web_policy=lambda: ((), ()))
+    options = access.build_options("market_scout", ctx)
+    hook = _web_search_hook(options)
+    assert await hook({"tool_name": "Bash", "tool_input": {}}, "id", {"signal": None}) == {}
+
+
+def test_web_search_hook_falls_back_to_config_defaults_with_no_web_policy(engine: Engine) -> None:
+    """A context built outside the supervisor (no ``web_policy``) uses config/defaults.yaml's
+    allow list, same as ``news.domain_allowed``."""
+    from atlas_shared.defaults import DEFAULTS
+
+    ctx = _ctx("market_scout", engine)
+    assert ctx.web_policy is None
+    assert access._effective_allow_domains(ctx) == tuple(DEFAULTS["agents"]["web"]["allow_domains"])
 
 
 def test_devils_advocate_has_no_live_fetch() -> None:

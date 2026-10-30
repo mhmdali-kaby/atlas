@@ -54,7 +54,21 @@ it('starts every roster agent from the config/defaults.yaml agent defaults', fun
         ->and($settings['agents.orchestrator.model'])->toBe('standard')
         ->and($settings['agents.orchestrator.daily_tokens'])->toBe(3000000)
         ->and($settings['agents.orchestrator.daily_turns'])->toBe(300)
-        ->and($settings['agents.web.allow_domains'])->toBe([])
+        ->and($settings['agents.web.allow_domains'])->toBe([
+            'api.alternative.me',
+            'cointelegraph.com',
+            'cryptopanic.com',
+            'decrypt.co',
+            'feeds.content.dowjones.io',
+            'feeds.finance.yahoo.com',
+            'finnhub.io',
+            'nfs.faireconomy.media',
+            'okx.com',
+            'search.cnbc.com',
+            'www.coindesk.com',
+            'www.okx.com',
+            'www.theblock.co',
+        ])
         ->and($settings['agents.web.deny_domains'])->toBe([]);
 
     foreach (['orchestrator', 'market_scout', 'news_intelligence', 'historian', 'technical_analyst',

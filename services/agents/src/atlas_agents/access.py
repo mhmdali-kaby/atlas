@@ -15,7 +15,10 @@ agent's own tool list in §7.x where the cell is a summary:
 * web search: built-in WebSearch plus news.web_search, for Market Scout and News Intelligence only.
   WebFetch is granted to no agent (ATL-100): it has no domain policy and no stored-article path;
   news.fetch_article is the one guarded live-fetch tool, checked against
-  agents.web.allow_domains/deny_domains.
+  agents.web.allow_domains/deny_domains. WebSearch itself is gated the same way by a PreToolUse
+  hook (ATL-121, security round 11, medium): ``allowed_tools`` grants it as a whole-tool entry,
+  which the SDK auto-approves before a ``can_use_tool`` callback would even run, so the domain
+  policy is enforced in a hook instead — see ``_web_search_hooks`` below.
 * history: "all" = every history tool; otherwise the named tools.
 * memory: "read" = read_journal + read_notebook; "notebook" (Orchestrator) = read_notebook +
   append_notebook; "read + notebook" (Historian) = read + append_notebook; "read journal" (Technical)
@@ -36,11 +39,13 @@ two agents that are allowed it; ``tools`` (the CLI's base built-in set) is that 
 from __future__ import annotations
 
 import dataclasses
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass
-from typing import Final
+from typing import Any, Final, cast
 
-from claude_agent_sdk import ClaudeAgentOptions
+from atlas_shared.defaults import DEFAULTS
+from claude_agent_sdk import ClaudeAgentOptions, HookContext, HookInput, HookJSONOutput, HookMatcher
+from claude_agent_sdk.types import HookEvent
 
 from atlas_agents.registry import REGISTRY, UnknownAgentError
 from atlas_agents.tools import build_mcp_servers, fq_name, registered_tools
@@ -252,15 +257,86 @@ def disallowed_tools(agent: str) -> list[str]:
     return [name for name in BUILTIN_TOOLS if name not in keep]
 
 
+def _effective_allow_domains(ctx: ToolContext) -> tuple[str, ...]:
+    """The ``agents.web.allow_domains`` in force for ``ctx`` right now: the owner's settings as
+    the supervisor last merged them (``ToolContext.web_policy``, ATL-114) when the context
+    carries one, else config/defaults.yaml — read fresh on every call, not once at session build,
+    so a change in Settings -> Agents takes effect on the very next WebSearch call."""
+    if ctx.web_policy is not None:
+        allow, _deny = ctx.web_policy()
+        return tuple(allow)
+    conf = DEFAULTS["agents"]["web"]
+    return tuple(conf["allow_domains"])
+
+
+def _web_search_hook(
+    ctx: ToolContext,
+) -> Callable[[HookInput, str | None, HookContext], Awaitable[HookJSONOutput]]:
+    """A PreToolUse hook for the built-in WebSearch tool (ATL-121, security round 11, medium:
+    enabled web agents could search and fetch with no domain policy at all, and an injected news
+    alert could trigger it). ``allowed_tools`` grants WebSearch as a whole-tool entry, which the
+    SDK auto-approves before a ``can_use_tool`` callback is even consulted (its own documented
+    shadowing rule) — a hook is the one gate that still runs on every call. Injects
+    ``allowed_domains`` from the same effective ``agents.web.allow_domains`` fetch_article is
+    checked against, and denies the call outright when that list is empty (which now means "no
+    host is allowed", not "any" — see ``news.domain_allowed``)."""
+
+    async def hook(input_data: HookInput, _tool_use_id: str | None, _context: HookContext) -> HookJSONOutput:
+        if input_data.get("tool_name") != "WebSearch":
+            return {}
+        allow = _effective_allow_domains(ctx)
+        if not allow:
+            return {
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "deny",
+                    "permissionDecisionReason": "agents.web.allow_domains is empty; no web host is allowed",
+                }
+            }
+        raw_input = cast("dict[str, Any]", input_data.get("tool_input", {}))
+        tool_input = {**raw_input, "allowed_domains": list(allow)}
+        return {
+            "hookSpecificOutput": {
+                "hookEventName": "PreToolUse",
+                "permissionDecision": "allow",
+                "updatedInput": tool_input,
+            }
+        }
+
+    return hook
+
+
+def _web_search_hooks(ctx: ToolContext) -> dict[HookEvent, list[HookMatcher]]:
+    """``options.hooks`` for a web-enabled agent: :func:`_web_search_hook` on every WebSearch call."""
+    return {"PreToolUse": [HookMatcher(matcher="WebSearch", hooks=[_web_search_hook(ctx)])]}
+
+
+def _merge_hooks(
+    base: Mapping[HookEvent, list[HookMatcher]] | None,
+    extra: Mapping[HookEvent, list[HookMatcher]] | None,
+) -> dict[HookEvent, list[HookMatcher]] | None:
+    """``base`` (whatever a caller already set) with ``extra``'s matchers appended per event."""
+    if extra is None:
+        return dict(base) if base is not None else None
+    merged: dict[HookEvent, list[HookMatcher]] = {
+        event: list(matchers) for event, matchers in (base or {}).items()
+    }
+    for event, matchers in extra.items():
+        merged[event] = [*merged.get(event, []), *matchers]
+    return merged
+
+
 def build_options(agent: str, ctx: ToolContext, base: ClaudeAgentOptions | None = None) -> ClaudeAgentOptions:
     """``base`` (or fresh options) with this agent's tools wired: allowed/disallowed tools, the
     built-in base set, and in-process MCP servers holding only the agent's allowed tools.
     Permission mode is ``dontAsk`` so anything not pre-approved is denied, and only these MCP
-    servers are loaded (``strict_mcp_config``)."""
+    servers are loaded (``strict_mcp_config``). A web-enabled agent also gets the WebSearch
+    PreToolUse hook (ATL-121, see ``_web_search_hooks``)."""
     if ctx.agent != agent:
         raise ValueError(f"ToolContext is for [{ctx.agent}], not [{agent}]")
     allowed = allowed_tools(agent)
     options = base or ClaudeAgentOptions()
+    web_hooks = _web_search_hooks(ctx) if _access(agent).web else None
     return dataclasses.replace(
         options,
         allowed_tools=allowed,
@@ -269,6 +345,7 @@ def build_options(agent: str, ctx: ToolContext, base: ClaudeAgentOptions | None 
         mcp_servers=build_mcp_servers(ctx, allowed),
         strict_mcp_config=True,
         permission_mode="dontAsk",
+        hooks=_merge_hooks(options.hooks, web_hooks),
     )
 
 

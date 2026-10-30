@@ -980,7 +980,21 @@ DEFAULTS: Final[dict[str, Any]] = {
             ],
         },
         "web": {
-            "allow_domains": [],
+            "allow_domains": [
+                "api.alternative.me",
+                "cointelegraph.com",
+                "cryptopanic.com",
+                "decrypt.co",
+                "feeds.content.dowjones.io",
+                "feeds.finance.yahoo.com",
+                "finnhub.io",
+                "nfs.faireconomy.media",
+                "okx.com",
+                "search.cnbc.com",
+                "www.coindesk.com",
+                "www.okx.com",
+                "www.theblock.co",
+            ],
             "deny_domains": [],
         },
         "streaming": {
