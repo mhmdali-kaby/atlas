@@ -275,6 +275,59 @@ def test_web_search_hook_falls_back_to_config_defaults_with_no_web_policy(engine
     assert access._effective_allow_domains(ctx) == tuple(DEFAULTS["agents"]["web"]["allow_domains"])
 
 
+async def test_web_search_hook_excludes_a_host_the_deny_list_covers(engine: Engine) -> None:
+    """ATL-123 (security round 12, low): the hook used to read only the allow half of the
+    policy, so a host under ``agents.web.deny_domains`` still reached WebSearch. ``bad.example.com``
+    is under the deny entry, so either the whole call is refused or it is dropped from
+    ``allowed_domains`` — never passed through."""
+    ctx = dataclasses.replace(
+        _ctx("market_scout", engine),
+        web_policy=lambda: (("example.com", "bad.example.com"), ("bad.example.com",)),
+    )
+    options = access.build_options("market_scout", ctx)
+    hook = _web_search_hook(options)
+    result = await hook({"tool_name": "WebSearch", "tool_input": {"query": "x"}}, "id", {"signal": None})
+    out = result["hookSpecificOutput"]
+    if out["permissionDecision"] == "allow":
+        assert "bad.example.com" not in out["updatedInput"]["allowed_domains"]
+    else:
+        assert out["permissionDecision"] == "deny"
+
+
+async def test_web_search_hook_denies_when_allow_equals_deny(engine: Engine) -> None:
+    ctx = dataclasses.replace(
+        _ctx("market_scout", engine),
+        web_policy=lambda: (("example.com",), ("example.com",)),
+    )
+    options = access.build_options("market_scout", ctx)
+    hook = _web_search_hook(options)
+    result = await hook({"tool_name": "WebSearch", "tool_input": {"query": "x"}}, "id", {"signal": None})
+    assert result["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+
+async def test_web_search_hook_overwrites_model_supplied_domain_lists(engine: Engine) -> None:
+    ctx = dataclasses.replace(
+        _ctx("news_intelligence", engine), web_policy=lambda: (("coindesk.com",), ())
+    )
+    options = access.build_options("news_intelligence", ctx)
+    hook = _web_search_hook(options)
+    result = await hook(
+        {
+            "tool_name": "WebSearch",
+            "tool_input": {
+                "query": "gold",
+                "allowed_domains": ["evil.example"],
+                "blocked_domains": ["coindesk.com"],
+            },
+        },
+        "id",
+        {"signal": None},
+    )
+    out = result["hookSpecificOutput"]
+    assert out["permissionDecision"] == "allow"
+    assert out["updatedInput"] == {"query": "gold", "allowed_domains": ["coindesk.com"]}
+
+
 def test_devils_advocate_has_no_live_fetch() -> None:
     """ATL-100 (security round 9, low): the Devil's Advocate read every news tool including
     fetch_article, so it could reach any public URL with no domain policy. It now gets the same
