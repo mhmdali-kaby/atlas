@@ -24,7 +24,6 @@ from collections.abc import Awaitable, Callable, Sequence
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any, Final
-from urllib.parse import urlsplit
 
 import httpx
 from atlas_ingest.extract import Extractor
@@ -455,8 +454,16 @@ async def fetch_article(ctx: ToolContext, args: FetchArticleInput) -> ToolResult
         return ToolResult(data=data, as_of=item.fetched_at, source=f"atlas.news_items:{item.source}")
     if ctx.replaying:
         raise ToolError("not_available_in_replay", "the article body was not stored at the replay time")
-    host = (urlsplit(url).hostname or "").lower()
-    if urlsplit(url).scheme not in ("http", "https") or not host:
+    # ATL-100 (security round 9 review): parse the host with httpx.URL, not urlsplit — it encodes
+    # the host the same way the live fetch below will (IDNA/UTS46), so a full-width dot
+    # (U+3002/U+FF0E/U+FF61) folds to an ASCII "." here too, instead of reading as a different,
+    # un-denied host while the actual connection lands on the real (denied) one.
+    try:
+        parsed = httpx.URL(url)
+    except httpx.InvalidURL as exc:
+        raise ToolError("invalid_url", "only http and https URLs can be fetched") from exc
+    host = (parsed.host or "").lower()
+    if parsed.scheme not in ("http", "https") or not host:
         raise ToolError("invalid_url", "only http and https URLs can be fetched")
     if not domain_allowed(host):
         raise ToolError("domain_denied", "this host is not allowed by the agents.web domain policy")

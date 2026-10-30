@@ -346,6 +346,29 @@ async def test_fetch_article_denied_domain_trailing_dot_fqdn_is_refused_without_
     assert called is False
 
 
+@pytest.mark.parametrize("dot", ["\u3002", "\uff0e", "\uff61"])
+async def test_fetch_article_denied_domain_idn_full_width_dot_is_refused_without_a_request(
+    db: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, dot: str
+) -> None:
+    """Security round 9 review: a full-width dot (ideographic full stop U+3002, fullwidth full
+    stop U+FF0E, or halfwidth ideographic full stop U+FF61) in the host is a distinct character
+    to ``urlsplit``, so ``https://denied<dot>test/x`` used to read as a different, un-denied host
+    here while httpx's own IDNA encoding folded it back to ``denied.test`` for the real
+    connection. It must be refused, with no fetch attempted, exactly like the ASCII host."""
+    _set_web_policy(monkeypatch, deny=["denied.test"])
+    called = False
+
+    async def must_not_fetch(url: str) -> str | None:
+        nonlocal called
+        called = True
+        return "unexpected"
+
+    monkeypatch.setattr(news_tools, "_fetcher", must_not_fetch)
+    body = await _call(_ctx(db), "fetch_article", {"url": f"https://denied{dot}test/x"})
+    assert body["error"] == "domain_denied"
+    assert called is False
+
+
 async def test_fetch_article_allows_a_host_not_on_either_list(
     db: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
