@@ -1486,6 +1486,23 @@ DEFAULTS: Final[dict[str, Any]] = {
             "position_bar": "1H",
             "zones_reported": 8,
         },
+        "devils_advocate": {
+            "review_deadline_seconds": 60,
+            "noise_mult": "0.8",
+            "range_bar": "4H",
+            "range_lookback_bars": 30,
+            "atr_bar": "1H",
+            "atr_window": 14,
+            "atr_lookback_bars": 100,
+            "chase_entry_atr": "1.5",
+            "chase_move_atr": "3",
+            "chase_move_bars": 24,
+            "correlation_threshold": "0.8",
+            "correlation_lookback_days": 30,
+            "event_min_importance": 4,
+            "default_window_minutes": 1440,
+            "take_max_rating": 2,
+        },
         "ta_structure": {
             "levels": {
                 "lookback_bars": 120,

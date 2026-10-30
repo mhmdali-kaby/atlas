@@ -1217,6 +1217,38 @@ agents:
     mention_max_instruments: 3
     position_bar: 1H
     zones_reported: 8
+  # ATL-159, brief §7.7: the Devil's Advocate (atlas_agents.devils_advocate). A proposal.opened
+  # (new or revised) on atlas.proposals starts one review; an event older than
+  # review_deadline_seconds when it is picked up is skipped (logged), and a review posted later than
+  # that is marked late in the card's meta. The Strategist's reply to a review starts exactly one
+  # re-rate (round 2); a reply to a re-rate, or a second reply, starts nothing.
+  #   Code precomputes for the model: stop_noise (stop distance / (noise_mult x median high-low range
+  #   of the last range_lookback_bars range_bar bars); < 1 = inside noise), chasing (entry distance
+  #   from the nearest level of the newest TechnicalSetup and the move over the last
+  #   chase_move_bars atr_bar bars, both in ATR(atr_window) of atr_bar; flagged above chase_entry_atr
+  #   / chase_move_atr), correlation (open positions with |30-day corr| > correlation_threshold over
+  #   correlation_lookback_days) and events (economic events with importance >= event_min_importance
+  #   and earnings of the underlying inside [now, now + the proposal's time stop, else
+  #   default_window_minutes]).
+  #   Rating guide (code): 5 if any item is loss_gt_1r, 4 if two or more are serious, 3 if one is,
+  #   2 if only minor, 1 if none. A "take" with a rating above take_max_rating and no applied fix
+  #   becomes "change" (or "skip" when there is no fix); a "change" with no fix becomes "skip".
+  devils_advocate:
+    review_deadline_seconds: 60
+    noise_mult: "0.8"
+    range_bar: 4H
+    range_lookback_bars: 30
+    atr_bar: 1H
+    atr_window: 14
+    atr_lookback_bars: 100
+    chase_entry_atr: "1.5"
+    chase_move_atr: "3"
+    chase_move_bars: 24
+    correlation_threshold: "0.8"
+    correlation_lookback_days: 30
+    event_min_importance: 4
+    default_window_minutes: 1440
+    take_max_rating: 2
   ta_structure:
     levels:
       lookback_bars: 120
