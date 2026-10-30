@@ -150,7 +150,7 @@ def adx(h: list[float], lo: list[float], c: list[float], w: int) -> dict[str, li
 def main() -> None:
     rows = make_bars()
     with (HERE / "ohlcv_1h_300.csv").open("w", newline="") as fh:
-        writer = csv.DictWriter(fh, fieldnames=["ts", "o", "h", "l", "c", "vol"])
+        writer = csv.DictWriter(fh, fieldnames=["ts", "o", "h", "l", "c", "vol"], lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
     # Re-read the CSV so the reference sees exactly the stored numbers.
