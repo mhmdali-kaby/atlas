@@ -36,6 +36,7 @@ from trading_core.marketdata.quality import quality_job
 from trading_core.okx.client import OkxClient
 from trading_core.okx.errors import OkxClientError, OkxError, OkxNetworkError
 from trading_core.okx.ratelimit import RateLimiter
+from trading_core.risk.api import router as risk_router
 from trading_core.scheduler import Scheduler
 from trading_core.security import PROTECTED_PREFIX, InternalSignatureMiddleware
 from trading_core.sync.account import STREAM as ACCOUNT_JOB
@@ -287,6 +288,7 @@ def create_app(
     application.include_router(connection_test_router)
     application.include_router(backfill_router)
     application.include_router(quality_router)
+    application.include_router(risk_router)
     application.include_router(execution_router)
     if extra_internal is not None:
         application.include_router(extra_internal)
