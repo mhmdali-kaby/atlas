@@ -155,6 +155,7 @@ class FillDetail(OkxModel):
     fee: Dec = None
     fee_ccy: Str = None
     exec_type: Str = None
+    fill_pnl: Dec = None
     ts: MsRequired
 
 
