@@ -25,7 +25,7 @@ import json
 import logging
 import math
 import re
-from collections.abc import Awaitable, Callable, Iterable, Mapping
+from collections.abc import Awaitable, Callable, Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Final
@@ -96,6 +96,10 @@ class ToolContext:
     recorder or a publisher bound to the test Redis DB."""
     run: RunScope = field(default_factory=RunScope)
     """The current run (correlation id, mention depth); see :class:`RunScope`."""
+    web_policy: Callable[[], tuple[Sequence[str], Sequence[str]]] | None = None
+    """``() -> (allow_domains, deny_domains)``: the owner's ``agents.web`` lists as the supervisor
+    last merged them from settings (ATL-114). None (a context built outside the supervisor) means
+    the config/defaults.yaml lists."""
 
     def __post_init__(self) -> None:
         if self.replay_as_of is not None and self.replay_as_of.utcoffset() is None:

@@ -242,6 +242,30 @@ class AgentSession:
         self._model: str | None = self.options.model
         self._last_total_cost: Decimal = Decimal(0)
         self._rate_limited_until: datetime | None = None
+        self._next_spec: AgentSpec | None = None
+
+    # -- settings (ATL-114) -----------------------------------------------------------------------
+
+    def update_spec(self, spec: AgentSpec) -> None:
+        """Take ``spec`` (the owner's merged settings) at the start of the next run, never during
+        one. Budgets apply to that run's budget check. A new model is set on the options and the
+        open client is disconnected, so the model takes effect at the next connect."""
+        if spec.slug != self.spec.slug:
+            raise ValueError(f"spec for [{spec.slug}] given to the session of [{self.spec.slug}]")
+        self._next_spec = spec
+
+    async def _apply_pending_spec(self) -> None:
+        spec, self._next_spec = self._next_spec, None
+        if spec is None:
+            return
+        model_changed = spec.model != self.spec.model
+        self.spec = spec
+        if model_changed:
+            self.options = dataclasses.replace(self.options, model=spec.model)
+            if self._client is not None:
+                log.info("agent %s: model now %s; reconnecting at the next run", spec.slug, spec.model)
+                await self.close()
+            self._model = spec.model
 
     # -- client lifecycle -------------------------------------------------------------------------
 
@@ -342,6 +366,7 @@ class AgentSession:
         carried on every ``warroom.thinking`` event of the run, including ``run_end``, so the UI
         can place the live row under the question it answers. Both default to None for a
         scheduled or manual run, which streams in Main."""
+        await self._apply_pending_spec()
         started = self._clock()
         day = usage_day(started)
         model = self.spec.routine_model if routine else self.spec.model

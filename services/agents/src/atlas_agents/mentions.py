@@ -13,6 +13,7 @@ starts no run, so with the default 2 a chain A -> B -> C stops before C.
 
 from __future__ import annotations
 
+import time
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
@@ -31,6 +32,7 @@ __all__ = [
     "envelope_depth",
     "max_depth",
     "mention_from_envelope",
+    "parent_wait_seconds",
     "resolve_parent",
 ]
 
@@ -102,12 +104,32 @@ def mention_from_envelope(envelope: EventEnvelope, agent: str, env: str) -> Ment
     )
 
 
-def resolve_parent(ctx: ToolContext, request: MentionRequest) -> tuple[str | None, str | None]:
+def parent_wait_seconds(defaults: Mapping[str, Any] = DEFAULTS) -> float:
+    """``agents.mentions.parent_wait_seconds``: how long to wait for the bridge to store a mention."""
+    return float(defaults["agents"]["mentions"]["parent_wait_seconds"])
+
+
+_PARENT_POLL_SECONDS = 0.25
+
+
+def resolve_parent(
+    ctx: ToolContext, request: MentionRequest, *, wait_seconds: float | None = None
+) -> tuple[str | None, str | None]:
     """(row id, thread id) of the mention. An agent's mention carries only its envelope id, so it is
-    looked up in warroom_messages; when the bridge has not stored it the reply goes to Main."""
+    looked up in warroom_messages. The supervisor and atlas:bridge read the same stream, so the row
+    may not be stored yet: an agent's mention is retried for up to ``parent_wait_seconds`` (ATL-108:
+    Market Scout matches replies by reply_to). When it is still not stored the reply goes to Main.
+    Synchronous: call it with ``asyncio.to_thread``."""
     if request.row_id and request.thread_id:
         return request.row_id, request.thread_id
-    try:
-        return _parent(ctx, request.row_id or request.event_id)
-    except ToolError:
-        return None, None
+    wait = parent_wait_seconds() if wait_seconds is None else wait_seconds
+    if request.author_type != "agent" or ctx.replaying:
+        wait = 0.0
+    deadline = time.monotonic() + wait
+    while True:
+        try:
+            return _parent(ctx, request.row_id or request.event_id)
+        except ToolError:
+            if time.monotonic() >= deadline:
+                return None, None
+            time.sleep(_PARENT_POLL_SECONDS)
