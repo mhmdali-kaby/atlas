@@ -36,6 +36,7 @@ from trading_core.okx.models import (
     DepositRecord,
     FundingRate,
     FundingRateHistory,
+    IndexTicker,
     Instrument,
     LongShortRatio,
     MarkPrice,
@@ -481,6 +482,13 @@ class OkxClient:
         """``public/mark-price`` (``inst_type`` MARGIN, SWAP, FUTURES or OPTION)."""
         params = {"instType": inst_type, "instFamily": inst_family, "instId": inst_id}
         return self._parse(MarkPrice, await self._get("public/mark-price", params, signed=False))
+
+    async def get_index_tickers(
+        self, *, quote_ccy: str | None = None, inst_id: str | None = None
+    ) -> list[IndexTicker]:
+        """``market/index-tickers`` for one quote currency (``USDT``) or one index (``BTC-USDT``)."""
+        params = {"quoteCcy": quote_ccy, "instId": inst_id}
+        return self._parse(IndexTicker, await self._get("market/index-tickers", params, signed=False))
 
     # ---- account (read) ----------------------------------------------------------------------
 
