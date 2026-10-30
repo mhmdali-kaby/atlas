@@ -299,6 +299,7 @@ CATALOGUE: Final[dict[str, dict[str, type[ToolInput]]]] = {
         "get_taker_volume": CcyPeriodInput,
         "get_mark_price": InstIdInput,
         "get_instrument_spec": InstIdInput,
+        "get_ta_table": InstIdInput,  # ATL-135: the Technical Analyst's pre-computed table
     },
     "atlas_data": {
         "get_account_summary": NoInput,

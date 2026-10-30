@@ -1061,6 +1061,28 @@ agents:
   #   patterns: breakout_retest, failed_breakout, range, flag (flag/pennant) and double (top/bottom);
   #     the geometric rule for each is in atlas_agents.ta.patterns.
   #   microstructure: book imbalance over the top imbalance_depths levels of each side.
+  # ATL-135, brief §7.4: the Technical Analyst agent (atlas_agents.technical_analyst).
+  #   history_bars: closed bars per timeframe loaded for okx_market.get_ta_table (§7.4 inputs).
+  #   stale_bars / stale_check_bars: a run refuses (and posts a data alert) when the newest closed
+  #     bar of any of these timeframes is more than stale_bars bars late.
+  #   min_stop_atr_mult: the stop must be at least this many ATR(1H) from the entry-zone midpoint,
+  #     else code turns the setup into "none".
+  #   max_slippage_bps: estimated slippage at the Risk Engine's max size above this adds a
+  #     thin-liquidity note. Max size = sizing equity x max_position_pct (settings).
+  #   watchlist_max_runs: at most this many picks of one watchlist card are analysed.
+  #   mention_max_instruments: at most this many instruments named in one @Technical mention.
+  #   position_bar: the closed bar (candle.closed) that re-checks an instrument with an open position.
+  #   zones_reported: the nearest zones per timeframe kept in the table (half below, half above price).
+  technical_analyst:
+    history_bars: { "1D": 400, "4H": 500, "1H": 500, "15m": 500, "5m": 300 }
+    stale_bars: 2
+    stale_check_bars: ["1H"]
+    min_stop_atr_mult: "1.0"
+    max_slippage_bps: "10"
+    watchlist_max_runs: 10
+    mention_max_instruments: 3
+    position_bar: 1H
+    zones_reported: 8
   ta_structure:
     levels:
       lookback_bars: 120

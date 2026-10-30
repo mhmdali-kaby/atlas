@@ -15,7 +15,11 @@ It is also the long-running process's brain (``python -m atlas_agents``, ATL-93)
   the same day does not run a job again. An interval hook runs every ``every_seconds`` (tracked in
   memory, so also at the first tick). :meth:`Supervisor.serve` loops both.
 * Any other envelope type on ``atlas.warroom`` goes only to the agents that registered that type
-  with ``HOOKS.event`` (ATL-107: ``news.alert`` starts News Intelligence and nobody else).
+  with ``HOOKS.event`` (ATL-107: ``news.alert`` starts News Intelligence and nobody else). A
+  ``warroom.message`` is also offered under ``warroom.message.<kind>`` (ATL-135: the Technical
+  Analyst reacts to Market Scout's ``watchlist`` card).
+* ``atlas.market`` envelopes (:meth:`Supervisor.consume_market`) go only to the agents that
+  registered their type (ATL-135: ``candle.closed``); ticks and every other type are dropped.
 
 Runs of one agent never overlap: each agent has its own lock.
 
@@ -65,6 +69,7 @@ log = logging.getLogger(__name__)
 SessionBuilder = Callable[[AgentSpec], AgentSession]
 Clock = Callable[[], datetime]
 WARROOM_STREAM: Final = "atlas.warroom"
+MARKET_STREAM: Final = "atlas.market"
 SYSTEM_STREAM: Final = events.SYSTEM_STREAM
 
 # The mention depth of the run a mention handler starts (0 outside a handler).
@@ -323,16 +328,21 @@ class Supervisor:
                 results.append(result)
         if envelope.type != "warroom.message":
             results.extend(await self._dispatch_event(envelope))
+        else:
+            kind = envelope.payload.get("kind")
+            if isinstance(kind, str) and kind:
+                results.extend(await self._dispatch_event(envelope, key=f"warroom.message.{kind}"))
         return results
 
-    async def _dispatch_event(self, envelope: EventEnvelope) -> list[RunResult]:
-        """Hand a non-message envelope of this env to every enabled agent that registered its type
-        with ``HOOKS.event`` (ATL-107); no other agent sees it."""
+    async def _dispatch_event(self, envelope: EventEnvelope, *, key: str | None = None) -> list[RunResult]:
+        """Hand an envelope of this env to every enabled agent that registered ``key`` (default the
+        envelope's type) with ``HOOKS.event`` (ATL-107); no other agent sees it."""
         results: list[RunResult] = []
         if envelope.env != self.env:
             return results
+        wanted = key or envelope.type
         for slug, hooks in self.hooks.items():
-            handler = hooks.on_event.get(envelope.type)
+            handler = hooks.on_event.get(wanted)
             if handler is None or slug not in self.sessions:
                 continue
             result = await handler(self, envelope)
@@ -352,6 +362,33 @@ class Supervisor:
         set, handing each envelope to :meth:`handle_envelope`. Returns the last entry id read."""
         return await _consume_stream(
             client, WARROOM_STREAM, self.handle_envelope, stop=stop, start_id=start_id, block_ms=block_ms
+        )
+
+    async def handle_market_envelope(self, envelope: EventEnvelope) -> list[RunResult]:
+        """An ``atlas.market`` envelope goes to the agents that registered its type; every other one
+        (ticks, stale/fresh flags) is dropped."""
+        if not any(envelope.type in hooks.on_event for hooks in self.hooks.values()):
+            return []
+        await self.refresh_settings()
+        return await self._dispatch_event(envelope)
+
+    async def consume_market(
+        self,
+        client: redis.Redis,
+        *,
+        stop: asyncio.Event,
+        start_id: str = "$",
+        block_ms: int | None = None,
+    ) -> str:
+        """Read ``atlas.market`` (only new entries by default) until ``stop`` is set, handing each
+        envelope to :meth:`handle_market_envelope`. Returns the last entry id read."""
+        return await _consume_stream(
+            client,
+            MARKET_STREAM,
+            self.handle_market_envelope,
+            stop=stop,
+            start_id=start_id,
+            block_ms=block_ms,
         )
 
     # -- schedule ---------------------------------------------------------------------------------
@@ -431,7 +468,10 @@ class Supervisor:
                     pass
 
         await asyncio.gather(
-            self.consume_warroom(client, stop=stop), self.consume_system(client, stop=stop), schedule()
+            self.consume_warroom(client, stop=stop),
+            self.consume_system(client, stop=stop),
+            self.consume_market(client, stop=stop),
+            schedule(),
         )
 
     async def close(self) -> None:
