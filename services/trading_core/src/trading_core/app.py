@@ -25,6 +25,7 @@ from trading_core.backfill.runner import backfill_job
 from trading_core.config import Settings
 from trading_core.connection_test import router as connection_test_router
 from trading_core.execution.api import router as execution_router
+from trading_core.execution.control_api import router as control_router
 from trading_core.logs import AccessLogMiddleware
 from trading_core.marketdata.api import router as quality_router
 from trading_core.marketdata.derivatives import JOB as DERIVATIVES_POLLER_JOB
@@ -301,6 +302,7 @@ def create_app(
     application.include_router(quality_router)
     application.include_router(risk_router)
     application.include_router(execution_router)
+    application.include_router(control_router)
     if extra_internal is not None:
         application.include_router(extra_internal)
     # Last added runs first: the access log wraps the signature check, so rejected calls are logged too.
