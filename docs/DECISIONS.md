@@ -112,6 +112,19 @@ decisions where the brief was silent, as the brief asks.
   treated as `awaiting_owner` while autonomy 3–4 are not enabled, so the cycle never calls the
   Executor and the `executing` state is not reached yet. The approval window defaults to 15 minutes
   (`autonomy.approval_timeout_minutes`, overridable by a settings value of the same name).
+- **Reconciliation rules the brief leaves open** (ATL-146, `trading_core/execution/reconcile.py`).
+  "DB position size" is the sum of the stored fills on the instrument (and posSide in long/short
+  mode) since the position's OKX `cTime`; it is compared only for positions opened inside the
+  `reconciliation.fills_lookback_days` window the run re-reads, so a position older than that never
+  trips `reconciliation_mismatch` on missing history. A position counts as protected when a pending
+  conditional/oco algo on its closing side carries an `slTriggerPx` (size coverage is ATL-144's
+  job). The missing stop goes at the opening proposal's stop when that is still on the right side
+  of the mark; a stop already crossed falls back to the emergency distance
+  (`emergency_stop_atr_mult` x ATR(1H), capped at `max_stop_pct`; with no ATR the cap itself), and
+  the alert says so. Reconciliation leaves a position alone while an Atlas order on that instrument
+  is new/sending or less than `protect_grace_seconds` old (the Executor's own stop check owns it).
+  An unsent `new`/`sending` order OKX does not know stays resumable. `/execute` answers 409
+  `not_reconciled` until the first run after startup succeeded or found no verified connection.
 - **Protection follows the filled size; one stop per entry (ATL-144).** On every fill of an Atlas
   entry the protective SL/OCO is amended (`trade/amend-algos`, size only) to exactly the filled size;
   when OKX shows none, a stand-alone stop `p` + 31 hex of the risk check id is placed, and any second
@@ -119,6 +132,7 @@ decisions where the brief was silent, as the brief asks.
   purpose (kill-switch flatten, a close order), is never replaced. Limit and post_only entries still
   open `executor.entry_timeout_minutes` after they were created are cancelled; a partial fill keeps
   its stop and the proposal stays `partially_filled`, an unfilled one becomes `expired`.
+- **Kill switch reads OKX, not the DB, and resume leaves `data_stale` alone (ATL-147).** The kill lists pending orders, algo orders and positions from OKX so it also catches orders Atlas does not know; per decision #251 it keeps SL/OCO algos unless their position was closed by flatten. OKX's "already gone" answers (51400/51401/51402, 51023) count as done, not failed. Resume clears every breaker except the self-clearing `data_stale`, which would re-trip at once while data is still stale.
 - **Position actions get their own risk checks (ATL-184, `trading_core/risk/position_actions.py`).**
   A Portfolio Manager amend_stop/amend_targets/partial_close/close runs seven checks instead of the
   nine entry checks: env_state, position_open, stop_tightens, stop_vs_mark, targets_vs_mark,
@@ -145,3 +159,14 @@ decisions where the brief was silent, as the brief asks.
   a running cycle stop waiting for the Devil's Advocate review and open the vote; a proposal already
   voting is unaffected. "Where we are" is a code card every 2 h from 08:10 to 23:00 Baghdad (08:10 …
   22:10), never after 23:00. Other slash commands than `/why` are left to their own handlers.
+- **Portfolio Manager: rules in code first, the model only when one fires (ATL-169).** Every 5 min
+  `atlas_agents.pm.manage.tick` runs ATL-168's rules on each open position. No rule → no model call
+  and no message. A rule → one run on the strong model with the action prefilled; the model returns
+  the action block and code submits it only if it is exactly the computed action and does not widen
+  the stop (`atlas_agents.pm.guard`, also enforced inside `warroom.submit_proposal`). A computed action
+  the model drops or gets wrong after one retry is still submitted by code (rule compliance is 100%).
+  PM proposals skip the vote, get one `/internal/risk/evaluate` and follow autonomy; a refusal
+  rejects the proposal with `status_reason = risk_<code>`. A kind already pending for the position is
+  not proposed again. Immediate runs: a news alert or fill on a held instrument, a circuit breaker,
+  and once 30 min before an importance-4+ event. Limit warnings (70% of the daily/weekly loss or
+  open-position limit) are code, at most once per hour per limit.

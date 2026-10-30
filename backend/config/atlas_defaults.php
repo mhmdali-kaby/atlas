@@ -203,6 +203,13 @@ return [
         ],
         'lifecycle_sweep_seconds' => 30,
     ],
+    'reconciliation' => [
+        'interval_seconds' => 300,
+        'fills_lookback_days' => 3,
+        'max_pages' => 50,
+        'protect_grace_seconds' => 30,
+        'fill_ts_slack_seconds' => 1,
+    ],
     'okx' => [
         'environments' => [
             'demo' => [
@@ -1184,7 +1191,9 @@ return [
             'devils_advocate' => [
                 'model' => 'strong',
             ],
-            'portfolio_manager' => [],
+            'portfolio_manager' => [
+                'model' => 'strong',
+            ],
         ],
         'orchestrator' => [
             'check_seconds' => 60,
@@ -1873,6 +1882,26 @@ return [
                 'funding_max_annual_pct' => '30',
                 'funding_flat_after_hours' => 8,
                 'funding_flat_r' => '0.25',
+            ],
+            'check' => [
+                'every_seconds' => 300,
+                'atr_window' => 14,
+                'atr_lookback_bars' => 120,
+                'swing_atr_mult' => '1.5',
+                'event_lookahead_minutes' => 1440,
+                'earnings_importance' => 4,
+                'earnings_hours_utc' => [
+                    'bmo' => 12,
+                    'amc' => 21,
+                    'dmh' => 16,
+                    'default' => 16,
+                ],
+                'pre_event_minutes' => 30,
+                'pre_event_min_importance' => 4,
+                'status_post_interval_minutes' => 60,
+                'limit_warning_pct' => '70',
+                'limit_warning_interval_minutes' => 60,
+                'output_retries' => 1,
             ],
         ],
     ],

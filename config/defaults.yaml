@@ -210,6 +210,22 @@ executor:
   # filled entries whose protection does not yet match the filled size (restart recovery).
   lifecycle_sweep_seconds: 30
 
+# ATL-146, brief §4.4 and rule 8: reconciliation (trading_core/execution/reconcile.py). Runs at startup
+# (the Executor refuses /execute until one run succeeded), every interval_seconds and after every
+# private WebSocket re-login. Fixed engineering values, not owner settings.
+#   fills_lookback_days: fills-history window re-read on every run (OKX's trade/fills window).
+#   max_pages: safety cap on each paged OKX list per run.
+#   protect_grace_seconds: an unprotected position is left to the Executor while an Atlas order on
+#   that instrument is still new/sending or was created less than this many seconds ago (its own
+#   3 s stop check is still running).
+#   fill_ts_slack_seconds: fills this much before a position's cTime still count toward its size.
+reconciliation:
+  interval_seconds: 300
+  fills_lookback_days: 3
+  max_pages: 50
+  protect_grace_seconds: 30
+  fill_ts_slack_seconds: 1
+
 # Brief §4.1. Checked against the OKX v5 docs (https://www.okx.com/docs-v5/en/) at build time.
 okx:
   environments:
@@ -928,7 +944,7 @@ agents:
     derivatives_sentiment: {}
     strategist: { model: strong }
     devils_advocate: { model: strong }
-    portfolio_manager: {}
+    portfolio_manager: { model: strong }
   # ATL-160, brief §7.9/§8: the Orchestrator's cycle state machine (code, atlas_agents.orchestrator).
   #   check_seconds: how often the orchestrator's schedule hook looks for a due slot.
   #   research_timeout_seconds / review_timeout_seconds / vote_seconds: research (Technical +
@@ -1643,3 +1659,31 @@ agents:
       funding_max_annual_pct: "30"
       funding_flat_after_hours: 8
       funding_flat_r: "0.25"
+    # ATL-169, brief §7.8: the Portfolio Manager's position checks (atlas_agents.pm.manage).
+    #   every_seconds: the routine check of every open position (no model call unless a rule fires).
+    #   atr_window / atr_lookback_bars / swing_atr_mult: ATR(14) on 1H and the last confirmed 1H swing
+    #     (ZigZag at swing_atr_mult x ATR) the trailing rules use.
+    #   event_lookahead_minutes: how far ahead events are loaded for the rules and the pre-event run.
+    #   earnings_importance / earnings_hours_utc: an earnings date of a stock/ETF underlying counts as an
+    #     event of this importance at this UTC hour by Finnhub session (bmo, amc, dmh; default otherwise).
+    #   pre_event_minutes / pre_event_min_importance: one model run per position and event this long
+    #     before an event of at least this importance.
+    #   status_post_interval_minutes: an advisory-only rule (funding) runs the model at most this often
+    #     per position.
+    #   limit_warning_pct / limit_warning_interval_minutes: warn at this % of the daily/weekly loss or
+    #     open-position limit, at most once per interval per limit.
+    #   output_retries: follow-ups when the model's action block is invalid or refused.
+    check:
+      every_seconds: 300
+      atr_window: 14
+      atr_lookback_bars: 120
+      swing_atr_mult: "1.5"
+      event_lookahead_minutes: 1440
+      earnings_importance: 4
+      earnings_hours_utc: { bmo: 12, amc: 21, dmh: 16, default: 16 }
+      pre_event_minutes: 30
+      pre_event_min_importance: 4
+      status_post_interval_minutes: 60
+      limit_warning_pct: "70"
+      limit_warning_interval_minutes: 60
+      output_retries: 1
