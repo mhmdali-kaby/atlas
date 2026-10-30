@@ -194,6 +194,21 @@ return [
         'per_page_max' => 200,
         'r_scale' => 2,
     ],
+    'portfolio_performance' => [
+        'ranges' => [
+            '1M',
+            '3M',
+            'YTD',
+            'ALL',
+        ],
+        'default_range' => 'ALL',
+        'min_days_for_ratios' => 10,
+        'annualisation_days' => 365,
+        'pct_scale' => 2,
+        'ratio_scale' => 4,
+        'money_scale' => 8,
+        'calc_scale' => 24,
+    ],
     'backfill_runner' => [
         'interval_seconds' => 300,
         'concurrency' => 4,
