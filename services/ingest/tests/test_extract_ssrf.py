@@ -192,6 +192,68 @@ async def test_host_check_blocks_the_initial_host_too() -> None:
     assert hits == []  # blocked before any request, like the SSRF host check
 
 
+@pytest.mark.parametrize("dot", ["\u3002", "\uff0e", "\uff61"])
+async def test_host_check_sees_the_idna_normalised_host_not_the_raw_unicode_one(dot: str) -> None:
+    """Security round 9 review: a full-width dot (ideographic full stop U+3002, fullwidth full
+    stop U+FF0E, or halfwidth ideographic full stop U+FF61) makes ``urlsplit``'s ``.hostname``
+    read as a distinct string from ``denied.example``, so a ``host_check`` keyed on the ASCII
+    name would be bypassed — while httpx's own IDNA encoding folds the dot back to "." for the
+    real TCP connection, landing on the denied host anyway. ``host_check`` must see that same
+    IDNA-normalised host, so the denied host is still recognised and no request is ever made."""
+    hits: list[str] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        hits.append(request.url.host)
+        return httpx.Response(200, headers={"content-type": "text/html"}, content=CHUNK_OK_ARTICLE.encode())
+
+    async def lie_everywhere(_host: str, _port: int) -> Sequence[str]:
+        return [PUBLIC_FAKE_ADDRESS]
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as http:
+        extractor = Extractor(
+            http=http,
+            timeout_seconds=2,
+            max_bytes=2_000_000,
+            resolve_host=lie_everywhere,
+            verify_peer=lambda _response, _allowed: True,
+            host_check=lambda host: host != "denied.example",
+        )
+        result = await extractor.article_text(f"https://denied{dot}example/start", set())
+
+    assert result is None
+    assert hits == []  # blocked before any request, exactly like the plain-ASCII denied host
+
+
+@pytest.mark.parametrize("url_host", ["xn--bcher-kva.example", "bücher.example"])
+async def test_host_check_sees_the_ascii_punycode_host_not_the_unicode_one(url_host: str) -> None:
+    """Security round 9 review: ``httpx.URL(url).host`` decodes an IDN host back to Unicode
+    (``bücher.example``), so a ``host_check`` keyed on the punycode form (``xn--bcher-kva.
+    example``) would miss it. ``host_check`` must see the ASCII/punycode form httpx actually
+    dials, for either spelling of the URL's host."""
+    hits: list[str] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        hits.append(request.url.host)
+        return httpx.Response(200, headers={"content-type": "text/html"}, content=CHUNK_OK_ARTICLE.encode())
+
+    async def lie_everywhere(_host: str, _port: int) -> Sequence[str]:
+        return [PUBLIC_FAKE_ADDRESS]
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as http:
+        extractor = Extractor(
+            http=http,
+            timeout_seconds=2,
+            max_bytes=2_000_000,
+            resolve_host=lie_everywhere,
+            verify_peer=lambda _response, _allowed: True,
+            host_check=lambda host: host != "xn--bcher-kva.example",
+        )
+        result = await extractor.article_text(f"https://{url_host}/start", set())
+
+    assert result is None
+    assert hits == []  # blocked before any request, for either spelling of the IDN host
+
+
 # ---- AC1: a public DNS answer at check time that differs from the real connection (DNS
 # rebinding, e.g. a TTL-0 attacker record) is still blocked, from the live socket itself ---------
 

@@ -24,7 +24,6 @@ from collections.abc import Awaitable, Callable, Sequence
 from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Any, Final
-from urllib.parse import urlsplit
 
 import httpx
 from atlas_ingest.extract import Extractor
@@ -367,14 +366,38 @@ async def get_okx_announcements(ctx: ToolContext, args: SinceInput) -> ToolResul
 ArticleFetcher = Callable[[str], Awaitable[str | None]]
 
 
+def _ascii_host(value: str) -> str:
+    """The lowercase ASCII/punycode host httpx would actually dial for ``value`` — a bare
+    hostname, as every ``agents.web.allow_domains``/``deny_domains`` entry is, written in
+    either Unicode or already in punycode. ``bücher.example`` and ``xn--bcher-kva.example``
+    both normalise to the same string here, so a deny entry written in one spelling still
+    recognises the other (ATL-100, security round 9 review); this is the same normalisation
+    the live fetch host goes through. Falls back to a plain lowercase of the input for text
+    httpx cannot parse as a host at all, rather than raising on a malformed config entry."""
+    text = value.strip()
+    if not text:
+        return ""
+    try:
+        raw = httpx.URL(f"//{text}/").raw_host
+    except httpx.InvalidURL:
+        return text.lower()
+    try:
+        return (raw or b"").decode("ascii").lower()
+    except UnicodeDecodeError:
+        return text.lower()
+
+
 def _host_matches(host: str, domains: Sequence[str]) -> bool:
-    # A trailing "." makes a hostname absolute in DNS (`denied.test.` resolves to the same name
-    # as `denied.test`) but is not part of either side's domain text, so strip it from the host
-    # and from every configured entry before comparing — otherwise `https://denied.test./x`
-    # would bypass a deny_domains=["denied.test"] entry entirely (security round 9 review).
-    host = host.lower().rstrip(".")
+    # Compare the ASCII/punycode form of both the host and every entry — not whatever Unicode
+    # or punycode spelling either happens to use — so an IDN host and an IDN deny/allow entry
+    # recognise each other regardless of spelling. A trailing "." makes a hostname absolute in
+    # DNS (`denied.test.` resolves to the same name as `denied.test`) but is not part of either
+    # side's domain text, so it is stripped from both after normalising — otherwise an IDN
+    # spelling mismatch or `https://denied.test./x` would bypass a deny_domains entry entirely
+    # (security round 9 review).
+    host = _ascii_host(host).rstrip(".")
     for domain in domains:
-        entry = domain.strip().lower().rstrip(".").lstrip(".")
+        entry = _ascii_host(domain).rstrip(".").lstrip(".")
         if entry and (host == entry or host.endswith("." + entry)):
             return True
     return False
@@ -386,10 +409,11 @@ def domain_allowed(host: str) -> bool:
     and, before news.fetch_article existed as the guarded path, the CLI's own WebFetch — could
     reach any public URL with no domain policy at all). A host matches an entry when it equals it
     or is a subdomain of it, ignoring a trailing "." (an absolute-FQDN host like
-    ``denied.test.`` is the same host as ``denied.test``). ``deny_domains`` wins; an empty
-    ``allow_domains`` allows any public host that is not denied. Checked on the URL's own host
-    and, via ``Extractor.host_check``, on every redirect hop inside :func:`guarded_fetch` — never
-    on a stored article body."""
+    ``denied.test.`` is the same host as ``denied.test``) and ignoring whether either side spells
+    an IDN host in Unicode or in punycode. ``deny_domains`` wins; an empty ``allow_domains``
+    allows any public host that is not denied. Checked on the URL's own host and, via
+    ``Extractor.host_check``, on every redirect hop inside :func:`guarded_fetch` — never on a
+    stored article body."""
     conf = DEFAULTS["agents"]["web"]
     if _host_matches(host, conf["deny_domains"]):
         return False
@@ -455,8 +479,19 @@ async def fetch_article(ctx: ToolContext, args: FetchArticleInput) -> ToolResult
         return ToolResult(data=data, as_of=item.fetched_at, source=f"atlas.news_items:{item.source}")
     if ctx.replaying:
         raise ToolError("not_available_in_replay", "the article body was not stored at the replay time")
-    host = (urlsplit(url).hostname or "").lower()
-    if urlsplit(url).scheme not in ("http", "https") or not host:
+    # ATL-100 (security round 9 review): parse the host with httpx.URL, not urlsplit — it encodes
+    # the host the same way the live fetch below will (IDNA/UTS46), so a full-width dot
+    # (U+3002/U+FF0E/U+FF61) folds to an ASCII "." here too, instead of reading as a different,
+    # un-denied host while the actual connection lands on the real (denied) one. Compare on
+    # ``raw_host`` (the ASCII/punycode form httpx actually dials), not ``.host`` (the Unicode
+    # form it decodes back to for display) — otherwise a deny entry written as punycode, e.g.
+    # ``xn--bcher-kva.example``, would not match either spelling of that host.
+    try:
+        parsed = httpx.URL(url)
+    except httpx.InvalidURL as exc:
+        raise ToolError("invalid_url", "only http and https URLs can be fetched") from exc
+    host = (parsed.raw_host or b"").decode("ascii", errors="ignore").lower()
+    if parsed.scheme not in ("http", "https") or not host:
         raise ToolError("invalid_url", "only http and https URLs can be fetched")
     if not domain_allowed(host):
         raise ToolError("domain_denied", "this host is not allowed by the agents.web domain policy")

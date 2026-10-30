@@ -38,7 +38,6 @@ import logging
 import socket
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass, field
-from urllib.parse import urlsplit
 
 import httpx
 import trafilatura
@@ -131,10 +130,23 @@ class Extractor:
     async def article_text(self, url: str, skip_hosts: set[str]) -> str | None:
         current = url
         for hop in range(MAX_REDIRECTS + 1):
-            parts = urlsplit(current)
+            try:
+                parts = httpx.URL(current)
+            except httpx.InvalidURL:
+                return None
             if parts.scheme not in ("http", "https"):
                 return None
-            host = (parts.hostname or "").lower()
+            # ATL-100 (security round 9 review): parse the host the way httpx itself will encode
+            # it for the real connection (IDNA/UTS46), not with ``urlsplit``, whose ``.hostname``
+            # is the raw, un-normalised text. A full-width dot (U+3002/U+FF0E/U+FF61) survives
+            # ``urlsplit`` as a distinct character but is folded to an ASCII "." by IDNA, so
+            # ``https://denied。test/x`` would otherwise read as a different, allowed host
+            # here while still landing on ``denied.test`` once httpx dials out. Use
+            # ``raw_host`` (the ASCII/punycode form httpx actually dials), not ``.host`` (the
+            # Unicode form it decodes back to for display): a ``host_check`` that compares
+            # against a punycode name, e.g. ``xn--bcher-kva.example``, must see that same form
+            # for either spelling of the host, not the Unicode one.
+            host = (parts.raw_host or b"").decode("ascii", errors="ignore").lower()
             if not host or host in skip_hosts:
                 return None
             if self.host_check is not None and not self.host_check(host):
