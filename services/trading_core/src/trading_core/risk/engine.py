@@ -28,6 +28,7 @@ from atlas_shared.db import (
 )
 from atlas_shared.defaults import DEFAULTS
 from atlas_shared.events import EventEnvelope
+from atlas_shared.proposals import POSITION_ACTION_KINDS
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 
@@ -42,6 +43,11 @@ from trading_core.risk.context import (
 from trading_core.risk.inputs import (
     ProposalInput,
     RiskSettings,
+)
+from trading_core.risk.position_actions import (
+    load_action_context,
+    run_position_checks,
+    settings_row,
 )
 from trading_core.risk.rules import (
     CheckResult,
@@ -316,6 +322,46 @@ def _proposal_input(p: ProposalInfo, entry: Decimal) -> ProposalInput:
 # --- evaluate ----------------------------------------------------------------------------------
 
 
+def _evaluate_action(
+    session: Session, rds: Any, row: Proposal, at: datetime, config: Mapping[str, Any] | None
+) -> RiskDecision:
+    """A Portfolio Manager position action (ATL-184): the seven position-action checks instead of
+    the nine entry checks. final_size is the contracts to close (closes only); leverage is None."""
+    found = settings_row(session, row.env)
+    if found is None:
+        raise RiskEngineError(f"no settings row for {row.env}")
+    state = ensure_trading_state(session, row.env, at)
+    breakers = state.breakers if isinstance(state.breakers, dict) else {}
+    active = tuple(sorted(k for k, v in breakers.items() if isinstance(v, dict) and v.get("active")))
+    actx = load_action_context(
+        session,
+        rds,
+        row,
+        at,
+        settings_version=found[0],
+        settings_data=found[1],
+        paused=bool(state.paused),
+        pause_reason=state.reason,
+        active_breakers=active,
+        config=config,
+    )
+    out = run_position_checks(actx, config)
+    return RiskDecision(
+        proposal_id=row.id,
+        risk_check_id=uuid.uuid4(),
+        env=row.env,
+        settings_version=found[0],
+        result=out.result,
+        decision=out.decision,
+        reason=out.reason,
+        failed_check=out.failed_check,
+        checks=out.checks,
+        final_size=out.close_contracts,
+        final_notional_usd=out.close_notional_usd,
+        leverage=None,
+    )
+
+
 def evaluate(
     proposal_id: uuid.UUID | str,
     *,
@@ -325,7 +371,8 @@ def evaluate(
     config: Mapping[str, Any] | None = None,
     allowed_statuses: Collection[str] | None = None,
 ) -> RiskDecision:
-    """Run the nine checks on one proposal, store the risk_checks row, mark the proposal
+    """Run the nine checks on one entry (or the seven position-action checks on a Portfolio Manager
+    amend/close, :mod:`trading_core.risk.position_actions`), store the risk_checks row, mark the proposal
     risk_checked and publish ``risk.decision``. Raises :class:`RiskEngineError` when it cannot run.
 
     ``allowed_statuses`` overrides ``risk_rules.evaluable_statuses`` for one call; only the owner's
@@ -346,49 +393,53 @@ def evaluate(
             raise RiskEngineError(
                 f"proposal {pid} is {row.status}; only {', '.join(allowed)} proposals are risk-checked"
             )
-        ctx = load_context(session, rds, row, at, config)
-        outcome = run_checks(ctx, config)
-        sizing = outcome.sizing if outcome.result != "rejected" else None
-        check_id = uuid.uuid4()
-        session.add(
-            RiskCheck(
-                id=check_id,
-                env=ctx.proposal.env,
+        if row.kind in POSITION_ACTION_KINDS:
+            decision = _evaluate_action(session, rds, row, at, config)
+            correlation = str(row.cycle_id) if row.cycle_id else None
+        else:
+            ctx = load_context(session, rds, row, at, config)
+            outcome = run_checks(ctx, config)
+            sizing = outcome.sizing if outcome.result != "rejected" else None
+            decision = RiskDecision(
                 proposal_id=pid,
+                risk_check_id=uuid.uuid4(),
+                env=ctx.proposal.env,
                 settings_version=ctx.settings_version,
                 result=outcome.result,
+                decision=outcome.decision,
+                reason=outcome.reason,
+                failed_check=outcome.failed_check,
                 checks=outcome.checks,
                 final_size=sizing.contracts if sizing else None,
                 final_notional_usd=sizing.final_notional_usd if sizing else None,
                 leverage=sizing.leverage if sizing else None,
-                reason=outcome.reason,
-                decision=outcome.decision,
+            )
+            correlation = ctx.proposal.correlation_id
+        session.add(
+            RiskCheck(
+                id=decision.risk_check_id,
+                env=decision.env,
+                proposal_id=pid,
+                settings_version=decision.settings_version,
+                result=decision.result,
+                checks=decision.checks,
+                final_size=decision.final_size,
+                final_notional_usd=decision.final_notional_usd,
+                leverage=decision.leverage,
+                reason=decision.reason,
+                decision=decision.decision,
                 created_at=at,
                 updated_at=at,
             )
         )
         row.status = "risk_checked"
         row.updated_at = at
-    decision = RiskDecision(
-        proposal_id=pid,
-        risk_check_id=check_id,
-        env=ctx.proposal.env,
-        settings_version=ctx.settings_version,
-        result=outcome.result,
-        decision=outcome.decision,
-        reason=outcome.reason,
-        failed_check=outcome.failed_check,
-        checks=outcome.checks,
-        final_size=sizing.contracts if sizing else None,
-        final_notional_usd=sizing.final_notional_usd if sizing else None,
-        leverage=sizing.leverage if sizing else None,
-    )
     envelope = EventEnvelope.model_validate(
         {
             "type": EVENT_TYPE,
             "env": decision.env,
             "source": SOURCE,
-            "correlation_id": ctx.proposal.correlation_id or str(pid),
+            "correlation_id": correlation or str(pid),
             "payload": decision.payload(),
         }
     )

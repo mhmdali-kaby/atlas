@@ -176,9 +176,11 @@ def _evaluate_existing(
 @router.post("/evaluate/{proposal_id}", response_model=None)
 async def risk_evaluate(proposal_id: str, request: Request) -> JSONResponse:
     """Signed ``POST /internal/risk/evaluate/{proposal_id}`` (ATL-160): run the nine §10 checks on an
-    existing proposal row (status ``passed``). Same 200 body as ``/internal/risk/check``; 404
-    ``{"ok": false, "error": "unknown_proposal"}`` for a malformed id; 409 ``risk_engine_error`` when
-    the engine refuses (unknown id, wrong status or kind, no settings row). Nothing goes to OKX."""
+    existing entry row (status ``passed``), or the seven position-action checks on a Portfolio
+    Manager amend_stop/amend_targets/partial_close/close (ATL-184). Same 200 body as
+    ``/internal/risk/check``; 404 ``{"ok": false, "error": "unknown_proposal"}`` for a malformed id;
+    409 ``risk_engine_error`` when the engine refuses (unknown id, wrong status or kind, no settings
+    row). Nothing goes to OKX."""
     try:
         pid = uuid.UUID(proposal_id)
     except ValueError:

@@ -119,6 +119,17 @@ decisions where the brief was silent, as the brief asks.
   purpose (kill-switch flatten, a close order), is never replaced. Limit and post_only entries still
   open `executor.entry_timeout_minutes` after they were created are cancelled; a partial fill keeps
   its stop and the proposal stays `partially_filled`, an unfilled one becomes `expired`.
+- **Position actions get their own risk checks (ATL-184, `trading_core/risk/position_actions.py`).**
+  A Portfolio Manager amend_stop/amend_targets/partial_close/close runs seven checks instead of the
+  nine entry checks: env_state, position_open, stop_tightens, stop_vs_mark, targets_vs_mark,
+  close_size, autonomy. A pause or tripped breaker refuses only amend_targets; stop tightening and
+  closes reduce risk and pass. "Tightens" is measured against the tightest live sl/oco algo order on
+  the position's side; with no live stop any stop on the safe side of mark passes (it adds
+  protection). The position must be in a positions snapshot no older than
+  `risk_rules.position_actions.positions_max_age_seconds` (300 s). A proposal side (buy = long) only
+  picks between a long and a short in long/short mode; two positions and no side is refused as
+  ambiguous. No vote; the autonomy decision is the entries' one. evaluate() leaves the row
+  `risk_checked` for both kinds; the caller moves it to awaiting_owner/advise_only/rejected.
 - **Portfolio Manager: rules in code first, the model only when one fires (ATL-169).** Every 5 min
   `atlas_agents.pm.manage.tick` runs ATL-168's rules on each open position. No rule → no model call
   and no message. A rule → one run on the strong model with the action prefilled; the model returns
