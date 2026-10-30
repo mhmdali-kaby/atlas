@@ -16,7 +16,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { useQueryClient } from '@tanstack/react-query'
-import { useState, type MouseEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Lang } from '../../lib/format'
 import { Button, Spinner } from '../../ui'
@@ -25,6 +25,8 @@ import { discardMessage, isLocal, retryMessage, type LocalMessage } from './live
 import { MessageActions, MessageMenu } from './MessageActions'
 import { Medallion, SystemMedallion } from './Medallion'
 import { NewsAlertCard } from './NewsAlertCard'
+import { MessageReasoning } from './Reasoning'
+import { useRuns } from './runs'
 import { readNewsAlert } from './newsAlert'
 import { Excerpt, Inline, Markdown } from './text'
 import { continues, shapeOf, useAuthorName } from './shape'
@@ -239,11 +241,44 @@ export function Message({ message: m, prev, parent, lang, active, tabbable, flas
     )
   }
 
+  return <AgentMessage {...{ m, cont, cls, common, parent, lang, label, time, onJump, onReply, onContextMenu, active, canAct, menuAt, closeMenu }} />
+}
+
+type AgentMessageProps = {
+  m: WarroomMessage
+  cont: boolean
+  cls: (...extra: Array<string | false>) => string
+  common: { 'data-msg-id': string; 'data-shape': string; tabIndex: number; 'aria-label': string }
+  parent: WarroomMessage | undefined
+  lang: Lang
+  label: string
+  time: string
+  onJump: (id: string) => void
+  onReply: (message: WarroomMessage) => void
+  onContextMenu: ((e: MouseEvent) => void) | undefined
+  active: boolean
+  canAct: boolean
+  menuAt: { x: number; y: number } | null
+  closeMenu: () => void
+}
+
+/** An agent's or system's document, with "Show reasoning" under it (ATL-97). */
+function AgentMessage({ m, cont, cls, common, parent, lang, label, time, onJump, onReply, onContextMenu, active, canAct, menuAt, closeMenu }: AgentMessageProps) {
+  const { t } = useTranslation('warroom')
+  const authorName = useAuthorName()
+  const ref = useRef<HTMLElement>(null)
+  // A live run this message replaced may hand focus over: to the new toggle, or to the message.
+  useEffect(() => {
+    const handoff = useRuns.getState().takeFocus(m.id)
+    if (!handoff || !ref.current) return
+    const toggle = handoff.part === 'toggle' ? ref.current.querySelector<HTMLElement>('[data-testid="wr-reason-toggle"]') : null
+    ;(toggle ?? ref.current).focus({ preventScroll: true })
+  }, [m.id])
   const KindIcon = KIND_ICON[m.kind] ?? FileText
   const kindLabel = t(`kind.${m.kind}`, { defaultValue: m.kind })
   const card = m.kind === 'text' ? null : (CARDS[m.kind]?.(m, lang) ?? null)
   return (
-    <article className={cls(cont && 'is-cont')} {...common} onContextMenu={onContextMenu}>
+    <article ref={ref} className={cls(cont && 'is-cont')} {...common} onContextMenu={onContextMenu}>
       <div className="msg-gutter">
         {cont ? (
           <span className="msg-time-hover num">{time}</span>
@@ -274,6 +309,7 @@ export function Message({ message: m, prev, parent, lang, active, tabbable, flas
             <Markdown text={m.content_md} />
           </div>
         )}
+        {m.author_type === 'agent' && <MessageReasoning message={m} lang={lang} />}
       </div>
       {active && canAct && <MessageActions message={m} onReply={() => onReply(m)} />}
       {menuAt && <MessageMenu message={m} label={label} x={menuAt.x} y={menuAt.y} onReply={() => onReply(m)} onClose={closeMenu} />}
