@@ -531,6 +531,10 @@ backfill:
 
 # ATL-48: Settings → Data API (brief §14.10, §16). Re-sync and pause go to trading_core and are
 # throttled per user; repaired quality issues stay listed for this many days.
+risk_api:
+  # POST /api/risk/check (ATL-128): owner manual risk checks per minute.
+  checks_per_minute: 20
+
 data_api:
   resync_per_minute: 1
   pause_per_minute: 5

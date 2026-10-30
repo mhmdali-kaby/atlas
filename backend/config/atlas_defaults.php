@@ -692,6 +692,9 @@ return [
             'taker_volume' => null,
         ],
     ],
+    'risk_api' => [
+        'checks_per_minute' => 20,
+    ],
     'data_api' => [
         'resync_per_minute' => 1,
         'pause_per_minute' => 5,
