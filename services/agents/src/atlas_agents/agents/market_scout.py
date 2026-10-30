@@ -140,6 +140,8 @@ class Prepared:
     previous_version: int | None = None
     degraded_asset_classes: list[str] = field(default_factory=list)
     """Asset classes whose news sources are all down (their picks' convictions are capped)."""
+    degraded_since: dict[str, str | None] = field(default_factory=dict)
+    """ATL-120: per degraded class, its latest news success (ISO-8601 UTC) or None."""
 
     def asset_class_of(self) -> dict[str, str]:
         """inst_id -> asset class as code knows it (feature table, then owner pins)."""
@@ -251,7 +253,7 @@ def prepare(ctx: ToolContext, day: date) -> Prepared:
         config = load_config(session, ctx)
         max_picks = _max_picks(_settings_data(session, ctx))
         reused = _reusable_table(session, ctx)
-    degraded = news_intelligence.degraded_asset_classes(ctx)
+    coverage = news_intelligence.news_coverage(ctx)
     if reused is None:
         table = build_feature_table(ctx, build_universe(ctx))
         with ctx.session_factory() as session:
@@ -273,7 +275,8 @@ def prepare(ctx: ToolContext, day: date) -> Prepared:
         pinned_items=pinned_items,
         removed=removed,
         previous_version=version,
-        degraded_asset_classes=degraded,
+        degraded_asset_classes=coverage.degraded_asset_classes,
+        degraded_since=coverage.degraded_since,
     )
 
 
@@ -574,9 +577,35 @@ def save_and_card(
 
 
 _UNGUARDED_CARD_KEYS: Final = frozenset(
-    {"watchlist_id", "version", "created_at", "edit_window_ends_at", "date", "trigger", "changes"}
+    {
+        "watchlist_id",
+        "version",
+        "created_at",
+        "edit_window_ends_at",
+        "date",
+        "trigger",
+        "changes",
+        "degraded_since",
+    }
 )
 """Card keys written by code that the number guard does not check (runtime ids, the re-run trigger)."""
+
+
+_CODE_CARD_KEYS: Final = ("degraded_asset_classes", "degraded_since")
+_CODE_PICK_KEYS: Final = ("cap_reason", "conviction_before_cap", "pinned_by_owner")
+
+
+def _drop_code_fields(card: dict[str, Any]) -> None:
+    """Remove the fields only code writes (ATL-120), so a model that sends them is overwritten
+    rather than refused: code sets them again on the saved card."""
+    for key in _CODE_CARD_KEYS:
+        card.pop(key, None)
+    picks = card.get("picks")
+    if isinstance(picks, list):
+        for pick in picks:
+            if isinstance(pick, dict):
+                for key in _CODE_PICK_KEYS:
+                    pick.pop(key, None)
 
 
 class WatchlistReviewer:
@@ -614,6 +643,7 @@ class WatchlistReviewer:
         problems: list[str] = []
         if card is not None:
             card.setdefault("type", CARD_TYPE)
+            _drop_code_fields(card)
             try:
                 answer = ScoutAnswer.model_validate(card)
             except ValidationError as exc:
@@ -869,6 +899,7 @@ async def run_watchlist(
         "shortlist": [r.inst_id for r in prepared.shortlist.rows],
         "previous_version": prepared.previous_version,
         "degraded_asset_classes": prepared.degraded_asset_classes,
+        "degraded_since": prepared.degraded_since,
     }
     if not prepared.shortlist.rows:
         await _post_empty(host, ctx, today, prepared, base, correlation_id)

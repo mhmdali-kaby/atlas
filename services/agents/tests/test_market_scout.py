@@ -114,6 +114,7 @@ def _prepared(
     table_age: timedelta = timedelta(minutes=1),
     rejected: list[Rejected] | None = None,
     degraded: list[str] | None = None,
+    since: dict[str, str | None] | None = None,
 ) -> market_scout.Prepared:
     as_of = now - table_age
     ids = INSTS if rows is None else rows
@@ -150,6 +151,7 @@ def _prepared(
         blocklist=blocklist or [],
         max_picks=5,
         degraded_asset_classes=degraded or [],
+        degraded_since=since or {},
     )
 
 
@@ -168,7 +170,14 @@ def _pick(inst_id: str, rank: int, conviction: float, as_of: datetime) -> dict[s
     }
 
 
-def _answer(now: datetime, picks: list[tuple[str, float]], all_ids: list[str] | None = None) -> list[Any]:
+def _answer(
+    now: datetime,
+    picks: list[tuple[str, float]],
+    all_ids: list[str] | None = None,
+    *,
+    card_extra: dict[str, Any] | None = None,
+    pick_extra: dict[str, Any] | None = None,
+) -> list[Any]:
     ids = all_ids or INSTS
     chosen = [p for p, _ in picks]
     rejected = [i for i in ids if i not in chosen][:3]
@@ -178,7 +187,10 @@ def _answer(now: datetime, picks: list[tuple[str, float]], all_ids: list[str] | 
         "picks": [_pick(i, n, c, now) for n, (i, c) in enumerate(picks, start=1)],
         "rejected": [{"inst_id": r, "reason": "weaker evidence"} for r in rejected],
         "no_pick_reason": None if picks else "nothing tradeable",
+        **(card_extra or {}),
     }
+    for pick in card["picks"]:
+        pick.update(pick_extra or {})
     return [
         fake.assistant_text(f"Picks below.\n\n```json\n{json.dumps(card)}\n```"),
         fake.result(tokens_in=100, tokens_out=50),
@@ -474,6 +486,84 @@ async def test_every_crypto_news_source_down_caps_only_crypto_picks(
     assert "News down" in card_env.payload["content_md"]
 
 
+# -- ATL-120: degraded_since and cap_reason ------------------------------------------------------------
+
+
+async def test_crypto_news_down_caps_a_crypto_pick_with_news_class_down_and_leaves_commodity_alone(
+    engine: Engine, now: datetime, cleanup: list[Bridge], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    since = {"crypto": (now - timedelta(hours=1, minutes=50)).isoformat().replace("+00:00", "Z")}
+    monkeypatch.setattr(
+        market_scout, "prepare", lambda ctx, day: _prepared(now, degraded=["crypto"], since=since)
+    )
+    bridge = Bridge(engine, now, answer={"news_intelligence", "historian"})
+    cleanup.append(bridge)
+    client = fake.FakeClaudeClient([_answer(now, [("SOL-USDT-SWAP", 0.58), ("XAU-USDT-SWAP", 0.52)])])
+
+    (result,) = await _supervisor(engine, bridge, client, now, tmp_path).tick(now)
+
+    assert result.status == "ok"
+    _wl, items = _saved(engine, now)
+    (card_env,) = _cards(bridge)
+    card = card_env.payload["card"]
+    assert card["status"] == "published"
+    assert card["degraded_asset_classes"] == ["crypto"] and card["degraded_since"] == since
+    assert [(i.inst_id, float(i.conviction)) for i in items] == [
+        ("SOL-USDT-SWAP", 0.5),
+        ("XAU-USDT-SWAP", 0.52),
+    ]
+    sol, xau = card["picks"]
+    assert (sol["conviction"], sol["conviction_before_cap"], sol["cap_reason"]) == (
+        0.5,
+        0.58,
+        "news_class_down",
+    )
+    assert xau["conviction"] == 0.52 and "cap_reason" not in xau and "conviction_before_cap" not in xau
+
+
+async def test_a_historian_timeout_with_crypto_down_caps_every_pick_as_partial_evidence(
+    engine: Engine, now: datetime, cleanup: list[Bridge], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    since: dict[str, str | None] = {"crypto": None}
+    monkeypatch.setattr(
+        market_scout, "prepare", lambda ctx, day: _prepared(now, degraded=["crypto"], since=since)
+    )
+    bridge = Bridge(engine, now, answer={"news_intelligence"})  # Historian stays silent
+    cleanup.append(bridge)
+    # The model writes the code-owned fields itself: Atlas drops and rewrites them.
+    client = fake.FakeClaudeClient(
+        [
+            _answer(
+                now,
+                [("SOL-USDT-SWAP", 0.8), ("XAU-USDT-SWAP", 0.6), ("TSLA-USDT-SWAP", 0.4)],
+                card_extra={
+                    "degraded_since": {"crypto": "2020-01-01T00:00:00Z"},
+                    "degraded_asset_classes": [],
+                },
+                pick_extra={"cap_reason": "news_class_down", "conviction_before_cap": 0.99},
+            )
+        ]
+    )
+
+    (result,) = await _supervisor(engine, bridge, client, now, tmp_path).tick(now)
+
+    assert result.status == "ok"
+    assert len(client.queries) == 1  # accepted first time, no schema retry
+    (card_env,) = _cards(bridge)
+    card = card_env.payload["card"]
+    assert card["status"] == "partial_evidence"
+    assert card["degraded_asset_classes"] == ["crypto"] and card["degraded_since"] == {"crypto": None}
+    caps = {
+        p["inst_id"]: (p["conviction"], p.get("conviction_before_cap"), p.get("cap_reason"))
+        for p in card["picks"]
+    }
+    assert caps == {
+        "SOL-USDT-SWAP": (0.5, 0.8, "partial_evidence"),
+        "XAU-USDT-SWAP": (0.5, 0.6, "partial_evidence"),
+        "TSLA-USDT-SWAP": (0.4, None, None),  # under the cap: the model's cap_reason is gone too
+    }
+
+
 async def test_a_stale_feature_table_is_partial_evidence_too(
     engine: Engine, now: datetime, cleanup: list[Bridge], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -686,15 +776,17 @@ def test_partial_evidence_wins_over_news_class_down_and_other_classes_keep_their
 def test_prepare_takes_degraded_classes_from_news_intelligence(
     engine: Engine, now: datetime, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """prepare() asks news_intelligence.degraded_asset_classes (one rule for News and Scout)."""
+    """prepare() asks news_intelligence.news_coverage (one rule for News and Scout)."""
     table = _prepared(now).table
     asked: list[ToolContext] = []
 
-    def degraded(ctx: ToolContext) -> list[str]:
+    def coverage(ctx: ToolContext) -> news_intelligence.NewsCoverage:
         asked.append(ctx)
-        return ["crypto"]
+        return news_intelligence.NewsCoverage(
+            degraded_asset_classes=["crypto"], degraded_since={"crypto": "2034-01-01T03:10:00Z"}
+        )
 
-    monkeypatch.setattr(news_intelligence, "degraded_asset_classes", degraded)
+    monkeypatch.setattr(news_intelligence, "news_coverage", coverage)
     monkeypatch.setattr(market_scout, "_reusable_table", lambda session, ctx: (table, "report"))
     monkeypatch.setattr(market_scout, "shortlist_correlations", lambda ctx, shortlist: shortlist)
     ctx = ToolContext(
@@ -707,6 +799,7 @@ def test_prepare_takes_degraded_classes_from_news_intelligence(
     )
     prepared = market_scout.prepare(ctx, (now + timedelta(hours=3)).date())
     assert prepared.degraded_asset_classes == ["crypto"] and asked == [ctx]
+    assert prepared.degraded_since == {"crypto": "2034-01-01T03:10:00Z"}
     assert {r.inst_id for r in prepared.shortlist.rows} == set(INSTS)
 
 

@@ -18,9 +18,11 @@ import pytest
 from atlas_agents import mentions
 from atlas_agents import news_intelligence as news
 from atlas_agents import testing as fake
+from atlas_agents.agents import market_scout
 from atlas_agents.agents import news_intelligence as hooks_module
 from atlas_agents.registry import REGISTRY, discover_hooks
 from atlas_agents.schemas import NewsBrief
+from atlas_agents.scout.features import FeatureTable
 from atlas_agents.supervisor import Supervisor
 from atlas_agents.tools import ToolContext
 from atlas_shared.db import (
@@ -75,8 +77,10 @@ def db(engine: Engine) -> Iterator[Engine]:
     with factory() as s:
         others = list(s.scalars(select(NewsSource).where(NewsSource.category.in_([CRYPTO_CAT, MARKETS_CAT]))))
         was_enabled = {row.key: row.enabled for row in others}
+        last_success = {row.key: row.last_success_at for row in others}
         for row in others:
             row.enabled = False
+            row.last_success_at = None  # only this test's sources decide degraded_since (ATL-120)
         for key, category, reputable in (
             (REPUTABLE, CRYPTO_CAT, True),
             (OTHER_CRYPTO, CRYPTO_CAT, False),
@@ -105,6 +109,7 @@ def db(engine: Engine) -> Iterator[Engine]:
     with factory() as s:
         for row in s.scalars(select(NewsSource).where(NewsSource.key.in_(list(was_enabled)))):
             row.enabled = was_enabled[row.key]
+            row.last_success_at = last_success[row.key]
         s.commit()
     _wipe_runs(engine)
 
@@ -560,6 +565,108 @@ async def test_with_every_crypto_source_degraded_the_brief_lists_crypto(db: Engi
     brief = NewsBrief.model_validate(reply.payload["card"])
     assert brief.degraded_asset_classes == ["crypto"]
     assert "crypto" in client.queries[0] and "partial" in client.queries[0]
+
+
+# -- ATL-120: degraded_since ------------------------------------------------------------------------
+
+CRYPTO_LAST_OK = datetime(2026, 10, 30, 3, 10, tzinfo=UTC)
+
+
+def _crypto_down(db: Engine, last_ok: dict[str, datetime | None]) -> None:
+    """Every crypto source degraded (back-off window), with the given last_success_at per key."""
+    with Session(db) as s:
+        for key in (REPUTABLE, OTHER_CRYPTO):
+            row = s.scalars(select(NewsSource).where(NewsSource.key == key)).one()
+            row.disabled_until = NOW + timedelta(minutes=45)
+            row.consecutive_failures = 3
+            row.last_success_at = last_ok.get(key)
+        markets = s.scalars(select(NewsSource).where(NewsSource.key == MARKETS)).one()
+        markets.last_success_at = NOW - timedelta(minutes=2)  # up: not listed
+        s.commit()
+
+
+def _empty_table() -> FeatureTable:
+    return FeatureTable(
+        env=ENV,
+        as_of=NOW,
+        valid_until=NOW + timedelta(minutes=15),
+        settings_version=1,
+        btc_reference="BTC-USDT-SWAP",
+        spy_reference=None,
+        shared_catalysts=[],
+        rows=[],
+        rejected=[],
+        notes=[],
+    )
+
+
+async def test_the_morning_brief_and_the_watchlist_carry_the_same_degraded_since(
+    db: Engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    cluster_id = _cluster(db)
+    _crypto_down(db, {REPUTABLE: CRYPTO_LAST_OK, OTHER_CRYPTO: CRYPTO_LAST_OK - timedelta(hours=5)})
+    rec = Recorder()
+    # The model tries to write both code-owned fields: Atlas overwrites them.
+    client = fake.FakeClaudeClient(
+        [
+            _attempt(
+                cluster_id,
+                "Morning brief.",
+                degraded_since={"crypto": "2020-01-01T00:00:00Z", "stock": None},
+                degraded_asset_classes=["stock"],
+            )
+        ]
+    )
+
+    (result,) = await _supervisor(db, client, rec).tick()
+
+    assert result.status == "ok"
+    (message,) = rec.of("warroom.message")
+    card = message.payload["card"]
+    assert card["form"] == "morning_brief"
+    assert card["degraded_asset_classes"] == ["crypto"]
+    assert card["degraded_since"] == {"crypto": "2026-10-30T03:10:00Z"}
+    assert NewsBrief.model_validate(card).degraded_since == {"crypto": "2026-10-30T03:10:00Z"}
+
+    # The same morning's watchlist takes its values from the same helper.
+    monkeypatch.setattr(market_scout, "_reusable_table", lambda session, ctx: (_empty_table(), "r"))
+    ctx = ToolContext(
+        env=ENV,
+        session_factory=sessionmaker(bind=db),
+        agent="market_scout",
+        clock=lambda: NOW + timedelta(minutes=30),
+        publish=Recorder(),
+    )
+    prepared = market_scout.prepare(ctx, NOW.date())
+    assert prepared.degraded_asset_classes == ["crypto"]
+    assert prepared.degraded_since == card["degraded_since"]
+
+
+async def test_a_degraded_class_that_never_succeeded_has_null_degraded_since(db: Engine) -> None:
+    cluster_id = _cluster(db)
+    _crypto_down(db, {})
+    rec = Recorder()
+    client = fake.FakeClaudeClient([_attempt(cluster_id)])
+
+    (result,) = await _supervisor(db, client, rec).handle_envelope(_owner_message())
+
+    assert result.status == "ok"
+    (reply,) = rec.of("warroom.message")
+    assert reply.payload["card"]["degraded_since"] == {"crypto": None}
+    ctx = ToolContext(env=ENV, session_factory=sessionmaker(bind=db), agent=SLUG, clock=lambda: NOW)
+    assert news.news_coverage(ctx).degraded_since == {"crypto": None}
+
+
+def test_degraded_since_ignores_a_success_after_the_replay_cutoff(db: Engine) -> None:
+    _crypto_down(db, {REPUTABLE: NOW + timedelta(hours=1), OTHER_CRYPTO: CRYPTO_LAST_OK})
+    ctx = ToolContext(env=ENV, session_factory=sessionmaker(bind=db), agent=SLUG, replay_as_of=NOW)
+    assert news.news_coverage(ctx).degraded_since == {"crypto": "2026-10-30T03:10:00Z"}
+
+
+def test_no_degraded_class_means_an_empty_degraded_since(db: Engine) -> None:
+    ctx = ToolContext(env=ENV, session_factory=sessionmaker(bind=db), agent=SLUG, clock=lambda: NOW)
+    coverage = news.news_coverage(ctx)
+    assert coverage.degraded_asset_classes == [] and coverage.degraded_since == {}
 
 
 def test_a_source_is_unavailable_when_disabled_keyless_or_backing_off() -> None:
