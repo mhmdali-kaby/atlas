@@ -78,7 +78,7 @@ def _tool_output(content: Any) -> list[dict[str, Any]]:
     return out
 
 
-def transcript(result: RunResult) -> props.Transcript:
+def transcript(result: RunResult, prompt: str = "") -> props.Transcript:
     calls: list[tuple[str, dict[str, Any]]] = []
     outputs: list[dict[str, Any]] = []
     texts: list[str] = []
@@ -103,6 +103,7 @@ def transcript(result: RunResult) -> props.Transcript:
         tool_calls=calls,
         tool_outputs=outputs,
         error=result.error,
+        prompt=prompt,
     )
 
 
@@ -192,7 +193,7 @@ async def run_case(case: EvalCase, engine: Engine, *, fake: bool) -> CaseResult:
             )
         finally:
             await supervisor.close()
-        t = transcript(result)
+        t = transcript(result, case.prompt)
         return CaseResult(
             case_id=case.case_id,
             status=result.status,

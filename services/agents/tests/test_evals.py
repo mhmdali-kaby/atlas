@@ -50,16 +50,27 @@ def _post_card(raw: dict[str, Any]) -> dict[str, Any]:
 # -- the example cases ---------------------------------------------------------------------------------
 
 
+def _examples_root(tmp_path: Path) -> Path:
+    """Only the three ATL-92 example cases (ATL-94's 30 cases live beside them, see test_historian_evals)."""
+    root = tmp_path / "cases"
+    for name in EXAMPLES:
+        shutil.copytree(HISTORIAN / name, root / "historian" / name)
+    return root
+
+
 def test_the_harness_ships_three_example_historian_cases() -> None:
-    assert [p.name for p in discover("historian")] == list(EXAMPLES)
-    for path in discover("historian"):
-        case = load_case(path)
+    names = [p.name for p in discover("historian")]
+    assert set(EXAMPLES) <= set(names)
+    for name in EXAMPLES:
+        case = load_case(HISTORIAN / name)
         assert case.fake is not None
         assert list(case.properties) == PROPERTY_NAMES
 
 
 async def test_fake_run_scores_every_case_and_property(engine: Engine, tmp_path: Path) -> None:
-    report = await run_agent("historian", engine, fake=True, label="v-test")
+    report = await run_agent(
+        "historian", engine, fake=True, label="v-test", cases_root=_examples_root(tmp_path)
+    )
     assert [c.case_id for c in report.cases] == list(EXAMPLES)
     for case in report.cases:
         assert case.status == "ok", case.error
@@ -82,7 +93,10 @@ async def test_fake_run_scores_every_case_and_property(engine: Engine, tmp_path:
 def test_cli_fake_run_prints_rates_and_writes_results(
     capsys: pytest.CaptureFixture[str], tmp_path: Path
 ) -> None:
-    code = main(["run", "--agent", "historian", "--fake", "--results-dir", str(tmp_path)])
+    root = _examples_root(tmp_path)
+    code = main(
+        ["run", "--agent", "historian", "--fake", "--cases-dir", str(root), "--results-dir", str(tmp_path)]
+    )
     out = capsys.readouterr().out
     assert code == 0
     for case_id in EXAMPLES:

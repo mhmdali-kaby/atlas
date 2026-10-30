@@ -5,8 +5,10 @@ A :class:`Transcript` is what one run produced. Each property is a function
 
 * ``valid_schema: {model: HistoryVerdict}`` — the card validates against that pydantic model (a name
   in :data:`MODELS`, or ``package.module:Class``).
-* ``no_invented_numbers: {guard: auto|numguard|stub}`` — the number guard finds no number in the text
-  or card that is missing from the run's tool outputs.
+* ``no_invented_numbers: {guard: auto|numguard|stub, from_prompt: false}`` — the number guard finds no
+  number in the text or card that is missing from the run's tool outputs. ``from_prompt: true`` also
+  counts the case prompt as a source, as production does for the asker's own text (the mention) and
+  for the 07:30 regime table handed to the Historian in its prompt (ATL-93).
 * ``verdict_in: {values: [...], field: verdict}`` — the card's verdict is one of ``values``.
 * ``no_trade: {expected: true}`` — no ``warroom.submit_proposal`` call and no card that is a trade
   (``side`` buy/sell or ``direction`` long/short). ``expected: false`` asserts a trade instead.
@@ -33,6 +35,7 @@ PROPOSAL_TOOL: Final = "mcp__warroom__submit_proposal"
 
 MODELS: Final[dict[str, type[BaseModel]]] = {
     "HistoryVerdict": schemas.HistoryVerdict,
+    "RegimeTable": schemas.RegimeTable,
 }
 
 
@@ -46,6 +49,7 @@ class Transcript:
     tool_calls: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
     tool_outputs: list[dict[str, Any]] = field(default_factory=list)
     error: str | None = None
+    prompt: str = ""
 
 
 @dataclass(frozen=True)
@@ -108,7 +112,10 @@ def valid_schema(t: Transcript, params: Mapping[str, Any]) -> Outcome:
 
 def no_invented_numbers(t: Transcript, params: Mapping[str, Any]) -> Outcome:
     check = guards.resolve(params.get("guard"))
-    report = check(t.text, t.card, t.tool_outputs)
+    outputs = list(t.tool_outputs)
+    if params.get("from_prompt"):
+        outputs.append({"as_of": None, "source": "case.prompt", "data": t.prompt})
+    report = check(t.text, t.card, outputs)
     if report.ok:
         return True, f"{report.guard}: {report.checked} numbers, all traced to tool outputs"
     raws = ", ".join(str(u.get("raw")) for u in report.unmatched[:10])
