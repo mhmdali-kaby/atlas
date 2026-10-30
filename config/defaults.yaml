@@ -255,6 +255,9 @@ warroom:
   page_limit_max: 100
   post_per_minute: 30
   content_max_chars: 4000
+  # ATL-89: atlas:bridge rebroadcasts warroom.thinking without storing it; a payload whose JSON
+  # is longer than this many bytes has its longest strings cut to fit and gets truncated: true.
+  thinking_max_bytes: 16384
   agents:
     orchestrator: { name: Orchestrator, handle: Orch, aliases: [] }
     market_scout: { name: Market Scout, handle: Scout, aliases: [] }
