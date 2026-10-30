@@ -93,7 +93,9 @@ def _events(rds: redis.Redis, stream: str, pid: uuid.UUID) -> list[dict[str, Any
     for _id, fields in rds.xrange(stream):
         env = json.loads(fields[b"envelope"] if b"envelope" in fields else fields["envelope"])
         payload = env["payload"]
-        if payload.get("proposal_id") == str(pid) or (payload.get("card") or {}).get("proposal_id") == str(pid):
+        if payload.get("proposal_id") == str(pid) or (payload.get("card") or {}).get("proposal_id") == str(
+            pid
+        ):
             out.append(env)
     return out
 
@@ -109,7 +111,9 @@ def _sweep(engine: Engine, rds: redis.Redis, at: datetime) -> sweeper.SweepResul
     return sweeper.sweep(ENV, engine=engine, redis_client=rds, now=lambda: at)
 
 
-def test_reminder_at_halfway_then_reject_at_expiry(engine: Engine, rds: redis.Redis, proposal: uuid.UUID) -> None:
+def test_reminder_at_halfway_then_reject_at_expiry(
+    engine: Engine, rds: redis.Redis, proposal: uuid.UUID
+) -> None:
     # Before halfway: nothing.
     assert str(proposal) not in _sweep(engine, rds, T0 + timedelta(minutes=7)).reminded
     assert _events(rds, "atlas.warroom", proposal) == []
@@ -123,7 +127,9 @@ def test_reminder_at_halfway_then_reject_at_expiry(engine: Engine, rds: redis.Re
     assert lines[0]["payload"]["author"] == "orchestrator"
     assert lines[0]["payload"]["card"]["type"] == "approval_reminder"
     assert "waiting for your approval" in lines[0]["payload"]["content_md"]
-    reminders = [e for e in _events(rds, "atlas.proposals", proposal) if e["type"] == "proposal.approval_reminder"]
+    reminders = [
+        e for e in _events(rds, "atlas.proposals", proposal) if e["type"] == "proposal.approval_reminder"
+    ]
     assert len(reminders) == 1
     row = _row(engine, proposal)
     assert row.status == "awaiting_owner" and row.approval_reminded_at == half

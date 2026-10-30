@@ -86,11 +86,15 @@ def _recheck(
         if row is None:
             return _Refusal(404, "proposal_not_found", "No proposal with this id.")
         if row.status != "awaiting_owner":
-            return _Refusal(409, "not_awaiting_owner", f"The proposal is {row.status}, not awaiting approval.")
+            return _Refusal(
+                409, "not_awaiting_owner", f"The proposal is {row.status}, not awaiting approval."
+            )
         if row.approval_expires_at is None or row.approval_expires_at <= at:
             return _Refusal(409, "approval_expired", "The approval window has closed.")
     try:
-        decision = evaluate(pid, engine=engine, redis_client=rds, now=now, allowed_statuses=("awaiting_owner",))
+        decision = evaluate(
+            pid, engine=engine, redis_client=rds, now=now, allowed_statuses=("awaiting_owner",)
+        )
     except RiskEngineError as exc:
         return _Refusal(409, "risk_engine_error", str(exc))
 
@@ -190,7 +194,9 @@ async def execute_proposal(proposal_id: str, request: Request) -> JSONResponse:
             active_env=state.settings.env,
         )
         if result.status != "sent" and await asyncio.to_thread(_status_of, engine, pid) == "risk_checked":
-            await asyncio.to_thread(_close, engine, rds, pid, "rejected", f"execution_{result.reason}"[:64], now())
+            await asyncio.to_thread(
+                _close, engine, rds, pid, "rejected", f"execution_{result.reason}"[:64], now()
+            )
         logger.info(
             "owner approval executed",
             extra={"proposal_id": proposal_id, "status": result.status, "reason": result.reason},

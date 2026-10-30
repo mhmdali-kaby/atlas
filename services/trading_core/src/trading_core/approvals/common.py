@@ -42,7 +42,9 @@ def proposal_payload(row: Proposal, **extra: Any) -> dict[str, Any]:
     }
 
 
-def publish(rds: redis.Redis, stream: str, type_: str, row: Proposal, payload: dict[str, Any], source: str) -> None:
+def publish(
+    rds: redis.Redis, stream: str, type_: str, row: Proposal, payload: dict[str, Any], source: str
+) -> None:
     envelope = EventEnvelope.model_validate(
         {
             "type": type_,

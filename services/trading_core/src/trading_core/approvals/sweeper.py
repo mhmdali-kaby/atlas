@@ -3,7 +3,7 @@
 Every ``approvals.sweep_seconds`` for this trading_core's env:
 
 - **Reminder.** An ``awaiting_owner`` proposal whose window is ``approvals.reminder_fraction`` gone
-  (default halfway: ``approval_expires_at − approval_timeout_minutes × (1 − fraction)``) gets one War
+  (default halfway: ``approval_expires_at - approval_timeout_minutes * (1 - fraction)``) gets one War
   Room line from the Orchestrator and a ``proposal.approval_reminder`` event; ``approval_reminded_at``
   makes it once only.
 - **Expiry.** At ``approval_expires_at`` the proposal gets ``autonomy.on_approval_timeout``. The only
@@ -120,7 +120,7 @@ def sweep(
         )
     for row in due:
         expires = row.approval_expires_at
-        assert expires is not None  # noqa: S101 - filtered above
+        assert expires is not None  # filtered above
         out.reminded.append(str(row.id))
         minutes = max(1, int((expires - at).total_seconds() // 60))
         publish(

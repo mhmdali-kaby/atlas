@@ -506,7 +506,9 @@ def test_evaluate_refuses_unsigned_and_not_passed(engine: Engine, rds: redis.Red
 # --- ATL-162: POST /internal/proposals/{id}/execute re-checks, then (only if approved) executes ----
 
 
-def _awaiting(engine: Engine, inst_id: str, *, stop: D = D(3960), expires: datetime | None = None) -> uuid.UUID:
+def _awaiting(
+    engine: Engine, inst_id: str, *, stop: D = D(3960), expires: datetime | None = None
+) -> uuid.UUID:
     pid = _agent_proposal(engine, inst_id, "awaiting_owner")
     with engine.begin() as c:
         c.execute(
@@ -562,7 +564,7 @@ def test_execute_reruns_the_risk_check_and_executes_the_fresh_check(
 
 
 def test_a_rejected_recheck_never_calls_the_executor(engine: Engine, rds: redis.Redis, world: str) -> None:
-    # A stop 0.10 below a 4000 entry is far inside 0.8 × ATR(1H) (ATR 20): check 3 rejects it.
+    # A stop 0.10 below a 4000 entry is far inside 0.8 x ATR(1H) (ATR 20): check 3 rejects it.
     pid = _awaiting(engine, world, stop=D("3999.9"))
     spy = _ExecutorSpy()
     resp = _approve(engine, rds, str(pid), spy)
