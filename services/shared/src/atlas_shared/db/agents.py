@@ -11,11 +11,18 @@ from atlas_shared.db.models import AgentUsageDaily
 from atlas_shared.defaults import DEFAULTS
 
 
-def usage_day(at: datetime) -> date:
-    """The owner-timezone (Asia/Baghdad) calendar date a usage timestamp counts against."""
+def owner_day(at: datetime) -> date:
+    """The owner-timezone (Asia/Baghdad) calendar date of the instant ``at``; naive values are UTC.
+
+    The one place Atlas turns an instant into the owner's business day (usage, notebook, scores,
+    watchlists, budgets). Never take ``.date()`` of a UTC timestamp instead."""
     if at.tzinfo is None:
         at = at.replace(tzinfo=UTC)
     return at.astimezone(ZoneInfo(str(DEFAULTS["timezone"]["display"]))).date()
+
+
+usage_day = owner_day
+"""Alias of :func:`owner_day`: the day a usage timestamp counts against."""
 
 
 def add_usage(
