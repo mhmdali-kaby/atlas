@@ -229,8 +229,9 @@ class HookRegistry:
         return register
 
     def event(self, slug: str, event_type: str) -> Callable[[EventHandler], EventHandler]:
-        """Register a handler for ``atlas.warroom`` envelopes of ``event_type``. Not for
-        ``warroom.message``: mentions have their own hook."""
+        """Register a handler for ``atlas.warroom`` or ``atlas.market`` envelopes of ``event_type``.
+        Not for a bare ``warroom.message`` (mentions have their own hook); ``warroom.message.<kind>``
+        gets the War Room messages of that kind (ATL-135)."""
         if event_type == "warroom.message":
             raise ValueError("warroom.message is dispatched as mentions; use HOOKS.mention")
 

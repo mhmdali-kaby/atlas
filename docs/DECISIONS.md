@@ -50,3 +50,23 @@ decisions where the brief was silent, as the brief asks.
   POST `trade/order` share one rate-limit bucket. Executor defaults (`executor` in
   config/defaults.yaml): entry timeout 30 min, perps tdMode isolated, stop check 3 s, 3 tries,
   emergency stop 2.0 × ATR(1H).
+- **Risk Engine check rules the brief leaves open** (ATL-127, `trading_core/risk/engine.py`, numbers in
+  `risk_rules` of config/defaults.yaml). Check 1 reads freshness from the `tickers` channel stamp in
+  Redis, not any-channel, so candle pushes cannot make a quiet ticker look fresh. Check 2's US hours
+  are 09:30–16:00 America/New_York Mon–Fri, DST from the tz database; exchange holidays are not
+  modelled (a holiday counts as open). Check 5 counts same-direction exposure in instruments with
+  30-day corr > 0.8 (the instrument itself included; a pair with < 20 overlapping daily returns is
+  "unknown" and not counted), and caps each asset class's **net** exposure at the same
+  `max_correlated_exposure_pct`, since Settings has no separate per-class cap; it also enforces
+  `max_trades_per_day`. Portfolio, loss, liquidation and blackout failures are hard rejects; only
+  check 4's caps resize. Check 6's loss is start equity (first equity_curve point of the Baghdad day
+  or ISO week) + net deposits since − current equity, so realised and unrealised both count;
+  consecutive losses are trade bills (type 2) with a negative pnl, newest first. Check 7 estimates an
+  isolated liquidation price as entry × (1 ∓ 1/leverage ± 0.005 maintenance). Check 9: autonomy 1 →
+  `advise_only` (a new `risk_checks.decision` value), 2 → `awaiting_owner`, 3–4 → `awaiting_owner`
+  until `autonomy.max_enabled_level` allows them (Phase 3), so nothing is sent without the owner.
+  Fee rates are not stored yet, so sizing uses `risk_rules.fallback_taker_fee_rate` and the check
+  records `fee_source: config_fallback`. A limit proposal with only an entry zone is sized at the
+  zone bound farthest from the stop. Only proposals in `risk_rules.evaluable_statuses` (`passed`, and
+  `risk_checked` so an owner Edit can re-run the check) are evaluated; any other status is refused
+  before anything is written, so a cancelled, rejected or filled proposal cannot re-enter approval.

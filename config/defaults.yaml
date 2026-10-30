@@ -113,6 +113,39 @@ risk_engine:
   market_data_max_age_seconds: 30
   margin_buffer: "0.9"
 
+# ATL-127, brief §10: fixed rules of the Risk Engine's checks (trading_core/risk/engine.py). Not
+# owner limits (those are in Settings above); these say how a check measures.
+#   us_session: the US cash session for avoid_stock_perps_outside_us_hours, in its own timezone, so
+#   DST comes from the tz database. weekdays are ISO (1 = Monday). Exchange holidays are not modelled.
+#   atr_bar/atr_window/atr_lookback_bars: ATR(1H) for check 3 (Wilder, atlas_quant), from closed bars.
+#   correlation_*: check 5's 30-day Pearson correlation of daily log returns; a pair with fewer
+#   overlapping returns than min_obs is "unknown" (not counted as correlated, listed in the check).
+#   maint_margin_ratio: maintenance margin assumed by check 7's isolated liquidation estimate.
+#   fallback_taker_fee_rate: used by sizing until trade-fee rates are stored per instType; the
+#   check records fee_source = "config_fallback" when it is used.
+#   high_impact_importance: check 8's blackout counts economic events at or above this importance.
+#   used_statuses: proposal statuses whose approved size counts as used today (daily exposure, trades).
+#   evaluable_statuses: the only proposal statuses evaluate() accepts. passed = the vote passed;
+#   risk_checked = an owner Edit re-runs the check (brief §12). Any other status (cancelled, rejected,
+#   expired, sent, filled ...) is refused before anything is written, so it cannot re-enter approval.
+risk_rules:
+  us_session:
+    timezone: America/New_York
+    open: "09:30"
+    close: "16:00"
+    weekdays: [1, 2, 3, 4, 5]
+  atr_bar: 1H
+  atr_window: 14
+  atr_lookback_bars: 120
+  correlation_threshold: "0.8"
+  correlation_lookback_days: 30
+  correlation_min_obs: 20
+  maint_margin_ratio: "0.005"
+  fallback_taker_fee_rate: "0.0005"
+  high_impact_importance: 5
+  used_statuses: [sent, partially_filled, filled, closed]
+  evaluable_statuses: [passed, risk_checked]
+
 # ATL-141, brief §4.4, §11: Executor parameters (trading_core/execution), editable in Settings.
 #   entry_timeout_minutes: an unfilled limit entry is cancelled after this long.
 #   td_mode_perps: OKX tdMode for perps (one of td_modes_perps); spot always uses "cash".
@@ -166,6 +199,21 @@ portfolio_history:
   per_page_max: 200
   # Decimal places of R in the API and CSV.
   r_scale: 2
+
+# ATL-174, brief §13 Performance: GET /api/portfolio/performance.
+portfolio_performance:
+  ranges: ["1M", "3M", "YTD", "ALL"]
+  default_range: ALL
+  # Sharpe and Sortino need at least this many owner (Asia/Baghdad) days of equity.
+  min_days_for_ratios: 10
+  # Daily ratios are annualised by sqrt(annualisation_days); crypto and perps trade every day.
+  annualisation_days: 365
+  # Decimal places of each output kind (HALF_UP). Money averages keep 8 and are stripped.
+  pct_scale: 2
+  ratio_scale: 4
+  money_scale: 8
+  # Internal precision for means, variances and square roots.
+  calc_scale: 24
 
 # ATL-46, brief §7.3: the resumable history backfill in trading_core. How far back each dataset
 # goes is backfill.depth_days (below, shared with the Data API); null depths walk back to
@@ -1060,6 +1108,28 @@ agents:
   #   patterns: breakout_retest, failed_breakout, range, flag (flag/pennant) and double (top/bottom);
   #     the geometric rule for each is in atlas_agents.ta.patterns.
   #   microstructure: book imbalance over the top imbalance_depths levels of each side.
+  # ATL-135, brief §7.4: the Technical Analyst agent (atlas_agents.technical_analyst).
+  #   history_bars: closed bars per timeframe loaded for okx_market.get_ta_table (§7.4 inputs).
+  #   stale_bars / stale_check_bars: a run refuses (and posts a data alert) when the newest closed
+  #     bar of any of these timeframes is more than stale_bars bars late.
+  #   min_stop_atr_mult: the stop must be at least this many ATR(1H) from the entry-zone midpoint,
+  #     else code turns the setup into "none".
+  #   max_slippage_bps: estimated slippage at the Risk Engine's max size above this adds a
+  #     thin-liquidity note. Max size = sizing equity x max_position_pct (settings).
+  #   watchlist_max_runs: at most this many picks of one watchlist card are analysed.
+  #   mention_max_instruments: at most this many instruments named in one @Technical mention.
+  #   position_bar: the closed bar (candle.closed) that re-checks an instrument with an open position.
+  #   zones_reported: the nearest zones per timeframe kept in the table (half below, half above price).
+  technical_analyst:
+    history_bars: { "1D": 400, "4H": 500, "1H": 500, "15m": 500, "5m": 300 }
+    stale_bars: 2
+    stale_check_bars: ["1H"]
+    min_stop_atr_mult: "1.0"
+    max_slippage_bps: "10"
+    watchlist_max_runs: 10
+    mention_max_instruments: 3
+    position_bar: 1H
+    zones_reported: 8
   ta_structure:
     levels:
       lookback_bars: 120

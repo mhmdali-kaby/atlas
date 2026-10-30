@@ -112,6 +112,39 @@ return [
         'market_data_max_age_seconds' => 30,
         'margin_buffer' => '0.9',
     ],
+    'risk_rules' => [
+        'us_session' => [
+            'timezone' => 'America/New_York',
+            'open' => '09:30',
+            'close' => '16:00',
+            'weekdays' => [
+                1,
+                2,
+                3,
+                4,
+                5,
+            ],
+        ],
+        'atr_bar' => '1H',
+        'atr_window' => 14,
+        'atr_lookback_bars' => 120,
+        'correlation_threshold' => '0.8',
+        'correlation_lookback_days' => 30,
+        'correlation_min_obs' => 20,
+        'maint_margin_ratio' => '0.005',
+        'fallback_taker_fee_rate' => '0.0005',
+        'high_impact_importance' => 5,
+        'used_statuses' => [
+            'sent',
+            'partially_filled',
+            'filled',
+            'closed',
+        ],
+        'evaluable_statuses' => [
+            'passed',
+            'risk_checked',
+        ],
+    ],
     'executor' => [
         'entry_timeout_minutes' => 30,
         'td_mode_perps' => 'isolated',
@@ -160,6 +193,21 @@ return [
         'per_page_default' => 50,
         'per_page_max' => 200,
         'r_scale' => 2,
+    ],
+    'portfolio_performance' => [
+        'ranges' => [
+            '1M',
+            '3M',
+            'YTD',
+            'ALL',
+        ],
+        'default_range' => 'ALL',
+        'min_days_for_ratios' => 10,
+        'annualisation_days' => 365,
+        'pct_scale' => 2,
+        'ratio_scale' => 4,
+        'money_scale' => 8,
+        'calc_scale' => 24,
     ],
     'backfill_runner' => [
         'interval_seconds' => 300,
@@ -1303,6 +1351,25 @@ return [
                 'max_events' => 30,
                 'top_instruments' => 5,
             ],
+        ],
+        'technical_analyst' => [
+            'history_bars' => [
+                '1D' => 400,
+                '4H' => 500,
+                '1H' => 500,
+                '15m' => 500,
+                '5m' => 300,
+            ],
+            'stale_bars' => 2,
+            'stale_check_bars' => [
+                '1H',
+            ],
+            'min_stop_atr_mult' => '1.0',
+            'max_slippage_bps' => '10',
+            'watchlist_max_runs' => 10,
+            'mention_max_instruments' => 3,
+            'position_bar' => '1H',
+            'zones_reported' => 8,
         ],
         'ta_structure' => [
             'levels' => [
