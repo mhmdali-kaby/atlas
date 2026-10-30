@@ -2,8 +2,9 @@
 
 For ATL-117 (Agents page), ATL-118 (Settings → Agents) and anyone adding an agent.
 
-Code: `services/agents/src/atlas_agents/agent_settings.py` (merge), `supervisor.py` (reload, enable,
-disable), `session.py` (`AgentSession.update_spec`), `tools/news.py` (web policy per call),
+Code: `services/agents/src/atlas_agents/agent_settings.py` (merge), `settings_applier.py` (reload, enable,
+disable, agent_states + `system.agent_state`; the `Supervisor` delegates to it), `supervisor.py`
+(`consume_system`, which shares one XREAD loop `_consume_stream` with `consume_warroom`), `session.py` (`AgentSession.update_spec`), `tools/news.py` (web policy per call),
 `tools/framework.py` (`ToolContext.web_policy`). Tests: `services/agents/tests/test_agent_settings.py`.
 
 ## The two-minute version
@@ -16,7 +17,8 @@ disable), `session.py` (`AgentSession.update_spec`), `tools/news.py` (web policy
   missed event still applies. One cheap `select version` each time.
 - **Disable**: the agent leaves `supervisor.sessions` at once (no new run, `run()` raises
   `AgentUnavailableError`, a mention starts nothing); its CLI session is closed after any in-flight run
-  (it waits for the agent lock). **Enable**: a new session is built and its prompt version synced.
+  (it waits for the agent lock). An agent already disabled when the supervisor starts gets an
+  `agent_states` row of `disabled` (and one `system.agent_state`, reason `settings_disabled`) at start. **Enable**: a new session is built and its prompt version synced.
 - **Budgets** (`daily_tokens`, `daily_turns`) apply at the agent's next run: lowering below today's
   usage gives the usual `over_budget` refusal with no CLI call.
 - **Model** (tier → alias via `agents.models`) applies at the next connect: the change is held until

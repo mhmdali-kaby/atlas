@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import json
+import os
 import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
@@ -22,15 +23,17 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import redis
 from atlas_agents import agent_settings
 from atlas_agents import testing as fake
 from atlas_agents.mentions import MentionRequest
 from atlas_agents.registry import REGISTRY, AgentHost, AgentSpec, HookRegistry
 from atlas_agents.session import RunResult
-from atlas_agents.supervisor import AgentUnavailableError, Supervisor
+from atlas_agents.supervisor import SYSTEM_STREAM, AgentUnavailableError, Supervisor
 from atlas_agents.tools import fq_name
 from atlas_agents.tools import framework as fw
 from atlas_agents.tools import news as news_tools
+from atlas_shared import bus
 from atlas_shared.db import AgentRun, AgentState, AgentUsageDaily, add_usage, usage_day
 from atlas_shared.events import EventEnvelope
 from sqlalchemy import Engine, delete, select, text
@@ -267,6 +270,11 @@ async def test_settings_are_read_at_start(
     settings_row.save(**{"agents.market_scout.enabled": False})
     sup = _supervisor(engine, scout, fake.FakeClaudeClient(), recorder, tmp_path)
     assert SCOUT not in sup.sessions and sup.settings.version == settings_row.version
+    # An agent disabled at start is recorded as disabled, so the Agents page need not read settings.
+    with Session(engine) as db:
+        state = db.scalars(select(AgentState).where(AgentState.agent == SCOUT, AgentState.env == ENV)).one()
+        assert state.state == "disabled"
+    assert [e.payload["reason"] for e in recorder.of("system.agent_state")] == ["settings_disabled"]
 
 
 async def test_other_envs_and_other_events_are_ignored(
@@ -278,6 +286,65 @@ async def test_other_envs_and_other_events_are_ignored(
     other = EventEnvelope(type="system.agent_state", env=ENV, source="agent:x", payload={})
     assert await sup.handle_system_envelope(live) is False
     assert await sup.handle_system_envelope(other) is False
+
+
+@pytest.fixture
+def redis_client() -> Iterator[redis.Redis]:
+    conn = bus.make_client({**os.environ, "REDIS_DB": os.environ.get("REDIS_TEST_DB", "15")})
+    try:
+        conn.ping()
+    except redis.ConnectionError:
+        pytest.skip("Redis is not running on REDIS_HOST:REDIS_PORT")
+    conn.delete(SYSTEM_STREAM)
+    yield conn
+    conn.delete(SYSTEM_STREAM)
+    conn.close()
+
+
+async def test_consume_system_applies_settings_changed_and_skips_bad_and_foreign_entries(
+    engine: Engine,
+    scout: AgentSpec,
+    recorder: Recorder,
+    settings_row: SettingsRow,
+    tmp_path: Path,
+    redis_client: redis.Redis,
+) -> None:
+    """The production route: system.settings_changed arrives on atlas.system via XREAD."""
+    settings_row.save()
+    sup = _supervisor(engine, scout, fake.FakeClaudeClient(), recorder, tmp_path)
+    assert SCOUT in sup.sessions
+
+    seen: list[EventEnvelope] = []
+    original = sup.handle_system_envelope
+
+    async def handle(envelope: EventEnvelope) -> bool:
+        seen.append(envelope)
+        applied = await original(envelope)
+        if envelope.payload.get("last"):
+            stop.set()
+        return applied
+
+    sup.handle_system_envelope = handle  # type: ignore[method-assign]
+    stop = asyncio.Event()
+    consumer = asyncio.create_task(sup.consume_system(redis_client, stop=stop, block_ms=50))
+    await asyncio.sleep(0.2)
+
+    changed = settings_row.save(**{"agents.market_scout.enabled": False})
+    live = EventEnvelope(type="system.settings_changed", env="live", source="backend:settings", payload={})
+    redis_client.xadd(SYSTEM_STREAM, {bus.FIELD: "not an envelope"})  # unreadable: skipped
+    bus.publish(SYSTEM_STREAM, live, client=redis_client)  # another env: ignored
+    bus.publish(
+        SYSTEM_STREAM,
+        changed.model_copy(update={"payload": {**changed.payload, "last": True}}),
+        client=redis_client,
+    )
+    await asyncio.wait_for(consumer, timeout=20)
+    await sup.settled()
+
+    assert [e.env for e in seen] == ["live", ENV]  # the unreadable entry never reached the handler
+    assert SCOUT not in sup.sessions and sup.is_enabled(SCOUT) is False
+    assert sup.settings.version == settings_row.version
+    assert any(e.payload["state"] == "disabled" for e in recorder.of("system.agent_state"))
 
 
 # -- AC2: lowering daily_turns below today's usage ------------------------------------------------------
