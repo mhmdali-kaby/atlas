@@ -1,0 +1,79 @@
+agent: market_scout
+replay_as_of: '2026-10-07T05:00:00Z'
+env: demo
+description: 'Normal day: catalysts across asset classes; picks diversify across classes.'
+prompt: Market Scout watchlist for 2026-10-07 (mixed case)
+properties:
+  valid_watchlist: {}
+  no_invented_numbers: {}
+  rejected_listed:
+    count: 3
+  asset_classes:
+    min: 2
+  verdict_in:
+    field: status
+    values:
+    - published
+inputs:
+  replies:
+    news_intelligence:
+      kind: text
+      content_md: 'Briefs for the shortlist. NVDA-USDT-SWAP: 3 stories in 24h, top importance 4; BTC-USDT-SWAP:
+        3 stories in 24h, top importance 4; XAG-USDT-SWAP: 3 stories in 24h, top importance 4.'
+      card: null
+    historian:
+      kind: text
+      content_md: 'Regime check for the top candidates: NVDA-USDT-SWAP trend; BTC-USDT-SWAP trend; XAG-USDT-SWAP
+        trend; META-USDT-SWAP trend; DOGE-USDT-SWAP trend; CL-USDT-SWAP trend; AVAX-USDT-SWAP trend.'
+      card: null
+fake:
+  steps:
+  - tool: okx_market.get_candles
+    input:
+      inst_id: NVDA-USDT-SWAP
+      bar: 1D
+      limit: 20
+  - tool: okx_market.get_candles
+    input:
+      inst_id: BTC-USDT-SWAP
+      bar: 1D
+      limit: 20
+  - tool: okx_market.get_candles
+    input:
+      inst_id: XAG-USDT-SWAP
+      bar: 1D
+      limit: 20
+  - text: "BTC is in a trend regime, 7d return 4.2%. Today: NVDA-USDT-SWAP long, BTC-USDT-SWAP short, XAG-USDT-SWAP\
+      \ long.\n\n```json\n{\n \"type\": \"watchlist\",\n \"backdrop\": [\n  \"BTC is in a trend regime, 7d return\
+      \ 4.2%.\",\n  \"NVDA-USDT-SWAP leads the non-crypto names, 7d return 4.4%.\",\n  \"Main event in 48h: US CPI\
+      \ m/m.\"\n ],\n \"picks\": [\n  {\n   \"inst_id\": \"NVDA-USDT-SWAP\",\n   \"rank\": 1,\n   \"asset_class\"\
+      : \"stock\",\n   \"bias\": \"long\",\n   \"conviction\": 0.72,\n   \"thesis\": \"3 stories in 24h (top importance\
+      \ 4) and volume z 1.4. Regime is trend and the 7d return is 4.4% with ATR(14) on 1D at 2.4%. It beats the\
+      \ rejected names on combined evidence.\",\n   \"catalysts\": [\n    {\n     \"name\": \"US CPI m/m\",\n  \
+      \   \"time\": \"2026-10-08T12:30:00Z\",\n     \"source\": \"forexfactory\",\n     \"importance\": 5\n    }\n\
+      \   ],\n   \"key_levels\": {\n    \"support\": 121.16,\n    \"resistance\": 132.91,\n    \"invalidation\"\
+      : 121.16\n   },\n   \"invalidation\": \"A daily close beyond the 20-day range on the wrong side of the bias.\"\
+      ,\n   \"data_as_of\": \"2026-10-07T04:55:00Z\"\n  },\n  {\n   \"inst_id\": \"BTC-USDT-SWAP\",\n   \"rank\"\
+      : 2,\n   \"asset_class\": \"crypto\",\n   \"bias\": \"short\",\n   \"conviction\": 0.65,\n   \"thesis\": \"\
+      3 stories in 24h (top importance 4) and volume z 1.4. Regime is trend and the 7d return is 4.2% with ATR(14)\
+      \ on 1D at 2.4%. It beats the rejected names on combined evidence.\",\n   \"catalysts\": [\n    {\n     \"\
+      name\": \"US CPI m/m\",\n     \"time\": \"2026-10-08T12:30:00Z\",\n     \"source\": \"forexfactory\",\n  \
+      \   \"importance\": 5\n    }\n   ],\n   \"key_levels\": {\n    \"support\": 66133.73,\n    \"resistance\"\
+      : 71865.91,\n    \"invalidation\": 71865.91\n   },\n   \"invalidation\": \"A daily close beyond the 20-day\
+      \ range on the wrong side of the bias.\",\n   \"data_as_of\": \"2026-10-07T04:55:00Z\"\n  },\n  {\n   \"inst_id\"\
+      : \"XAG-USDT-SWAP\",\n   \"rank\": 3,\n   \"asset_class\": \"commodity\",\n   \"bias\": \"long\",\n   \"conviction\"\
+      : 0.58,\n   \"thesis\": \"3 stories in 24h (top importance 4) and volume z 1.4. Regime is trend and the 7d\
+      \ return is 4.0% with ATR(14) on 1D at 2.4%. It beats the rejected names on combined evidence.\",\n   \"catalysts\"\
+      : [\n    {\n     \"name\": \"US CPI m/m\",\n     \"time\": \"2026-10-08T12:30:00Z\",\n     \"source\": \"\
+      forexfactory\",\n     \"importance\": 5\n    }\n   ],\n   \"key_levels\": {\n    \"support\": 31.992,\n  \
+      \  \"resistance\": 35.255,\n    \"invalidation\": 31.992\n   },\n   \"invalidation\": \"A daily close beyond\
+      \ the 20-day range on the wrong side of the bias.\",\n   \"data_as_of\": \"2026-10-07T04:55:00Z\"\n  }\n ],\n\
+      \ \"rejected\": [\n  {\n   \"inst_id\": \"META-USDT-SWAP\",\n   \"reason\": \"META-USDT-SWAP: no news and\
+      \ volume z -0.2 vs 30 days; momentum alone.\"\n  },\n  {\n   \"inst_id\": \"DOGE-USDT-SWAP\",\n   \"reason\"\
+      : \"DOGE-USDT-SWAP: no news and volume z -0.2 vs 30 days; momentum alone.\"\n  },\n  {\n   \"inst_id\": \"\
+      CL-USDT-SWAP\",\n   \"reason\": \"CL-USDT-SWAP: no news and volume z -0.2 vs 30 days; momentum alone.\"\n\
+      \  }\n ],\n \"no_pick_reason\": null\n}\n```"
+  - result:
+      tokens_in: 9000
+      tokens_out: 900
+      turns: 4

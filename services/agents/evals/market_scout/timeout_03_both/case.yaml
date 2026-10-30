@@ -1,0 +1,55 @@
+agent: market_scout
+replay_as_of: '2026-09-29T05:00:00Z'
+env: demo
+description: 'both did not reply in time: partial evidence, conviction capped at 0.5.'
+prompt: Market Scout watchlist for 2026-09-29 (timeout case)
+properties:
+  valid_watchlist: {}
+  no_invented_numbers: {}
+  rejected_listed:
+    count: 3
+  verdict_in:
+    field: status
+    values:
+    - partial_evidence
+  max_conviction:
+    max: 0.5
+inputs:
+  replies: {}
+fake:
+  steps:
+  - tool: okx_market.get_candles
+    input:
+      inst_id: SOL-USDT-SWAP
+      bar: 1D
+      limit: 20
+  - tool: okx_market.get_candles
+    input:
+      inst_id: XAG-USDT-SWAP
+      bar: 1D
+      limit: 20
+  - text: "Crypto majors are not on today's shortlist. Today: SOL-USDT-SWAP long, XAG-USDT-SWAP long.\n\n```json\n\
+      {\n \"type\": \"watchlist\",\n \"backdrop\": [\n  \"Crypto majors are not on today's shortlist.\",\n  \"XAG-USDT-SWAP\
+      \ leads the non-crypto names, 7d return 3.5%.\",\n  \"Main event in 48h: US CPI m/m.\"\n ],\n \"picks\": [\n\
+      \  {\n   \"inst_id\": \"SOL-USDT-SWAP\",\n   \"rank\": 1,\n   \"asset_class\": \"crypto\",\n   \"bias\": \"\
+      long\",\n   \"conviction\": 0.74,\n   \"thesis\": \"3 stories in 24h and volume z 1.5. Regime is trend and\
+      \ the 7d return is 4.0% with ATR(14) on 1D at 2.4%. It beats the rejected names on combined evidence.\",\n\
+      \   \"catalysts\": [\n    {\n     \"name\": \"US CPI m/m\",\n     \"time\": \"2026-09-30T12:30:00Z\",\n  \
+      \   \"source\": \"forexfactory\",\n     \"importance\": 5\n    }\n   ],\n   \"key_levels\": {\n    \"support\"\
+      : 151.29,\n    \"resistance\": 161.92,\n    \"invalidation\": 151.29\n   },\n   \"invalidation\": \"A daily\
+      \ close beyond the 20-day range on the wrong side of the bias.\",\n   \"data_as_of\": \"2026-09-29T04:55:00Z\"\
+      \n  },\n  {\n   \"inst_id\": \"XAG-USDT-SWAP\",\n   \"rank\": 2,\n   \"asset_class\": \"commodity\",\n   \"\
+      bias\": \"long\",\n   \"conviction\": 0.61,\n   \"thesis\": \"3 stories in 24h and volume z 1.5. Regime is\
+      \ trend and the 7d return is 3.5% with ATR(14) on 1D at 2.4%. It beats the rejected names on combined evidence.\"\
+      ,\n   \"catalysts\": [\n    {\n     \"name\": \"US CPI m/m\",\n     \"time\": \"2026-09-30T12:30:00Z\",\n\
+      \     \"source\": \"forexfactory\",\n     \"importance\": 5\n    }\n   ],\n   \"key_levels\": {\n    \"support\"\
+      : 27.299,\n    \"resistance\": 29.303,\n    \"invalidation\": 27.299\n   },\n   \"invalidation\": \"A daily\
+      \ close beyond the 20-day range on the wrong side of the bias.\",\n   \"data_as_of\": \"2026-09-29T04:55:00Z\"\
+      \n  }\n ],\n \"rejected\": [\n  {\n   \"inst_id\": \"QQQ-USDT-SWAP\",\n   \"reason\": \"QQQ-USDT-SWAP: no\
+      \ news and volume z 0.3.\"\n  },\n  {\n   \"inst_id\": \"AVAX-USDT-SWAP\",\n   \"reason\": \"AVAX-USDT-SWAP:\
+      \ no news and volume z 0.3.\"\n  },\n  {\n   \"inst_id\": \"CL-USDT-SWAP\",\n   \"reason\": \"CL-USDT-SWAP:\
+      \ no news and volume z 0.3.\"\n  }\n ],\n \"no_pick_reason\": null\n}\n```"
+  - result:
+      tokens_in: 9000
+      tokens_out: 900
+      turns: 3

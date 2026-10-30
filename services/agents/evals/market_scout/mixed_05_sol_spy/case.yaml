@@ -1,0 +1,66 @@
+agent: market_scout
+replay_as_of: '2026-10-10T05:00:00Z'
+env: demo
+description: 'Normal day: catalysts across asset classes; picks diversify across classes.'
+prompt: Market Scout watchlist for 2026-10-10 (mixed case)
+properties:
+  valid_watchlist: {}
+  no_invented_numbers: {}
+  rejected_listed:
+    count: 3
+  asset_classes:
+    min: 2
+  verdict_in:
+    field: status
+    values:
+    - published
+inputs:
+  replies:
+    news_intelligence:
+      kind: text
+      content_md: 'Briefs for the shortlist. SOL-USDT-SWAP: 3 stories in 24h, top importance 4; SPY-USDT-SWAP: 3
+        stories in 24h, top importance 4.'
+      card: null
+    historian:
+      kind: text
+      content_md: 'Regime check for the top candidates: SOL-USDT-SWAP trend; SPY-USDT-SWAP trend; BTC-USDT-SWAP
+        trend; XAU-USDT-SWAP trend; QQQ-USDT-SWAP trend; DOGE-USDT-SWAP trend.'
+      card: null
+fake:
+  steps:
+  - tool: okx_market.get_candles
+    input:
+      inst_id: SOL-USDT-SWAP
+      bar: 1D
+      limit: 20
+  - tool: okx_market.get_candles
+    input:
+      inst_id: SPY-USDT-SWAP
+      bar: 1D
+      limit: 20
+  - text: "BTC is in a trend regime, 7d return 0.9%. Today: SOL-USDT-SWAP long, SPY-USDT-SWAP short.\n\n```json\n\
+      {\n \"type\": \"watchlist\",\n \"backdrop\": [\n  \"BTC is in a trend regime, 7d return 0.9%.\",\n  \"SPY-USDT-SWAP\
+      \ leads the non-crypto names, 7d return 4.2%.\",\n  \"Main event in 48h: US CPI m/m.\"\n ],\n \"picks\": [\n\
+      \  {\n   \"inst_id\": \"SOL-USDT-SWAP\",\n   \"rank\": 1,\n   \"asset_class\": \"crypto\",\n   \"bias\": \"\
+      long\",\n   \"conviction\": 0.72,\n   \"thesis\": \"3 stories in 24h (top importance 4) and volume z 1.4.\
+      \ Regime is trend and the 7d return is 4.4% with ATR(14) on 1D at 2.4%. It beats the rejected names on combined\
+      \ evidence.\",\n   \"catalysts\": [\n    {\n     \"name\": \"US CPI m/m\",\n     \"time\": \"2026-10-11T12:30:00Z\"\
+      ,\n     \"source\": \"forexfactory\",\n     \"importance\": 5\n    }\n   ],\n   \"key_levels\": {\n    \"\
+      support\": 158.19,\n    \"resistance\": 182.09,\n    \"invalidation\": 158.19\n   },\n   \"invalidation\"\
+      : \"A daily close beyond the 20-day range on the wrong side of the bias.\",\n   \"data_as_of\": \"2026-10-10T04:55:00Z\"\
+      \n  },\n  {\n   \"inst_id\": \"SPY-USDT-SWAP\",\n   \"rank\": 2,\n   \"asset_class\": \"etf\",\n   \"bias\"\
+      : \"short\",\n   \"conviction\": 0.65,\n   \"thesis\": \"3 stories in 24h (top importance 4) and volume z\
+      \ 1.4. Regime is trend and the 7d return is 4.2% with ATR(14) on 1D at 2.4%. It beats the rejected names on\
+      \ combined evidence.\",\n   \"catalysts\": [\n    {\n     \"name\": \"US CPI m/m\",\n     \"time\": \"2026-10-11T12:30:00Z\"\
+      ,\n     \"source\": \"forexfactory\",\n     \"importance\": 5\n    }\n   ],\n   \"key_levels\": {\n    \"\
+      support\": 539.75,\n    \"resistance\": 581.86,\n    \"invalidation\": 581.86\n   },\n   \"invalidation\"\
+      : \"A daily close beyond the 20-day range on the wrong side of the bias.\",\n   \"data_as_of\": \"2026-10-10T04:55:00Z\"\
+      \n  }\n ],\n \"rejected\": [\n  {\n   \"inst_id\": \"BTC-USDT-SWAP\",\n   \"reason\": \"BTC-USDT-SWAP: no\
+      \ news and volume z -0.2 vs 30 days; momentum alone.\"\n  },\n  {\n   \"inst_id\": \"XAU-USDT-SWAP\",\n  \
+      \ \"reason\": \"XAU-USDT-SWAP: no news and volume z -0.2 vs 30 days; momentum alone.\"\n  },\n  {\n   \"inst_id\"\
+      : \"QQQ-USDT-SWAP\",\n   \"reason\": \"QQQ-USDT-SWAP: no news and volume z -0.2 vs 30 days; momentum alone.\"\
+      \n  }\n ],\n \"no_pick_reason\": null\n}\n```"
+  - result:
+      tokens_in: 9000
+      tokens_out: 900
+      turns: 3

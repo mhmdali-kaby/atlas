@@ -1,0 +1,1105 @@
+{
+  "agent": "market_scout",
+  "mode": "fake",
+  "label": "fake ATL-112 (scripted answers, no CLI)",
+  "started_at": "2026-10-30T14:09:01.587670+00:00",
+  "finished_at": "2026-10-30T14:09:06.814899+00:00",
+  "cases": [
+    {
+      "case_id": "chasing_01_sol",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "2 valid WatchlistPick(s), status published"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 29 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: SOL-USDT-SWAP, LINK-USDT-SWAP, QQQ-USDT-SWAP"
+        },
+        {
+          "name": "not_picked",
+          "passed": true,
+          "detail": "not picked: ['SOL-USDT-SWAP']"
+        }
+      ],
+      "tool_calls": 2,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 3
+    },
+    {
+      "case_id": "chasing_02_tsla",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "2 valid WatchlistPick(s), status published"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 29 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: TSLA-USDT-SWAP, LINK-USDT-SWAP, QQQ-USDT-SWAP"
+        },
+        {
+          "name": "not_picked",
+          "passed": true,
+          "detail": "not picked: ['TSLA-USDT-SWAP']"
+        }
+      ],
+      "tool_calls": 2,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 3
+    },
+    {
+      "case_id": "chasing_03_doge",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "2 valid WatchlistPick(s), status published"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 31 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: DOGE-USDT-SWAP, LINK-USDT-SWAP, QQQ-USDT-SWAP"
+        },
+        {
+          "name": "not_picked",
+          "passed": true,
+          "detail": "not picked: ['DOGE-USDT-SWAP']"
+        }
+      ],
+      "tool_calls": 2,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 3
+    },
+    {
+      "case_id": "chasing_04_xag",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "2 valid WatchlistPick(s), status published"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 29 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: XAG-USDT-SWAP, LINK-USDT-SWAP, QQQ-USDT-SWAP"
+        },
+        {
+          "name": "not_picked",
+          "passed": true,
+          "detail": "not picked: ['XAG-USDT-SWAP']"
+        }
+      ],
+      "tool_calls": 2,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 3
+    },
+    {
+      "case_id": "correlated_01_btc_group",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "3 valid WatchlistPick(s), status published"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 38 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: SOL-USDT-SWAP, DOGE-USDT-SWAP, META-USDT-SWAP"
+        },
+        {
+          "name": "max_correlated",
+          "passed": true,
+          "detail": "at most 2 picks per correlated group"
+        }
+      ],
+      "tool_calls": 3,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 4
+    },
+    {
+      "case_id": "correlated_02_eth_group",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "3 valid WatchlistPick(s), status published"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 36 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: AVAX-USDT-SWAP, LINK-USDT-SWAP, DOGE-USDT-SWAP"
+        },
+        {
+          "name": "max_correlated",
+          "passed": true,
+          "detail": "at most 2 picks per correlated group"
+        }
+      ],
+      "tool_calls": 3,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 4
+    },
+    {
+      "case_id": "correlated_03_spy_group",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "3 valid WatchlistPick(s), status published"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 38 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: NVDA-USDT-SWAP, DOGE-USDT-SWAP, META-USDT-SWAP"
+        },
+        {
+          "name": "max_correlated",
+          "passed": true,
+          "detail": "at most 2 picks per correlated group"
+        }
+      ],
+      "tool_calls": 3,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 4
+    },
+    {
+      "case_id": "correlated_04_xau_group",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "3 valid WatchlistPick(s), status published"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 36 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: CL-USDT-SWAP, DOGE-USDT-SWAP, META-USDT-SWAP"
+        },
+        {
+          "name": "max_correlated",
+          "passed": true,
+          "detail": "at most 2 picks per correlated group"
+        }
+      ],
+      "tool_calls": 3,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 4
+    },
+    {
+      "case_id": "mixed_01_xau_tsla",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "3 valid WatchlistPick(s), status published"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 47 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: ETH-USDT-SWAP, SPY-USDT-SWAP, XRP-USDT-SWAP"
+        },
+        {
+          "name": "asset_classes",
+          "passed": true,
+          "detail": "asset classes: ['commodity', 'crypto', 'stock']"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "status = published"
+        }
+      ],
+      "tool_calls": 3,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 4
+    },
+    {
+      "case_id": "mixed_02_nvda_btc",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "3 valid WatchlistPick(s), status published"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 49 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: META-USDT-SWAP, DOGE-USDT-SWAP, CL-USDT-SWAP"
+        },
+        {
+          "name": "asset_classes",
+          "passed": true,
+          "detail": "asset classes: ['commodity', 'crypto', 'stock']"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "status = published"
+        }
+      ],
+      "tool_calls": 3,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 4
+    },
+    {
+      "case_id": "mixed_03_eth_cl",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "3 valid WatchlistPick(s), status published"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 47 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: LINK-USDT-SWAP, XAU-USDT-SWAP, TSLA-USDT-SWAP"
+        },
+        {
+          "name": "asset_classes",
+          "passed": true,
+          "detail": "asset classes: ['commodity', 'crypto', 'etf']"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "status = published"
+        }
+      ],
+      "tool_calls": 3,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 4
+    },
+    {
+      "case_id": "mixed_04_meta_xau",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "3 valid WatchlistPick(s), status published"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 47 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: SOL-USDT-SWAP, NVDA-USDT-SWAP, XAG-USDT-SWAP"
+        },
+        {
+          "name": "asset_classes",
+          "passed": true,
+          "detail": "asset classes: ['commodity', 'crypto', 'stock']"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "status = published"
+        }
+      ],
+      "tool_calls": 3,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 4
+    },
+    {
+      "case_id": "mixed_05_sol_spy",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "2 valid WatchlistPick(s), status published"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 36 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: BTC-USDT-SWAP, XAU-USDT-SWAP, QQQ-USDT-SWAP"
+        },
+        {
+          "name": "asset_classes",
+          "passed": true,
+          "detail": "asset classes: ['crypto', 'etf']"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "status = published"
+        }
+      ],
+      "tool_calls": 2,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 3
+    },
+    {
+      "case_id": "mixed_06_xag_tsla",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "3 valid WatchlistPick(s), status published"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 47 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: ETH-USDT-SWAP, CL-USDT-SWAP, SPY-USDT-SWAP"
+        },
+        {
+          "name": "asset_classes",
+          "passed": true,
+          "detail": "asset classes: ['commodity', 'crypto', 'stock']"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "status = published"
+        }
+      ],
+      "tool_calls": 3,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 4
+    },
+    {
+      "case_id": "notrade_01_quiet_2026-10-13",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "0 valid WatchlistPick(s), status empty"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 10 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: BTC-USDT-SWAP, ETH-USDT-SWAP, XAU-USDT-SWAP"
+        },
+        {
+          "name": "no_trade_day",
+          "passed": true,
+          "detail": "0 picks, every conviction <= 0.5"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 1
+    },
+    {
+      "case_id": "notrade_02_quiet_2026-10-14",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "1 valid WatchlistPick(s), status published"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 18 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: XRP-USDT-SWAP, QQQ-USDT-SWAP, XAG-USDT-SWAP"
+        },
+        {
+          "name": "no_trade_day",
+          "passed": true,
+          "detail": "1 picks, every conviction <= 0.5"
+        }
+      ],
+      "tool_calls": 1,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 2
+    },
+    {
+      "case_id": "notrade_03_quiet_2026-10-15",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "0 valid WatchlistPick(s), status empty"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 10 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: BTC-USDT-SWAP, AVAX-USDT-SWAP, CL-USDT-SWAP"
+        },
+        {
+          "name": "no_trade_day",
+          "passed": true,
+          "detail": "0 picks, every conviction <= 0.5"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 1
+    },
+    {
+      "case_id": "notrade_04_quiet_2026-10-16",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "1 valid WatchlistPick(s), status published"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 18 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: XAU-USDT-SWAP, TSLA-USDT-SWAP, ETH-USDT-SWAP"
+        },
+        {
+          "name": "no_trade_day",
+          "passed": true,
+          "detail": "1 picks, every conviction <= 0.5"
+        }
+      ],
+      "tool_calls": 1,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 2
+    },
+    {
+      "case_id": "notrade_05_quiet_2026-10-17",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "0 valid WatchlistPick(s), status empty"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 10 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: BTC-USDT-SWAP, NVDA-USDT-SWAP, LINK-USDT-SWAP"
+        },
+        {
+          "name": "no_trade_day",
+          "passed": true,
+          "detail": "0 picks, every conviction <= 0.5"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 1
+    },
+    {
+      "case_id": "owner_01_pin",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "3 valid WatchlistPick(s), status published"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 32 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: LINK-USDT-SWAP, QQQ-USDT-SWAP, AVAX-USDT-SWAP"
+        },
+        {
+          "name": "not_picked",
+          "passed": true,
+          "detail": "not picked: ['DOGE-USDT-SWAP']"
+        },
+        {
+          "name": "picked",
+          "passed": true,
+          "detail": "on the watchlist: ['XAG-USDT-SWAP']"
+        }
+      ],
+      "tool_calls": 2,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 3
+    },
+    {
+      "case_id": "owner_02_pin",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "3 valid WatchlistPick(s), status published"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 30 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: LINK-USDT-SWAP, QQQ-USDT-SWAP, AVAX-USDT-SWAP"
+        },
+        {
+          "name": "not_picked",
+          "passed": true,
+          "detail": "not picked: ['SOL-USDT-SWAP']"
+        },
+        {
+          "name": "picked",
+          "passed": true,
+          "detail": "on the watchlist: ['META-USDT-SWAP']"
+        }
+      ],
+      "tool_calls": 3,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 4
+    },
+    {
+      "case_id": "owner_03_pin",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "2 valid WatchlistPick(s), status published"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 27 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: LINK-USDT-SWAP, QQQ-USDT-SWAP, AVAX-USDT-SWAP"
+        },
+        {
+          "name": "not_picked",
+          "passed": true,
+          "detail": "not picked: ['NVDA-USDT-SWAP', 'XRP-USDT-SWAP']"
+        },
+        {
+          "name": "picked",
+          "passed": true,
+          "detail": "on the watchlist: ['CL-USDT-SWAP']"
+        }
+      ],
+      "tool_calls": 2,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 3
+    },
+    {
+      "case_id": "owner_04_block",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "2 valid WatchlistPick(s), status published"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 29 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: LINK-USDT-SWAP, QQQ-USDT-SWAP, AVAX-USDT-SWAP"
+        },
+        {
+          "name": "not_picked",
+          "passed": true,
+          "detail": "not picked: ['XAU-USDT-SWAP', 'TSLA-USDT-SWAP']"
+        }
+      ],
+      "tool_calls": 2,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 3
+    },
+    {
+      "case_id": "single_01_avax",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "2 valid WatchlistPick(s), status published"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 27 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: AVAX-USDT-SWAP, QQQ-USDT-SWAP, CL-USDT-SWAP"
+        },
+        {
+          "name": "not_picked",
+          "passed": true,
+          "detail": "not picked: ['AVAX-USDT-SWAP']"
+        }
+      ],
+      "tool_calls": 2,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 3
+    },
+    {
+      "case_id": "single_02_meta",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "2 valid WatchlistPick(s), status published"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 29 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: META-USDT-SWAP, QQQ-USDT-SWAP, CL-USDT-SWAP"
+        },
+        {
+          "name": "not_picked",
+          "passed": true,
+          "detail": "not picked: ['META-USDT-SWAP']"
+        }
+      ],
+      "tool_calls": 2,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 3
+    },
+    {
+      "case_id": "single_03_link",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "2 valid WatchlistPick(s), status published"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 27 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: LINK-USDT-SWAP, QQQ-USDT-SWAP, CL-USDT-SWAP"
+        },
+        {
+          "name": "not_picked",
+          "passed": true,
+          "detail": "not picked: ['LINK-USDT-SWAP']"
+        }
+      ],
+      "tool_calls": 2,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 3
+    },
+    {
+      "case_id": "timeout_01_historian",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "2 valid WatchlistPick(s), status partial_evidence"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 38 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: QQQ-USDT-SWAP, AVAX-USDT-SWAP, CL-USDT-SWAP"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "status = partial_evidence"
+        },
+        {
+          "name": "max_conviction",
+          "passed": true,
+          "detail": "every conviction <= 0.5"
+        }
+      ],
+      "tool_calls": 2,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 3
+    },
+    {
+      "case_id": "timeout_02_news_intelligence",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "2 valid WatchlistPick(s), status partial_evidence"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 36 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: QQQ-USDT-SWAP, AVAX-USDT-SWAP, CL-USDT-SWAP"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "status = partial_evidence"
+        },
+        {
+          "name": "max_conviction",
+          "passed": true,
+          "detail": "every conviction <= 0.5"
+        }
+      ],
+      "tool_calls": 2,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 3
+    },
+    {
+      "case_id": "timeout_03_both",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "2 valid WatchlistPick(s), status partial_evidence"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 36 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: QQQ-USDT-SWAP, AVAX-USDT-SWAP, CL-USDT-SWAP"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "status = partial_evidence"
+        },
+        {
+          "name": "max_conviction",
+          "passed": true,
+          "detail": "every conviction <= 0.5"
+        }
+      ],
+      "tool_calls": 2,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 3
+    },
+    {
+      "case_id": "timeout_04_historian",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_watchlist",
+          "passed": true,
+          "detail": "2 valid WatchlistPick(s), status partial_evidence"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 36 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rejected_listed",
+          "passed": true,
+          "detail": "3 rejected with reasons: QQQ-USDT-SWAP, AVAX-USDT-SWAP, CL-USDT-SWAP"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "status = partial_evidence"
+        },
+        {
+          "name": "max_conviction",
+          "passed": true,
+          "detail": "every conviction <= 0.5"
+        }
+      ],
+      "tool_calls": 2,
+      "tokens_in": 9000,
+      "tokens_out": 900,
+      "turns": 3
+    }
+  ],
+  "overall": {
+    "passed": 133,
+    "total": 133,
+    "pass_rate": 100.0
+  },
+  "baseline": {
+    "path": "services/agents/evals/market_scout/baseline.json",
+    "pass_rate": null,
+    "max_drop_points": 5.0,
+    "ok": true
+  }
+}
