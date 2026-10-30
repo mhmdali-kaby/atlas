@@ -279,14 +279,17 @@ class NewsBrief(_Model):
 class Catalyst(_Model):
     """One reason a pick may move (brief §6.3): what, when, which source, how important (1-5)."""
 
+    name: str = Field(min_length=1, max_length=200)
     time: AwareDatetime | None = Field(default=None, description="When it happens (UTC); null if unscheduled")
     source: str = Field(min_length=1, max_length=500)
+    importance: int = Field(ge=1, le=5)
 
 
 class WatchlistPick(_Model):
     """One Market Scout pick (brief §6.3). ``rank`` 1 is the strongest. ``key_levels`` maps a level
     name (support, resistance, invalidation, ...) to a price."""
 
+    inst_id: str = Field(min_length=1, max_length=64)
     rank: int = Field(ge=1)
     asset_class: str = Field(min_length=1, max_length=32)
     bias: Literal["long", "short", "neutral"]
@@ -295,6 +298,7 @@ class WatchlistPick(_Model):
     catalysts: list[Catalyst] = Field(default_factory=list)
     key_levels: dict[str, float] = Field(default_factory=dict)
     invalidation: str = Field(min_length=1)
+    data_as_of: AwareDatetime
 
 
 # War Room card registry: card ``type`` -> the one model it must validate against.
