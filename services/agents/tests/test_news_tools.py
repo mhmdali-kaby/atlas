@@ -298,6 +298,18 @@ def test_domain_allowed_deny_wins_over_allow(monkeypatch: pytest.MonkeyPatch) ->
     assert news_tools.domain_allowed("evil.coindesk.com") is False
 
 
+def test_domain_allowed_ignores_a_trailing_dot_fqdn(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Security round 9 review: ``denied.test.`` is the same DNS name as ``denied.test`` (a
+    trailing "." makes a hostname absolute), so it must not slip past the deny list, and an
+    allow-listed host written with a trailing dot must still match."""
+    _set_web_policy(monkeypatch, deny=["denied.test"])
+    assert news_tools.domain_allowed("denied.test.") is False
+    assert news_tools.domain_allowed("DENIED.test") is False
+
+    _set_web_policy(monkeypatch, allow=["coindesk.com"])
+    assert news_tools.domain_allowed("coindesk.com.") is True
+
+
 async def test_fetch_article_denied_domain_is_refused_without_a_request(
     db: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -311,6 +323,25 @@ async def test_fetch_article_denied_domain_is_refused_without_a_request(
 
     monkeypatch.setattr(news_tools, "_fetcher", must_not_fetch)
     body = await _call(_ctx(db), "fetch_article", {"url": "https://denied.test/story"})
+    assert body["error"] == "domain_denied"
+    assert called is False
+
+
+async def test_fetch_article_denied_domain_trailing_dot_fqdn_is_refused_without_a_request(
+    db: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The same bypass at the fetch_article level: ``https://denied.test./x`` resolves to the
+    same server as ``https://denied.test/x`` and must be refused the same way."""
+    _set_web_policy(monkeypatch, deny=["denied.test"])
+    called = False
+
+    async def must_not_fetch(url: str) -> str | None:
+        nonlocal called
+        called = True
+        return "unexpected"
+
+    monkeypatch.setattr(news_tools, "_fetcher", must_not_fetch)
+    body = await _call(_ctx(db), "fetch_article", {"url": "https://denied.test./x"})
     assert body["error"] == "domain_denied"
     assert called is False
 

@@ -368,9 +368,13 @@ ArticleFetcher = Callable[[str], Awaitable[str | None]]
 
 
 def _host_matches(host: str, domains: Sequence[str]) -> bool:
-    host = host.lower()
+    # A trailing "." makes a hostname absolute in DNS (`denied.test.` resolves to the same name
+    # as `denied.test`) but is not part of either side's domain text, so strip it from the host
+    # and from every configured entry before comparing — otherwise `https://denied.test./x`
+    # would bypass a deny_domains=["denied.test"] entry entirely (security round 9 review).
+    host = host.lower().rstrip(".")
     for domain in domains:
-        entry = domain.strip().lower().lstrip(".")
+        entry = domain.strip().lower().rstrip(".").lstrip(".")
         if entry and (host == entry or host.endswith("." + entry)):
             return True
     return False
@@ -381,9 +385,11 @@ def domain_allowed(host: str) -> bool:
     ``deny_domains`` in config/defaults.yaml (ATL-100, security round 9, low: Devil's Advocate —
     and, before news.fetch_article existed as the guarded path, the CLI's own WebFetch — could
     reach any public URL with no domain policy at all). A host matches an entry when it equals it
-    or is a subdomain of it. ``deny_domains`` wins; an empty ``allow_domains`` allows any public
-    host that is not denied. Checked on the URL's own host and, via ``Extractor.host_check``, on
-    every redirect hop inside :func:`guarded_fetch` — never on a stored article body."""
+    or is a subdomain of it, ignoring a trailing "." (an absolute-FQDN host like
+    ``denied.test.`` is the same host as ``denied.test``). ``deny_domains`` wins; an empty
+    ``allow_domains`` allows any public host that is not denied. Checked on the URL's own host
+    and, via ``Extractor.host_check``, on every redirect hop inside :func:`guarded_fetch` — never
+    on a stored article body."""
     conf = DEFAULTS["agents"]["web"]
     if _host_matches(host, conf["deny_domains"]):
         return False
