@@ -1203,6 +1203,34 @@ agents:
       pending_statuses: [draft, under_review, voting, passed, risk_checked, awaiting_owner, sent, partially_filled]
       open_statuses: [under_review, voting]
       max_revisions: 1
+  # ATL-154, brief §7.9: the weighted vote, computed in code (atlas_agents.votes.close_vote).
+  #   voters: the agents whose votes count; a voter with no vote counts as skip at
+  #     missing_confidence.
+  #   scores: points per vote. A "change" vote scores change_applied when it was cast on an earlier
+  #     version and the proposal was revised after it (the Strategist applied a fix), else change.
+  #   threshold: pass when weighted score / total weight >= this. The settings-table key
+  #     threshold_setting (flat, like the other agents.* settings) overrides it.
+  #   reliability_*: weight = confidence x the voter's reliability weight, read from the newest
+  #     agent_scores.data.reliability_weight within reliability_days, clamped to [min, max];
+  #     reliability_default when there is none.
+  #   da_*: the Devil's Advocate review card (warroom_messages author da_agent, card.type
+  #     da_card_type, card.proposal_id, integer card.risk_rating 1-5). The vote fails when the
+  #     newest rating on any version of the proposal is above da_max_rating, or there is none.
+  #   closable_statuses: close_vote refuses a proposal in any other status.
+  votes:
+    voters: [technical_analyst, derivatives_sentiment, news_intelligence, historian, devils_advocate]
+    scores: { take: "1", change_applied: "0.5", change: "0", skip: "0" }
+    missing_confidence: "0.5"
+    threshold: "0.6"
+    threshold_setting: agents.vote_threshold
+    reliability_days: 30
+    reliability_min: "0.5"
+    reliability_max: "1.5"
+    reliability_default: "1"
+    da_agent: devils_advocate
+    da_card_type: da_review
+    da_max_rating: 4
+    closable_statuses: [under_review, voting]
   technical_analyst:
     history_bars: { "1D": 400, "4H": 500, "1H": 500, "15m": 500, "5m": 300 }
     stale_bars: 2

@@ -1465,6 +1465,35 @@ return [
                 'max_revisions' => 1,
             ],
         ],
+        'votes' => [
+            'voters' => [
+                'technical_analyst',
+                'derivatives_sentiment',
+                'news_intelligence',
+                'historian',
+                'devils_advocate',
+            ],
+            'scores' => [
+                'take' => '1',
+                'change_applied' => '0.5',
+                'change' => '0',
+                'skip' => '0',
+            ],
+            'missing_confidence' => '0.5',
+            'threshold' => '0.6',
+            'threshold_setting' => 'agents.vote_threshold',
+            'reliability_days' => 30,
+            'reliability_min' => '0.5',
+            'reliability_max' => '1.5',
+            'reliability_default' => '1',
+            'da_agent' => 'devils_advocate',
+            'da_card_type' => 'da_review',
+            'da_max_rating' => 4,
+            'closable_statuses' => [
+                'under_review',
+                'voting',
+            ],
+        ],
         'technical_analyst' => [
             'history_bars' => [
                 '1D' => 400,
