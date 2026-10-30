@@ -1,0 +1,60 @@
+agent: market_scout
+replay_as_of: '2026-10-21T05:00:00Z'
+env: demo
+description: DOGE-USDT-SWAP already moved more than 3 ATR in a day; it must not be picked.
+prompt: Market Scout watchlist for 2026-10-21 (chasing case)
+properties:
+  valid_watchlist: {}
+  no_invented_numbers: {}
+  rejected_listed:
+    count: 3
+  not_picked:
+    inst_ids:
+    - DOGE-USDT-SWAP
+inputs:
+  replies:
+    news_intelligence:
+      kind: text
+      content_md: 'Briefs for the shortlist. DOGE-USDT-SWAP: 4 stories in 24h, top importance 4; BTC-USDT-SWAP:
+        2 stories in 24h, top importance 3; SPY-USDT-SWAP: 2 stories in 24h, top importance 3.'
+      card: null
+    historian:
+      kind: text
+      content_md: 'Regime check for the top candidates: DOGE-USDT-SWAP trend; BTC-USDT-SWAP trend; SPY-USDT-SWAP
+        trend; LINK-USDT-SWAP trend; QQQ-USDT-SWAP trend; CL-USDT-SWAP trend.'
+      card: null
+fake:
+  steps:
+  - tool: okx_market.get_candles
+    input:
+      inst_id: BTC-USDT-SWAP
+      bar: 1D
+      limit: 20
+  - tool: okx_market.get_candles
+    input:
+      inst_id: SPY-USDT-SWAP
+      bar: 1D
+      limit: 20
+  - text: "BTC is in a trend regime, 7d return 3.5%. Today: BTC-USDT-SWAP long, SPY-USDT-SWAP long.\n\n```json\n\
+      {\n \"type\": \"watchlist\",\n \"backdrop\": [\n  \"BTC is in a trend regime, 7d return 3.5%.\",\n  \"SPY-USDT-SWAP\
+      \ leads the non-crypto names, 7d return 3.5%.\",\n  \"No high-impact event in the next 48h.\"\n ],\n \"picks\"\
+      : [\n  {\n   \"inst_id\": \"BTC-USDT-SWAP\",\n   \"rank\": 1,\n   \"asset_class\": \"crypto\",\n   \"bias\"\
+      : \"long\",\n   \"conviction\": 0.66,\n   \"thesis\": \"2 stories in 24h and vol ratio 1.4. Regime is trend\
+      \ and the 7d return is 3.5% with ATR(14) on 1D at 2.4%. It beats the rejected names on combined evidence.\"\
+      ,\n   \"catalysts\": [],\n   \"key_levels\": {\n    \"support\": 65631.35,\n    \"resistance\": 74862.53,\n\
+      \    \"invalidation\": 65631.35\n   },\n   \"invalidation\": \"A daily close beyond the 20-day range on the\
+      \ wrong side of the bias.\",\n   \"data_as_of\": \"2026-10-21T04:55:00Z\"\n  },\n  {\n   \"inst_id\": \"SPY-USDT-SWAP\"\
+      ,\n   \"rank\": 2,\n   \"asset_class\": \"etf\",\n   \"bias\": \"long\",\n   \"conviction\": 0.6,\n   \"thesis\"\
+      : \"2 stories in 24h and vol ratio 1.4. Regime is trend and the 7d return is 3.5% with ATR(14) on 1D at 2.4%.\
+      \ It beats the rejected names on combined evidence.\",\n   \"catalysts\": [],\n   \"key_levels\": {\n    \"\
+      support\": 596.22,\n    \"resistance\": 645.89,\n    \"invalidation\": 596.22\n   },\n   \"invalidation\"\
+      : \"A daily close beyond the 20-day range on the wrong side of the bias.\",\n   \"data_as_of\": \"2026-10-21T04:55:00Z\"\
+      \n  }\n ],\n \"rejected\": [\n  {\n   \"inst_id\": \"DOGE-USDT-SWAP\",\n   \"reason\": \"DOGE-USDT-SWAP: already\
+      \ moved 18.2% in 1d against ATR 4.1%, about 4.4 ATR; chasing.\"\n  },\n  {\n   \"inst_id\": \"LINK-USDT-SWAP\"\
+      ,\n   \"reason\": \"LINK-USDT-SWAP: no catalyst and volume z 0.3.\"\n  },\n  {\n   \"inst_id\": \"QQQ-USDT-SWAP\"\
+      ,\n   \"reason\": \"QQQ-USDT-SWAP: no catalyst and volume z 0.3.\"\n  }\n ],\n \"no_pick_reason\": null\n\
+      }\n```"
+  - result:
+      tokens_in: 9000
+      tokens_out: 900
+      turns: 3

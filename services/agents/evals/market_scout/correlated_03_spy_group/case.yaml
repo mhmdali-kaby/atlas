@@ -1,0 +1,75 @@
+agent: market_scout
+replay_as_of: '2026-09-23T05:00:00Z'
+env: demo
+description: 'Highly correlated candidates: at most 2 picks with 30-day correlation above 0.8.'
+prompt: Market Scout watchlist for 2026-09-23 (correlated case)
+properties:
+  valid_watchlist: {}
+  no_invented_numbers: {}
+  rejected_listed:
+    count: 3
+  max_correlated:
+    groups:
+    - - SPY-USDT-SWAP
+      - QQQ-USDT-SWAP
+      - NVDA-USDT-SWAP
+    max: 2
+inputs:
+  replies:
+    news_intelligence:
+      kind: text
+      content_md: 'Briefs for the shortlist. SPY-USDT-SWAP: 3 stories in 24h, top importance 4; QQQ-USDT-SWAP: 3
+        stories in 24h, top importance 4; NVDA-USDT-SWAP: 3 stories in 24h, top importance 4; BTC-USDT-SWAP: 2 stories
+        in 24h, top importance 4.'
+      card: null
+    historian:
+      kind: text
+      content_md: 'Regime check for the top candidates: SPY-USDT-SWAP trend; QQQ-USDT-SWAP trend; NVDA-USDT-SWAP
+        trend; BTC-USDT-SWAP trend; DOGE-USDT-SWAP trend; META-USDT-SWAP trend.'
+      card: null
+fake:
+  steps:
+  - tool: okx_market.get_candles
+    input:
+      inst_id: SPY-USDT-SWAP
+      bar: 1D
+      limit: 20
+  - tool: okx_market.get_candles
+    input:
+      inst_id: BTC-USDT-SWAP
+      bar: 1D
+      limit: 20
+  - tool: okx_market.get_candles
+    input:
+      inst_id: QQQ-USDT-SWAP
+      bar: 1D
+      limit: 20
+  - text: "BTC is in a trend regime, 7d return 3.2%. Today: SPY-USDT-SWAP long, BTC-USDT-SWAP long, QQQ-USDT-SWAP\
+      \ long.\n\n```json\n{\n \"type\": \"watchlist\",\n \"backdrop\": [\n  \"BTC is in a trend regime, 7d return\
+      \ 3.2%.\",\n  \"SPY-USDT-SWAP leads the non-crypto names, 7d return 5.1%.\",\n  \"No high-impact event in\
+      \ the next 48h.\"\n ],\n \"picks\": [\n  {\n   \"inst_id\": \"SPY-USDT-SWAP\",\n   \"rank\": 1,\n   \"asset_class\"\
+      : \"etf\",\n   \"bias\": \"long\",\n   \"conviction\": 0.7,\n   \"thesis\": \"3 stories in 24h and volume\
+      \ z 1.7. Regime is trend and the 7d return is 5.1% with ATR(14) on 1D at 2.4%. It beats the rejected names\
+      \ on combined evidence.\",\n   \"catalysts\": [],\n   \"key_levels\": {\n    \"support\": 469.06,\n    \"\
+      resistance\": 556.54,\n    \"invalidation\": 469.06\n   },\n   \"invalidation\": \"A daily close beyond the\
+      \ 20-day range on the wrong side of the bias.\",\n   \"data_as_of\": \"2026-09-23T04:55:00Z\"\n  },\n  {\n\
+      \   \"inst_id\": \"BTC-USDT-SWAP\",\n   \"rank\": 2,\n   \"asset_class\": \"crypto\",\n   \"bias\": \"long\"\
+      ,\n   \"conviction\": 0.62,\n   \"thesis\": \"2 stories in 24h; uncorrelated with the group. Regime is trend\
+      \ and the 7d return is 3.2% with ATR(14) on 1D at 2.4%. It beats the rejected names on combined evidence.\"\
+      ,\n   \"catalysts\": [],\n   \"key_levels\": {\n    \"support\": 69878.63,\n    \"resistance\": 75975.76,\n\
+      \    \"invalidation\": 69878.63\n   },\n   \"invalidation\": \"A daily close beyond the 20-day range on the\
+      \ wrong side of the bias.\",\n   \"data_as_of\": \"2026-09-23T04:55:00Z\"\n  },\n  {\n   \"inst_id\": \"QQQ-USDT-SWAP\"\
+      ,\n   \"rank\": 3,\n   \"asset_class\": \"etf\",\n   \"bias\": \"long\",\n   \"conviction\": 0.55,\n   \"\
+      thesis\": \"Volume z 1.7; second name of the group. Regime is trend and the 7d return is 4.8999999999999995%\
+      \ with ATR(14) on 1D at 2.4%. It beats the rejected names on combined evidence.\",\n   \"catalysts\": [],\n\
+      \   \"key_levels\": {\n    \"support\": 411.47,\n    \"resistance\": 480.22,\n    \"invalidation\": 411.47\n\
+      \   },\n   \"invalidation\": \"A daily close beyond the 20-day range on the wrong side of the bias.\",\n \
+      \  \"data_as_of\": \"2026-09-23T04:55:00Z\"\n  }\n ],\n \"rejected\": [\n  {\n   \"inst_id\": \"NVDA-USDT-SWAP\"\
+      ,\n   \"reason\": \"NVDA-USDT-SWAP: same 30-day move as SPY-USDT-SWAP (corr above the limit); a third pick\
+      \ adds no diversification.\"\n  },\n  {\n   \"inst_id\": \"DOGE-USDT-SWAP\",\n   \"reason\": \"DOGE-USDT-SWAP:\
+      \ no catalyst and volume z 0.3.\"\n  },\n  {\n   \"inst_id\": \"META-USDT-SWAP\",\n   \"reason\": \"META-USDT-SWAP:\
+      \ no catalyst and volume z 0.3.\"\n  }\n ],\n \"no_pick_reason\": null\n}\n```"
+  - result:
+      tokens_in: 9000
+      tokens_out: 900
+      turns: 4

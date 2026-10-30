@@ -31,7 +31,7 @@ import json
 import logging
 import time
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
 from typing import Any, Final
@@ -92,6 +92,10 @@ RERUN_JOB: Final = "scout_rerun"
 SPIKE_JOB: Final = "scout_spike_check"
 
 _tasks: set[asyncio.Task[Any]] = set()
+
+ReplySource = Callable[[ToolContext, Mapping[str, str]], dict[str, Reply]]
+"""(ctx, {agent: mention envelope id}) -> the replies that arrived. Synchronous. The default polls
+warroom_messages (:func:`wait_for_replies`); the evals pass the case's scripted replies (ATL-112)."""
 
 
 # -- config -----------------------------------------------------------------------------------------
@@ -820,12 +824,15 @@ async def run_watchlist(
     day: date | None = None,
     depth: int = 0,
     trigger_detail: Mapping[str, Any] | None = None,
+    replies_from: ReplySource | None = None,
 ) -> RunResult | None:
     """The whole pipeline (module docstring). Returns the Scout run, or None when the model was not
     called (already done for this correlation id, or an empty shortlist).
 
     ``trigger_detail`` (ATL-109 intraday re-runs) replaces the card's ``trigger`` string with that
-    object, adds ``changes`` against the previous version, and tells the model why it re-runs."""
+    object, adds ``changes`` against the previous version, and tells the model why it re-runs.
+    ``replies_from`` replaces the War Room poll for the teammates' replies (the replay evals, where
+    nothing is published)."""
     ctx = host.tool_context(SLUG)
     today = day or owner_day(ctx.now())
     if trigger == "schedule" and await asyncio.to_thread(_already_done, ctx, today, correlation_id):
@@ -859,7 +866,9 @@ async def run_watchlist(
         _publish(host, envelope)
         asked[agent] = str(envelope.id)
     replies: dict[str, Reply] = {}
-    if asked:
+    if asked and replies_from is not None:
+        replies = await asyncio.to_thread(replies_from, ctx, asked)
+    elif asked:
         replies = await asyncio.to_thread(
             wait_for_replies, ctx, asked, timeout=wait_seconds(), poll=poll_seconds()
         )
@@ -1050,6 +1059,7 @@ __all__ = [
     "Inputs",
     "Prepared",
     "Reply",
+    "ReplySource",
     "WatchlistReviewer",
     "answer_mention",
     "empty_reason",

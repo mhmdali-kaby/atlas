@@ -33,6 +33,21 @@ News Intelligence (ATL-111, brief §7.2):
 * ``text_matches: {patterns: [..]}`` — every regex (case-insensitive, multiline) matches the text.
 * ``card_covers: {inst_ids: [..], cluster_ids: [..], min_events: 0}`` — the card's inst_ids and
   clusters include those named, and it lists at least ``min_events`` upcoming events.
+
+Watchlist cards (Market Scout, ATL-112); ``verdict_in: {field: status, values: [...]}`` checks the
+card status:
+
+* ``valid_watchlist: {}`` — a ``watchlist`` card whose every pick is a valid ``WatchlistPick``, ranked
+  1..n with unique instruments.
+* ``rejected_listed: {count: 3}`` — exactly ``count`` rejected candidates, each with a reason and none
+  of them picked.
+* ``picks_count: {min: 0, max: 5}`` — the number of picks.
+* ``no_trade_day: {max_picks: 1, max_conviction: 0.5}`` — a poor day: at most ``max_picks`` picks, none
+  above ``max_conviction``.
+* ``max_conviction: {max: 0.5}`` — no pick above it.
+* ``picked: {inst_ids: [...]}`` / ``not_picked: {inst_ids: [...]}`` — on / off the final list.
+* ``max_correlated: {groups: [[a, b, c]], max: 2}`` — at most ``max`` picks from each group.
+* ``asset_classes: {min: 2}`` — picks span at least ``min`` asset classes.
 """
 
 from __future__ import annotations
@@ -354,6 +369,132 @@ def card_covers(t: Transcript, params: Mapping[str, Any]) -> Outcome:
     return True, "card covers the asked instruments, stories and events"
 
 
+# -- watchlist cards (ATL-112) ----------------------------------------------------------------------
+
+
+def _picks(t: Transcript) -> list[dict[str, Any]]:
+    picks = (t.card or {}).get("picks")
+    if not isinstance(picks, list):
+        raise ValueError("the card has no picks list")
+    return [p for p in picks if isinstance(p, dict)]
+
+
+def _picked_ids(t: Transcript) -> list[str]:
+    return [str(p.get("inst_id")) for p in _picks(t)]
+
+
+def _conviction(pick: Mapping[str, Any]) -> float:
+    return float(pick.get("conviction", 0.0))
+
+
+def valid_watchlist(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    card = t.card
+    if card is None:
+        return False, "no card in the answer"
+    if card.get("type") != "watchlist":
+        return False, f"card type = {card.get('type')!r}, expected 'watchlist'"
+    picks = _picks(t)
+    for pick in picks:
+        try:
+            schemas.WatchlistPick.model_validate({k: v for k, v in pick.items() if k in _PICK_FIELDS})
+        except ValidationError as exc:
+            first = exc.errors()[0]
+            where = ".".join(str(p) for p in first["loc"]) or "(root)"
+            return (
+                False,
+                f"pick {pick.get('inst_id')}: {exc.error_count()} errors, first {where}: {first['msg']}",
+            )
+    ranks = [int(p["rank"]) for p in picks]
+    if ranks != list(range(1, len(picks) + 1)):
+        return False, f"ranks {ranks} are not 1..{len(picks)}"
+    ids = _picked_ids(t)
+    if len(set(ids)) != len(ids):
+        return False, f"an instrument is picked twice: {ids}"
+    return True, f"{len(picks)} valid WatchlistPick(s), status {card.get('status')}"
+
+
+_PICK_FIELDS: Final = frozenset(schemas.WatchlistPick.model_fields)
+
+
+def rejected_listed(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    count = int(params.get("count", 3))
+    rejected = (t.card or {}).get("rejected")
+    if not isinstance(rejected, list):
+        return False, "the card has no rejected list"
+    ids = [str(r.get("inst_id")) for r in rejected if isinstance(r, dict)]
+    if len(ids) != count:
+        return False, f"{len(ids)} rejected candidates listed, expected {count}"
+    if any(not str(r.get("reason") or "").strip() for r in rejected if isinstance(r, dict)):
+        return False, "a rejected candidate has no reason"
+    both = sorted(set(ids) & set(_picked_ids(t)))
+    if both:
+        return False, f"picked and rejected at once: {both}"
+    return True, f"{count} rejected with reasons: {', '.join(ids)}"
+
+
+def picks_count(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    n = len(_picks(t))
+    if "min" in params and n < int(params["min"]):
+        return False, f"{n} picks < min {params['min']}"
+    if "max" in params and n > int(params["max"]):
+        return False, f"{n} picks > max {params['max']}"
+    return True, f"{n} picks"
+
+
+def max_conviction(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    limit = float(params["max"])
+    over = [f"{p.get('inst_id')} {_conviction(p):g}" for p in _picks(t) if _conviction(p) > limit]
+    if over:
+        return False, f"conviction above {limit:g}: {', '.join(over)}"
+    return True, f"every conviction <= {limit:g}"
+
+
+def no_trade_day(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    most = int(params.get("max_picks", 1))
+    limit = float(params.get("max_conviction", 0.5))
+    picks = _picks(t)
+    if len(picks) > most:
+        return False, f"a no-trade day: {len(picks)} picks, expected at most {most}"
+    passed, detail = max_conviction(t, {"max": limit})
+    if not passed:
+        return False, f"a no-trade day: {detail}"
+    return True, f"{len(picks)} picks, every conviction <= {limit:g}"
+
+
+def picked(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    wanted = [str(i) for i in params["inst_ids"]]
+    missing = [i for i in wanted if i not in _picked_ids(t)]
+    if missing:
+        return False, f"not on the watchlist: {missing}"
+    return True, f"on the watchlist: {wanted}"
+
+
+def not_picked(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    banned = [str(i) for i in params["inst_ids"]]
+    found = [i for i in banned if i in _picked_ids(t)]
+    if found:
+        return False, f"picked but must not be: {found}"
+    return True, f"not picked: {banned}"
+
+
+def max_correlated(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    most = int(params.get("max", 2))
+    ids = set(_picked_ids(t))
+    for group in params["groups"]:
+        inside = sorted(ids & {str(i) for i in group})
+        if len(inside) > most:
+            return False, f"{len(inside)} picks from one correlated group: {inside} (max {most})"
+    return True, f"at most {most} picks per correlated group"
+
+
+def asset_classes(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    classes = sorted({str(p.get("asset_class")) for p in _picks(t)})
+    least = int(params.get("min", 2))
+    if len(classes) < least:
+        return False, f"picks span {len(classes)} asset class(es) {classes}, expected at least {least}"
+    return True, f"asset classes: {classes}"
+
+
 PROPERTIES: Final[dict[str, Property]] = {
     "valid_schema": valid_schema,
     "no_invented_numbers": no_invented_numbers,
@@ -366,6 +507,15 @@ PROPERTIES: Final[dict[str, Property]] = {
     "mentions_degraded": mentions_degraded,
     "text_matches": text_matches,
     "card_covers": card_covers,
+    "valid_watchlist": valid_watchlist,
+    "rejected_listed": rejected_listed,
+    "picks_count": picks_count,
+    "no_trade_day": no_trade_day,
+    "max_conviction": max_conviction,
+    "picked": picked,
+    "not_picked": not_picked,
+    "max_correlated": max_correlated,
+    "asset_classes": asset_classes,
 }
 
 

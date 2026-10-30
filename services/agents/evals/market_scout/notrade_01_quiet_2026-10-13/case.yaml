@@ -1,0 +1,40 @@
+agent: market_scout
+replay_as_of: '2026-10-13T05:00:00Z'
+env: demo
+description: 'Known no-trade day: flat ranges, falling volume, no catalyst in 48h.'
+prompt: Market Scout watchlist for 2026-10-13 (notrade case)
+properties:
+  valid_watchlist: {}
+  no_invented_numbers: {}
+  rejected_listed:
+    count: 3
+  no_trade_day:
+    max_picks: 1
+    max_conviction: 0.5
+inputs:
+  replies:
+    news_intelligence:
+      kind: text
+      content_md: Briefs for the shortlist. No instrument-specific stories in 24h; the 48h calendar is the main
+        catalyst..
+      card: null
+    historian:
+      kind: text
+      content_md: 'Regime check for the top candidates: BTC-USDT-SWAP range; ETH-USDT-SWAP range; XAU-USDT-SWAP
+        range; SPY-USDT-SWAP range; SOL-USDT-SWAP range; TSLA-USDT-SWAP range.'
+      card: null
+fake:
+  steps:
+  - text: "BTC is in a range regime, 7d return 0.3%. Today: no picks.\n\n```json\n{\n \"type\": \"watchlist\",\n\
+      \ \"backdrop\": [\n  \"BTC is in a range regime, 7d return 0.3%.\",\n  \"XAU-USDT-SWAP leads the non-crypto\
+      \ names, 7d return 0.09999999999999998%.\",\n  \"No high-impact event in the next 48h.\"\n ],\n \"picks\"\
+      : [],\n \"rejected\": [\n  {\n   \"inst_id\": \"BTC-USDT-SWAP\",\n   \"reason\": \"BTC-USDT-SWAP: range regime,\
+      \ volume z -1.1 and vol ratio 0.6; no catalyst.\"\n  },\n  {\n   \"inst_id\": \"ETH-USDT-SWAP\",\n   \"reason\"\
+      : \"ETH-USDT-SWAP: range regime, volume z -1.1 and vol ratio 0.6; no catalyst.\"\n  },\n  {\n   \"inst_id\"\
+      : \"XAU-USDT-SWAP\",\n   \"reason\": \"XAU-USDT-SWAP: range regime, volume z -1.1 and vol ratio 0.6; no catalyst.\"\
+      \n  }\n ],\n \"no_pick_reason\": \"Every shortlist name is in a range regime with falling volume and no catalyst.\"\
+      \n}\n```"
+  - result:
+      tokens_in: 9000
+      tokens_out: 900
+      turns: 1
