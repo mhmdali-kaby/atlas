@@ -1,7 +1,7 @@
 """The Historian's two triggers (brief §7.3, §8, ATL-93).
 
-1. **@Historian mentions.** :func:`mention_from_envelope` turns a ``warroom.message`` on
-   ``atlas.warroom`` that mentions ``historian`` into a :class:`MentionRequest`. The run's prompt
+1. **@Historian mentions.** :func:`atlas_agents.mentions.mention_from_envelope` turns a
+   ``warroom.message`` that mentions ``historian`` into a ``MentionRequest``. The run's prompt
    (:func:`mention_prompt`) asks for a short answer ending in one fenced ```json HistoryVerdict
    card. :class:`VerdictReviewer` validates that card (one retry with the validation errors, then
    the run is ``degraded``), applies :func:`~atlas_agents.schemas.enforce_verdict_rules`, runs the
@@ -13,6 +13,8 @@
    (:func:`regime_prompt`) and :class:`RegimeTableReviewer` publishes it as kind ``regime_table``
    with the table as the card. :func:`fallback_regime_message` is the message when the run fails,
    so the table is still posted.
+
+Both are registered with the supervisor in :mod:`atlas_agents.agents.historian` (ATL-101).
 """
 
 from __future__ import annotations
@@ -25,12 +27,14 @@ from datetime import datetime
 from typing import Any, Final
 
 from atlas_shared.defaults import DEFAULTS
-from atlas_shared.events import EventEnvelope
 from claude_agent_sdk import AssistantMessage, ToolResultBlock, ToolUseBlock, UserMessage
 from claude_agent_sdk.types import Message
 from pydantic import ValidationError
 
 from atlas_agents import numguard
+from atlas_agents.mentions import MentionRequest as MentionRequest
+from atlas_agents.mentions import mention_from_envelope as mention_from_envelope
+from atlas_agents.mentions import resolve_parent as resolve_parent
 from atlas_agents.schemas import (
     CardMeta,
     HistoryVerdict,
@@ -44,10 +48,9 @@ from atlas_agents.schemas import (
 from atlas_agents.session import Review
 from atlas_agents.tools import ToolContext
 from atlas_agents.tools.catalogue import HistorySeriesInput, ListInstrumentsInput
-from atlas_agents.tools.framework import ToolError
 from atlas_agents.tools.history import RegimeOut, detect_regime_tool
 from atlas_agents.tools.market import ListInstrumentsOut, list_instruments
-from atlas_agents.tools.warroom import MAIN_THREAD, _parent
+from atlas_agents.tools.warroom import MAIN_THREAD
 
 SLUG: Final = "historian"
 RESEARCH_REPORT: Final = "research_report"
@@ -69,60 +72,7 @@ def _min_n(defaults: Mapping[str, Any] = DEFAULTS) -> int:
 # -- mentions ---------------------------------------------------------------------------------------
 
 
-@dataclass(frozen=True)
-class MentionRequest:
-    """A War Room message that mentions an agent. ``row_id``/``thread_id`` come from the payload
-    (owner messages carry them) or are resolved from Postgres by the envelope id."""
-
-    event_id: str
-    env: str
-    author: str
-    author_type: str
-    content_md: str
-    correlation_id: str | None
-    ts: datetime
-    row_id: str | None = None
-    thread_id: str | None = None
-
-
-def mention_from_envelope(envelope: EventEnvelope, agent: str, env: str) -> MentionRequest | None:
-    """The request for ``agent`` in ``envelope``, or None when it is not a message for it in
-    ``env`` (other type, other env, not mentioned, or written by ``agent`` itself)."""
-    if envelope.type != "warroom.message" or envelope.env != env:
-        return None
-    payload = envelope.payload
-    mentions = payload.get("mentions") or []
-    if not isinstance(mentions, list) or agent not in mentions:
-        return None
-    if envelope.source == f"agent:{agent}" or payload.get("author") == agent:
-        return None
-    content = payload.get("content_md")
-    if not isinstance(content, str) or not content.strip():
-        return None
-    row_id = payload.get("message_id")
-    thread_id = payload.get("thread_id")
-    return MentionRequest(
-        event_id=str(envelope.id),
-        env=envelope.env,
-        author=str(payload.get("author") or "unknown"),
-        author_type=str(payload.get("author_type") or "unknown"),
-        content_md=content,
-        correlation_id=envelope.correlation_id,
-        ts=envelope.ts,
-        row_id=str(row_id) if row_id else None,
-        thread_id=str(thread_id) if thread_id else None,
-    )
-
-
-def resolve_parent(ctx: ToolContext, request: MentionRequest) -> tuple[str | None, str | None]:
-    """(row id, thread id) of the mention. An agent's mention carries only its envelope id, so it is
-    looked up in warroom_messages; when the bridge has not stored it the reply goes to Main."""
-    if request.row_id and request.thread_id:
-        return request.row_id, request.thread_id
-    try:
-        return _parent(ctx, request.row_id or request.event_id)
-    except ToolError:
-        return None, None
+# MentionRequest, mention_from_envelope and resolve_parent live in atlas_agents.mentions (ATL-101).
 
 
 _CARD_FIELDS: Final = (

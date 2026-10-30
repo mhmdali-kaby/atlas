@@ -960,6 +960,7 @@ return [
         'mentions' => [
             'block_ms' => 5000,
             'batch' => 50,
+            'max_depth' => 2,
         ],
         'scout' => [
             'universe' => [
