@@ -7,6 +7,7 @@ row it adds names its own instrument, so the tests do not see each other's rows.
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import uuid
 from collections.abc import Iterator
@@ -16,6 +17,8 @@ from decimal import Decimal
 from typing import Any
 
 import pytest
+from atlas_agents.pm import guard
+from atlas_agents.pm.rules import RuleAction
 from atlas_agents.tools import framework as fw
 from atlas_agents.tools.framework import ToolContext, fq_name
 from atlas_shared.db import (
@@ -579,8 +582,18 @@ async def test_a_portfolio_manager_action_needs_an_open_position(world: World) -
         )
         s.commit()
     rec = Recorder()
-    error, out = await _call(world.ctx("portfolio_manager", rec), "submit_proposal", args)
+    ctx = dataclasses.replace(world.ctx("portfolio_manager", rec), correlation_id="pm:test:rule")
+    # ATL-169: a PM action is accepted only when it is what its rules computed in this run.
+    error, out = await _call(ctx, "submit_proposal", args)
+    assert error and out["error"] == "not_computed_action"
+    computed = RuleAction("amend_stop", "breakeven_at_1r", world.inst, "+1R", stop=Decimal("99.0"))
+    expected = guard.Expected(
+        inst_id=world.inst, side="long", current_stop=None, mark=Decimal("101"), actions=(computed,)
+    )
+    with guard.expecting(ENV, "pm:test:rule", expected):
+        error, out = await _call(ctx, "submit_proposal", args)
     assert not error, out
+    assert expected.submitted == {"breakeven_at_1r": out["data"]["proposal_id"]}
     row = world.proposals()[0]
     assert (row.kind, row.author, row.stop, row.status) == (
         "amend_stop",

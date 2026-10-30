@@ -155,3 +155,14 @@ decisions where the brief was silent, as the brief asks.
   answer leaves the voter missing (skip at 0.5). The vote closes early only when every voter has
   voted and no run on a current version is still going; runs left at the deadline finish on their own.
   The four voters' prompt files gain one VOTING section after the brief's role text (new versions).
+- **Portfolio Manager: rules in code first, the model only when one fires (ATL-169).** Every 5 min
+  `atlas_agents.pm.manage.tick` runs ATL-168's rules on each open position. No rule → no model call
+  and no message. A rule → one run on the strong model with the action prefilled; the model returns
+  the action block and code submits it only if it is exactly the computed action and does not widen
+  the stop (`atlas_agents.pm.guard`, also enforced inside `warroom.submit_proposal`). A computed action
+  the model drops or gets wrong after one retry is still submitted by code (rule compliance is 100%).
+  PM proposals skip the vote, get one `/internal/risk/evaluate` and follow autonomy; a refusal
+  rejects the proposal with `status_reason = risk_<code>`. A kind already pending for the position is
+  not proposed again. Immediate runs: a news alert or fill on a held instrument, a circuit breaker,
+  and once 30 min before an importance-4+ event. Limit warnings (70% of the daily/weekly loss or
+  open-position limit) are code, at most once per hour per limit.

@@ -16,7 +16,16 @@ from atlas_agents.registry import (
 )
 from atlas_shared.defaults import DEFAULTS
 
-STRONG = {"market_scout", "news_intelligence", "historian", "strategist", "devils_advocate"}
+# The Portfolio Manager's runs happen only when a rule fires (§7.8 "escalate to the strong model when an
+# action is needed"); its no-rule checks call no model at all (ATL-169).
+STRONG = {
+    "market_scout",
+    "news_intelligence",
+    "historian",
+    "strategist",
+    "devils_advocate",
+    "portfolio_manager",
+}
 
 
 def test_nine_agents_in_brief_order() -> None:

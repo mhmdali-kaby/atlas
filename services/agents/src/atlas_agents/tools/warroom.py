@@ -471,6 +471,16 @@ def _strategist_rules(
     return (raw, None) if applied is None else applied
 
 
+def _pm_guard(ctx: ToolContext, kind: str, model: TradeProposal | PositionAction) -> Any:
+    """ATL-169: a Portfolio Manager action must be exactly what its rules computed in this run, and
+    never widen a stop (:mod:`atlas_agents.pm.guard`). The computed RuleAction, or None."""
+    if not isinstance(model, PositionAction) or ctx.agent != props.PORTFOLIO_MANAGER:
+        return None
+    from atlas_agents.pm import guard  # here: pm.guard imports the tools package
+
+    return guard.check(ctx, kind, model)
+
+
 def submit_entry(ctx: ToolContext, args: SubmitProposalInput) -> ToolResult:
     """``submit_proposal`` without the tool wrapper, for code that submits on an agent's behalf
     (the Strategist's run, ATL-158). Same checks, rules, writes and events."""
@@ -485,8 +495,14 @@ def _submit(ctx: ToolContext, args: SubmitProposalInput) -> ToolResult:
     with ctx.session_factory() as session:
         raw, meta = _strategist_rules(ctx, session, args.kind, args.proposal)
         model, checklist = _validated(ctx, session, args.kind, raw, None)
+        computed = _pm_guard(ctx, args.kind, model)
         row = props.new_row(ctx, args.kind, model, cycle_id=props.resolve_cycle(session, ctx))
-        return _save_and_announce(ctx, session, row, checklist, args.summary_md, meta=meta)
+        result = _save_and_announce(ctx, session, row, checklist, args.summary_md, meta=meta)
+    if computed is not None:
+        from atlas_agents.pm import guard
+
+        guard.record(ctx, computed, str(getattr(result.data, "proposal_id", "")))
+    return result
 
 
 def _revise(ctx: ToolContext, args: SubmitProposalInput) -> ToolResult:
@@ -509,6 +525,7 @@ def _revise(ctx: ToolContext, args: SubmitProposalInput) -> ToolResult:
         props.require_open(parent, cfg, "revise")
         raw, meta = _strategist_rules(ctx, session, args.kind, args.proposal)
         model, checklist = _validated(ctx, session, args.kind, raw, parent.id)
+        _pm_guard(ctx, args.kind, model)
         if model.inst_id != parent.inst_id:
             raise ToolError("invalid_proposal", f"a revision keeps the instrument ({parent.inst_id})")
         row = props.new_row(
