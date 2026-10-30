@@ -1239,6 +1239,7 @@ DEFAULTS: Final[dict[str, Any]] = {
                 4,
             ],
             "max_age_minutes": 30,
+            "window_stretch": "1.5",
         },
         "regime_table": {
             "top_n": 60,

@@ -1,17 +1,23 @@
-"""Long/short account ratio and taker volume, polled every 5 minutes (ATL-134, brief §7.5).
+"""Long/short account ratio, taker volume and open interest, polled every 5 minutes (ATL-134, §7.5).
 
 ``DerivativesPoller.tick()`` is the scheduler job (every ``derivatives_poller.interval_seconds``).
-Each tick works out the base currencies to read: ``derivatives_poller.always_ccys`` (BTC, ETH) plus
-the base currency of every instrument the market feed subscribes to (today's watchlist picks the
-owner has not removed and the open positions, ``trading_core.ws.subscriptions``). Instruments the
-``instruments`` table classes as anything but ``crypto`` are skipped: OKX rubik statistics exist for
-crypto currencies only.
+Each tick reads the instrument set the market feed subscribes to (today's watchlist picks the owner
+has not removed and the open positions, ``trading_core.ws.subscriptions``) and works out:
 
-For each currency it reads ``rubik/stat/contracts/long-short-account-ratio`` and
-``rubik/stat/taker-volume`` (``taker_inst_type`` CONTRACTS) at ``period`` through the shared,
-rate-limited ``OkxClient`` and upserts on the tables' natural keys ``(env, ccy, period, ts)``, so a
-repeated poll of the same payload changes nothing. A row OKX sends without a value is skipped (the
-columns are NOT NULL). One currency failing does not stop the others; it is counted in ``failed``.
+* the base currencies: ``derivatives_poller.always_ccys`` (BTC, ETH) plus the base currency of every
+  instrument in the set. Instruments the ``instruments`` table classes as anything but ``crypto``
+  are skipped, because OKX rubik statistics exist for crypto currencies only. For each currency it
+  reads ``rubik/stat/contracts/long-short-account-ratio`` and ``rubik/stat/taker-volume``
+  (``taker_inst_type`` CONTRACTS) at ``period`` and upserts on the tables' natural keys
+  ``(env, ccy, period, ts)``, so a repeated poll of the same payload changes nothing. A row OKX
+  sends without a value is skipped (the columns are NOT NULL).
+* the perpetuals (``-SWAP``) in the set, stock and commodity perps included: ``public/open-interest``
+  per instrument, one ``open_interest`` row per poll keyed by OKX's ``ts``. The backfill keeps only
+  rubik's 1D currency series, which cannot give a 1h or 4h OI change; these 5-minute rows are what
+  ``atlas_agents.derivatives`` reads for the OI-price quadrant.
+
+Every request goes through the shared, rate-limited ``OkxClient``. One currency or instrument
+failing does not stop the others; it is counted in ``failed``.
 """
 
 from __future__ import annotations
@@ -25,6 +31,7 @@ from typing import Any
 
 from atlas_shared.db import Instrument
 from atlas_shared.db import LongShortRatio as LongShortRow
+from atlas_shared.db import OpenInterest as OpenInterestRow
 from atlas_shared.db import TakerVolume as TakerRow
 from atlas_shared.defaults import DEFAULTS
 from sqlalchemy import Engine, select
@@ -55,16 +62,20 @@ def base_ccy(inst_id: str) -> str:
 class DerivativesPollResult:
     env: str
     ccys: list[str] = field(default_factory=list)
+    inst_ids: list[str] = field(default_factory=list)
     long_short_rows: int = 0
     taker_rows: int = 0
+    oi_rows: int = 0
     failed: int = 0
 
     def as_dict(self) -> dict[str, Any]:
         return {
             "env": self.env,
             "ccys": self.ccys,
+            "inst_ids": self.inst_ids,
             "long_short_rows": self.long_short_rows,
             "taker_rows": self.taker_rows,
+            "oi_rows": self.oi_rows,
             "failed": self.failed,
         }
 
@@ -107,12 +118,14 @@ class DerivativesPoller:
                 ).scalars()
             )
 
-    def currencies(self) -> list[str]:
-        """always_ccys first, then the crypto base currencies of watched/held instruments, sorted."""
+    def targets(self) -> tuple[list[str], list[str]]:
+        """(currencies, perpetuals): always_ccys first, then the crypto base currencies of the
+        watched/held instruments, sorted; and every watched/held ``-SWAP`` instrument, sorted."""
         inst_ids = self._instruments()
         skip = self._non_crypto(inst_ids)
         extra = sorted({base_ccy(i) for i in inst_ids if i not in skip} - set(self.always))
-        return [*self.always, *extra]
+        swaps = sorted(i for i in inst_ids if i.upper().endswith("-SWAP"))
+        return [*self.always, *extra], swaps
 
     def _write(self, model: type[Any], rows: list[dict[str, Any]]) -> int:
         with self.engine.begin() as conn:
@@ -153,17 +166,47 @@ class DerivativesPoller:
                 extra={"ccy": ccy, "error": f"{type(exc).__name__}: {exc}"[:500]},
             )
 
+    async def _poll_oi(self, okx: OkxClient, inst_id: str, result: DerivativesPollResult) -> None:
+        try:
+            page = await okx.get_open_interest("SWAP", inst_id=inst_id)
+            rows = [
+                {
+                    "env": self.env,
+                    "inst_id": r.inst_id,
+                    "ts": r.ts,
+                    "oi": r.oi,
+                    "oi_ccy": r.oi_ccy,
+                    "oi_usd": r.oi_usd,
+                }
+                for r in page
+                if r.inst_id == inst_id
+            ]
+            written = await asyncio.to_thread(self._write, OpenInterestRow, rows)
+            result.oi_rows += written
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            result.failed += 1
+            logger.warning(
+                "open interest poll failed",
+                extra={"inst_id": inst_id, "error": f"{type(exc).__name__}: {exc}"[:500]},
+            )
+
     async def tick(self) -> dict[str, Any]:
-        ccys = await asyncio.to_thread(self.currencies)
-        result = DerivativesPollResult(self.env, ccys)
+        ccys, swaps = await asyncio.to_thread(self.targets)
+        result = DerivativesPollResult(self.env, ccys, swaps)
         gate = asyncio.Semaphore(self.concurrency)
         async with self._factory(self.env) as okx:
 
-            async def one(ccy: str) -> None:
+            async def one_ccy(ccy: str) -> None:
                 async with gate:
                     await self._poll_ccy(okx, ccy, result)
 
-            await asyncio.gather(*(one(c) for c in ccys))
+            async def one_oi(inst_id: str) -> None:
+                async with gate:
+                    await self._poll_oi(okx, inst_id, result)
+
+            await asyncio.gather(*(one_ccy(c) for c in ccys), *(one_oi(i) for i in swaps))
         if result.failed:
             logger.info("derivatives polled", extra=result.as_dict())
         return result.as_dict()

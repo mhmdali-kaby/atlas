@@ -18,7 +18,7 @@ import httpx
 import pytest
 import respx
 from atlas_shared import testing
-from atlas_shared.db import Instrument, LongShortRatio, TakerVolume, make_engine
+from atlas_shared.db import Instrument, LongShortRatio, OpenInterest, TakerVolume, make_engine
 from sqlalchemy import Engine, delete, select
 from sqlalchemy.exc import OperationalError
 from trading_core.app import default_scheduler
@@ -31,6 +31,8 @@ ENV = "demo"
 FIXTURES = Path(__file__).parent / "fixtures" / "okx"
 LS_PATH = "/api/v5/rubik/stat/contracts/long-short-account-ratio"
 TAKER_PATH = "/api/v5/rubik/stat/taker-volume"
+OI_PATH = "/api/v5/public/open-interest"
+SWAPS = ("BTC-USDT-SWAP", "SOL-USDT-SWAP", "XAU-USDT-SWAP")
 CCYS = ("BTC", "ETH", "SOL", "XAU")
 
 
@@ -53,6 +55,7 @@ def _wipe(engine: Engine) -> None:
     with engine.begin() as conn:
         conn.execute(delete(LongShortRatio).where(LongShortRatio.env == ENV, LongShortRatio.ccy.in_(CCYS)))
         conn.execute(delete(TakerVolume).where(TakerVolume.env == ENV, TakerVolume.ccy.in_(CCYS)))
+        conn.execute(delete(OpenInterest).where(OpenInterest.env == ENV, OpenInterest.inst_id.in_(SWAPS)))
         conn.execute(delete(Instrument).where(Instrument.env == ENV, Instrument.inst_id == "XAU-USDT-SWAP"))
 
 
@@ -66,6 +69,24 @@ def clean(engine: Engine) -> Iterator[Engine]:
 def recorded(name: str) -> Callable[[httpx.Request], httpx.Response]:
     """A fresh Response per call: a shared one is consumed by its first reader."""
     return lambda _request: httpx.Response(200, json=fixture(name))
+
+
+def open_interest(request: httpx.Request) -> httpx.Response:
+    """The recorded BTC row, re-labelled with the instrument asked for."""
+    body = fixture("public_open_interest")
+    row = {**body["data"][0], "instId": request.url.params["instId"]}
+    return httpx.Response(200, json={**body, "data": [row]})
+
+
+def oi_rows(engine: Engine) -> list[Any]:
+    with engine.connect() as conn:
+        return list(
+            conn.execute(
+                select(OpenInterest)
+                .where(OpenInterest.env == ENV, OpenInterest.inst_id.in_(SWAPS))
+                .order_by(OpenInterest.inst_id)
+            ).all()
+        )
 
 
 def factory() -> Callable[[str], OkxClient]:
@@ -116,17 +137,27 @@ def test_base_ccy() -> None:
 async def test_poll_upserts_and_a_second_poll_adds_no_rows(
     respx_mock: respx.MockRouter, clean: Engine
 ) -> None:
-    ls_route = respx_mock.get(LS_PATH).mock(side_effect=recorded("rubik_stat_contracts_long_short_account_ratio"))
+    ls_route = respx_mock.get(LS_PATH).mock(
+        side_effect=recorded("rubik_stat_contracts_long_short_account_ratio")
+    )
     taker_route = respx_mock.get(TAKER_PATH).mock(side_effect=recorded("rubik_stat_taker_volume"))
+    oi_route = respx_mock.get(OI_PATH).mock(side_effect=open_interest)
     poller = DerivativesPoller(
         ENV, clean, client_factory=factory(), instruments=lambda: {"BTC-USDT-SWAP", "SOL-USDT-SWAP"}
     )
 
     first = await poller.tick()
     assert first["ccys"] == ["BTC", "ETH", "SOL"]
+    assert first["inst_ids"] == ["BTC-USDT-SWAP", "SOL-USDT-SWAP"]
     assert first["failed"] == 0
     assert first["long_short_rows"] == 6
     assert first["taker_rows"] == 6
+    assert first["oi_rows"] == 2
+    oi = oi_rows(clean)
+    assert [r.inst_id for r in oi] == ["BTC-USDT-SWAP", "SOL-USDT-SWAP"]
+    assert oi[0].oi == Decimal("2876543.21")
+    assert oi[0].oi_usd == Decimal("3289012345.67")
+    assert all(dict(c.request.url.params)["instType"] == "SWAP" for c in oi_route.calls)
 
     ls = rows(clean, LongShortRatio)
     taker = rows(clean, TakerVolume)
@@ -149,6 +180,7 @@ async def test_poll_upserts_and_a_second_poll_adds_no_rows(
     assert second["failed"] == 0
     assert len(rows(clean, LongShortRatio)) == 6
     assert len(rows(clean, TakerVolume)) == 6
+    assert len(oi_rows(clean)) == 2
 
 
 @respx.mock(base_url=BASE, assert_all_called=False)
@@ -164,12 +196,16 @@ async def test_non_crypto_instruments_are_skipped_and_one_failure_does_not_stop_
 
     respx_mock.get(LS_PATH).mock(side_effect=ls)
     respx_mock.get(TAKER_PATH).mock(side_effect=recorded("rubik_stat_taker_volume"))
+    respx_mock.get(OI_PATH).mock(side_effect=open_interest)
     poller = DerivativesPoller(
         ENV, clean, client_factory=factory(), instruments=lambda: {"XAU-USDT-SWAP", "BTC-USDT-SWAP"}
     )
 
     result = await poller.tick()
     assert result["ccys"] == ["BTC", "ETH"]
+    # XAU has no rubik series, but its perp's open interest is still read.
+    assert result["inst_ids"] == ["BTC-USDT-SWAP", "XAU-USDT-SWAP"]
+    assert {r.inst_id for r in oi_rows(clean)} == {"BTC-USDT-SWAP", "XAU-USDT-SWAP"}
     assert result["failed"] == 1
     assert {r.ccy for r in rows(clean, LongShortRatio)} == {"BTC"}
 
