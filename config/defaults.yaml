@@ -610,7 +610,7 @@ agents:
     max_turns_per_run: 25
   roster:
     orchestrator: {}
-    market_scout: { model: strong }
+    market_scout: { model: strong, enabled: true }
     news_intelligence: { model: strong }
     historian: { model: strong, enabled: true }
     technical_analyst: {}
@@ -759,8 +759,11 @@ agents:
   #     it (owner, system and scheduled runs are depth 0); a mention at this depth or deeper starts
   #     no run, so with 2 the chain A -> B -> C stops before C.
   output_retries: 1
+  #   mentions.parent_wait_seconds (ATL-108): how long a mention handler waits for atlas:bridge to
+  #     store an agent-written mention before replying to Main (so the reply carries reply_to).
   schedule:
     historian_regime_table: "07:30"
+    scout_watchlist: "08:00"
     tick_seconds: 30
   regime_table:
     top_n: 60
@@ -768,6 +771,7 @@ agents:
     block_ms: 5000
     batch: 50
     max_depth: 2
+    parent_wait_seconds: 3
   # ATL-104, brief §7.1 steps 1-2 + decision #247 (2): Market Scout's code-run universe filter and
   # feature table (atlas_agents.scout). Every value is in force at the table's as_of (replay-bounded).
   #   universe: the filter. Per-market minimum 24h quote volume (USD) and max_spread_bps come from the
@@ -796,6 +800,25 @@ agents:
     # may pin, remove or restore items (POST /api/watchlists/...). Market Scout stamps
     # watchlists.edit_window_ends_at = created_at + this; Laravel uses the same rule when it is null.
     watchlist_edit_window_minutes: 10
+    # ATL-108, brief §7.1 steps 4-6 + failure behaviour: the 08:00 pipeline (atlas_agents.agents.
+    # market_scout). Code mentions @News (shortlist instruments with catalysts) and @Historian (top
+    # historian_top_n), polls warroom_messages every poll_seconds for their replies (reply_to = the
+    # mention's row) up to wait_seconds, then runs the Scout session. After the model: a feature
+    # table older than stale_minutes or a teammate that did not reply makes the watchlist
+    # partial_evidence with every conviction capped at partial_conviction_cap; a group of more than
+    # max_correlated_picks picks/open positions linked by 30-day correlation above
+    # prescore.correlation.threshold is refused once (in-run retry), then trimmed from the lowest
+    # rank; blocked or owner-removed instruments are dropped. history_days: past days of own picks
+    # shown to the model. link_seconds: how long to wait for the bridge to store the card before
+    # watchlists.message_id is left null.
+    wait_seconds: 300
+    poll_seconds: 2
+    historian_top_n: 8
+    stale_minutes: 15
+    partial_conviction_cap: "0.5"
+    max_correlated_picks: 2
+    history_days: 5
+    link_seconds: 5
     universe:
       enabled_markets: [spot, crypto_perp, stock_perp, commodity_perp]
       blocklist: []

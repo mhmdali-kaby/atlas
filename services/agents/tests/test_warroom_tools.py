@@ -220,11 +220,22 @@ async def test_an_agent_cannot_forge_card_meta() -> None:
 
 async def test_an_unregistered_card_type_passes_through() -> None:
     rec = Recorder()
-    card = {"type": "watchlist", "picks": []}
+    card = {"type": "scratch_table", "rows": []}
     error, _ = await _call(
-        _ctx(recorder=rec), "post_message", {"kind": "watchlist", "content_md": "x", "card": card}
+        _ctx(recorder=rec), "post_message", {"kind": "text", "content_md": "x", "card": card}
     )
     assert error is False and rec.events[0][1].payload["card"] == card
+
+
+async def test_an_agent_cannot_post_a_watchlist_card_itself() -> None:
+    # ATL-108: the watchlist is published by code after the conviction cap, correlation and
+    # blocklist rules, so the tool refuses the kind outright.
+    rec = Recorder()
+    card = {"type": "watchlist", "picks": []}
+    error, body = await _call(
+        _ctx(recorder=rec), "post_message", {"kind": "watchlist", "content_md": "x", "card": card}
+    )
+    assert error and body["error"] == "code_posted_kind" and rec.events == []
 
 
 @pytest.mark.parametrize("kind", ["proposal", "risk_check", "order", "fill", "position_update", "nonsense"])

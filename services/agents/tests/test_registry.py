@@ -24,8 +24,9 @@ def test_nine_agents_in_brief_order() -> None:
     assert len(REGISTRY) == 9
 
 
-def test_only_the_historian_is_enabled_in_this_patch() -> None:
-    assert [s.slug for s in enabled_agents()] == ["historian"]
+def test_only_the_historian_and_market_scout_are_enabled_in_this_patch() -> None:
+    # ATL-108 enabled Market Scout; the other agents arrive with later tasks.
+    assert [s.slug for s in enabled_agents()] == ["market_scout", "historian"]
 
 
 def test_research_and_decision_agents_get_the_strongest_model() -> None:

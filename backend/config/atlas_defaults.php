@@ -803,6 +803,7 @@ return [
             'orchestrator' => [],
             'market_scout' => [
                 'model' => 'strong',
+                'enabled' => true,
             ],
             'news_intelligence' => [
                 'model' => 'strong',
@@ -998,6 +999,7 @@ return [
         'output_retries' => 1,
         'schedule' => [
             'historian_regime_table' => '07:30',
+            'scout_watchlist' => '08:00',
             'tick_seconds' => 30,
         ],
         'regime_table' => [
@@ -1007,9 +1009,18 @@ return [
             'block_ms' => 5000,
             'batch' => 50,
             'max_depth' => 2,
+            'parent_wait_seconds' => 3,
         ],
         'scout' => [
             'watchlist_edit_window_minutes' => 10,
+            'wait_seconds' => 300,
+            'poll_seconds' => 2,
+            'historian_top_n' => 8,
+            'stale_minutes' => 15,
+            'partial_conviction_cap' => '0.5',
+            'max_correlated_picks' => 2,
+            'history_days' => 5,
+            'link_seconds' => 5,
             'universe' => [
                 'enabled_markets' => [
                     'spot',
