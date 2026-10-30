@@ -209,6 +209,59 @@ return [
         'money_scale' => 8,
         'calc_scale' => 24,
     ],
+    'portfolio_holdings' => [
+        'quotes' => [
+            'USDT',
+            'USDC',
+        ],
+        'avg_cost_min_scale' => 2,
+        'avg_cost_small_scale' => 8,
+        'change_bars' => [
+            '1H',
+            '1D',
+        ],
+        'change_window_hours' => 24,
+    ],
+    'portfolio_benchmark' => [
+        'symbols' => [
+            'BTC' => [
+                'BTC-USDT-SWAP',
+                'BTC-USDC-SWAP',
+            ],
+            'SPY' => [
+                'SPY-USDT-SWAP',
+                'SPY-USDC-SWAP',
+            ],
+            'XAU' => [
+                'XAU-USDT-SWAP',
+                'XAU-USDC-SWAP',
+            ],
+        ],
+        'bars' => [
+            '1D' => [
+                '15m',
+                '1H',
+            ],
+            '1W' => [
+                '1H',
+                '4H',
+            ],
+            '1M' => [
+                '4H',
+                '1D',
+            ],
+            '3M' => [
+                '1D',
+            ],
+            'YTD' => [
+                '1D',
+            ],
+            'ALL' => [
+                '1D',
+            ],
+        ],
+        'value_scale' => 8,
+    ],
     'backfill_runner' => [
         'interval_seconds' => 300,
         'concurrency' => 4,
@@ -1379,6 +1432,31 @@ return [
                 'min_event_importance' => 2,
                 'max_events' => 30,
                 'top_instruments' => 5,
+            ],
+        ],
+        'strategist' => [
+            'checklist' => [
+                'setup_max_age_minutes' => 60,
+                'news_lookback_hours' => 24,
+                'contradict_sentiment' => '0.2',
+                'event_blackout_minutes' => 60,
+                'blackout_importance' => 5,
+                'min_expectancy' => '0.2',
+                'pending_statuses' => [
+                    'draft',
+                    'under_review',
+                    'voting',
+                    'passed',
+                    'risk_checked',
+                    'awaiting_owner',
+                    'sent',
+                    'partially_filled',
+                ],
+                'open_statuses' => [
+                    'under_review',
+                    'voting',
+                ],
+                'max_revisions' => 1,
             ],
         ],
         'technical_analyst' => [

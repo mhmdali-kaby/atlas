@@ -27,6 +27,8 @@ final class PortfolioService
 
     public const OWNER_TIMEZONE = 'Asia/Baghdad';
 
+    public function __construct(private readonly HoldingsMarketData $market = new HoldingsMarketData) {}
+
     /**
      * @return array<string, string|bool|null>
      */
@@ -192,9 +194,7 @@ final class PortfolioService
                 'frozen' => Money::str(Money::of($row->frozen_bal)),
                 'value_usd' => Money::str($value),
                 'pct_of_portfolio' => $value === null ? null : Money::str(Money::pct($value, $total)),
-                'avg_cost_usd' => null,
-                'change_24h_pct' => null,
-            ];
+            ] + $this->market->forCurrency($env, (string) $this->s($row->ccy));
         }
 
         return [
