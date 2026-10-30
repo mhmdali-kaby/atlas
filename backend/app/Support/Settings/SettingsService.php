@@ -62,14 +62,15 @@ final class SettingsService
     /**
      * Current values with any field added since the row was saved filled from the defaults.
      *
-     * @return array<string, bool|int|string|list<string>>
+     * @return array<string, bool|int|string|list<string>|null>
      */
     public function values(Setting $setting): array
     {
         $values = [];
         $defaults = SettingsSchema::defaults();
         foreach (SettingsSchema::fields() as $field) {
-            $values[$field] = $setting->data[$field] ?? $defaults[$field];
+            // array_key_exists, not ??: a stored null (no bot capital cap) is a value, not a gap.
+            $values[$field] = array_key_exists($field, $setting->data) ? $setting->data[$field] : $defaults[$field];
         }
 
         return $values;
@@ -78,7 +79,7 @@ final class SettingsService
     /**
      * Applies validated changes on top of $version.
      *
-     * @param  array<string, bool|int|string|list<string>>  $changes  validated by UpdateSettingsRequest
+     * @param  array<string, bool|int|string|list<string>|null>  $changes  validated by UpdateSettingsRequest
      *
      * @throws StaleSettingsVersion
      */
@@ -132,9 +133,9 @@ final class SettingsService
      * Profile rules (brief §14.3): choosing a preset replaces the ten risk fields with it;
      * editing any of them away from the preset makes the profile "custom".
      *
-     * @param  array<string, bool|int|string|list<string>>  $current
-     * @param  array<string, bool|int|string|list<string>>  $changes
-     * @return array<string, bool|int|string|list<string>>
+     * @param  array<string, bool|int|string|list<string>|null>  $current
+     * @param  array<string, bool|int|string|list<string>|null>  $changes
+     * @return array<string, bool|int|string|list<string>|null>
      */
     public function apply(array $current, array $changes): array
     {
@@ -166,8 +167,8 @@ final class SettingsService
     }
 
     /**
-     * @param  array<string, bool|int|string|list<string>>  $before
-     * @param  array<string, bool|int|string|list<string>>  $after
+     * @param  array<string, bool|int|string|list<string>|null>  $before
+     * @param  array<string, bool|int|string|list<string>|null>  $after
      * @return array<string, array{from: bool|int|string|list<string>|null, to: bool|int|string|list<string>|null}>
      */
     private function diff(array $before, array $after): array
@@ -185,7 +186,7 @@ final class SettingsService
     }
 
     /**
-     * @param  array<string, bool|int|string|list<string>>  $data
+     * @param  array<string, bool|int|string|list<string>|null>  $data
      */
     private function fill(Setting $setting, array $data): void
     {
@@ -200,9 +201,9 @@ final class SettingsService
     /**
      * A typed-column mirror of a scalar field (the mirrored fields are never bool or list).
      *
-     * @param  bool|int|string|list<string>  $value
+     * @param  bool|int|string|list<string>|null  $value
      */
-    private static function text(bool|int|string|array $value): string
+    private static function text(bool|int|string|array|null $value): string
     {
         return is_int($value) || is_string($value) ? (string) $value : '';
     }

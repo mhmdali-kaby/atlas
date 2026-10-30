@@ -22,6 +22,7 @@ from atlas_agents.tools import account, market
 from atlas_agents.tools import framework as fw
 from atlas_agents.tools.catalogue import CATALOGUE
 from atlas_agents.tools.framework import ToolContext, fq_name
+from atlas_shared import market_data as md
 from atlas_shared.db import (
     BalanceSnapshot,
     Candle,
@@ -59,9 +60,27 @@ def db(engine: Engine) -> Iterator[sessionmaker[Session]]:
         conn.close()
 
 
-def _ctx(factory: sessionmaker[Session], replay_as_of: datetime | None = None) -> ToolContext:
+class _Hashes:
+    """A dict standing in for the Redis hashes trading_core's feed writes (atlas_shared.market_data)."""
+
+    def __init__(self) -> None:
+        self.data: dict[str, dict[str, str]] = {}
+
+    def hgetall(self, name: str) -> dict[str, str]:
+        return dict(self.data.get(name, {}))
+
+
+def _ctx(
+    factory: sessionmaker[Session], replay_as_of: datetime | None = None, hashes: _Hashes | None = None
+) -> ToolContext:
+    store = hashes or _Hashes()
     return ToolContext(
-        env=ENV, session_factory=factory, agent="test_atl85", replay_as_of=replay_as_of, clock=lambda: NOW
+        env=ENV,
+        session_factory=factory,
+        agent="test_atl85",
+        replay_as_of=replay_as_of,
+        clock=lambda: NOW,
+        market_snapshot=lambda env, inst: md.read_snapshot(store, env, inst),
     )
 
 
@@ -401,7 +420,7 @@ async def test_settings_snapshot_in_replay_is_the_version_in_force_then(db: sess
 # -- every tool answers with as_of and source --------------------------------------------------------
 
 
-async def test_every_tool_has_as_of_and_source_and_the_orderbook_is_unavailable(
+async def test_every_tool_has_as_of_and_source_and_an_unsubscribed_orderbook_is_unavailable(
     db: sessionmaker[Session],
 ) -> None:
     inst = f"EV{_uid()}-USDT-SWAP"
@@ -429,7 +448,8 @@ async def test_every_tool_has_as_of_and_source_and_the_orderbook_is_unavailable(
         for name in CATALOGUE[server]:
             body = await _call(ctx, server, name, args.get(name, {}))
             assert _ts(body["as_of"]).utcoffset() is not None, name
-            assert body["source"].startswith("postgres:"), name
+            want = "redis:" if name == "get_orderbook" else "postgres:"
+            assert body["source"].startswith(want), name
 
     book = await _call(ctx, "okx_market", "get_orderbook", {"inst_id": inst})
     assert book["data"]["available"] is False and book["data"]["reason"]
@@ -449,6 +469,66 @@ async def test_every_tool_has_as_of_and_source_and_the_orderbook_is_unavailable(
 
     orders = await _call(ctx, "atlas_data", "get_open_orders", {})
     assert orders["data"] == {"available": False, "orders": [], "reason": orders["data"]["reason"]}
+
+
+async def test_orderbook_serves_the_live_books5_snapshot_while_fresh_and_refuses_it_when_stale(
+    db: sessionmaker[Session],
+) -> None:
+    """ATL-125: get_orderbook reads the books5 hash the WebSocket feed keeps in Redis."""
+    inst = f"OB{_uid()}-USDT-SWAP"
+    with db() as s:
+        s.add(_inst(inst))
+        s.commit()
+    hashes = _Hashes()
+    book_at = NOW - timedelta(seconds=2)
+    hashes.data[md.md_key(ENV, inst)] = {
+        md.LAST_MSG_MS: str(md.to_ms(book_at)),
+        "books5_ms": str(md.to_ms(book_at)),
+        md.BOOKS5: json.dumps(
+            {
+                "asks": [["101.5", "3", "0", "2"], ["101.6", "4", "0", "1"]],
+                "bids": [["101.4", "5", "0", "3"], ["101.3", "6", "0", "1"]],
+                "ts": str(md.to_ms(book_at)),
+                "seqId": 42,
+            }
+        ),
+    }
+    assert md.md_key(ENV, inst) == f"atlas:md:demo:{inst}"
+
+    fresh = await _call(_ctx(db, hashes=hashes), "okx_market", "get_orderbook", {"inst_id": inst})
+    assert fresh["data"]["available"] is True
+    assert [[Decimal(p), Decimal(q)] for p, q in fresh["data"]["bids"]] == [
+        [Decimal("101.4"), Decimal("5")],
+        [Decimal("101.3"), Decimal("6")],
+    ]
+    assert [Decimal(p) for p, _ in fresh["data"]["asks"]] == [Decimal("101.5"), Decimal("101.6")]
+    assert _ts(fresh["as_of"]) == book_at
+    assert fresh["source"].startswith("redis:")
+
+    one = await _call(_ctx(db, hashes=hashes), "okx_market", "get_orderbook", {"inst_id": inst, "depth": 1})
+    assert len(one["data"]["bids"]) == 1 and len(one["data"]["asks"]) == 1
+
+    # Older than market_ws.market_data_max_age_seconds (30 s): no depth is served.
+    old = NOW - timedelta(seconds=31)
+    hashes.data[md.md_key(ENV, inst)]["books5_ms"] = str(md.to_ms(old))
+    stale = await _call(_ctx(db, hashes=hashes), "okx_market", "get_orderbook", {"inst_id": inst})
+    assert stale["data"]["available"] is False
+    assert stale["data"]["bids"] == [] and stale["data"]["asks"] == []
+    assert "stale" in stale["data"]["reason"]
+
+    # Replay never sees the live book.
+    hashes.data[md.md_key(ENV, inst)]["books5_ms"] = str(md.to_ms(book_at))
+    replay = await _call(
+        _ctx(db, replay_as_of=NOW, hashes=hashes), "okx_market", "get_orderbook", {"inst_id": inst}
+    )
+    assert replay["data"]["available"] is False
+
+    def broken(env: str, inst_id: str) -> md.MarketSnapshot:
+        raise ConnectionError("redis down")
+
+    down_ctx = ToolContext(env=ENV, session_factory=db, agent="t", clock=lambda: NOW, market_snapshot=broken)
+    down = await _call(down_ctx, "okx_market", "get_orderbook", {"inst_id": inst})
+    assert down["data"]["available"] is False and "unreachable" in down["data"]["reason"]
 
 
 async def test_unknown_instrument_spec_is_not_found(db: sessionmaker[Session]) -> None:
