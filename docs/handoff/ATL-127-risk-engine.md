@@ -10,11 +10,25 @@
   everything, run the checks, insert **one** `risk_checks` row, set `proposals.status = 'risk_checked'`,
   commit, then publish **one** `risk.decision` envelope on `atlas.risk`.
 - It never talks to OKX. Inputs: Postgres snapshot tables (sync loops) + the ATL-125 Redis hash.
-- `run_checks(ctx: RiskContext) -> Outcome` is the pure core; `load_context(session, rds, proposal, now)`
-  does all the I/O. Build a `RiskContext` by hand to test a rule without a DB (see
+- `run_checks(ctx: RiskContext) -> Outcome` (in `trading_core/risk/engine.py`) is the pure core;
+  `load_context(session, rds, proposal, now)` in `trading_core/risk/context.py` does all the I/O (the
+  `RiskContext`/`ProposalInfo`/`InstrumentInfo` dataclasses, `ensure_trading_state` and
+  `RiskEngineError` live there too; `trading_core.risk.engine` re-exports them). Build a `RiskContext` by hand to test a rule without a DB (see
   `trading_core/tests/test_risk_engine.py::ctx`).
 - Only `kind = 'entry'` proposals are evaluated; anything else (amend/close from the PM) raises
   `RiskEngineError`, as do an unknown id and a missing settings row. Those write nothing.
+- Only proposals whose status is in `risk_rules.evaluable_statuses` (`passed`, `risk_checked`) are
+  evaluated; `risk_checked` is accepted so an owner Edit can re-run the check (brief §12). Any other
+  status (cancelled, rejected, expired, sent, filled ...) raises `RiskEngineError` before anything is
+  written or published, so a finished proposal cannot be pulled back into approval.
+- Reading OKX trade data outside risk/ and execution/: use `trading_core.okx.trade_read.OkxTradeReadClient`
+  (fills, orders, algo orders, max-size; GET only). `OkxTradeClient` (in `okx/trade.py`) subclasses it
+  and adds the writes; `test_only_risk_and_execution_import_the_okx_trade_endpoints` fails if any
+  module outside risk/, execution/ and okx/ imports `trading_core.okx.trade` / `OkxTradeClient` or
+  names a write path (trade/order, batch-orders, amend-order, cancel-order, close-position, order-algo,
+  cancel-algos, account/set-leverage).
+- Check 6 records `values.base_unknown` (`["day"]`, `["week"]`, both or `[]`) when there is no equity
+  point since the period began; the loss then reads 0% for that period.
 - `trading_state` (env row) is created here if absent (`paused=false`, `breakers={}`). A breaker is
   active when `breakers[<name>]["active"]` is truthy; any active breaker rejects at check 1.
 

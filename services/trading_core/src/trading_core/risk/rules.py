@@ -434,7 +434,9 @@ def check_loss_limits(
     settings: EngineSettings,
 ) -> CheckResult:
     """Loss = start equity + net deposits since then - current equity (realised + unrealised), as %
-    of the start equity. At or above the limit rejects (the brief passes only loss < limit)."""
+    of the start equity. At or above the limit rejects (the brief passes only loss < limit). With no
+    start equity (no equity point since the period began) the loss reads 0% and ``values`` lists the
+    period in ``base_unknown`` so the gap is visible."""
     name = "loss_limits"
 
     def pct(loss: Decimal, base: Decimal | None) -> Decimal:
@@ -450,6 +452,11 @@ def check_loss_limits(
         "max_weekly_loss_pct": settings.max_weekly_loss_pct,
         "consecutive_losses": consecutive_losses,
         "max_consecutive_losses": settings.max_consecutive_losses,
+        "base_unknown": [
+            period
+            for period, base in (("day", day_base_usd), ("week", week_base_usd))
+            if base is None or base <= 0
+        ],
     }
     if day_pct >= settings.max_daily_loss_pct:
         return CheckResult(

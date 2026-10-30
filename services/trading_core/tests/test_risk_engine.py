@@ -46,6 +46,7 @@ from trading_core.risk.engine import (
     InstrumentInfo,
     ProposalInfo,
     RiskContext,
+    RiskEngineError,
     evaluate,
     run_checks,
 )
@@ -269,6 +270,12 @@ def test_daily_loss_at_the_limit_is_rejected_at_check_6() -> None:
     # Balanced: max_daily_loss_pct 4 -> 4,000 USD lost on a 100,000 USD day start.
     _rejected_at(run_checks(ctx(day_loss_usd=D(4000))), 6, "daily_loss_limit")
     assert run_checks(ctx(day_loss_usd=D("3999.99"))).checks[5]["status"] == "passed"
+
+
+def test_a_missing_day_start_equity_is_recorded_as_base_unknown() -> None:
+    values = run_checks(ctx(day_loss_usd=D(9000), day_base_usd=None)).checks[5]["values"]
+    assert values["base_unknown"] == ["day"]
+    assert run_checks(ctx()).checks[5]["values"]["base_unknown"] == []
 
 
 def test_weekly_loss_and_consecutive_losses_reject_at_check_6() -> None:
@@ -597,7 +604,7 @@ def world(engine: Engine, rds: redis.Redis) -> Iterator[dict[str, Any]]:
             )
 
 
-def _proposal_row(engine: Engine, inst_id: str) -> uuid.UUID:
+def _proposal_row(engine: Engine, inst_id: str, status: str = "passed") -> uuid.UUID:
     pid = uuid.uuid4()
     with engine.begin() as c:
         c.execute(
@@ -615,7 +622,7 @@ def _proposal_row(engine: Engine, inst_id: str) -> uuid.UUID:
                 expected_r=D("2.5"),
                 leverage_suggestion=3,
                 size_suggestion_pct=D(5),
-                status="passed",
+                status=status,
                 created_at=AT,
                 updated_at=AT,
             )
@@ -710,6 +717,34 @@ def test_evaluate_autonomy_1_stores_advise_only(
     assert evaluate(pid, engine=engine, redis_client=rds, now=lambda: AT).decision == "advise_only"
     with engine.connect() as c:
         assert c.scalar(select(RiskCheck.decision).where(RiskCheck.proposal_id == pid)) == "advise_only"
+
+
+@pytest.mark.parametrize("status", ["cancelled", "filled", "rejected", "expired", "sent", "voting"])
+def test_evaluate_refuses_a_proposal_that_is_not_evaluable(
+    engine: Engine, rds: redis.Redis, world: dict[str, Any], status: str
+) -> None:
+    pid = _proposal_row(engine, world["inst_id"], status=status)
+    with pytest.raises(RiskEngineError, match=status):
+        evaluate(pid, engine=engine, redis_client=rds, now=lambda: AT)
+    with engine.connect() as c:
+        rows = c.scalar(select(func.count()).select_from(RiskCheck).where(RiskCheck.proposal_id == pid))
+        after = c.scalar(select(Proposal.status).where(Proposal.id == pid))
+    assert rows == 0
+    assert after == status
+    assert _envelopes(rds) == []
+
+
+def test_evaluate_re_runs_on_a_risk_checked_proposal(
+    engine: Engine, rds: redis.Redis, world: dict[str, Any]
+) -> None:
+    # An owner Edit re-runs the check (brief §12): risk_checked is evaluable again.
+    pid = _proposal_row(engine, world["inst_id"])
+    evaluate(pid, engine=engine, redis_client=rds, now=lambda: AT)
+    evaluate(pid, engine=engine, redis_client=rds, now=lambda: AT + timedelta(seconds=1))
+    with engine.connect() as c:
+        rows = c.scalar(select(func.count()).select_from(RiskCheck).where(RiskCheck.proposal_id == pid))
+    assert rows == 2
+    assert len(_envelopes(rds)) == 2
 
 
 def test_context_dataclass_replace_keeps_it_pure() -> None:

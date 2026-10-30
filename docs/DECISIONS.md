@@ -67,4 +67,6 @@ decisions where the brief was silent, as the brief asks.
   until `autonomy.max_enabled_level` allows them (Phase 3), so nothing is sent without the owner.
   Fee rates are not stored yet, so sizing uses `risk_rules.fallback_taker_fee_rate` and the check
   records `fee_source: config_fallback`. A limit proposal with only an entry zone is sized at the
-  zone bound farthest from the stop.
+  zone bound farthest from the stop. Only proposals in `risk_rules.evaluable_statuses` (`passed`, and
+  `risk_checked` so an owner Edit can re-run the check) are evaluated; any other status is refused
+  before anything is written, so a cancelled, rejected or filled proposal cannot re-enter approval.

@@ -140,6 +140,10 @@ return [
             'filled',
             'closed',
         ],
+        'evaluable_statuses' => [
+            'passed',
+            'risk_checked',
+        ],
     ],
     'executor' => [
         'entry_timeout_minutes' => 30,
