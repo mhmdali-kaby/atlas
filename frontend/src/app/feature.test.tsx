@@ -32,9 +32,9 @@ const fakePortfolioExtra: FeatureModule = {
 }
 
 describe('shell registry', () => {
-  it('the real features register War Room, Portfolio and Settings, each with its own pages', () => {
+  it('the real features register War Room, Agents, Portfolio and Settings, each with its own pages', () => {
     expect(features.length).toBeGreaterThan(0)
-    expect(shellRegistry.areas.map((a) => a.id)).toEqual(['warroom', 'portfolio', 'settings'])
+    expect(shellRegistry.areas.map((a) => a.id)).toEqual(['warroom', 'agents', 'portfolio', 'settings'])
     const paths = (area: string) => shellRegistry.navEntries.filter((e) => e.area === area).map((e) => e.path)
     expect(paths('portfolio')).toEqual(['/portfolio', '/portfolio/positions', '/portfolio/holdings', '/portfolio/cashflows'])
     expect(paths('settings')).toEqual(['/settings/connections', '/settings/risk', '/settings/agents', '/settings/data', '/settings/sources'])
@@ -108,7 +108,7 @@ describe('shell with a fake War Room feature', () => {
 
     const sidebar = await screen.findByRole('complementary', { name: 'Sidebar' })
     const areas = within(sidebar).getByRole('navigation', { name: 'Areas' })
-    expect(within(areas).getAllByRole('link').map((a) => a.textContent)).toEqual(['War Room', 'Portfolio', 'Settings'])
+    expect(within(areas).getAllByRole('link').map((a) => a.textContent)).toEqual(['War Room', 'Agents', 'Portfolio', 'Settings'])
     expect(within(areas).getByRole('link', { name: 'War Room' })).toHaveAttribute('aria-current', 'true')
 
     const list = within(sidebar).getByRole('navigation', { name: 'War Room' })
