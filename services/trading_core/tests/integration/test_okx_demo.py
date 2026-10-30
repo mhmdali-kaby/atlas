@@ -71,6 +71,7 @@ from trading_core.execution.reconcile import reconcile
 from trading_core.marketdata.grid import candle_rows
 from trading_core.okx import OkxClient
 from trading_core.okx.connection import client_for_connection
+from trading_core.okx.errors import OkxNetworkError
 from trading_core.okx.models import Position
 from trading_core.okx.trade import MgnMode, OkxTradeClient, PosSide
 from trading_core.okx.trade_models import AlgoOrderDetail, OrderDetail
@@ -207,7 +208,10 @@ def demo() -> Iterator[Demo]:
         async with world.client() as okx:
             await sync_instruments(ENV, okx=okx, engine=engine, inst_types=["SWAP"])
 
-    asyncio.run(setup())
+    try:
+        asyncio.run(setup())
+    except OkxNetworkError as exc:
+        pytest.fail(f"OKX's REST host is not reachable from this machine (check DNS / network): {exc}")
     try:
         yield world
     finally:
