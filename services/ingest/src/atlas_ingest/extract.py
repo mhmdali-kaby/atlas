@@ -141,8 +141,12 @@ class Extractor:
             # is the raw, un-normalised text. A full-width dot (U+3002/U+FF0E/U+FF61) survives
             # ``urlsplit`` as a distinct character but is folded to an ASCII "." by IDNA, so
             # ``https://denied。test/x`` would otherwise read as a different, allowed host
-            # here while still landing on ``denied.test`` once httpx dials out.
-            host = (parts.host or "").lower()
+            # here while still landing on ``denied.test`` once httpx dials out. Use
+            # ``raw_host`` (the ASCII/punycode form httpx actually dials), not ``.host`` (the
+            # Unicode form it decodes back to for display): a ``host_check`` that compares
+            # against a punycode name, e.g. ``xn--bcher-kva.example``, must see that same form
+            # for either spelling of the host, not the Unicode one.
+            host = (parts.raw_host or b"").decode("ascii", errors="ignore").lower()
             if not host or host in skip_hosts:
                 return None
             if self.host_check is not None and not self.host_check(host):

@@ -310,6 +310,27 @@ def test_domain_allowed_ignores_a_trailing_dot_fqdn(monkeypatch: pytest.MonkeyPa
     assert news_tools.domain_allowed("coindesk.com.") is True
 
 
+@pytest.mark.parametrize(
+    ("deny_entry", "fetched_host"),
+    [
+        ("xn--bcher-kva.example", "xn--bcher-kva.example"),
+        ("xn--bcher-kva.example", "bücher.example"),
+        ("bücher.example", "xn--bcher-kva.example"),
+        ("bücher.example", "bücher.example"),
+    ],
+)
+def test_domain_allowed_matches_an_idn_host_regardless_of_punycode_or_unicode_spelling(
+    monkeypatch: pytest.MonkeyPatch, deny_entry: str, fetched_host: str
+) -> None:
+    """Security round 9 review: ``httpx.URL(url).host`` is the *Unicode* form of an IDN host
+    (``bücher.example``), so comparing on it let a deny entry written as punycode
+    (``xn--bcher-kva.example``) miss both spellings of the same host. The deny entry and the
+    fetched host must be compared on the ASCII/punycode form httpx actually dials, in whatever
+    spelling either one happens to be written."""
+    _set_web_policy(monkeypatch, deny=[deny_entry])
+    assert news_tools.domain_allowed(fetched_host) is False
+
+
 async def test_fetch_article_denied_domain_is_refused_without_a_request(
     db: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -365,6 +386,28 @@ async def test_fetch_article_denied_domain_idn_full_width_dot_is_refused_without
 
     monkeypatch.setattr(news_tools, "_fetcher", must_not_fetch)
     body = await _call(_ctx(db), "fetch_article", {"url": f"https://denied{dot}test/x"})
+    assert body["error"] == "domain_denied"
+    assert called is False
+
+
+@pytest.mark.parametrize("deny_entry", ["xn--bcher-kva.example", "bücher.example"])
+@pytest.mark.parametrize("url_host", ["xn--bcher-kva.example", "bücher.example"])
+async def test_fetch_article_denied_idn_domain_is_refused_for_either_spelling(
+    db: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, deny_entry: str, url_host: str
+) -> None:
+    """Security round 9 review: a deny entry for an IDN host must refuse the URL whether the
+    entry and the URL spell that host in punycode (``xn--bcher-kva.example``) or in Unicode
+    (``bücher.example``), in any combination of the two."""
+    _set_web_policy(monkeypatch, deny=[deny_entry])
+    called = False
+
+    async def must_not_fetch(url: str) -> str | None:
+        nonlocal called
+        called = True
+        return "unexpected"
+
+    monkeypatch.setattr(news_tools, "_fetcher", must_not_fetch)
+    body = await _call(_ctx(db), "fetch_article", {"url": f"https://{url_host}/x"})
     assert body["error"] == "domain_denied"
     assert called is False
 
