@@ -52,26 +52,28 @@ matches), even though `"SOL"` alone would otherwise sort first alphabetically.
 `blocked: true` means the instrument is on the Settings blocklist (**ATL-115: disable it in the
 picker, don't hide it** — the owner should see why it's greyed out).
 
-## The blocklist (read this before building a blocklist editor)
+## The blocklist — one source, same as Market Scout (decision #247)
 
-Settings → Markets (brief §14.5) has no blocklist field yet — no task builds it in Phase 1E. Until
-one does, the blocklist is `config('atlas_defaults.markets.blocklist')`, a plain list of `inst_id`
-strings, added to `config/defaults.yaml` by this task (empty by default). It is **not** part of the
-versioned `settings` table, so changing it today means editing the YAML and running
-`php artisan atlas:defaults`, not a Settings PATCH. When a real Settings → Markets blocklist field
-is built, point this controller's `blocklist()` helper at it and delete the YAML key — don't leave
-two sources of truth.
+There is already a blocklist, and this endpoint reads it rather than keeping its own: the env's
+`settings` row's `data['blocklist']` when that key is set, else `config('atlas_defaults.agents.scout.universe.blocklist')`
+(`config/defaults.yaml` → `agents.scout.universe.blocklist`, empty by default). This is exactly the
+rule Market Scout's `config_from` applies (`services/agents/src/atlas_agents/scout/universe.py:151-166`),
+so an instrument the Scout drops as blocked is the same one this endpoint marks `blocked: true` —
+there is no second list to keep in sync. Matching is case-insensitive on both sides (`inst_id` and
+every blocklist entry are upper-cased before comparing).
+
+The controller reads the `settings` row directly (`Setting::query()->where('env', $env)->first()`),
+**not** `SettingsService::current()` — that method creates the row and writes a settings_history
+entry on first read, which a GET must never do.
+
+Until Settings → Markets (brief §14.5) has an editable blocklist field, changing the default list
+means editing `config/defaults.yaml` and running `php artisan atlas:defaults`. Changing it per-env
+today means writing `data.blocklist` on that env's `settings` row (e.g. through a future PATCH
+`/api/settings` field) — ATL-115's picker does not need to know which source is live, since the
+`blocked` flag already reflects it.
 
 ## What this does not do
 
 No audit_log entry (it's a read). No pagination beyond `limit` — there's no cursor, because a
 picker only ever wants the first page. `q` is escaped for Postgres' `LIKE` special characters
 (`%`, `_`, `\`) but not otherwise sanitised beyond length; it is never interpolated into raw SQL.
-
-## Decision worth flagging
-
-I added `markets.blocklist: []` to `config/defaults.yaml` (and regenerated the PHP/Python
-constants) purely as a read source for this endpoint, since nothing in the codebase defined a
-blocklist anywhere yet and ATL-119's acceptance criteria require one to exist. This is a stand-in,
-not a decision about where the real one should live — flag it to @TL if a Settings → Markets task
-gets scheduled, so it replaces this instead of living alongside it.

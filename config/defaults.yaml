@@ -76,9 +76,6 @@ markets:
   max_instruments_per_day: 5
   max_instruments_per_day_min: 1
   max_instruments_per_day_max: 10
-  # ATL-119: inst_ids the owner never wants traded or pinned. Settings → Markets (brief §14.5)
-  # does not yet have an editable list, so this is the source of truth until it does.
-  blocklist: []
 
 # Brief §4.1. Checked against the OKX v5 docs (https://www.okx.com/docs-v5/en/) at build time.
 okx:

@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Models\Setting;
 use App\Models\User;
+use App\Support\Settings\SettingsService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -31,8 +33,19 @@ function atl119Instrument(array $overrides = []): void
 
 beforeEach(function (): void {
     $this->actingAs(User::factory()->create(), 'web');
-    config(['atlas_defaults.markets.blocklist' => []]);
+    config(['atlas_defaults.agents.scout.universe.blocklist' => []]);
 });
+
+/**
+ * @param  list<string>  $blocklist
+ */
+function atl119SettingsBlocklist(string $env, array $blocklist): Setting
+{
+    $setting = app(SettingsService::class)->current($env);
+    $setting->forceFill(['data' => [...$setting->data, 'blocklist' => $blocklist]])->save();
+
+    return $setting;
+}
 
 it('matches inst_id or base_ccy prefix, case-insensitively, exact base match first', function (): void {
     atl119Instrument(['inst_id' => 'SOL-USDT-SWAP', 'base_ccy' => 'SOL']);
@@ -55,13 +68,36 @@ it('excludes suspended instruments and the other env, and marks a blocklisted in
     atl119Instrument(['inst_id' => 'SOLX-USDT-SWAP', 'base_ccy' => 'SOLX', 'state' => 'suspend']);
     atl119Instrument(['inst_id' => 'SOL-USDT-SWAP', 'env' => 'live', 'base_ccy' => 'SOL']);
     atl119Instrument(['inst_id' => 'SOLV-USDT-SWAP', 'base_ccy' => 'SOLV', 'state' => 'live']);
-    config(['atlas_defaults.markets.blocklist' => ['SOLV-USDT-SWAP']]);
+    config(['atlas_defaults.agents.scout.universe.blocklist' => ['SOLV-USDT-SWAP']]);
 
     $res = $this->getJson('/api/instruments?q=sol&env=demo')->assertOk();
 
     expect(array_column($res->json('data'), 'inst_id'))->toBe(['SOL-USDT-SWAP', 'SOLV-USDT-SWAP']);
     expect($res->json('data.0.blocked'))->toBeFalse();
     expect($res->json('data.1.blocked'))->toBeTrue();
+});
+
+it('marks blocked from the settings-data blocklist even when the config list is empty', function (): void {
+    atl119Instrument(['inst_id' => 'SOL-USDT-SWAP', 'base_ccy' => 'SOL', 'state' => 'live']);
+    atl119Instrument(['inst_id' => 'SOLV-USDT-SWAP', 'base_ccy' => 'SOLV', 'state' => 'live']);
+    config(['atlas_defaults.agents.scout.universe.blocklist' => []]);
+    atl119SettingsBlocklist('demo', ['SOLV-USDT-SWAP']);
+
+    $res = $this->getJson('/api/instruments?q=sol&env=demo')->assertOk();
+
+    expect(array_column($res->json('data'), 'inst_id'))->toBe(['SOL-USDT-SWAP', 'SOLV-USDT-SWAP']);
+    expect($res->json('data.0.blocked'))->toBeFalse();
+    expect($res->json('data.1.blocked'))->toBeTrue();
+});
+
+it('matches a lower-case blocklist entry, from settings data as from config', function (): void {
+    atl119Instrument(['inst_id' => 'SOLV-USDT-SWAP', 'base_ccy' => 'SOLV', 'state' => 'live']);
+    atl119SettingsBlocklist('demo', ['solv-usdt-swap']);
+
+    $res = $this->getJson('/api/instruments?q=sol&env=demo')->assertOk();
+
+    expect($res->json('data.0.inst_id'))->toBe('SOLV-USDT-SWAP')
+        ->and($res->json('data.0.blocked'))->toBeTrue();
 });
 
 it('filters by asset_class', function (): void {

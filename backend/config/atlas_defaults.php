@@ -77,7 +77,6 @@ return [
         'max_instruments_per_day' => 5,
         'max_instruments_per_day_min' => 1,
         'max_instruments_per_day_max' => 10,
-        'blocklist' => [],
     ],
     'okx' => [
         'environments' => [
