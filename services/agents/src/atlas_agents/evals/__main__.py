@@ -1,11 +1,12 @@
 """``python -m atlas_agents.evals run|compare`` (brief §7.11, §9).
 
-run --agent historian [--case ID] [--fake] [--label v3] [--cases-dir DIR] [--results-dir DIR]
-    [--baseline FILE]
+run --agent historian [--case ID] [--fake] [--dry-run] [--label v3] [--cases-dir DIR]
+    [--results-dir DIR] [--baseline FILE]
     Runs the cases on the checkout's test DB (run `php artisan test` first so it is migrated),
     prints a pass rate per case, writes evals/results/<agent>/<timestamp>.json, and exits 1 when
     the overall pass rate is more than agents.evals.max_drop_points below the committed
-    evals/<agent>/baseline.json. Without --fake it uses the real Claude CLI login.
+    evals/<agent>/baseline.json. Without --fake it uses the real Claude CLI login. --dry-run only
+    lists the cases (id, replay time, properties) and exits: no database, no CLI.
 compare A.json B.json
     Prints the pass-rate change per case and overall.
 """
@@ -21,6 +22,7 @@ from pathlib import Path
 from atlas_shared import testing
 from atlas_shared.db import make_engine
 
+from atlas_agents.evals.case import discover, load_case
 from atlas_agents.evals.compare import render
 from atlas_agents.evals.runner import CaseResult, baseline_path, check_baseline, run_agent, write_results
 
@@ -34,7 +36,24 @@ def _print_case(result: CaseResult) -> None:
             print(f"      - {prop.name}: {prop.detail}")
 
 
+def _dry_run(args: argparse.Namespace) -> int:
+    cases_dir = Path(args.cases_dir) if args.cases_dir else None
+    paths = discover(args.agent, cases_dir, args.case)
+    if not paths:
+        print(f"no eval cases for {args.agent}", file=sys.stderr)
+        return 2
+    for path in paths:
+        case = load_case(path)
+        when = case.replay_as_of.isoformat() if case.replay_as_of else "-"
+        fake = "fake" if case.fake is not None else "no-fake"
+        print(f"{case.case_id}  {when}  [{fake}]  {', '.join(case.properties)}")
+    print(f"{len(paths)} cases for {args.agent} (dry run: nothing was run)")
+    return 0
+
+
 def _run(args: argparse.Namespace) -> int:
+    if args.dry_run:
+        return _dry_run(args)
     engine = make_engine(testing.db_settings())
     cases_dir = Path(args.cases_dir) if args.cases_dir else None
     try:
@@ -77,6 +96,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     run.add_argument("--agent", required=True)
     run.add_argument("--case", help="run only this case id")
     run.add_argument("--fake", action="store_true", help="replay the cases' scripted answers (no CLI)")
+    run.add_argument("--dry-run", action="store_true", help="list the cases without running them")
     run.add_argument("--label", help="a name for this run, e.g. the prompt version")
     run.add_argument("--cases-dir", help="cases root (default services/agents/evals)")
     run.add_argument("--results-dir", help="results root (default services/agents/evals/results)")
