@@ -186,6 +186,16 @@ DEFAULTS: Final[dict[str, Any]] = {
         ],
         "page_limit": 100,
     },
+    "derivatives_poller": {
+        "interval_seconds": 300,
+        "period": "5m",
+        "taker_inst_type": "CONTRACTS",
+        "always_ccys": [
+            "BTC",
+            "ETH",
+        ],
+        "concurrency": 2,
+    },
     "candle_grid": {
         "offset_minutes": {
             "1m": 0,
@@ -1205,6 +1215,30 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "atr": 10,
                 "mult": "2",
             },
+        },
+        "derivatives": {
+            "funding_z_days": [
+                7,
+                30,
+            ],
+            "min_funding_obs": 3,
+            "sign_flip_days": 3,
+            "default_interval_hours": 8,
+            "oi_windows_hours": [
+                1,
+                4,
+                24,
+            ],
+            "price_dead_band_pct": "0.25",
+            "oi_dead_band_pct": "0.5",
+            "long_short_period": "5m",
+            "long_short_change_hours": 24,
+            "taker_period": "5m",
+            "taker_windows_hours": [
+                1,
+                4,
+            ],
+            "max_age_minutes": 30,
         },
         "regime_table": {
             "top_n": 60,
