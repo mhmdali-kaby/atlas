@@ -1,6 +1,7 @@
 import { CircleAlert, CircleCheck, CircleMinus, Clock, KeyRound, TriangleAlert } from 'lucide-react'
 import { useState, type KeyboardEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { formatList } from '../../lib/format'
 import { Button } from '../../ui'
 import { useDir } from '../../ui/useDir'
 import {
@@ -26,9 +27,6 @@ const TILE: Record<SummaryState, [typeof CircleCheck, string]> = {
   stalled: [TriangleAlert, 'is-warning'],
   allOff: [CircleMinus, ''],
 }
-
-const listFormat = (items: string[], lang: string) =>
-  new Intl.ListFormat(lang === 'ar' ? 'ar' : 'en', { type: 'conjunction' }).format(items)
 
 function SummaryText({ sm, now, onKeys }: { sm: SummaryModel; now: number; onKeys: (providers: string[]) => void }) {
   const { t } = useTranslation(NS)
@@ -85,7 +83,7 @@ function SummaryText({ sm, now, onKeys }: { sm: SummaryModel; now: number; onKey
         <p className="src-sum-keys" data-testid="src-sum-keys">
           <KeyRound aria-hidden="true" strokeWidth={2} />
           <span>
-            {names.length === 1 ? t('sub.keyOne', { name: names[0] }) : t('sub.keyMany', { names: listFormat(names, lang) })}
+            {names.length === 1 ? t('sub.keyOne', { name: names[0] }) : t('sub.keyMany', { names: formatList(names, lang) })}
           </span>
           <Button size="sm" variant="plain" className="src-sum-keys-btn" data-testid="src-sum-add-key" onClick={() => onKeys(sm.missingKeys)}>
             {t(names.length === 1 ? 'keys.add' : 'keys.addMany')}
@@ -118,7 +116,7 @@ function OutageNotice({
       <div>
         <p className="src-notice-title">{t(`down.${cat}`)}</p>
         <p className="src-notice-body">
-          {parts.length > 0 && `${listFormat(parts, lang)}. `}
+          {parts.length > 0 && `${formatList(parts, lang)}. `}
           {c.nextTry !== null && `${t('down.next', { time: time.when(c.nextTry) })} `}
           {t(`down.until.${cat}`)}
         </p>

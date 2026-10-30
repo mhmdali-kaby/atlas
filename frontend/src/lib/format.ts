@@ -158,3 +158,8 @@ export function priceDecimals(value: Figure): number {
 export function formatPrice(value: Figure, lang: Lang = 'en'): string {
   return formatDecimal(value, lang, priceDecimals(value))
 }
+
+/** "A, B and C" / "A وB وC": a conjunction list in the UI language (Arabic for 'ar', else English). */
+export function formatList(items: readonly string[], lang: string): string {
+  return new Intl.ListFormat(lang === 'ar' ? 'ar' : 'en', { type: 'conjunction' }).format(items)
+}
