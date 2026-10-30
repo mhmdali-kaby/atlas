@@ -377,6 +377,33 @@ class OkxTradeClient(OkxTradeReadClient):
         self._check(ack, path)
         return ack
 
+    async def amend_algo(
+        self,
+        inst_id: str,
+        *,
+        algo_id: str | None = None,
+        algo_cl_ord_id: str | None = None,
+        new_sz: Decimal,
+        req_id: str | None = None,
+    ) -> AlgoAck:
+        """POST trade/amend-algos: change a pending TP/SL (conditional/OCO) order's size. Prices are not
+        sent, so OKX keeps the stop and take-profit exactly where they are."""
+        path = "trade/amend-algos"
+        if (algo_id is None) == (algo_cl_ord_id is None):
+            raise ValueError("give exactly one of algo_id or algo_cl_ord_id")
+        body = _compact(
+            {
+                "instId": inst_id,
+                "algoId": algo_id,
+                "algoClOrdId": algo_cl_ord_id,
+                "newSz": _opt_dec("new_sz", new_sz),
+                "reqId": _cl_id("req_id", req_id),
+            }
+        )
+        ack = AlgoAck.model_validate(_one(await self._post(path, body), path))
+        self._check(ack, path)
+        return ack
+
     async def cancel_algos(self, algos: Sequence[tuple[str, str]]) -> list[AlgoAck]:
         """POST trade/cancel-algos with ``(inst_id, algo_id)`` pairs. Returns one row per algo order."""
         path = "trade/cancel-algos"

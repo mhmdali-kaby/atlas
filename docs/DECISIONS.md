@@ -125,3 +125,10 @@ decisions where the brief was silent, as the brief asks.
   is new/sending or less than `protect_grace_seconds` old (the Executor's own stop check owns it).
   An unsent `new`/`sending` order OKX does not know stays resumable. `/execute` answers 409
   `not_reconciled` until the first run after startup succeeded or found no verified connection.
+- **Protection follows the filled size; one stop per entry (ATL-144).** On every fill of an Atlas
+  entry the protective SL/OCO is amended (`trade/amend-algos`, size only) to exactly the filled size;
+  when OKX shows none, a stand-alone stop `p` + 31 hex of the risk check id is placed, and any second
+  protective algo for the same entry is cancelled. A stop that already fired, or one removed on
+  purpose (kill-switch flatten, a close order), is never replaced. Limit and post_only entries still
+  open `executor.entry_timeout_minutes` after they were created are cancelled; a partial fill keeps
+  its stop and the proposal stays `partially_filled`, an unfilled one becomes `expired`.

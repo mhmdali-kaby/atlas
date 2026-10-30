@@ -740,6 +740,13 @@ class Proposal(_Row, Base):
     evidence: Mapped[Any] = _jsonb_list()
     status: Mapped[str] = mapped_column(String(255), server_default=text("'draft'"))
     approval_expires_at: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
+    status_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    """ATL-162: why it reached its status (owner_rejected, approval_timeout, risk_rejected, revised,
+    execution_<reason>)."""
+    owner_note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    decided_by: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
+    approval_reminded_at: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
 
 
 class Vote(_Row, Base):

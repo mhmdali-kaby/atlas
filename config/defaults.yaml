@@ -196,6 +196,9 @@ executor:
   # OKX sCodes meaning "TP/SL cannot be attached to this order/instrument": place the entry bare and
   # protect it with an OCO algo order instead (brief §11).
   attach_refused_codes: ["51010"]
+  # ATL-144: how often trading_core looks for limit/post_only entries past entry_timeout_minutes and for
+  # filled entries whose protection does not yet match the filled size (restart recovery).
+  lifecycle_sweep_seconds: 30
 
 # ATL-146, brief §4.4 and rule 8: reconciliation (trading_core/execution/reconcile.py). Runs at startup
 # (the Executor refuses /execute until one run succeeded), every interval_seconds and after every
@@ -509,6 +512,8 @@ okx_rest:
     trade/close-position: { requests: 20, per_seconds: 2 }
     trade/order-algo: { requests: 20, per_seconds: 2 }
     trade/cancel-algos: { requests: 20, per_seconds: 2 }
+    # ATL-144: resize a pending SL/OCO to the filled size.
+    trade/amend-algos: { requests: 20, per_seconds: 2 }
     trade/orders-pending: { requests: 60, per_seconds: 2 }
     trade/orders-algo-pending: { requests: 20, per_seconds: 2 }
     trade/orders-history: { requests: 40, per_seconds: 2 }
@@ -598,6 +603,20 @@ data_api:
 # ATL-103: owner watchlist pin/remove/restore writes per user per minute.
 watchlists_api:
   writes_per_minute: 30
+
+# ATL-162: /api/proposals (brief §12, §16). Approve, reject, edit and ask-team per user per minute;
+# list page size.
+proposals_api:
+  writes_per_minute: 30
+  list_limit: 50
+  list_max_limit: 200
+
+# ATL-162: trading_core's approval sweeper. Every sweep_seconds it rejects awaiting_owner proposals
+# whose approval_expires_at has passed (autonomy.on_approval_timeout) and posts one reminder when
+# reminder_fraction of the approval window has gone by.
+approvals:
+  sweep_seconds: 15
+  reminder_fraction: "0.5"
 
 data_sources_api:
   poll_seconds_min: 60
