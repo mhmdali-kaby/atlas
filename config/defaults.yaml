@@ -743,6 +743,9 @@ agents:
   #   schedule.tick_seconds: how often the supervisor's own loop checks the schedule.
   #   regime_table.top_n: instruments in the 07:30 table, ranked by 24h quote volume.
   #   mentions.block_ms / batch: XREAD block time and entries per read on atlas.warroom.
+  #   mentions.max_depth (ATL-101): an agent-written @mention is one deeper than the run that wrote
+  #     it (owner, system and scheduled runs are depth 0); a mention at this depth or deeper starts
+  #     no run, so with 2 the chain A -> B -> C stops before C.
   output_retries: 1
   schedule:
     historian_regime_table: "07:30"
@@ -752,3 +755,4 @@ agents:
   mentions:
     block_ms: 5000
     batch: 50
+    max_depth: 2

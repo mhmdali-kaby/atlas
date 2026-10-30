@@ -66,6 +66,17 @@ def _bus_publish(stream: str, envelope: EventEnvelope) -> object:
     return bus.publish(stream, envelope)
 
 
+@dataclass
+class RunScope:
+    """The run a session is in right now (ATL-101). Mutable and shared by every ToolContext the
+    supervisor builds for one agent; it sets it under the agent's run lock (runs of one agent never
+    overlap) and resets it after. ``mention_depth`` is the depth of the mention that started the
+    run (0 for an owner mention, a schedule or a manual run); see :mod:`atlas_agents.mentions`."""
+
+    correlation_id: str | None = None
+    mention_depth: int = 0
+
+
 @dataclass(frozen=True)
 class ToolContext:
     """What every tool call gets besides its arguments. One per agent session.
@@ -83,6 +94,8 @@ class ToolContext:
     publish: Callable[[str, EventEnvelope], object] = _bus_publish
     """How a tool puts an event on the bus (e.g. the untrusted-text War Room alert). Tests pass a
     recorder or a publisher bound to the test Redis DB."""
+    run: RunScope = field(default_factory=RunScope)
+    """The current run (correlation id, mention depth); see :class:`RunScope`."""
 
     def __post_init__(self) -> None:
         if self.replay_as_of is not None and self.replay_as_of.utcoffset() is None:

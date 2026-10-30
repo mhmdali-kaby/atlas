@@ -9,7 +9,9 @@ match, stores the row and broadcasts it. The tools never write Postgres themselv
   it and be allowed for the message kind; the validation errors go back to the agent.
 * ``reply`` posts into the parent's thread with ``reply_to`` set to the parent's row id. The parent
   may be named by its row id or by the envelope id ``post_message`` returned.
-* ``mention`` posts a Main-thread text message whose ``mentions`` is the target slug.
+* ``mention`` posts a Main-thread text message whose ``mentions`` is the target slug, stamped
+  with ``mention_depth`` = the current run's depth + 1 (ATL-101; the supervisor stops a chain at
+  ``agents.mentions.max_depth``). Every message carries the current run's correlation id.
 * Content is capped at ``warroom.content_max_chars``; longer content is refused, not cut.
 * ``cast_vote``, ``submit_proposal`` and ``request_human_input`` answer
   ``not_available_in_phase_1`` (votes, proposals and owner questions arrive with Phase 2).
@@ -56,6 +58,7 @@ KIND_CARD_TYPES: Final[Mapping[str, frozenset[str]]] = {
     "research_report": frozenset({"history_verdict", "regime_table", "news_brief"}),
 }
 MAIN_THREAD: Final = {"kind": "main", "key": "main"}
+DEPTH_FIELD: Final = "mention_depth"
 
 _messages = table(
     "warroom_messages",
@@ -188,6 +191,7 @@ def message_envelope(
     thread_id: str | None = None,
     reply_to: str | None = None,
     mentions: list[str] | None = None,
+    mention_depth: int | None = None,
 ) -> EventEnvelope:
     """A ``warroom.message`` authored by ``ctx.agent`` (the shape atlas:bridge stores)."""
     payload: dict[str, Any] = {}
@@ -211,12 +215,14 @@ def message_envelope(
             "cost_usd": None,
         }
     )
+    if mention_depth is not None:
+        payload[DEPTH_FIELD] = mention_depth
     return EventEnvelope(
         type=MESSAGE_EVENT,
         ts=ctx.now(),
         env=ctx.env,
         source=f"agent:{ctx.agent}",
-        correlation_id=ctx.correlation_id,
+        correlation_id=ctx.run.correlation_id or ctx.correlation_id,
         payload=payload,
     )
 
@@ -305,7 +311,11 @@ async def mention(ctx: ToolContext, args: MentionInput) -> ToolResult:
     if target == ctx.agent:
         raise ToolError("unknown_agent", "an agent cannot mention itself")
     content = _check_content(f"@{handles[target]} {args.request.strip()}")
-    return _publish(ctx, message_envelope(ctx, kind="text", content_md=content, mentions=[target]))
+    depth = ctx.run.mention_depth + 1
+    return _publish(
+        ctx,
+        message_envelope(ctx, kind="text", content_md=content, mentions=[target], mention_depth=depth),
+    )
 
 
 def _phase_1(name: str) -> ToolError:
