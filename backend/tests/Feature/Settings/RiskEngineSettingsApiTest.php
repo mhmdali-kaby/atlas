@@ -117,3 +117,30 @@ it('stores markets toggles and instrument lists in canonical form', function ():
         ->assertOk()
         ->assertJsonPath('data.settings.enabled_markets', []);
 });
+
+it('lets the owner clear the bot capital cap (decision #250: null = no cap) and set it again', function (): void {
+    $this->getJson('/api/settings?env=demo')->assertOk();
+
+    $this->patchJson('/api/settings', ['env' => 'demo', 'version' => 1, 'changes' => ['bot_capital_cap_usdt' => null]])
+        ->assertOk()
+        ->assertJsonPath('data.version', 2)
+        ->assertJsonPath('data.settings.bot_capital_cap_usdt', null);
+
+    // A stored null is a value, not a gap filled from the defaults.
+    $this->getJson('/api/settings?env=demo')->assertOk()->assertJsonPath('data.settings.bot_capital_cap_usdt', null);
+    expect(SettingsHistory::query()->latest('version')->firstOrFail()->diff)
+        ->toEqual(['bot_capital_cap_usdt' => ['from' => '10000', 'to' => null]]);
+
+    $this->patchJson('/api/settings', ['env' => 'demo', 'version' => 2, 'changes' => ['bot_capital_cap_usdt' => '25000']])
+        ->assertOk()
+        ->assertJsonPath('data.settings.bot_capital_cap_usdt', '25000');
+});
+
+it('refuses null for every other money and risk-engine field', function (string $field): void {
+    $this->getJson('/api/settings?env=demo')->assertOk();
+
+    $this->patchJson('/api/settings', ['env' => 'demo', 'version' => 1, 'changes' => [$field => null]])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors("changes.{$field}");
+    expect(Setting::query()->where('env', 'demo')->value('version'))->toBe(1);
+})->with(['max_usdt_per_trade', 'max_new_exposure_per_day_usdt', 'max_trades_per_day', 'margin_buffer', 'avoid_stock_perps_outside_us_hours', 'blocklist']);

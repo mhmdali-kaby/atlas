@@ -12,6 +12,8 @@ the Orchestrator/Strategist/DA patch and the Portfolio Manager.
 - 20 new settings keys, all in `GET /api/settings` → `data.settings`, all PATCH-able, defaults in
   `config/defaults.yaml` (`money_limits`, `markets`, `risk_engine`). Decimals are strings, counts are
   JSON integers, toggles are booleans, lists are JSON lists.
+- `bot_capital_cap_usdt` can be JSON `null` (no cap, decision #250). In `settings.data` a stored
+  null is a value: check key presence, don't treat null as "missing → default".
 - Python should read a field from `settings.data` and fall back to `DEFAULTS` (rows saved before
   ATL-124 do not have the keys in `data`; the Laravel API fills them from defaults on read, the DB
   row does not). Record `settings.version` in `risk_checks.settings_version`.
@@ -95,7 +97,7 @@ Server defaults (status, kind, version, jsonb lists, blank text) are filled by P
 
 | key | type | default | allowed |
 | --- | --- | --- | --- |
-| bot_capital_cap_usdt | decimal string | "10000" | > 0, ≤ 1e12 |
+| bot_capital_cap_usdt | decimal string or **null** | "10000" | > 0, ≤ 1e12, or `null` = no cap (decision #250: sizing equity = min(equity, cap), or equity when null). The only nullable key. |
 | max_usdt_per_trade | decimal string | "1000" | > 0, ≤ 1e12 |
 | max_new_exposure_per_day_usdt | decimal string | "5000" | > 0, ≤ 1e12 |
 | max_trades_per_day | int | 10 | 1..1000 |

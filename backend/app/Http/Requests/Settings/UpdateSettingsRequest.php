@@ -41,6 +41,9 @@ class UpdateSettingsRequest extends FormRequest
             $rules["changes.{$field}"] = $type === 'integer'
                 ? ['sometimes', 'integer:strict', "between:{$min},{$max}"]
                 : ['sometimes', 'string', self::decimalRange((string) $min, (string) $max, $exclusive)];
+            if (in_array($field, SettingsSchema::NULLABLE_FIELDS, true)) {
+                array_splice($rules["changes.{$field}"], 1, 0, ['nullable']);
+            }
         }
 
         // ATL-33 AC2: the schema's 1-4 range is every level the brief defines; this build phase
@@ -149,11 +152,11 @@ class UpdateSettingsRequest extends FormRequest
     }
 
     /**
-     * @return array<string, bool|int|string|list<string>>
+     * @return array<string, bool|int|string|list<string>|null>
      */
     public function changes(): array
     {
-        /** @var array<string, bool|int|string|list<string>> $changes */
+        /** @var array<string, bool|int|string|list<string>|null> $changes */
         $changes = $this->validated('changes');
 
         return $changes;

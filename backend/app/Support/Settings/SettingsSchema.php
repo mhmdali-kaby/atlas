@@ -74,6 +74,12 @@ final class SettingsSchema
         'margin_buffer' => ['decimal', '0', '1', true],
     ];
 
+    /**
+     * ATL-124, decision #250: NUMERIC_FIELDS the owner may clear with JSON null. A null bot
+     * capital cap means "no cap": sizing equity is the account equity.
+     */
+    public const NULLABLE_FIELDS = ['bot_capital_cap_usdt'];
+
     /** ATL-124, brief §14.5: on/off settings. */
     public const BOOLEAN_FIELDS = ['avoid_stock_perps_outside_us_hours'];
 
@@ -206,7 +212,7 @@ final class SettingsSchema
      * The agent settings a fresh env starts with: agents.defaults overridden by each roster entry,
      * and agents.web's lists.
      *
-     * @return array<string, bool|int|string|list<string>>
+     * @return array<string, bool|int|string|list<string>|null>
      */
     public static function agentDefaults(): array
     {
@@ -265,7 +271,7 @@ final class SettingsSchema
      * The settings a fresh env starts with: the default risk profile, the default autonomy level
      * and the market defaults.
      *
-     * @return array<string, bool|int|string|list<string>>
+     * @return array<string, bool|int|string|list<string>|null>
      */
     public static function defaults(): array
     {
@@ -341,7 +347,7 @@ final class SettingsSchema
      * Unknown keys are dropped.
      *
      * @param  array<string, mixed>  $values
-     * @return array<string, bool|int|string|list<string>>
+     * @return array<string, bool|int|string|list<string>|null>
      */
     public static function normalise(array $values): array
     {
@@ -402,7 +408,9 @@ final class SettingsSchema
             if (! isset(self::NUMERIC_FIELDS[$field])) {
                 continue;
             }
-            $out[$field] = self::numeric($field, $value);
+            $out[$field] = $value === null && in_array($field, self::NULLABLE_FIELDS, true)
+                ? null
+                : self::numeric($field, $value);
         }
 
         return $out;
