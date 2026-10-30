@@ -50,7 +50,8 @@ been fetched yet is still `REPORTED`.
 value = (price_now - close of the last 1H bar closed by first_seen) / Wilder ATR(14) of the 1H bars closed by first_seen
 ```
 
-- `price_now` is the close of the newest closed 1m candle by `ctx.now()`, the same proxy as `okx_market.get_mark_price`.
+- `price_now` is the close of the newest closed 1m candle by `ctx.now()`, read through `tools.market.latest_closed_candles` — the same helper `okx_market.get_mark_price` uses, so the two proxies cannot drift.
+- Batched: `news_status.price_moves_since(session, ctx, {inst_id: [first_seen, …]})` reads price-now for all instruments in one DISTINCT ON query and loads 1H bars once per instrument, sliced per first_seen. A `search_news` over many clusters costs 1 + (number of distinct instruments) candle queries.
 - `first_seen` is the earliest `published_at` among the known items.
 - Config: `agents.news_price_move.bar` (1H) and `history_bars` (200), plus `quant.atr_window` (14).
 - `value` is signed: positive means price is above the pre-news close.

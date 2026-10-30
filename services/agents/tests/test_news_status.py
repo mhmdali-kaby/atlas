@@ -16,9 +16,9 @@ import pytest
 from atlas_agents.schemas import NewsBrief
 from atlas_agents.tools import framework as fw
 from atlas_agents.tools.framework import ToolContext, fq_name
-from atlas_agents.tools.news_status import decide_status
+from atlas_agents.tools.news_status import cluster_statuses, decide_status, price_move_since
 from atlas_shared.db import Candle, NewsCluster, NewsItem, NewsSource
-from sqlalchemy import Engine, delete
+from sqlalchemy import Engine, delete, event
 from sqlalchemy.orm import Session, sessionmaker
 
 from .conftest import Recorder
@@ -91,12 +91,17 @@ async def _call(ctx: ToolContext, server: str, name: str, args: dict[str, Any]) 
     return body
 
 
-def _cluster(factory: sessionmaker[Session], sources: list[str], instruments: list[str] | None = None) -> str:
+def _cluster(
+    factory: sessionmaker[Session],
+    sources: list[str],
+    instruments: list[str] | None = None,
+    first_seen: datetime = FIRST_SEEN,
+) -> str:
     with factory() as s:
         cluster = NewsCluster(
             headline=f"Story {RUN}",
-            first_seen=FIRST_SEEN,
-            last_seen=FIRST_SEEN,
+            first_seen=first_seen,
+            last_seen=first_seen,
             item_count=0,
             max_importance=3,
         )
@@ -104,7 +109,7 @@ def _cluster(factory: sessionmaker[Session], sources: list[str], instruments: li
         s.flush()
         for i, source in enumerate(sources):
             slug = uuid.uuid4().hex[:8]
-            published = FIRST_SEEN + timedelta(minutes=5 * i)
+            published = first_seen + timedelta(minutes=5 * i)
             s.add(
                 NewsItem(
                     source=source,
@@ -243,6 +248,42 @@ async def test_price_move_matches_a_hand_calculation(db: sessionmaker[Session]) 
     cluster = next(c for c in found["data"]["clusters"] if c["cluster_id"] == cid)
     by_inst = {m["inst_id"]: m for m in cluster["price_move_since_first_seen_atr"]}
     assert by_inst[INST]["value"] == pytest.approx(1.4)
+
+
+def test_clusters_on_one_instrument_query_candles_once(db: sessionmaker[Session], engine: Engine) -> None:
+    """Two clusters on INST (first seen 15:10 and 14:40) plus one on NO_HOURLY: the values equal the
+    one-at-a-time calculation, and candles are read in two statements (price now for every
+    instrument, then one 1H load per instrument with hourly history)."""
+    _candles(db)
+    early = FIRST_SEEN - timedelta(minutes=30)
+    a = _cluster(db, [LOW_A], instruments=[INST])
+    b = _cluster(db, [LOW_B], instruments=[INST, NO_HOURLY], first_seen=early)
+    ctx = _ctx(db)
+
+    with db() as s:
+        expected = {
+            (a, INST): price_move_since(s, ctx, INST, FIRST_SEEN),
+            (b, INST): price_move_since(s, ctx, INST, early),
+            (b, NO_HOURLY): price_move_since(s, ctx, NO_HOURLY, early),
+        }
+
+    candle_queries: list[str] = []
+
+    def count(_conn: Any, _cursor: Any, statement: str, *_rest: Any) -> None:
+        if "FROM candles" in statement:
+            candle_queries.append(statement)
+
+    event.listen(engine, "before_cursor_execute", count)
+    try:
+        out = cluster_statuses(ctx, [a, b])
+    finally:
+        event.remove(engine, "before_cursor_execute", count)
+
+    got = {(cid, m.inst_id): m for cid in (a, b) for m in out[cid].price_move_since_first_seen_atr}
+    assert got == expected
+    assert got[(a, INST)].value == pytest.approx(1.4)
+    # 1 DISTINCT ON price-now query + 1H loads for INST and NO_HOURLY (one each, not one per cluster).
+    assert len(candle_queries) == 3, candle_queries
 
 
 # -- criterion 3: the card validator overwrites the model's labels --------------------------------------

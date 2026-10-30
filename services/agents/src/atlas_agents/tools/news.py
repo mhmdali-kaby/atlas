@@ -238,7 +238,7 @@ async def search_news(ctx: ToolContext, args: SearchNewsInput) -> ToolResult:
         injection_flags=found.injection_flags,
         clusters=[statuses[cid] for cid in dict.fromkeys(cluster_ids) if cid in statuses],
     )
-    return ToolResult(data=data, as_of=ctx.now(), source="atlas.news_items")
+    return ToolResult(data=data, as_of=ctx.now(), source="atlas.news_items,atlas.news_sources,atlas.candles")
 
 
 @atlas_tool("news", "get_story_cluster", GetStoryClusterInput, ClusterOut)

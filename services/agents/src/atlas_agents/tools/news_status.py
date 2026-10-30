@@ -25,15 +25,17 @@ from collections.abc import Iterable, Mapping, Sequence
 from datetime import datetime
 from typing import Any, Literal
 
+import pandas as pd
 from atlas_quant import load_candles, move_since_atr
 from atlas_quant.grid import bar_delta
-from atlas_shared.db import Candle, NewsItem, NewsSource
+from atlas_shared.db import NewsItem, NewsSource
 from atlas_shared.defaults import DEFAULTS
 from pydantic import BaseModel
-from sqlalchemy import and_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from atlas_agents.tools.framework import ToolContext
+from atlas_agents.tools.market import latest_closed_candles, market_config
 
 NewsStatus = Literal["CONFIRMED", "REPORTED", "RUMOUR"]
 StatusRule = Literal[
@@ -92,57 +94,63 @@ def _move_config() -> Mapping[str, Any]:
     return config
 
 
-def price_move_since(session: Session, ctx: ToolContext, inst_id: str, first_seen: datetime) -> PriceMoveOut:
-    """price_move_since_first_seen_atr for one instrument (see the module docstring)."""
+def price_moves_since(
+    session: Session, ctx: ToolContext, wanted: Mapping[str, Sequence[datetime]]
+) -> dict[tuple[str, datetime], PriceMoveOut]:
+    """price_move_since_first_seen_atr for every (inst_id, first_seen) in ``wanted`` (inst_id ->
+    first_seen moments), see the module docstring. One price-now query for all instruments and one
+    ``bar`` candle load per instrument, sliced per first_seen."""
     conf = _move_config()
     bar = str(conf["bar"])
     step = bar_delta(bar)
-    mark_bar = str(DEFAULTS["agents"]["market_tools"]["mark_price_bar"])
-    mark_step = bar_delta(mark_bar)
+    lookback = step * (int(conf["history_bars"]) + 1)
+    mark_bar = str(market_config()["mark_price_bar"])
     now = ctx.now()
-    latest = session.scalars(
-        select(Candle)
-        .where(
-            and_(
-                Candle.env == ctx.env,
-                Candle.inst_id == inst_id,
-                Candle.bar == mark_bar,
-                Candle.confirmed.is_(True),
-                Candle.ts <= now - mark_step,
-                ctx.bound(Candle.ts),
+    latest = latest_closed_candles(session, ctx, list(wanted), mark_bar)
+    out: dict[tuple[str, datetime], PriceMoveOut] = {}
+    for inst_id, moments in wanted.items():
+        candle = latest.get(inst_id)
+        if candle is None:
+            for first_seen in moments:
+                out[(inst_id, first_seen)] = PriceMoveOut(
+                    inst_id=inst_id,
+                    value=None,
+                    reason=f"no closed {mark_bar} candle for {inst_id} to price it now",
+                )
+            continue
+        price_now = float(candle.c)
+        price_ts = candle.ts + bar_delta(mark_bar)
+        as_ofs = {first_seen: min(first_seen, now) for first_seen in moments}
+        latest_as_of = max(as_ofs.values())
+        frame = load_candles(
+            session,
+            inst_id,
+            bar,
+            start=min(as_ofs.values()) - lookback,
+            end=latest_as_of,
+            as_of=latest_as_of,
+            env=ctx.env,
+        ).df
+        for first_seen, as_of in as_ofs.items():
+            # The same bars a load bounded by this as_of would return: ts in [as_of - lookback, as_of - step].
+            window = frame.loc[pd.Timestamp(as_of - lookback) : pd.Timestamp(as_of - step)]
+            move = move_since_atr(window, as_of, price_now, bar=bar)
+            out[(inst_id, first_seen)] = PriceMoveOut(
+                inst_id=inst_id,
+                value=move.value,
+                reason=move.reason,
+                ref_ts=move.ref_ts,
+                ref_close=move.ref_close,
+                atr=move.atr,
+                price_now=price_now,
+                price_ts=price_ts,
             )
-        )
-        .order_by(Candle.ts.desc())
-        .limit(1)
-    ).first()
-    if latest is None:
-        return PriceMoveOut(
-            inst_id=inst_id, value=None, reason=f"no closed {mark_bar} candle for {inst_id} to price it now"
-        )
-    price_now = float(latest.c)
-    price_ts = latest.ts + mark_step
-    as_of = min(first_seen, now)
-    history_bars = int(conf["history_bars"])
-    candles = load_candles(
-        session,
-        inst_id,
-        bar,
-        start=as_of - step * (history_bars + 1),
-        end=as_of,
-        as_of=as_of,
-        env=ctx.env,
-    )
-    move = move_since_atr(candles.df, as_of, price_now, bar=bar)
-    return PriceMoveOut(
-        inst_id=inst_id,
-        value=move.value,
-        reason=move.reason,
-        ref_ts=move.ref_ts,
-        ref_close=move.ref_close,
-        atr=move.atr,
-        price_now=price_now,
-        price_ts=price_ts,
-    )
+    return out
+
+
+def price_move_since(session: Session, ctx: ToolContext, inst_id: str, first_seen: datetime) -> PriceMoveOut:
+    """price_move_since_first_seen_atr for one instrument (see the module docstring)."""
+    return price_moves_since(session, ctx, {inst_id: [first_seen]})[(inst_id, first_seen)]
 
 
 def cluster_statuses(ctx: ToolContext, cluster_ids: Sequence[str]) -> dict[str, ClusterStatusOut]:
@@ -176,11 +184,20 @@ def cluster_statuses(ctx: ToolContext, cluster_ids: Sequence[str]) -> dict[str, 
                 )
             ).all()
         }
+        firsts = {cid: min(published for _s, published, _i in items) for cid, items in grouped.items()}
+        linked = {
+            cid: sorted({inst for _s, _p, insts in items for inst in insts}) for cid, items in grouped.items()
+        }
+        wanted_moves: dict[str, list[datetime]] = {}
+        for cid, instruments in linked.items():
+            for inst in instruments:
+                wanted_moves.setdefault(inst, []).append(firsts[cid])
+        moves = price_moves_since(session, ctx, wanted_moves)
         out: dict[str, ClusterStatusOut] = {}
         for cid, items in grouped.items():
             decision = decide_status((source for source, _p, _i in items), trust)
-            first_seen = min(published for _s, published, _i in items)
-            instruments = sorted({inst for _s, _p, insts in items for inst in insts})
+            first_seen = firsts[cid]
+            instruments = linked[cid]
             out[cid] = ClusterStatusOut(
                 cluster_id=cid,
                 status=decision.status,
@@ -188,9 +205,7 @@ def cluster_statuses(ctx: ToolContext, cluster_ids: Sequence[str]) -> dict[str, 
                 status_sources=decision.decided_by,
                 sources=sorted({source for source, _p, _i in items}),
                 first_seen=first_seen,
-                price_move_since_first_seen_atr=[
-                    price_move_since(session, ctx, inst, first_seen) for inst in instruments
-                ],
+                price_move_since_first_seen_atr=[moves[(inst, first_seen)] for inst in instruments],
             )
     return out
 
@@ -204,4 +219,5 @@ __all__ = [
     "cluster_statuses",
     "decide_status",
     "price_move_since",
+    "price_moves_since",
 ]
