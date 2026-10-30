@@ -215,6 +215,27 @@ describe('WatchlistCard', () => {
     expect(within(card).getByTestId('wl-live')).toHaveTextContent(en.wl.closedLive)
   })
 
+  it('links a hovered row to its rail diamonds, and a hovered diamond to its rows', () => {
+    const { card } = draw(watchlistMessage(cards.published()))
+    const rows = within(card).getAllByTestId('wl-pick')
+    const diamonds = () => within(card).getAllByTestId('wl-diamond')
+    const linked = () => diamonds().filter((d) => d.classList.contains('is-linked'))
+    expect(linked()).toHaveLength(0)
+
+    fireEvent.mouseEnter(rows[0]!) // BTC: only the US CPI diamond is BTC's
+    expect(linked()).toHaveLength(1)
+    expect(linked()[0]!.title).toContain('US CPI (Sep)')
+    fireEvent.mouseLeave(rows[0]!)
+    expect(linked()).toHaveLength(0)
+
+    const cpi = diamonds().find((d) => d.title.includes('US CPI (Sep)'))!
+    fireEvent.mouseEnter(cpi)
+    const linkedRows = within(card).getAllByTestId('wl-pick').filter((r) => r.classList.contains('is-linked'))
+    expect(linkedRows.map((r) => r.getAttribute('data-wl-row'))).toEqual(['BTC-USDT-SWAP', 'XAU-USDT-SWAP'])
+    fireEvent.mouseLeave(cpi)
+    expect(within(card).getAllByTestId('wl-pick').some((r) => r.classList.contains('is-linked'))).toBe(false)
+  })
+
   it('renders in Arabic with the bias word and the notice translated', () => {
     const { card } = draw(watchlistMessage(cards.newsDown()), { lang: 'ar' })
     expect(within(card).getAllByTestId('wl-bias')[0]).toHaveTextContent(ar.wl.bias.long)
