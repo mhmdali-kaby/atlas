@@ -399,6 +399,9 @@ DEFAULTS: Final[dict[str, Any]] = {
         "repaired_issue_days": 7,
         "quality_issue_limit": 500,
     },
+    "watchlists_api": {
+        "writes_per_minute": 30,
+    },
     "data_sources_api": {
         "poll_seconds_min": 60,
         "poll_seconds_max": 86400,
@@ -973,6 +976,7 @@ DEFAULTS: Final[dict[str, Any]] = {
             "max_depth": 2,
         },
         "scout": {
+            "watchlist_edit_window_minutes": 10,
             "universe": {
                 "enabled_markets": [
                     "spot",
