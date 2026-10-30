@@ -32,6 +32,7 @@ from trading_core.execution.config import (
     round_px,
     round_stop,
 )
+from trading_core.execution.okx_access import CredSnapshot
 
 
 @dataclass
@@ -233,7 +234,7 @@ def _plan(
         close_id=derived_id("c", rc.id),
         resume=existing is not None,
         cfg=cfg,
-        creds=_CredSnapshot(conn.env, conn.api_key, conn.api_secret, conn.passphrase),
+        creds=CredSnapshot.of(conn),
     )
     if existing is None:
         session.add(
@@ -263,14 +264,6 @@ def _plan(
         session.flush()
         session.add(_algo_row(plan, plan.attach_algo_row_id, attach_id, "attached", at))
     return plan
-
-
-@dataclass(frozen=True)
-class _CredSnapshot:
-    env: str
-    api_key: str = field(repr=False)
-    api_secret: str = field(repr=False)
-    passphrase: str = field(repr=False)
 
 
 def _algo_row(plan: _Plan, row_id: uuid.UUID, algo_cl_ord_id: str, how: str, at: datetime) -> AlgoOrder:
