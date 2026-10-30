@@ -61,6 +61,10 @@ kill-switch case closes everything on the account, so it skips when anything els
 `ATLAS_OKX_DEMO_IT_FLATTEN_ALL=1`. If a run is interrupted, check the demo account's open
 orders and positions on BTC-USDT-SWAP and XAU-USDT-SWAP.
 
+Before touching any database the suite resolves and connects to the demo REST host. If that fails
+every case errors at once with `OKX unreachable: ...` (DNS or network); fix the Mac's network or DNS
+and run again. Nothing is placed and nothing needs cleaning up in that case.
+
 ## Backup / restore
 
 - `./atlas backup [dir]` — `pg_dump -Fc` of the `atlas` database into `dir` (default

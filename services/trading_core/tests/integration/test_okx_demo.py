@@ -37,6 +37,7 @@ import asyncio
 import json
 import os
 import shutil
+import socket
 import subprocess
 import uuid
 from collections.abc import Iterator
@@ -44,6 +45,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import ROUND_CEILING, ROUND_FLOOR, Decimal
 from typing import Any, cast
+from urllib.parse import urlsplit
 
 import pytest
 import redis
@@ -152,8 +154,26 @@ def _connection_values(row: Any) -> dict[str, Any]:
     return {c.name: getattr(row, c.key) for c in Connection.__table__.columns}
 
 
+def _require_okx_reachable() -> None:
+    """Fail fast, before touching any database, when the demo REST host does not resolve or connect."""
+    url = str(DEFAULTS["okx"]["environments"][ENV]["rest_base_url"])
+    host = urlsplit(url).hostname or url
+    try:
+        socket.getaddrinfo(host, 443, type=socket.SOCK_STREAM)
+    except socket.gaierror as exc:
+        pytest.fail(
+            f"OKX unreachable: {host} does not resolve from this machine (DNS: {exc}). "
+            "Fix the network or DNS and run again."
+        )
+    try:
+        socket.create_connection((host, 443), timeout=5).close()
+    except OSError as exc:
+        pytest.fail(f"OKX unreachable: cannot connect to {host}:443 ({exc}). Fix the network and run again.")
+
+
 @pytest.fixture(scope="module")
 def demo() -> Iterator[Demo]:
+    _require_okx_reachable()
     app_key = _app_key()
     source = _source_engine()
     try:
@@ -209,10 +229,10 @@ def demo() -> Iterator[Demo]:
             await sync_instruments(ENV, okx=okx, engine=engine, inst_types=["SWAP"])
 
     try:
-        asyncio.run(setup())
-    except OkxNetworkError as exc:
-        pytest.fail(f"OKX's REST host is not reachable from this machine (check DNS / network): {exc}")
-    try:
+        try:
+            asyncio.run(setup())
+        except OkxNetworkError as exc:
+            pytest.fail(f"OKX unreachable: the demo REST API did not answer ({exc}).")
         yield world
     finally:
         with engine.begin() as c:
