@@ -1502,3 +1502,38 @@ agents:
       correlation:
         threshold: "0.8"
         lookback_days: 30
+  # ATL-168, brief §7.8: the Portfolio Manager's position management rules, computed in code by
+  # atlas_agents.pm.rules.evaluate (pure; the PM proposes, the Risk Engine validates, the Executor
+  # acts). R is measured on the proposal's original stop: 1R = |entry - original stop|.
+  #   breakeven_at_r: rule 1 fires at this many R; the stop goes to entry +/- round-trip fees,
+  #     entry x fee_rate x 2. fee_rate is the fallback taker fee when the caller has no trade-fee read.
+  #   tp1_close_pct: rule 2 closes this % at TP1 when the proposal's TP1 carries no pct.
+  #   tp1_trail_atr_mult: rule 2 trails at max(this x ATR(1H), distance to the last 1H swing).
+  #   two_r_at / two_r_trail_atr_mult: rule 3, at this many R with TP2 not hit, trail at this x ATR(1H).
+  #   default_time_stop_minutes: rule 4 when the proposal has no time_stop_minutes.
+  #   structure_max_age_minutes: rule 5 acts on a "broken" structure report no older than this.
+  #   close_before_high_impact_events: rule 6 on/off (the settings-table key of the same name
+  #     under agents.portfolio_manager overrides it). Within event_lead_minutes before an event of
+  #     importance >= event_min_importance, a position with less than event_max_profit_r profit is
+  #     reduced by event_close_pct (100 = close).
+  #   funding_*: rule 7, funding against the position costing more than funding_max_annual_pct a
+  #     year (|rate| x settlements per day x 365), open at least funding_flat_after_hours and within
+  #     +/- funding_flat_r of breakeven, gives a flag and suggest_close.
+  portfolio_manager:
+    rules:
+      breakeven_at_r: "1"
+      fee_rate: "0.0005"
+      tp1_close_pct: "50"
+      tp1_trail_atr_mult: "1.5"
+      two_r_at: "2"
+      two_r_trail_atr_mult: "1.0"
+      default_time_stop_minutes: 1440
+      structure_max_age_minutes: 120
+      close_before_high_impact_events: true
+      event_lead_minutes: 15
+      event_min_importance: 5
+      event_max_profit_r: "1"
+      event_close_pct: "50"
+      funding_max_annual_pct: "30"
+      funding_flat_after_hours: 8
+      funding_flat_r: "0.25"
