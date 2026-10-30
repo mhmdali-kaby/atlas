@@ -71,6 +71,9 @@ export function SegmentedControl<V extends string>({
             <RadioGroup.Indicator asChild>
               <motion.span
                 layoutId={`segment-thumb-${thumbId}`}
+                // Measure only when the choice changes: a control that merely moved on the page
+                // (content above it grew) must not slide its thumb in from the old position.
+                layoutDependency={value}
                 aria-hidden="true"
                 data-segment-thumb=""
                 className="absolute inset-0 -z-10 rounded-[7px] bg-segment-thumb shadow-segment-thumb"
