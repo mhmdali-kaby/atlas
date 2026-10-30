@@ -501,7 +501,7 @@ def _submit(ctx: ToolContext, args: SubmitProposalInput) -> ToolResult:
     if computed is not None:
         from atlas_agents.pm import guard
 
-        guard.record(ctx, computed, str(row.id))
+        guard.record(ctx, computed, str(getattr(result.data, "proposal_id", "")))
     return result
 
 

@@ -6,8 +6,9 @@ The result then follows autonomy exactly as a cycle's entry does: rejected → `
 1 → ``advise_only``; otherwise ``awaiting_owner`` with ``approval_expires_at`` (the owner approves
 through ATL-162). Nothing here calls the Executor.
 
-When trading_core refuses or cannot be reached, the proposal stays ``passed`` (so the next check does
-not propose the same kind again) and the War Room gets one line with the error code.
+When trading_core refuses or cannot be reached, the proposal is ``rejected`` with
+``status_reason`` ``risk_<error code>`` (e.g. ``risk_risk_engine_error``) and the War Room gets one
+line with the code and detail.
 """
 
 from __future__ import annotations
@@ -78,13 +79,24 @@ def _skip_vote(ctx: ToolContext, proposal_id: uuid.UUID) -> bool:
     return row is not None
 
 
+def _refused(ctx: ToolContext, proposal_id: uuid.UUID, code: str) -> None:
+    """trading_core refused or could not be reached: the proposal is rejected with the reason."""
+    with ctx.session_factory() as session:
+        session.execute(
+            update(Proposal)
+            .where(Proposal.id == proposal_id, Proposal.status == "passed")
+            .values(status="rejected", status_reason=f"risk_{code}"[:64], updated_at=ctx.now())
+        )
+        session.commit()
+
+
 def _line(ctx: ToolContext, content: str) -> None:
     ctx.publish(WARROOM_STREAM, message_envelope(ctx, kind="text", content_md=content))
 
 
 async def route(ctx: ToolContext, proposal_id: str, client: TradingCoreClient) -> str:
     """Vote skipped, one risk check, autonomy. Returns the proposal's status afterwards, or
-    ``error`` (left ``passed``)."""
+    ``error`` when it was not under_review."""
     pid = uuid.UUID(proposal_id)
     if not await asyncio.to_thread(_skip_vote, ctx, pid):
         log.warning("portfolio_manager: proposal %s was not under_review; not routed", proposal_id)
@@ -93,8 +105,13 @@ async def route(ctx: ToolContext, proposal_id: str, client: TradingCoreClient) -
         body = await client.risk_evaluate(proposal_id)
     except TradingCoreError as exc:
         log.warning("portfolio_manager: risk check on %s failed: %s", proposal_id, exc.code)
-        _line(ctx, f"Risk check on Portfolio Manager proposal {proposal_id} failed: {exc.code}.")
-        return "error"
+        await asyncio.to_thread(_refused, ctx, pid, exc.code)
+        _line(
+            ctx,
+            f"Risk check on Portfolio Manager proposal {proposal_id} failed ({exc.code}): {exc.detail}. "
+            "The proposal is rejected.",
+        )
+        return "rejected"
     card = {"type": "risk_check", **{k: v for k, v in body.items() if k != "ok"}}
 
     def apply() -> tuple[str, datetime | None, Any]:
