@@ -399,6 +399,9 @@ DEFAULTS: Final[dict[str, Any]] = {
         "repaired_issue_days": 7,
         "quality_issue_limit": 500,
     },
+    "watchlists_api": {
+        "writes_per_minute": 30,
+    },
     "data_sources_api": {
         "poll_seconds_min": 60,
         "poll_seconds_max": 86400,
@@ -973,6 +976,7 @@ DEFAULTS: Final[dict[str, Any]] = {
             "max_depth": 2,
         },
         "scout": {
+            "watchlist_edit_window_minutes": 10,
             "universe": {
                 "enabled_markets": [
                     "spot",
@@ -1035,6 +1039,24 @@ DEFAULTS: Final[dict[str, Any]] = {
                     "USD",
                 ],
                 "valid_minutes": 15,
+            },
+            "prescore": {
+                "shortlist_size": 25,
+                "weights": {
+                    "momentum_z": "0.25",
+                    "vol_expansion_z": "0.20",
+                    "catalyst_score": "0.20",
+                    "liquidity_score": "0.15",
+                    "derivatives_signal": "0.10",
+                    "regime_clarity": "0.10",
+                },
+                "clip_z": 3,
+                "earnings_points": 3,
+                "oi_scale_pct": 10,
+                "correlation": {
+                    "threshold": "0.8",
+                    "lookback_days": 30,
+                },
             },
         },
     },
