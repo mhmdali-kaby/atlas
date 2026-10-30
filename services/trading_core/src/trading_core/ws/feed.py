@@ -248,7 +248,7 @@ class MarketFeed:
                     pinger = asyncio.create_task(self._ping_loop(link, ws), name=f"ws:{link.name}:ping")
                     try:
                         async for raw in ws:
-                            await self.on_message(raw)
+                            await self._handle(raw)
                     finally:
                         pinger.cancel()
                         with contextlib.suppress(asyncio.CancelledError, Exception):
@@ -275,6 +275,16 @@ class MarketFeed:
 
     # -- messages ----------------------------------------------------------------------------------
 
+    async def _handle(self, raw: str | bytes) -> None:
+        """One bad frame is logged and dropped; it never tears the socket down."""
+        try:
+            await self.on_message(raw)
+        except Exception as exc:
+            logger.warning(
+                "market push handling failed",
+                extra={"error": f"{type(exc).__name__}: {exc}"[:300]},
+            )
+
     async def on_message(self, raw: str | bytes) -> None:
         text = raw.decode() if isinstance(raw, bytes) else raw
         if text == "pong":
@@ -290,10 +300,12 @@ class MarketFeed:
             if msg.get("event") == "error":
                 logger.warning(
                     "market socket error event",
-                    extra={"code": msg.get("code"), "msg": str(msg.get("msg"))[:300]},
+                    extra={"code": msg.get("code"), "okx_msg": str(msg.get("msg"))[:300]},
                 )
             return
         arg = msg.get("arg") or {}
+        if not isinstance(arg, dict):
+            return
         channel = str(arg.get("channel", ""))
         inst = arg.get("instId")
         data = msg.get("data") or []

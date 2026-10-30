@@ -113,7 +113,7 @@ class UpdateSettingsRequest extends FormRequest
         };
     }
 
-    private static function instId(): Closure
+    public static function instId(): Closure
     {
         return function (string $attribute, mixed $value, Closure $fail): void {
             if (SettingsSchema::normaliseInstId($value) === null) {
@@ -166,7 +166,7 @@ class UpdateSettingsRequest extends FormRequest
         return $changes;
     }
 
-    private static function decimalRange(string $min, string $max, bool $exclusive): Closure
+    public static function decimalRange(string $min, string $max, bool $exclusive): Closure
     {
         return function (string $attribute, mixed $value, Closure $fail) use ($min, $max, $exclusive): void {
             if (! is_string($value) || preg_match(self::DECIMAL_PATTERN, $value) !== 1) {
