@@ -343,11 +343,13 @@ async def build_regime_table(ctx: ToolContext, top_n: int | None = None) -> Regi
             stamps.append(out.as_of)
         if regime.status == "ok" and regime.result is not None:
             r = regime.result
+            # HMM posteriors can overshoot 1 by float error (1.0000000000000022).
+            p = None if r.probability is None else round(min(max(r.probability, 0.0), 1.0), 4)
             rows.append(
                 RegimeRow(
                     inst_id=inst.inst_id,
                     label=r.label,
-                    probability=r.probability,
+                    probability=p,
                     days_in_regime=round(r.days_in_regime, 2),
                     method=r.method,
                 )

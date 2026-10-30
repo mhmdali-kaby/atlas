@@ -126,6 +126,7 @@ class Supervisor:
             session_factory=self._session_factory,
             agent=agent,
             replay_as_of=self._replay_as_of,
+            clock=self._clock,
         )
 
     async def run(self, agent: str, prompt: str, **kwargs: Any) -> RunResult:

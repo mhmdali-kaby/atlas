@@ -117,7 +117,8 @@ def validate_card(kind: str, card: Mapping[str, Any] | None) -> dict[str, Any] |
             + (f" (allowed: {', '.join(allowed)})" if allowed else ""),
         )
     try:
-        model = CARD_TYPES[card_type].model_validate(dict(card))
+        # meta (number guard, verdict corrections) is written by the runtime, never by the agent.
+        model = CARD_TYPES[card_type].model_validate({k: v for k, v in card.items() if k != "meta"})
     except ValidationError as exc:
         errors = "; ".join(
             f"{'.'.join(str(p) for p in err['loc']) or '(root)'}: {err['msg']}" for err in exc.errors()

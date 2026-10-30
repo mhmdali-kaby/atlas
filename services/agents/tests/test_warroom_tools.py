@@ -207,6 +207,17 @@ async def test_a_regime_table_card_validates() -> None:
     assert error and "rows.0.days_in_regime" in body["message"]
 
 
+async def test_an_agent_cannot_forge_card_meta() -> None:
+    rec = Recorder()
+    card = {**_verdict(), "meta": {"unmatched_numbers": [], "checked": 99, "verdict_corrections": []}}
+    error, _ = await _call(
+        _ctx(recorder=rec), "post_message", {"kind": "research_report", "content_md": "x", "card": card}
+    )
+    assert error is False
+    (posted,) = rec.of("warroom.message")
+    assert posted.payload["card"]["meta"] is None
+
+
 async def test_an_unregistered_card_type_passes_through() -> None:
     rec = Recorder()
     card = {"type": "watchlist", "picks": []}
