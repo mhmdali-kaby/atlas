@@ -20,6 +20,8 @@ It is also the long-running process's brain (``python -m atlas_agents``, ATL-93)
   Analyst reacts to Market Scout's ``watchlist`` card).
 * ``atlas.market`` envelopes (:meth:`Supervisor.consume_market`) go only to the agents that
   registered their type (ATL-135: ``candle.closed``); ticks and every other type are dropped.
+  ``atlas.proposals`` envelopes (:meth:`Supervisor.consume_proposals`) are handled the same way
+  (ATL-159: ``proposal.opened`` starts the Devil's Advocate).
 
 Runs of one agent never overlap: each agent has its own lock.
 
@@ -70,6 +72,7 @@ SessionBuilder = Callable[[AgentSpec], AgentSession]
 Clock = Callable[[], datetime]
 WARROOM_STREAM: Final = "atlas.warroom"
 MARKET_STREAM: Final = "atlas.market"
+PROPOSALS_STREAM: Final = "atlas.proposals"
 SYSTEM_STREAM: Final = events.SYSTEM_STREAM
 
 # The mention depth of the run a mention handler starts (0 outside a handler).
@@ -391,6 +394,30 @@ class Supervisor:
             block_ms=block_ms,
         )
 
+    async def handle_proposals_envelope(self, envelope: EventEnvelope) -> list[RunResult]:
+        """An ``atlas.proposals`` envelope goes to the agents that registered its type (ATL-159:
+        ``proposal.opened`` starts the Devil's Advocate); every other one is dropped."""
+        return await self.handle_market_envelope(envelope)
+
+    async def consume_proposals(
+        self,
+        client: redis.Redis,
+        *,
+        stop: asyncio.Event,
+        start_id: str = "$",
+        block_ms: int | None = None,
+    ) -> str:
+        """Read ``atlas.proposals`` (only new entries by default) until ``stop`` is set, handing each
+        envelope to :meth:`handle_proposals_envelope`. Returns the last entry id read."""
+        return await _consume_stream(
+            client,
+            PROPOSALS_STREAM,
+            self.handle_proposals_envelope,
+            stop=stop,
+            start_id=start_id,
+            block_ms=block_ms,
+        )
+
     # -- schedule ---------------------------------------------------------------------------------
 
     def _job_done(self, agent: str, job: str, day: date) -> bool:
@@ -471,6 +498,7 @@ class Supervisor:
             self.consume_warroom(client, stop=stop),
             self.consume_system(client, stop=stop),
             self.consume_market(client, stop=stop),
+            self.consume_proposals(client, stop=stop),
             schedule(),
         )
 
