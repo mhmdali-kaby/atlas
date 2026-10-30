@@ -399,7 +399,7 @@ final class PerformanceService
     /**
      * Sorted by PnL, best first, then key.
      *
-     * @param  array<string, array{pnl: BigDecimal, trades: int, wins: int, losses: int}>  $groups
+     * @param  array<int|string, array{pnl: BigDecimal, trades: int, wins: int, losses: int}>  $groups
      * @return list<array<string, mixed>>
      */
     private static function keyed(array $groups, string $name): array
@@ -442,11 +442,16 @@ final class PerformanceService
         return $v->isZero() ? $v->abs()->toString() : $v->toString();
     }
 
+    /**
+     * A non-negative integer setting from portfolio_performance (scales, day counts).
+     *
+     * @return int<0, max>
+     */
     private static function scale(string $key): int
     {
         $v = config('atlas_defaults.portfolio_performance.'.$key);
 
-        return is_numeric($v) ? (int) $v : 0;
+        return is_numeric($v) ? max(0, (int) $v) : 0;
     }
 
     private static function db(CarbonImmutable $ts): string
