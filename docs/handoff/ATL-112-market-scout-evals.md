@@ -74,5 +74,9 @@ Every case also asserts `valid_watchlist`, `no_invented_numbers` and `rejected_l
 
 - The production reviewer's number guard (`card.meta`) still counts a pick's conviction as a
   number with no tool source unless it matches one by chance. The eval adds convictions to the
-  pool, but production does not.
+  pool, but production does not. A side effect in the eval: each pick's rank and conviction are
+  in the numguard pool (`drivers.py`), so a thesis number that happens to equal one (e.g. 0.65)
+  counts as sourced. Accepted for now; tighten it when production's guard learns about convictions.
+- `baseline.json`'s `baseline.path` was hand-edited to the repo-relative path; the runner still
+  writes absolute paths into new result files.
 - No case covers the news-down class cap or an empty shortlist (where the model is never called).

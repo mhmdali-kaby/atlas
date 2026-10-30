@@ -1097,7 +1097,7 @@
     "pass_rate": 100.0
   },
   "baseline": {
-    "path": "/Users/mhmd/Work/atlas/wt-task-atl-112/services/agents/evals/market_scout/baseline.json",
+    "path": "services/agents/evals/market_scout/baseline.json",
     "pass_rate": null,
     "max_drop_points": 5.0,
     "ok": true
