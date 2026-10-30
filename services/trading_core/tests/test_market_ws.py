@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import re
 import uuid
@@ -459,6 +460,43 @@ async def test_dropped_connection_reconnects_with_backoff_and_resubscribes_every
         assert servers["business"].connections == 1  # the other socket was untouched
     finally:
         await feed.stop()
+
+
+async def test_okx_error_event_and_malformed_frames_keep_the_socket_up(
+    engine: Engine, rds: redis.Redis, servers: dict[str, FakeOkx]
+) -> None:
+    # QA round 1: OKX answers a bad subscription (60018) with an error event; logging it
+    # under the reserved LogRecord key "msg" raised and tore the socket down, every reconnect.
+    inst = _inst()
+    clock = FakeClock(T0)
+    feed = _feed(engine, rds, servers, clock, {inst})
+    try:
+        await _started(feed, servers, {inst})
+        await servers["public"].push(
+            {"event": "error", "code": "60018", "msg": "Wrong URL or channel, instId doesn't exist."}
+        )
+        await servers["public"].push({"arg": "str", "data": [1]})
+        await servers["public"].push({"arg": {"channel": "tickers", "instId": inst}, "data": "x"})
+        await _settle()
+        assert feed.links["public"].backoffs == []
+        assert feed.links["public"].ws is not None
+        assert servers["public"].connections == 1
+        await servers["public"].push(_ticker(inst))
+        await _until(lambda: md.read_snapshot(rds, ENV, inst).ticker is not None)
+    finally:
+        await feed.stop()
+        rds.delete(md.md_key(ENV, inst))
+
+
+async def test_on_message_logs_okx_error_event_without_raising(
+    engine: Engine, rds: redis.Redis, servers: dict[str, FakeOkx], caplog: pytest.LogCaptureFixture
+) -> None:
+    feed = _feed(engine, rds, servers, FakeClock(T0), set())
+    with caplog.at_level(logging.WARNING):
+        await feed.on_message(json.dumps({"event": "error", "code": "60018", "msg": "bad"}))
+        await feed.on_message(json.dumps({"arg": "str", "data": [1]}))
+    rec = [r for r in caplog.records if r.getMessage() == "market socket error event"]
+    assert len(rec) == 1 and rec[0].__dict__["okx_msg"] == "bad"
 
 
 def test_backoff_is_exponential_capped_and_jittered() -> None:
