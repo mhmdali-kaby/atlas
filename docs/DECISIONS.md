@@ -144,6 +144,19 @@ decisions where the brief was silent, as the brief asks.
   picks between a long and a short in long/short mode; two positions and no side is refused as
   ambiguous. No vote; the autonomy decision is the entries' one. evaluate() leaves the row
   `risk_checked` for both kinds; the caller moves it to awaiting_owner/advise_only/rejected.
+- **Executing a position action re-checks against OKX, amends in place, closes before cancelling
+  (ATL-185, `trading_core/execution/position_action.py`).** Right before sending, the seven ATL-184
+  checks run again on the position and pending algos OKX returns, so a stop that would widen the stop
+  OKX holds now is not sent (a `rejected` risk check is written and the proposal is `rejected` /
+  `risk_rejected`). amend_stop amends every live SL/OCO on the position in place and places a new SL
+  only when OKX shows none; amend_targets moves only the first target (the TP leg of the OCO, else a
+  TP-only order), like entries; partial_close sends one reduce-only market order then shrinks every
+  larger algo to the remainder; close is `trade/close-position`, then that position's algos are
+  cancelled (a refused close cancels nothing). Client ids derive from the risk check (`x` close,
+  `n` new stop, `t` new TP). A close order records `raw.reduces_order_id`, and EntryLifecycle sizes
+  the entry's protection to filled − reduced, so its sweep keeps the resized stop. Done actions end
+  `filled` (a close OKX has not reported filled stays `sent`), which is what the PM reads as
+  tp1_filled.
 - **Analyst vote runs** (ATL-182, `atlas_agents/orchestrator/voters.py`). When the cycle opens a vote,
   and again for each version revised during the vote, code starts one routine-model run per
   `agents.votes.run_voters` agent (Technical, Derivatives, News, Historian) that is enabled, not in
