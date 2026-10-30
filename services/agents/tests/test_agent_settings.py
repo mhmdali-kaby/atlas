@@ -182,7 +182,10 @@ def test_merge_applies_valid_values_and_ignores_bad_ones(spec: AgentSpec) -> Non
         spec.daily_turns,
     )
     assert got.routine_model == spec.routine_model and got.max_turns_per_run == spec.max_turns_per_run
-    assert merged.web == agent_settings.WebPolicy(allow_domains=(), deny_domains=("evil.test",))
+    # allow_domains is not a list, so it is ignored and falls back to config/defaults.yaml's.
+    assert merged.web == agent_settings.WebPolicy(
+        allow_domains=agent_settings.default_web_policy().allow_domains, deny_domains=("evil.test",)
+    )
     assert merged.version == 4
 
 
@@ -402,7 +405,9 @@ async def test_a_deny_domains_entry_in_settings_makes_fetch_article_refuse_the_h
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    settings_row.save()
+    # ATL-121: an empty allow_domains now means nothing is allowed, so the hosts this test fetches
+    # must be explicitly allowed via settings first (independent of config/defaults.yaml's list).
+    settings_row.save(**{"agents.web.allow_domains": ["blocked-by-owner.example", "fine.example"]})
     fetched: list[str] = []
     redirect_checks: list[bool] = []
 
@@ -434,7 +439,9 @@ async def test_a_deny_domains_entry_in_settings_makes_fetch_article_refuse_the_h
 
     assert denied["error"] == "domain_denied"
     assert fetched == [url]  # no request was made for the denied host
-    assert news_tools.domain_allowed("blocked-by-owner.example") is True  # outside a call: defaults
+    # Outside a call: config/defaults.yaml, not the settings override — and that default list
+    # does not include this test's made-up host.
+    assert news_tools.domain_allowed("blocked-by-owner.example") is False
 
     # A redirect hop to the denied host is refused too while the policy is in force.
     other = f"https://fine.example/{uuid.uuid4().hex}"
