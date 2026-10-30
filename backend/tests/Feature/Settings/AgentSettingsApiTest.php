@@ -94,7 +94,8 @@ it('versions agents.market_scout.enabled=false with history, audit and settings_
     expect(SettingsHistory::query()->count())->toBe($historyBefore + 1)
         ->and($history->diff)->toEqual(['agents.market_scout.enabled' => ['from' => true, 'to' => false]]);
 
-    $audit = AuditLog::query()->where('action', 'settings.updated')->latest('created_at')->firstOrFail();
+    $audit = AuditLog::query()->where('action', 'settings.updated')->get()
+        ->firstOrFail(fn (AuditLog $row): bool => ($row->after['version'] ?? null) === 3);
     expect(AuditLog::query()->where('action', 'settings.updated')->count())->toBe($auditBefore + 1)
         ->and($audit->before['data']['agents.market_scout.enabled'])->toBeTrue()
         ->and($audit->after['data']['agents.market_scout.enabled'])->toBeFalse();

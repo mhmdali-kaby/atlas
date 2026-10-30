@@ -18,7 +18,7 @@ use Illuminate\Support\Carbon;
  * @property string $id UUID
  * @property 'demo'|'live' $env
  * @property int $version
- * @property array<string, int|string> $data
+ * @property array<string, bool|int|string|list<string>> $data
  * @property string $risk_profile
  * @property int $autonomy_level
  * @property string $max_loss_per_trade_pct

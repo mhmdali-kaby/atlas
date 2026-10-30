@@ -98,7 +98,7 @@ final class SettingsSchema
     {
         $roster = config('atlas_defaults.agents.roster');
 
-        return is_array($roster) ? array_values(array_map(strval(...), array_keys($roster))) : [];
+        return is_array($roster) ? array_map(strval(...), array_keys($roster)) : [];
     }
 
     /**
@@ -239,10 +239,10 @@ final class SettingsSchema
 
         $values = [];
         foreach (self::RISK_FIELDS as $field) {
-            $values[$field] = config("atlas_defaults.risk_profiles.{$profile}.{$field}");
+            $values[$field] = self::numeric($field, config("atlas_defaults.risk_profiles.{$profile}.{$field}"));
         }
 
-        return self::normalise($values);
+        return $values;
     }
 
     /**
@@ -301,12 +301,18 @@ final class SettingsSchema
             if (! isset(self::NUMERIC_FIELDS[$field])) {
                 continue;
             }
-            $out[$field] = self::isDecimal($field)
-                ? (string) BigDecimal::of(is_int($value) ? $value : (is_string($value) ? $value : '0'))
-                : (is_numeric($value) ? (int) $value : 0);
+            $out[$field] = self::numeric($field, $value);
         }
 
         return $out;
+    }
+
+    /** A NUMERIC_FIELDS value in canonical form: decimals as plain decimal strings, integers as int. */
+    private static function numeric(string $field, mixed $value): int|string
+    {
+        return self::isDecimal($field)
+            ? (string) BigDecimal::of(is_int($value) ? $value : (is_string($value) ? $value : '0'))
+            : (is_numeric($value) ? (int) $value : 0);
     }
 
     /**

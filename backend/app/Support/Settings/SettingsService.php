@@ -190,11 +190,21 @@ final class SettingsService
     private function fill(Setting $setting, array $data): void
     {
         $setting->data = $data;
-        $setting->risk_profile = (string) $data['risk_profile'];
-        $setting->autonomy_level = (int) $data['autonomy_level'];
-        $setting->max_loss_per_trade_pct = (string) $data['max_loss_per_trade_pct'];
-        $setting->max_position_pct = (string) $data['max_position_pct'];
-        $setting->max_leverage = (int) $data['max_leverage'];
+        $setting->risk_profile = self::text($data['risk_profile']);
+        $setting->autonomy_level = (int) self::text($data['autonomy_level']);
+        $setting->max_loss_per_trade_pct = self::text($data['max_loss_per_trade_pct']);
+        $setting->max_position_pct = self::text($data['max_position_pct']);
+        $setting->max_leverage = (int) self::text($data['max_leverage']);
+    }
+
+    /**
+     * A typed-column mirror of a scalar field (the mirrored fields are never bool or list).
+     *
+     * @param  bool|int|string|list<string>  $value
+     */
+    private static function text(bool|int|string|array $value): string
+    {
+        return is_int($value) || is_string($value) ? (string) $value : '';
     }
 
     /**
