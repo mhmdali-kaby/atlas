@@ -349,6 +349,35 @@ DEFAULTS: Final[dict[str, Any]] = {
         "key_prefix": "atlas:md",
         "snapshot_ttl_seconds": 86400,
     },
+    "private_ws": {
+        "key": "atlas:pws",
+        "channels": [
+            {
+                "channel": "account",
+            },
+            {
+                "channel": "positions",
+                "instType": "ANY",
+            },
+            {
+                "channel": "balance_and_position",
+            },
+            {
+                "channel": "orders",
+                "instType": "ANY",
+            },
+            {
+                "channel": "orders-algo",
+                "instType": "ANY",
+            },
+            {
+                "channel": "liquidation-warning",
+                "instType": "ANY",
+            },
+        ],
+        "no_connection_retry_seconds": 60,
+        "snapshot_min_interval_seconds": 30,
+    },
     "quality": {
         "interval_seconds": 900,
         "window_bars": 500,
@@ -1402,6 +1431,31 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "min_event_importance": 2,
                 "max_events": 30,
                 "top_instruments": 5,
+            },
+        },
+        "strategist": {
+            "checklist": {
+                "setup_max_age_minutes": 60,
+                "news_lookback_hours": 24,
+                "contradict_sentiment": "0.2",
+                "event_blackout_minutes": 60,
+                "blackout_importance": 5,
+                "min_expectancy": "0.2",
+                "pending_statuses": [
+                    "draft",
+                    "under_review",
+                    "voting",
+                    "passed",
+                    "risk_checked",
+                    "awaiting_owner",
+                    "sent",
+                    "partially_filled",
+                ],
+                "open_statuses": [
+                    "under_review",
+                    "voting",
+                ],
+                "max_revisions": 1,
             },
         },
         "technical_analyst": {

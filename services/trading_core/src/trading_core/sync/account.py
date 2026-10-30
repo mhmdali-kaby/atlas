@@ -162,11 +162,9 @@ async def fetch_account(okx: OkxClient) -> AccountSnapshot:
     return AccountSnapshot(balance=balance, funding=funding, positions=positions, tickers=tickers)
 
 
-def write_snapshot(engine: Engine, env: str, snap: AccountSnapshot, now: datetime) -> AccountSyncResult:
-    """Write one tick (balances, positions, equity point, sync_status) in a single transaction."""
-    stamp = {"env": env, "taken_at": now, "created_at": now, "updated_at": now}
-
-    trading_rows = [
+def trading_balance_rows(balance: AccountBalance, stamp: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """One ``balances_snapshots`` row per trading-account currency."""
+    return [
         {
             **stamp,
             "ccy": d.ccy,
@@ -177,19 +175,21 @@ def write_snapshot(engine: Engine, env: str, snap: AccountSnapshot, now: datetim
             "eq_usd": d.eq_usd,  # OKX's own figure, never recomputed
             "upl": d.upl,
         }
-        for d in snap.balance.details
+        for d in balance.details
     ]
 
-    funding_rows: list[dict[str, Any]] = []
-    funding_total = ZERO
+
+def funding_balance_rows(
+    funding: Sequence[AssetBalance], tickers: Mapping[str, Decimal], stamp: Mapping[str, Any]
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Funding-account rows valued in USD, plus the coins no ticker could price."""
+    rows: list[dict[str, Any]] = []
     unpriced: list[str] = []
-    for b in snap.funding:
-        value = funding_usd(b, snap.tickers)
+    for b in funding:
+        value = funding_usd(b, tickers)
         if value is None:
             unpriced.append(b.ccy)
-        else:
-            funding_total += value
-        funding_rows.append(
+        rows.append(
             {
                 **stamp,
                 "ccy": b.ccy,
@@ -201,10 +201,12 @@ def write_snapshot(engine: Engine, env: str, snap: AccountSnapshot, now: datetim
                 "upl": None,
             }
         )
-    if unpriced:
-        logger.warning("funding coins without a USD ticker left out of equity", extra={"ccys": unpriced})
+    return rows, unpriced
 
-    position_rows = [
+
+def position_rows(positions: Sequence[Position], stamp: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """One ``positions_snapshots`` row per position."""
+    return [
         {
             **stamp,
             "inst_id": p.inst_id,
@@ -220,20 +222,91 @@ def write_snapshot(engine: Engine, env: str, snap: AccountSnapshot, now: datetim
             "mgn_mode": p.mgn_mode,
             "c_time": p.c_time,
         }
-        for p in snap.positions
+        for p in positions
     ]
 
-    trading_total = snap.balance.total_eq if snap.balance.total_eq is not None else ZERO
-    total = trading_total + funding_total
-    upl = upl_usd(snap.balance, snap.positions)
+
+def latest_funding_rows(conn: Any, env: str, stamp: Mapping[str, Any]) -> list[dict[str, Any]]:
+    """The newest stored funding-account rows, re-stamped (the private WS has no funding data)."""
+    taken_at = conn.execute(
+        select(BalanceSnapshot.taken_at)
+        .where(BalanceSnapshot.env == env, BalanceSnapshot.account == FUNDING)
+        .order_by(BalanceSnapshot.taken_at.desc())
+        .limit(1)
+    ).scalar()
+    if taken_at is None:
+        return []
+    rows = conn.execute(
+        select(BalanceSnapshot).where(
+            BalanceSnapshot.env == env,
+            BalanceSnapshot.account == FUNDING,
+            BalanceSnapshot.taken_at == taken_at,
+        )
+    ).scalars()
+    return [
+        {
+            **stamp,
+            "ccy": f.ccy,
+            "account": FUNDING,
+            "eq": f.eq,
+            "avail_bal": f.avail_bal,
+            "frozen_bal": f.frozen_bal,
+            "eq_usd": f.eq_usd,
+            "upl": None,
+        }
+        for f in rows
+    ]
+
+
+@dataclass(frozen=True)
+class TickWritten:
+    equity_ts: datetime
+    trading_balances: int
+    funding_balances: int
+    positions: int
+    total_eq_usd: Decimal
+    trading_eq_usd: Decimal
+    funding_eq_usd: Decimal
+    upl_usd: Decimal
+
+
+def write_tick(
+    engine: Engine,
+    env: str,
+    now: datetime,
+    balance: AccountBalance,
+    positions: Sequence[Position],
+    *,
+    funding_rows: Sequence[Mapping[str, Any]] | None,
+    reconciled: bool,
+) -> TickWritten:
+    """Write one account tick in a single transaction: trading + funding balance rows, position rows,
+    the ``equity_curve`` point for the minute and ``sync_status`` (stream ``account``).
+
+    ``funding_rows=None`` carries over the newest stored funding rows (the private WS feed, which has
+    no funding-account data). ``reconciled`` stamps ``sync_status.reconciled_at``: only the REST sync
+    claims "reconciled with OKX"; the WS feed passes False and sets last_success_at only.
+    """
+    stamp = {"env": env, "taken_at": now, "created_at": now, "updated_at": now}
+    trading = trading_balance_rows(balance, stamp)
+    pos_rows = position_rows(positions, stamp)
+    trading_total = balance.total_eq if balance.total_eq is not None else ZERO
+    upl = upl_usd(balance, positions)
     equity_ts = minute(now)
 
     with engine.begin() as conn:
-        balance_rows = trading_rows + funding_rows
+        funding = (
+            latest_funding_rows(conn, env, stamp)
+            if funding_rows is None
+            else [{**r, **stamp} for r in funding_rows]
+        )
+        funding_total = sum((r["eq_usd"] for r in funding if r["eq_usd"] is not None), ZERO)
+        total = trading_total + funding_total
+        balance_rows = trading + funding
         if balance_rows:
             conn.execute(insert(BalanceSnapshot).values(balance_rows))
-        if position_rows:
-            conn.execute(insert(PositionSnapshot).values(position_rows))
+        if pos_rows:
+            conn.execute(insert(PositionSnapshot).values(pos_rows))
 
         point = insert(EquityPoint).values(
             env=env, ts=equity_ts, total_eq_usd=total, upl_usd=upl, created_at=now, updated_at=now
@@ -244,24 +317,43 @@ def write_snapshot(engine: Engine, env: str, snap: AccountSnapshot, now: datetim
                 set_={"total_eq_usd": total, "upl_usd": upl, "updated_at": now},
             )
         )
-        _write_status(conn, env, now, error=None)
+        _write_status(conn, env, now, error=None, reconciled=reconciled)
 
-    return AccountSyncResult(
-        env=env,
-        taken_at=now,
+    return TickWritten(
         equity_ts=equity_ts,
-        trading_balances=len(trading_rows),
-        funding_balances=len(funding_rows),
-        positions=len(position_rows),
+        trading_balances=len(trading),
+        funding_balances=len(funding),
+        positions=len(pos_rows),
         total_eq_usd=total,
         trading_eq_usd=trading_total,
         funding_eq_usd=funding_total,
         upl_usd=upl,
+    )
+
+
+def write_snapshot(engine: Engine, env: str, snap: AccountSnapshot, now: datetime) -> AccountSyncResult:
+    """Write one REST tick (balances, positions, equity point, sync_status reconciled)."""
+    stamp = {"env": env, "taken_at": now, "created_at": now, "updated_at": now}
+    funding, unpriced = funding_balance_rows(snap.funding, snap.tickers, stamp)
+    if unpriced:
+        logger.warning("funding coins without a USD ticker left out of equity", extra={"ccys": unpriced})
+    tick = write_tick(engine, env, now, snap.balance, snap.positions, funding_rows=funding, reconciled=True)
+    return AccountSyncResult(
+        env=env,
+        taken_at=now,
+        equity_ts=tick.equity_ts,
+        trading_balances=tick.trading_balances,
+        funding_balances=tick.funding_balances,
+        positions=tick.positions,
+        total_eq_usd=tick.total_eq_usd,
+        trading_eq_usd=tick.trading_eq_usd,
+        funding_eq_usd=tick.funding_eq_usd,
+        upl_usd=tick.upl_usd,
         unpriced=unpriced,
     )
 
 
-def _write_status(conn: Any, env: str, now: datetime, *, error: str | None) -> None:
+def _write_status(conn: Any, env: str, now: datetime, *, error: str | None, reconciled: bool = True) -> None:
     values: dict[str, Any] = {
         "env": env,
         "stream": STREAM,
@@ -271,8 +363,11 @@ def _write_status(conn: Any, env: str, now: datetime, *, error: str | None) -> N
     }
     update_set: dict[str, Any] = {"last_error": error, "updated_at": now}
     if error is None:
-        values |= {"last_success_at": now, "reconciled_at": now}
-        update_set |= {"last_success_at": now, "reconciled_at": now}
+        values["last_success_at"] = now
+        update_set["last_success_at"] = now
+        if reconciled:
+            values["reconciled_at"] = now
+            update_set["reconciled_at"] = now
     stmt = insert(SyncStatus).values(values)
     conn.execute(
         stmt.on_conflict_do_update(index_elements=[SyncStatus.env, SyncStatus.stream], set_=update_set)

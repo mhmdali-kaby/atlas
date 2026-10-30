@@ -323,6 +323,25 @@ market_ws:
   key_prefix: "atlas:md"
   snapshot_ttl_seconds: 86400
 
+# ATL-142, brief §4.2: trading_core's private OKX WebSocket (URL okx.environments.<env>.ws_private_url),
+# logged in with the env's verified connection. Ping, reconnect backoff and the 30 s staleness rule
+# are market_ws's. Freshness lives in the Redis hash <key>:<env> (see atlas_shared.market_data
+# private_* helpers). Balance/position snapshot ticks from pushes are written at most once per
+# snapshot_min_interval_seconds (a skipped one is flushed by the stale check; the account.* events
+# carry the live values in between). With no verified
+# connection the feed retries every no_connection_retry_seconds.
+private_ws:
+  key: "atlas:pws"
+  channels:
+    - { channel: account }
+    - { channel: positions, instType: ANY }
+    - { channel: balance_and_position }
+    - { channel: orders, instType: ANY }
+    - { channel: orders-algo, instType: ANY }
+    - { channel: liquidation-warning, instType: ANY }
+  no_connection_retry_seconds: 60
+  snapshot_min_interval_seconds: 30
+
 # ATL-47, brief §7.3 data-quality checks, every interval_seconds and on demand
 # (POST /internal/quality/check). Each run looks at the last window_bars bars of every candle series
 # whose backfill is done. Gaps = missing ts in the bar grid (re-fetched from REST; repaired_at when
@@ -1153,6 +1172,30 @@ agents:
   #   mention_max_instruments: at most this many instruments named in one @Technical mention.
   #   position_bar: the closed bar (candle.closed) that re-checks an instrument with an open position.
   #   zones_reported: the nearest zones per timeframe kept in the table (half below, half above price).
+  # ATL-153, brief §7.6: the Strategist's six-point checklist, enforced in code by
+  # warroom.submit_proposal before a proposal is saved (atlas_agents.proposals).
+  #   setup_max_age_minutes: item 2, the newest TechnicalSetup card must be younger than this.
+  #   news_lookback_hours / contradict_sentiment: item 3, a CONFIRMED story on the instrument
+  #     published in the lookback whose mean sentiment opposes the side by at least this much fails.
+  #   event_blackout_minutes / blackout_importance: item 3, an economic event at or above this
+  #     importance scheduled within this many minutes from now fails. A settings-table value of
+  #     event_blackout_minutes overrides this default.
+  #   min_expectancy: item 5, p x R - (1 - p) must be greater than this. min R is the owner's
+  #     settings min_expected_r.
+  #   pending_statuses: item 6, proposal statuses that count as "pending" on the same inst + side.
+  #   open_statuses: a proposal can be voted on, revised or withdrawn only in these statuses.
+  #   max_revisions: revise() may create at most this many revisions of an original proposal.
+  strategist:
+    checklist:
+      setup_max_age_minutes: 60
+      news_lookback_hours: 24
+      contradict_sentiment: "0.2"
+      event_blackout_minutes: 60
+      blackout_importance: 5
+      min_expectancy: "0.2"
+      pending_statuses: [draft, under_review, voting, passed, risk_checked, awaiting_owner, sent, partially_filled]
+      open_statuses: [under_review, voting]
+      max_revisions: 1
   technical_analyst:
     history_bars: { "1D": 400, "4H": 500, "1H": 500, "15m": 500, "5m": 300 }
     stale_bars: 2

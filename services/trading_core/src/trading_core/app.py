@@ -46,6 +46,7 @@ from trading_core.sync.history import history_job
 from trading_core.sync.instruments import STREAM as INSTRUMENTS_JOB
 from trading_core.sync.instruments import instruments_job
 from trading_core.ws import MarketFeed, default_feed
+from trading_core.ws.private import PrivateFeed, default_private_feed
 
 logger = logging.getLogger("trading_core")
 
@@ -229,6 +230,7 @@ def create_app(
     scheduler: Scheduler | None = None,
     engine: Engine | None = None,
     market_feed: MarketFeed | None = None,
+    private_feed: PrivateFeed | None = None,
 ) -> FastAPI:
     settings = settings or Settings.from_env()
     if not settings.internal_shared_secret:
@@ -240,6 +242,10 @@ def create_app(
     feed = market_feed
     if feed is None and scheduler is None and settings.run_market_ws:
         feed = default_feed(settings.env, db)
+    # Same rule for the private socket (ATL-142): only the real app, or a test that passes one in.
+    pfeed = private_feed
+    if pfeed is None and scheduler is None and settings.run_private_ws:
+        pfeed = default_private_feed(settings.env, db, settings.app_key)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -247,9 +253,13 @@ def create_app(
             jobs.start()
             if feed is not None:
                 await feed.start()
+            if pfeed is not None:
+                await pfeed.start()
         try:
             yield
         finally:
+            if pfeed is not None:
+                await pfeed.stop()
             if feed is not None:
                 await feed.stop()
             await jobs.stop()
@@ -266,6 +276,7 @@ def create_app(
     application.state.scheduler = jobs
     application.state.engine = db
     application.state.market_feed = feed
+    application.state.private_feed = pfeed
 
     @application.get("/health")
     async def health() -> dict[str, str]:
