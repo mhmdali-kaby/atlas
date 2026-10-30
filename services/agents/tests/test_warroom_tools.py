@@ -308,8 +308,7 @@ async def test_mention_refuses_unknown_agents_and_itself() -> None:
 @pytest.mark.parametrize(
     ("name", "args"),
     [
-        ("cast_vote", {"proposal_id": str(uuid.uuid4()), "vote": "take", "confidence": 0.7, "reason": "ok"}),
-        ("submit_proposal", {"proposal": {"inst_id": "BTC-USDT-SWAP"}}),
+        # cast_vote and submit_proposal are real since ATL-153 (tests/test_proposals.py).
         ("request_human_input", {"question": "Proceed?"}),
     ],
 )
