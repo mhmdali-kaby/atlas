@@ -915,6 +915,58 @@ agents:
       min_event_importance: 2
       max_events: 30
       top_instruments: 5
+  # ATL-133, brief §7.4 (second part): structure precompute for the Technical Analyst
+  # (atlas_agents.ta.levels / volume / patterns / microstructure; exact rules in each module's
+  # docstring). ATR multiples are of the ATR the caller passes (the timeframe's Wilder ATR(14)).
+  # Sessions are UTC days and weeks are ISO weeks (Monday 00:00 UTC).
+  #   levels: swings in the last lookback_bars bars cluster into zones no wider than merge_atr_mult
+  #     x ATR. strength = touch_weight x min(touches / touch_cap, 1) + recency_weight x (1 - bars
+  #     since the last touch / lookback_bars). round_numbers: round_count levels each side of the
+  #     price, for round_asset_classes only.
+  #   volume: relative volume vs the mean of the rel_volume_bars bars before the bar; OBV trend =
+  #     least-squares slope of OBV over obv_bars / mean volume of those bars, flat within
+  #     +/- obv_flat_slope; the profile spreads each bar's volume evenly over its high-low range in
+  #     profile_bins rows over the last profile_sessions sessions; the value area holds
+  #     value_area_pct of it.
+  #   patterns: breakout_retest, failed_breakout, range, flag (flag/pennant) and double (top/bottom);
+  #     the geometric rule for each is in atlas_agents.ta.patterns.
+  #   microstructure: book imbalance over the top imbalance_depths levels of each side.
+  ta_structure:
+    levels:
+      lookback_bars: 120
+      merge_atr_mult: "0.3"
+      touch_cap: 4
+      touch_weight: "0.6"
+      recency_weight: "0.4"
+      round_count: 2
+      round_asset_classes: [stock, etf, index, commodity]
+    volume:
+      rel_volume_bars: 20
+      obv_bars: 20
+      obv_flat_slope: "0.05"
+      profile_sessions: 5
+      profile_bins: 50
+      value_area_pct: "70"
+    patterns:
+      breakout_buffer_atr: "0.1"
+      retest_tol_atr: "0.25"
+      breakout_max_age_bars: 20
+      failed_within_bars: 3
+      range_bars: 30
+      range_max_atr: "4"
+      range_edge_tol_atr: "0.25"
+      range_min_touches: 2
+      pole_bars: 8
+      pole_min_atr: "3"
+      flag_min_bars: 3
+      flag_max_bars: 15
+      flag_max_range_frac: "0.5"
+      flag_max_retrace_frac: "0.5"
+      double_peak_tol_atr: "0.25"
+      double_min_depth_atr: "1"
+      double_min_separation_bars: 5
+    microstructure:
+      imbalance_depths: [10, 50]
   # ATL-104, brief §7.1 steps 1-2 + decision #247 (2): Market Scout's code-run universe filter and
   # feature table (atlas_agents.scout). Every value is in force at the table's as_of (replay-bounded).
   #   universe: the filter. Per-market minimum 24h quote volume (USD) and max_spread_bps come from the
