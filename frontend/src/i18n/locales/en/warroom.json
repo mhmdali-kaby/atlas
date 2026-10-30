@@ -212,5 +212,59 @@
       "supply_shock": "Supply shock",
       "other": "Other"
     }
+  },
+  "reason": {
+    "show": "Show reasoning",
+    "hide": "Hide reasoning",
+    "calls_one": "{{count}} tool call",
+    "calls_other": "{{count}} tool calls",
+    "none": "No written reasoning for this answer.",
+    "input": "Input",
+    "output": "Output",
+    "asOf": "data as of {{time}}",
+    "lines_one": "Show all {{count}} line",
+    "lines_other": "Show all {{count}} lines",
+    "less": "Show less",
+    "cutIn": "Atlas cut this input at 2,000 characters.",
+    "cutOut": "Atlas cut this output at 2,000 characters.",
+    "cutText": "Atlas showed the first 4,000 characters of this step. The full reasoning comes with the answer.",
+    "res": {
+      "few": "Too few: {{n}}",
+      "none": "No data",
+      "ok": "Done",
+      "err": "Failed",
+      "run": "Running"
+    },
+    "cost": "{{tin}} tokens in, {{tout}} out, about {{cost}} at API prices",
+    "costTip": "Agents run on your Claude plan. This is what the same tokens would cost on the API."
+  },
+  "run": {
+    "thinking": "Thinking",
+    "writing": "Writing",
+    "calling": "Calling {{tool}}",
+    "live": "Show live reasoning",
+    "hideLive": "Hide live reasoning",
+    "soFar": "Show reasoning so far",
+    "hideSoFar": "Hide reasoning so far",
+    "joined": "Atlas joined this run at step {{n}}; earlier steps aren’t shown.",
+    "elapsedSr": "Working for {{t}}",
+    "busy": "{{name}}, working",
+    "st": {
+      "rate_limited": "Stopped: usage limit",
+      "error": "Stopped: error",
+      "degraded": "Stopped: failed checks"
+    },
+    "why": {
+      "rate_limited": "Your Claude plan’s usage limit was reached, so this answer stopped. {{name}} waits for the limit to reset; the rest of the team carries on.",
+      "error": "This run failed before {{name}} could answer, so nothing was posted.",
+      "degraded": "{{name}}’s answer failed Atlas’s checks twice, so nothing was posted. {{name}} is now marked degraded."
+    },
+    "askAgain": "Ask again",
+    "ann": {
+      "start": "{{name}} started working.",
+      "tool": "{{name}} is calling {{tool}}.",
+      "writing": "{{name}} is writing an answer.",
+      "stopped": "{{name}} stopped. {{why}}"
+    }
   }
 }

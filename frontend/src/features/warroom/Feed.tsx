@@ -8,8 +8,10 @@ import { AGENTS } from './agents'
 import { flattenMessages, type useMessages, type WarroomMessage, type WarroomThread } from './api'
 import { JumpToLatest } from './JumpToLatest'
 import type { LocalMessage } from './live'
+import { LiveRunRow } from './LiveRunRow'
 import { Medallion } from './Medallion'
 import { Message } from './Message'
+import type { LiveRun } from './runs'
 import { ARRIVE, useArrivals } from './useArrivals'
 import { InstrumentId } from './text'
 import { around } from './tokens'
@@ -26,6 +28,7 @@ type Row =
   | { kind: 'top'; key: 'top' }
   | { kind: 'day'; key: string; ts: string }
   | { kind: 'msg'; key: string; message: WarroomMessage; prev: WarroomMessage | undefined }
+  | { kind: 'run'; key: string; run: LiveRun }
 
 /** Starts loading the next older page this close to the top (px). */
 const LOAD_OLDER_WITHIN = 240
@@ -33,20 +36,34 @@ const LOAD_OLDER_WITHIN = 240
 const BOTTOM_SLACK = 48
 const FLASH_MS = 1600
 
-function buildRows(messages: WarroomMessage[]): Row[] {
+/** Messages oldest first, with each live run placed by its first event's time (design v7 §9). */
+function buildRows(messages: WarroomMessage[], runs: LiveRun[]): Row[] {
   const rows: Row[] = [{ kind: 'top', key: 'top' }]
   let day: string | null = null
   let prev: WarroomMessage | undefined
-  for (const m of messages) {
-    const d = baghdadDay(m.created_at)
-    if (d !== day) {
-      rows.push({ kind: 'day', key: `day-${d}`, ts: m.created_at })
-      day = d
+  let r = 0
+  const dayRow = (ts: string) => {
+    const d = baghdadDay(ts)
+    if (d === day) return
+    rows.push({ kind: 'day', key: `day-${d}`, ts })
+    day = d
+    prev = undefined
+  }
+  const pushRunsBefore = (ts: string | null) => {
+    while (r < runs.length && (ts === null || Date.parse(runs[r]!.startedAt) < Date.parse(ts))) {
+      const run = runs[r++]!
+      dayRow(run.startedAt)
+      rows.push({ kind: 'run', key: `run-${run.id}`, run })
       prev = undefined
     }
+  }
+  for (const m of messages) {
+    pushRunsBefore(m.created_at)
+    dayRow(m.created_at)
     rows.push({ kind: 'msg', key: m.id, message: m, prev })
     prev = m
   }
+  pushRunsBefore(null)
   return rows
 }
 
@@ -81,19 +98,22 @@ export interface FeedProps {
   query: ReturnType<typeof useMessages>
   /** The owner's messages that are sending or failed, drawn after the stored ones. */
   pending?: LocalMessage[]
+  /** Live agent runs in this thread (ATL-97), each drawn as the message being written. */
+  runs?: LiveRun[]
   /** Starts a reply to a message: the ReplyChip appears above the composer (ATL-42). */
   onReply: (message: WarroomMessage) => void
 }
 
 const NO_PENDING: LocalMessage[] = []
+const NO_RUNS: LiveRun[] = []
 
-export function Feed({ thread, threadName, query, pending = NO_PENDING, onReply }: FeedProps) {
+export function Feed({ thread, threadName, query, pending = NO_PENDING, runs = NO_RUNS, onReply }: FeedProps) {
   const { t } = useTranslation('warroom')
   const lang = useLang()
   const now = useNow(60_000)
   const reduceMotion = useReducedMotion()
   const messages = useMemo<WarroomMessage[]>(() => [...flattenMessages(query.data), ...pending], [query.data, pending])
-  const rows = useMemo(() => buildRows(messages), [messages])
+  const rows = useMemo(() => buildRows(messages, runs), [messages, runs])
   const byId = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages])
   const scrollRef = useRef<HTMLDivElement>(null)
 
@@ -332,6 +352,8 @@ export function Feed({ thread, threadName, query, pending = NO_PENDING, onReply 
                 <div className="wr-day" role="separator" data-day={baghdadDay(row.ts)}>
                   <span>{dayLabel(row.ts, lang, now, { today: t('today'), yesterday: t('yesterday') })}</span>
                 </div>
+              ) : row.kind === 'run' ? (
+                <LiveRunRow run={row.run} parent={row.run.replyTo ? byId.get(row.run.replyTo) : undefined} lang={lang} onJump={onJump} />
               ) : (
                 <motion.div
                   initial={arrivals.fresh.has(row.key) ? { opacity: 0, y: 8 } : false}

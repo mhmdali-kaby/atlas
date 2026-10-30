@@ -106,8 +106,9 @@ class Reviewer(Protocol):
     async def __call__(self, text: str, messages: list[Message], attempt: int) -> Review: ...
 
 
-ObserverFactory = Callable[[uuid.UUID, str | None], RunObserver]
-"""(run_id, correlation_id) -> the observer for that run."""
+ObserverFactory = Callable[[uuid.UUID, str | None, str | None, str | None], RunObserver]
+"""(run_id, correlation_id, thread_id, reply_to) -> the observer for that run. ``thread_id`` and
+``reply_to`` are the triggering mention's (ATL-98); both None for a scheduled or manual run."""
 Clock = Callable[[], datetime]
 
 
@@ -328,11 +329,19 @@ class AgentSession:
         routine: bool = False,
         reviewer: Reviewer | None = None,
         max_follow_ups: int = 1,
+        thread_id: str | None = None,
+        reply_to: str | None = None,
     ) -> RunResult:
         """Send ``prompt`` to the agent and record the run. ``routine`` uses the cheaper model.
 
         With a ``reviewer``, each answer is reviewed; the reviewer may ask for at most
-        ``max_follow_ups`` follow-up queries inside this same run (same run_id, same stream)."""
+        ``max_follow_ups`` follow-up queries inside this same run (same run_id, same stream).
+
+        ``thread_id``/``reply_to`` (ATL-98) are the triggering @mention's thread and message id,
+        when the caller already resolved them (e.g. the Historian's mention handler); they are
+        carried on every ``warroom.thinking`` event of the run, including ``run_end``, so the UI
+        can place the live row under the question it answers. Both default to None for a
+        scheduled or manual run, which streams in Main."""
         started = self._clock()
         day = usage_day(started)
         model = self.spec.routine_model if routine else self.spec.model
@@ -342,7 +351,8 @@ class AgentSession:
         refusal = self._refusal(started, day, run_id, model, trigger, correlation_id)
         if refusal is not None:
             # A refused run still ends its (empty) live row with run_end.
-            await self._finish_observer(self._observer(run_id, correlation_id), refusal)
+            observer = self._observer(run_id, correlation_id, thread_id, reply_to)
+            await self._finish_observer(observer, refusal)
             return refusal
 
         with Session(self._engine) as db:
@@ -373,7 +383,7 @@ class AgentSession:
         if change:
             self._emit(events.AGENT_STATE, change, correlation_id)
 
-        observer = self._observer(run_id, correlation_id)
+        observer = self._observer(run_id, correlation_id, thread_id, reply_to)
         exchange = _Exchange()
         await self._exchange(prompt, model, observer, exchange)
         review = Review()
@@ -408,11 +418,17 @@ class AgentSession:
         except Exception:  # the stream is best effort; the run is already recorded
             log.warning("agent %s: run observer failed on finish", self.spec.slug, exc_info=True)
 
-    def _observer(self, run_id: uuid.UUID, correlation_id: str | None) -> RunObserver | None:
+    def _observer(
+        self,
+        run_id: uuid.UUID,
+        correlation_id: str | None,
+        thread_id: str | None = None,
+        reply_to: str | None = None,
+    ) -> RunObserver | None:
         if self._observer_factory is None:
             return None
         try:
-            return self._observer_factory(run_id, correlation_id)
+            return self._observer_factory(run_id, correlation_id, thread_id, reply_to)
         except Exception:
             log.warning("agent %s: could not build the run observer", self.spec.slug, exc_info=True)
             return None
