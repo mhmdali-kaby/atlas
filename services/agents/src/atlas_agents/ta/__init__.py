@@ -1,5 +1,4 @@
-"""Technical Analyst precompute (brief §7.4): deterministic indicator, level and pattern tables."""
-"""Technical Analyst precompute (ATL-132, brief §7.4): deterministic indicators per timeframe.
+"""Technical Analyst precompute (brief §7.4): deterministic indicator, level and pattern tables.
 
 ``ta.table(inst_id, frames_by_tf)`` is the entry point; :mod:`atlas_agents.ta.indicators` holds the
 per-bar definitions and :mod:`atlas_agents.ta.swings` the ZigZag detector.
