@@ -131,7 +131,17 @@ risk_engine:
 #   evaluable_statuses: the only proposal statuses evaluate() accepts. passed = the vote passed;
 #   risk_checked = an owner Edit re-runs the check (brief §12). Any other status (cancelled, rejected,
 #   expired, sent, filled ...) is refused before anything is written, so it cannot re-enter approval.
+#   position_actions (ATL-184): the Portfolio Manager's amend_stop/amend_targets/partial_close/close
+#   checks. positions_max_age_seconds: the newest positions snapshot must be this fresh to prove a
+#   position is open. protecting_states/stop_kinds: the algo orders that count as the live exchange
+#   stop (sl trigger_px, oco sl_trigger_px). paused_allowed_kinds: the kinds that reduce risk and so
+#   pass while trading is paused or a breaker is tripped (a stop must still tighten).
 risk_rules:
+  position_actions:
+    positions_max_age_seconds: 300
+    protecting_states: [live, partially_effective]
+    stop_kinds: [sl, oco]
+    paused_allowed_kinds: [amend_stop, partial_close, close]
   us_session:
     timezone: America/New_York
     open: "09:30"
