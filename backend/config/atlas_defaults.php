@@ -155,6 +155,12 @@ return [
         'stop_verify_seconds' => 3,
         'order_max_retries' => 3,
         'emergency_stop_atr_mult' => '2.0',
+        'retry_backoff_base_seconds' => '0.5',
+        'retry_backoff_max_seconds' => 4,
+        'stop_verify_poll_seconds' => '0.5',
+        'attach_refused_codes' => [
+            '51010',
+        ],
     ],
     'okx' => [
         'environments' => [
@@ -691,6 +697,9 @@ return [
             'long_short_ratio' => null,
             'taker_volume' => null,
         ],
+    ],
+    'risk_api' => [
+        'checks_per_minute' => 20,
     ],
     'data_api' => [
         'resync_per_minute' => 1,
@@ -1457,6 +1466,35 @@ return [
                     'voting',
                 ],
                 'max_revisions' => 1,
+            ],
+        ],
+        'votes' => [
+            'voters' => [
+                'technical_analyst',
+                'derivatives_sentiment',
+                'news_intelligence',
+                'historian',
+                'devils_advocate',
+            ],
+            'scores' => [
+                'take' => '1',
+                'change_applied' => '0.5',
+                'change' => '0',
+                'skip' => '0',
+            ],
+            'missing_confidence' => '0.5',
+            'threshold' => '0.6',
+            'threshold_setting' => 'agents.vote_threshold',
+            'reliability_days' => 30,
+            'reliability_min' => '0.5',
+            'reliability_max' => '1.5',
+            'reliability_default' => '1',
+            'da_agent' => 'devils_advocate',
+            'da_card_type' => 'da_review',
+            'da_max_rating' => 4,
+            'closable_statuses' => [
+                'under_review',
+                'voting',
             ],
         ],
         'technical_analyst' => [

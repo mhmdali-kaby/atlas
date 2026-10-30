@@ -14,7 +14,7 @@ written by the sync loops) and the market-data hash in Redis (ATL-125). Nothing 
 from __future__ import annotations
 
 import uuid
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Collection, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -323,9 +323,13 @@ def evaluate(
     redis_client: redis.Redis | None = None,
     now: Callable[[], datetime] | None = None,
     config: Mapping[str, Any] | None = None,
+    allowed_statuses: Collection[str] | None = None,
 ) -> RiskDecision:
     """Run the nine checks on one proposal, store the risk_checks row, mark the proposal
-    risk_checked and publish ``risk.decision``. Raises :class:`RiskEngineError` when it cannot run."""
+    risk_checked and publish ``risk.decision``. Raises :class:`RiskEngineError` when it cannot run.
+
+    ``allowed_statuses`` overrides ``risk_rules.evaluable_statuses`` for one call; only the owner's
+    manual check (``POST /internal/risk/check``, ATL-128) uses it, for the draft row it just wrote."""
     pid = proposal_id if isinstance(proposal_id, uuid.UUID) else uuid.UUID(str(proposal_id))
     rds = redis_client if redis_client is not None else bus.make_client()
     at = (now or (lambda: datetime.now(UTC)))()
@@ -333,7 +337,11 @@ def evaluate(
         row = session.scalar(select(Proposal).where(Proposal.id == pid).with_for_update())
         if row is None:
             raise RiskEngineError(f"proposal {pid} does not exist")
-        allowed = [str(x) for x in (config or rules_config())["evaluable_statuses"]]
+        allowed = (
+            [str(x) for x in allowed_statuses]
+            if allowed_statuses is not None
+            else [str(x) for x in (config or rules_config())["evaluable_statuses"]]
+        )
         if row.status not in allowed:
             raise RiskEngineError(
                 f"proposal {pid} is {row.status}; only {', '.join(allowed)} proposals are risk-checked"

@@ -160,6 +160,13 @@ executor:
   stop_verify_seconds: 3
   order_max_retries: 3
   emergency_stop_atr_mult: "2.0"
+  # ATL-143. Fixed engineering values, not owner settings.
+  retry_backoff_base_seconds: "0.5"
+  retry_backoff_max_seconds: 4
+  stop_verify_poll_seconds: "0.5"
+  # OKX sCodes meaning "TP/SL cannot be attached to this order/instrument": place the entry bare and
+  # protect it with an OCO algo order instead (brief §11).
+  attach_refused_codes: ["51010"]
 
 # Brief §4.1. Checked against the OKX v5 docs (https://www.okx.com/docs-v5/en/) at build time.
 okx:
@@ -531,6 +538,10 @@ backfill:
 
 # ATL-48: Settings → Data API (brief §14.10, §16). Re-sync and pause go to trading_core and are
 # throttled per user; repaired quality issues stay listed for this many days.
+risk_api:
+  # POST /api/risk/check (ATL-128): owner manual risk checks per minute.
+  checks_per_minute: 20
+
 data_api:
   resync_per_minute: 1
   pause_per_minute: 5
@@ -1196,6 +1207,34 @@ agents:
       pending_statuses: [draft, under_review, voting, passed, risk_checked, awaiting_owner, sent, partially_filled]
       open_statuses: [under_review, voting]
       max_revisions: 1
+  # ATL-154, brief §7.9: the weighted vote, computed in code (atlas_agents.votes.close_vote).
+  #   voters: the agents whose votes count; a voter with no vote counts as skip at
+  #     missing_confidence.
+  #   scores: points per vote. A "change" vote scores change_applied when it was cast on an earlier
+  #     version and the proposal was revised after it (the Strategist applied a fix), else change.
+  #   threshold: pass when weighted score / total weight >= this. The settings-table key
+  #     threshold_setting (flat, like the other agents.* settings) overrides it.
+  #   reliability_*: weight = confidence x the voter's reliability weight, read from the newest
+  #     agent_scores.data.reliability_weight within reliability_days, clamped to [min, max];
+  #     reliability_default when there is none.
+  #   da_*: the Devil's Advocate review card (warroom_messages author da_agent, card.type
+  #     da_card_type, card.proposal_id, integer card.risk_rating 1-5). The vote fails when the
+  #     newest rating on any version of the proposal is above da_max_rating, or there is none.
+  #   closable_statuses: close_vote refuses a proposal in any other status.
+  votes:
+    voters: [technical_analyst, derivatives_sentiment, news_intelligence, historian, devils_advocate]
+    scores: { take: "1", change_applied: "0.5", change: "0", skip: "0" }
+    missing_confidence: "0.5"
+    threshold: "0.6"
+    threshold_setting: agents.vote_threshold
+    reliability_days: 30
+    reliability_min: "0.5"
+    reliability_max: "1.5"
+    reliability_default: "1"
+    da_agent: devils_advocate
+    da_card_type: da_review
+    da_max_rating: 4
+    closable_statuses: [under_review, voting]
   technical_analyst:
     history_bars: { "1D": 400, "4H": 500, "1H": 500, "15m": 500, "5m": 300 }
     stale_bars: 2
