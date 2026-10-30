@@ -38,6 +38,8 @@ AGENT_TITLES = {
     "Portfolio Manager": "portfolio_manager",
     "Orchestrator": "orchestrator",
 }
+VOTE_RUN_AGENTS = {"technical_analyst", "derivatives_sentiment", "news_intelligence", "historian"}
+VOTING_SECTION = "\nVOTING (when a vote opens on a proposal):\n"
 SETTINGS: dict[str, int | Decimal] = {
     "max_loss_per_trade_pct": Decimal("1.0"),
     "max_instruments_per_day": 5,
@@ -78,7 +80,17 @@ def test_prompt_files_match_the_brief_verbatim() -> None:
     roles = {b[0][len("ROLE: ") :].split(".")[0]: b for b in blocks if b and b[0].startswith("ROLE:")}
     assert set(roles) == set(AGENT_TITLES)
     for title, slug in AGENT_TITLES.items():
-        assert (prompts.PROMPTS_DIR / f"{slug}.md").read_text() == "\n".join(roles[title]) + "\n", slug
+        body = (prompts.PROMPTS_DIR / f"{slug}.md").read_text()
+        brief = "\n".join(roles[title]) + "\n"
+        # The brief's role prompt verbatim; voters add one VOTING section after it (ATL-182).
+        added = VOTING_SECTION if slug in VOTE_RUN_AGENTS else ""
+        assert body.startswith(brief), slug
+        assert body[len(brief) :].startswith(added) and body.count("\nVOTING (") == (1 if added else 0), slug
+        if added:
+            tail = body[len(brief) :]
+            assert all(line.startswith(("VOTING", "- ", "  ")) for line in tail.strip("\n").splitlines()), (
+                slug
+            )
 
 
 def test_there_is_one_prompt_file_per_registered_agent() -> None:

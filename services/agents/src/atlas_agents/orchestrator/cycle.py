@@ -21,8 +21,11 @@ Steps:
 3. The Strategist plans every watchlist instrument (``agents.strategist.run_cycle``), proposals
    carry this cycle's id.
 4. Each open proposal waits up to ``review_timeout_seconds`` for its Devil's Advocate ``da_review``.
-5. The vote opens (status ``voting``) for ``vote_seconds`` (earlier when all five voters voted) and
-   is closed by :func:`atlas_agents.votes.close_vote`.
+5. The vote opens (status ``voting``) for ``vote_seconds`` and is closed by
+   :func:`atlas_agents.votes.close_vote`. Opening it starts one vote run per available
+   ``agents.votes.run_voters`` agent (:mod:`atlas_agents.orchestrator.voters`, ATL-182); a version
+   revised during the vote gets fresh runs. The vote closes earlier when every voter has voted and
+   no vote run on a current version is still going.
 6. Each passed proposal gets exactly one signed ``POST /internal/risk/evaluate/{id}``. A rejected
    check closes the proposal ``rejected``; an approved/resized one becomes ``advise_only`` at
    autonomy 1, else ``awaiting_owner`` with ``approval_expires_at``. While autonomy 3-4 are not
@@ -50,8 +53,9 @@ from sqlalchemy import Table, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from atlas_agents import votes
+from atlas_agents import budget, votes
 from atlas_agents.orchestrator import approval
+from atlas_agents.orchestrator import voters as voter_runs
 from atlas_agents.orchestrator.trading_core import TradingCoreClient, TradingCoreError
 from atlas_agents.registry import AgentHost
 from atlas_agents.tools import ToolContext
@@ -194,6 +198,7 @@ class CycleRunner:
         research: Mapping[str, ResearchFn] | None = None,
         strategist: StrategistFn | None = None,
         risk: TradingCoreClient | None = None,
+        voter_run: voter_runs.VoteRunFn | None = None,
         defaults: Mapping[str, Any] = DEFAULTS,
     ) -> None:
         self.host = host
@@ -203,6 +208,9 @@ class CycleRunner:
         self.research = dict(research) if research is not None else _default_research()
         self.strategist = strategist or _default_strategist
         self.risk = risk or TradingCoreClient()
+        self.voter_run: voter_runs.VoteRunFn = voter_run or voter_runs.run_vote
+        self.vote_tasks: dict[uuid.UUID, dict[str, asyncio.Task[Any]]] = {}
+        """proposal version id -> agent -> its vote run (ATL-182)."""
         self.defaults = defaults
         self.cfg = config(defaults)
         self.late: set[asyncio.Task[Any]] = set()
@@ -277,9 +285,11 @@ class CycleRunner:
             ).first()
         return found is not None
 
-    def system_line(self, cycle_id: uuid.UUID | None, state: str, text: str) -> None:
+    def system_line(
+        self, cycle_id: uuid.UUID | None, state: str, text: str, *, card_type: str = "cycle_state"
+    ) -> None:
         """One short system message in the War Room's Main thread (author ``orchestrator``, source
-        ``system:orchestrator``, kind ``text``, card ``{"type": "cycle_state", ...}``)."""
+        ``system:orchestrator``, kind ``text``, card ``{"type": card_type, "cycle_id", "state"}``)."""
         self.host.publish(
             WARROOM_STREAM,
             EventEnvelope(
@@ -295,7 +305,7 @@ class CycleRunner:
                     "kind": "text",
                     "content_md": text,
                     "card": {
-                        "type": "cycle_state",
+                        "type": card_type,
                         "cycle_id": str(cycle_id) if cycle_id is not None else None,
                         "state": state,
                     },
@@ -385,6 +395,29 @@ class CycleRunner:
             why = f": {row.last_error}" if row.last_error else ""
             return f"{slug} is {row.state}{why}"
         return None
+
+    def over_budget_reason(self, slug: str) -> str | None:
+        sessions = getattr(self.host, "sessions", None)
+        session = sessions.get(slug) if sessions is not None else None
+        spec = getattr(session, "spec", None)
+        if spec is None:
+            return None
+        with self._session() as db:
+            usage = budget.today_usage(db, agent=slug, env=self.host.env, day=owner_day(self.clock.now()))
+        hit = budget.exhausted(spec, usage)
+        return f"{slug} is over its daily {' and '.join(hit)} budget" if hit else None
+
+    def voter_skip_reason(self, slug: str, version: uuid.UUID) -> str | None:
+        """Why ``slug`` gets no vote run on ``version``: not enabled, unavailable, over budget, or it
+        already voted on this version. None when it gets one."""
+        reason = self.unavailable_reason(slug) or self.over_budget_reason(slug)
+        if reason:
+            return reason
+        with self._session() as session:
+            voted = session.scalars(
+                select(Vote.id).where(Vote.proposal_id == version, Vote.agent == slug).limit(1)
+            ).first()
+        return f"{slug} already voted" if voted is not None else None
 
     def cycle_proposals(self, cycle_id: uuid.UUID) -> list[_Open]:
         with self._session() as session:
@@ -616,9 +649,7 @@ class CycleRunner:
             deadlines={"vote": vote_deadline},
             proposal_ids=[str(i.head) for i in items],
         )
-        await self.wait_until(
-            vote_deadline, lambda: all(not self.missing_voters(i) for i in self.refresh(items))
-        )
+        await self.vote_step(cycle_id, items, vote_deadline)
         items = await asyncio.to_thread(self.refresh, items)
         passed: list[_Open] = []
         results: list[str] = []
@@ -675,6 +706,67 @@ class CycleRunner:
         if advised:
             return self.close(cycle_id, "advise_only", f"advice only (autonomy 1) on {', '.join(advised)}")
         return self.close(cycle_id, "risk_rejected", "the Risk Engine approved nothing")
+
+    async def start_vote_runs(self, cycle_id: uuid.UUID, item: _Open, vote_deadline: datetime) -> list[str]:
+        """One vote run per available run_voters agent on ``item.head``; returns the agents asked."""
+        if item.head in self.vote_tasks:
+            return []
+        runs: dict[str, asyncio.Task[Any]] = {}
+        self.vote_tasks[item.head] = runs
+        timeout = timedelta(seconds=float(voter_runs.config(self.defaults)["voter_run_timeout_seconds"]))
+        skipped: list[str] = []
+        for slug in voter_runs.run_voters(self.defaults):
+            reason = await asyncio.to_thread(self.voter_skip_reason, slug, item.head)
+            if reason:
+                skipped.append(reason)
+                continue
+            deadline = min(vote_deadline, self.clock.now() + timeout)
+            runs[slug] = asyncio.create_task(self._vote_run(slug, item, deadline, correlation_id(cycle_id)))
+        asked = list(runs)
+        line = f"Votes requested on {item.inst_id} ({item.head}) from {', '.join(asked) or 'nobody'}"
+        if skipped:
+            line += f"; not asked: {'; '.join(skipped)}"
+        self.system_line(cycle_id, "voting", line + ".", card_type="vote_runs")
+        return asked
+
+    async def _vote_run(self, slug: str, item: _Open, deadline: datetime, corr: str) -> Any:
+        try:
+            return await self.voter_run(self.host, slug, item.head, deadline=deadline, correlation_id=corr)
+        except Exception:
+            log.exception("orchestrator: %s vote run on %s failed", slug, item.head)
+            return None
+
+    def _all_voted(self, items: Sequence[_Open]) -> bool:
+        return all(not self.missing_voters(i) for i in items)
+
+    def _runs_pending(self, items: Sequence[_Open]) -> bool:
+        return any(not t.done() for i in items for t in self.vote_tasks.get(i.head, {}).values())
+
+    async def vote_step(self, cycle_id: uuid.UUID, items: list[_Open], vote_deadline: datetime) -> None:
+        """Start the vote runs, and fresh ones for each version revised during the vote. Return at the
+        deadline, or once every voter has voted and no run on a current version is still going. Runs
+        still going at the deadline are left to finish; cast_vote refuses their late votes."""
+        poll = float(self.cfg["poll_seconds"])
+        current = items
+        while True:
+            current = await asyncio.to_thread(self.refresh, current)
+            fresh = [i for i in current if i.head not in self.vote_tasks]
+            if fresh:
+                await asyncio.to_thread(self._open_votes, fresh)
+                for item in fresh:
+                    await self.start_vote_runs(cycle_id, item, vote_deadline)
+            all_voted = await asyncio.to_thread(self._all_voted, current)
+            if all_voted and not self._runs_pending(current):
+                break
+            remaining = (vote_deadline - self.clock.now()).total_seconds()
+            if remaining <= 0:
+                break
+            await self.clock.sleep(min(poll, remaining))
+        for runs in self.vote_tasks.values():
+            for task in runs.values():
+                if not task.done():
+                    self.late.add(task)
+                    task.add_done_callback(self.late.discard)
 
     def _open_votes(self, items: Sequence[_Open]) -> None:
         at = self.clock.now()
