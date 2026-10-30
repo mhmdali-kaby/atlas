@@ -1196,6 +1196,49 @@ agents:
       pending_statuses: [draft, under_review, voting, passed, risk_checked, awaiting_owner, sent, partially_filled]
       open_statuses: [under_review, voting]
       max_revisions: 1
+    # ATL-158, brief §7.6: the Strategist's code rules (atlas_agents.strategist).
+    #   sizing: size_suggestion_pct = base_pct (the owner's max_position_pct) x conviction multiplier
+    #     x volatility multiplier. Conviction (the watchlist pick's) < conviction_low -> [0];
+    #     conviction_low..conviction_high -> [1]; > conviction_high -> [2]. ATR% percentile (ATR(atr_window)
+    #     on atr_bar, percentile of the newest value over atr_percentile_lookback bars) < vol_low -> [0];
+    #     vol_low..vol_high -> [1]; > vol_high -> [2]. An unknown conviction or percentile uses the
+    #     unknown_* multiplier. Leverage = the lowest that fits: ceil(notional / (available x
+    #     margin_buffer)), at least 1, capped at the owner's max_leverage and the instrument's maxLever.
+    #   probability: the model's p is clamped to the Historian analog hit rate +/- max_adjust_points
+    #     (percentage points). The hit rate is the newest history_verdict's pct_positive (100 - it for
+    #     a sell) at the first of analog_horizons the card has.
+    #   take_profit_split: % to close at TP1/TP2/TP3 when the model gives no pct.
+    #   time_stop: default when the model gives none: crypto_minutes, or for us_session_asset_classes
+    #     the end of the us_sessions-th US regular session (us_open..us_close, us_timezone, Mon-Fri)
+    #     counting a session in progress as the first.
+    #   setup_max_age_minutes for the "no trade" short-cut is checklist.setup_max_age_minutes.
+    sizing:
+      conviction_low: "0.55"
+      conviction_high: "0.7"
+      conviction_multipliers: ["0.5", "0.75", "1.0"]
+      vol_low_percentile: "60"
+      vol_high_percentile: "85"
+      vol_multipliers: ["1.0", "0.75", "0.5"]
+      unknown_conviction_multiplier: "0.5"
+      unknown_vol_multiplier: "0.5"
+      atr_bar: 1H
+      atr_window: 14
+      atr_percentile_lookback: 180
+      margin_buffer: "0.9"
+    probability:
+      max_adjust_points: "15"
+      analog_horizons: ["24h", "4h", "72h", "1h"]
+    take_profit_split: ["50", "30", "20"]
+    time_stop:
+      crypto_minutes: 1440
+      us_sessions: 2
+      us_session_asset_classes: [stock, etf, index]
+      us_timezone: America/New_York
+      us_open: "09:30"
+      us_close: "16:00"
+    positioning_author: derivatives_sentiment
+    mention_max_instruments: 3
+    cycle_max_instruments: 10
   technical_analyst:
     history_bars: { "1D": 400, "4H": 500, "1H": 500, "15m": 500, "5m": 300 }
     stale_bars: 2

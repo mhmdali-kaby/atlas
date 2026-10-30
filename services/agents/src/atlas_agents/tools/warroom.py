@@ -356,6 +356,9 @@ class ProposalOut(BaseModel):
     """The envelope id of the War Room ``proposal`` card (submit and revise)."""
     checklist: list[dict[str, Any]] = []
     """The six §7.6 items as checked (entries only)."""
+    meta: dict[str, Any] | None = None
+    """Strategist entries (ATL-158): what code set or corrected (size, leverage, clamped probability,
+    defaults) — the same ``meta`` the proposal card carries."""
 
 
 def _proposal_event(ctx: ToolContext, type_: str, payload: dict[str, Any]) -> EventEnvelope:
@@ -377,8 +380,10 @@ def _save_and_announce(
     summary_md: str | None,
     *,
     cancel: Proposal | None = None,
+    meta: Mapping[str, Any] | None = None,
 ) -> ToolResult:
-    """Commit ``row`` (and cancel the revised parent), then post the card and publish proposal.opened."""
+    """Commit ``row`` (and cancel the revised parent), then post the card and publish proposal.opened.
+    ``meta`` (Strategist entries) goes on the card as ``meta``."""
     summary = _check_content(summary_md) if summary_md else props.default_summary(row)
     if cancel is not None:
         cancel.status = "cancelled"
@@ -387,6 +392,8 @@ def _save_and_announce(
     session.add(row)
     session.flush()
     card = props.proposal_card(row, checklist, summary)
+    if meta is not None:
+        card["meta"] = dict(meta)
     session.commit()
     message = message_envelope(ctx, kind="proposal", content_md=summary, card=card)
     ctx.publish(WARROOM_STREAM, message)
@@ -421,6 +428,7 @@ def _save_and_announce(
             cycle_id=card["cycle_id"],
             message_id=str(message.id),
             checklist=card["checklist"],
+            meta=card.get("meta"),
         ),
         as_of=ctx.now(),
         source="postgres:proposals",
@@ -450,14 +458,35 @@ def _validated(
     return model, []
 
 
+def _strategist_rules(
+    ctx: ToolContext, session: Session, kind: str, raw: Mapping[str, Any] | None
+) -> tuple[Mapping[str, Any] | None, dict[str, Any] | None]:
+    """A Strategist entry with the code rules applied (ATL-158: size, leverage, probability clamp,
+    defaults) and the card meta recording them; anything else unchanged."""
+    if ctx.agent != props.STRATEGIST or kind != "entry" or not isinstance(raw, Mapping):
+        return raw, None
+    from atlas_agents.strategist import rules  # here: strategist imports the tools package
+
+    applied = rules.apply(session, ctx, raw)
+    return (raw, None) if applied is None else applied
+
+
+def submit_entry(ctx: ToolContext, args: SubmitProposalInput) -> ToolResult:
+    """``submit_proposal`` without the tool wrapper, for code that submits on an agent's behalf
+    (the Strategist's run, ATL-158). Same checks, rules, writes and events."""
+    _publishable(ctx)
+    return _submit(ctx, args)
+
+
 def _submit(ctx: ToolContext, args: SubmitProposalInput) -> ToolResult:
     if args.proposal_id is not None:
         raise ToolError("invalid_proposal", "proposal_id is only for revise and withdraw")
     props.check_author(ctx.agent, args.kind)
     with ctx.session_factory() as session:
-        model, checklist = _validated(ctx, session, args.kind, args.proposal, None)
+        raw, meta = _strategist_rules(ctx, session, args.kind, args.proposal)
+        model, checklist = _validated(ctx, session, args.kind, raw, None)
         row = props.new_row(ctx, args.kind, model, cycle_id=props.resolve_cycle(session, ctx))
-        return _save_and_announce(ctx, session, row, checklist, args.summary_md)
+        return _save_and_announce(ctx, session, row, checklist, args.summary_md, meta=meta)
 
 
 def _revise(ctx: ToolContext, args: SubmitProposalInput) -> ToolResult:
@@ -478,13 +507,14 @@ def _revise(ctx: ToolContext, args: SubmitProposalInput) -> ToolResult:
                 f"{int(cfg['max_revisions'])} time(s). Withdraw it instead.",
             )
         props.require_open(parent, cfg, "revise")
-        model, checklist = _validated(ctx, session, args.kind, args.proposal, parent.id)
+        raw, meta = _strategist_rules(ctx, session, args.kind, args.proposal)
+        model, checklist = _validated(ctx, session, args.kind, raw, parent.id)
         if model.inst_id != parent.inst_id:
             raise ToolError("invalid_proposal", f"a revision keeps the instrument ({parent.inst_id})")
         row = props.new_row(
             ctx, args.kind, model, cycle_id=parent.cycle_id, version=parent.version + 1, parent_id=parent.id
         )
-        return _save_and_announce(ctx, session, row, checklist, args.summary_md, cancel=parent)
+        return _save_and_announce(ctx, session, row, checklist, args.summary_md, cancel=parent, meta=meta)
 
 
 def _withdraw(ctx: ToolContext, args: SubmitProposalInput) -> ToolResult:
