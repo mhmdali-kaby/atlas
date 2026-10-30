@@ -432,6 +432,11 @@ class CycleRunner:
             chain = votes.version_chain(session, head)
             return votes.da_rating(session, self.ctx, chain, vcfg) is not None
 
+    def vote_called(self, item: _Open) -> bool:
+        """True when the Orchestrator called the vote early on this proposal (:func:`call_vote`)."""
+        env = self.host.env
+        return (env, str(item.root)) in _vote_called or (env, str(item.head)) in _vote_called
+
     def missing_voters(self, item: _Open) -> list[str]:
         voters = [str(v) for v in votes.votes_config(self.defaults)["voters"]]
         with self._session() as session:
@@ -597,10 +602,13 @@ class CycleRunner:
 
         await self.wait_until(
             review_deadline,
-            lambda: all(self.has_review(i) for i in self.refresh(items)),
+            lambda: all(self.has_review(i) or self.vote_called(i) for i in self.refresh(items)),
         )
         items = await asyncio.to_thread(self.refresh, items)
-        unreviewed = [i for i in items if not self.has_review(i)]
+        # ATL-161: a proposal whose debate the Orchestrator stopped goes to the vote without waiting
+        # for the rest of the review window; it is not a review timeout.
+        called = [i for i in items if not self.has_review(i) and self.vote_called(i)]
+        unreviewed = [i for i in items if not self.has_review(i) and i not in called]
         for item in unreviewed:
             self.record_timeout(
                 cycle_id,
@@ -617,11 +625,14 @@ class CycleRunner:
             "reviews_done",
             "Reviews done"
             + (
-                f"; no Devil's Advocate review on {', '.join(i.inst_id for i in unreviewed)} (timed out)."
+                f"; no Devil's Advocate review on {', '.join(i.inst_id for i in unreviewed)} (timed out)"
                 if unreviewed
-                else "."
-            ),
+                else ""
+            )
+            + (f"; vote called early on {', '.join(i.inst_id for i in called)}" if called else "")
+            + ".",
             unreviewed=[str(i.head) for i in unreviewed],
+            vote_called=[str(i.head) for i in called],
         )
         if not items:
             return self.close(cycle_id, "no_proposals", "every proposal was withdrawn")
@@ -786,6 +797,16 @@ class CycleRunner:
 # -- starting cycles ---------------------------------------------------------------------------------
 
 _running: dict[str, asyncio.Task[Any]] = {}
+_vote_called: set[tuple[str, str]] = set()
+"""(env, proposal id) whose vote the Orchestrator called early (ATL-161 loop stop)."""
+
+
+def call_vote(env: str, proposal_id: str) -> bool:
+    """Call the vote on ``proposal_id`` now (brief §7.9 "stop loops"): a running cycle stops waiting
+    for its Devil's Advocate review and opens the vote. A proposal already voting is unaffected (its
+    vote is open). Returns True when a cycle is running in ``env`` to act on it."""
+    _vote_called.add((env, proposal_id))
+    return running(env)
 
 
 def running(env: str) -> bool:
@@ -842,6 +863,7 @@ __all__ = [
     "CycleClock",
     "CycleRunner",
     "WallClock",
+    "call_vote",
     "config",
     "correlation_id",
     "due_slot",

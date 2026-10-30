@@ -29,7 +29,8 @@ agent's own tool list in §7.x where the cell is a summary:
   submit_proposal only for Strategist and Portfolio Manager (amend/close kinds only — the tool
   enforces that); cast_vote only for the five voters (§7.9); request_human_input only for the
   Orchestrator (§7.9).
-* orchestration: the Orchestrator's §7.9 set, Orchestrator only.
+* orchestration: the Orchestrator's §7.9 set less open_vote/close_vote (the vote is code, ATL-154/
+  ATL-160): start_cycle, assign, set_agent_state, summarise_thread. Orchestrator only (ATL-161).
 
 No agent gets a trading, transfer, withdrawal, leverage or settings-write tool, and none exists in
 the registry. Every Claude Code built-in tool is in ``disallowed_tools`` except the web pair for the
@@ -140,6 +141,8 @@ MATRIX: Final[dict[str, AgentAccess]] = {
             "atlas_data": _ATLAS_DATA,
             "memory": ("read_notebook", "append_notebook", "get_my_scores"),
             "warroom": (*_WARROOM_BASE, "request_human_input"),
+            # ATL-161: votes are opened and closed by code (atlas_agents.votes via the cycle); §7.9's
+            # open_vote/close_vote are not tools.
             "orchestration": _all("orchestration"),
         }
     ),
