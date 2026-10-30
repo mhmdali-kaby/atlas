@@ -144,3 +144,14 @@ decisions where the brief was silent, as the brief asks.
   picks between a long and a short in long/short mode; two positions and no side is refused as
   ambiguous. No vote; the autonomy decision is the entries' one. evaluate() leaves the row
   `risk_checked` for both kinds; the caller moves it to awaiting_owner/advise_only/rejected.
+- **Analyst vote runs** (ATL-182, `atlas_agents/orchestrator/voters.py`). When the cycle opens a vote,
+  and again for each version revised during the vote, code starts one routine-model run per
+  `agents.votes.run_voters` agent (Technical, Derivatives, News, Historian) that is enabled, not in
+  `unavailable_states`, inside its daily budget and has not yet voted on that version. The prompt
+  holds the proposal card, the agent's newest `voter_cards` card on the instrument and its deadline:
+  min(the cycle's vote deadline, run start + `voter_run_timeout_seconds`). The agent must call
+  `warroom.cast_vote` itself; code never votes for it. `cast_vote` now refuses (`vote_deadline_passed`)
+  a vote after the cycle's `deadlines.vote` or after the agent's run deadline, so a late or missing
+  answer leaves the voter missing (skip at 0.5). The vote closes early only when every voter has
+  voted and no run on a current version is still going; runs left at the deadline finish on their own.
+  The four voters' prompt files gain one VOTING section after the brief's role text (new versions).

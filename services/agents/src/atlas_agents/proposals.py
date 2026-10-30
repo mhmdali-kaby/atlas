@@ -596,6 +596,49 @@ def require_open(row: Proposal, cfg: Mapping[str, Any], action: str) -> None:
         )
 
 
+# -- vote deadlines (ATL-182) ---------------------------------------------------------------------
+
+_run_deadlines: dict[tuple[str, str, str], datetime] = {}
+"""(env, agent, proposal_id) -> the deadline of the vote run the cycle started for that agent on that
+proposal version: min(the cycle's vote deadline, run start + voter_run_timeout_seconds)."""
+
+
+def set_run_deadline(env: str, agent: str, proposal_id: str, deadline: datetime) -> None:
+    _run_deadlines[(env, agent, str(proposal_id))] = deadline
+
+
+def clear_run_deadline(env: str, agent: str, proposal_id: str) -> None:
+    _run_deadlines.pop((env, agent, str(proposal_id)), None)
+
+
+def require_vote_window(session: Session, ctx: ToolContext, row: Proposal) -> None:
+    """Refuse a vote after the deadline: the cycle's ``deadlines.vote`` (once the vote has opened)
+    and the agent's own vote-run deadline (when the cycle started one). A refused vote stores
+    nothing, so the tally counts the voter as missing (skip at missing_confidence)."""
+    now = ctx.now()
+    run_deadline = _run_deadlines.get((ctx.env, ctx.agent, str(row.id)))
+    if run_deadline is not None and now > run_deadline:
+        raise ToolError(
+            "vote_deadline_passed",
+            f"your vote run on proposal {row.id} ended at {run_deadline.isoformat()}; no vote is stored",
+        )
+    if row.cycle_id is None:
+        return
+    deadlines = session.scalars(select(Cycle.deadlines).where(Cycle.id == row.cycle_id)).first()
+    raw = (deadlines or {}).get("vote") if isinstance(deadlines, Mapping) else None
+    if not raw:
+        return
+    try:
+        closes = datetime.fromisoformat(str(raw).replace("Z", "+00:00"))
+    except ValueError:
+        return
+    if now > closes:
+        raise ToolError(
+            "vote_deadline_passed",
+            f"the vote on proposal {row.id} closed at {raw}; no vote is stored",
+        )
+
+
 def proposal_card(row: Proposal, checklist: Sequence[ChecklistItem], summary_md: str) -> dict[str, Any]:
     """The War Room ``proposal`` card (JSON-safe; decimals as strings)."""
     edge = (
@@ -694,6 +737,7 @@ __all__ = [
     "check_author",
     "checklist_config",
     "checklist_error",
+    "clear_run_deadline",
     "default_summary",
     "expectancy",
     "load_proposal",
@@ -703,8 +747,10 @@ __all__ = [
     "parse",
     "proposal_card",
     "require_open",
+    "require_vote_window",
     "resolve_cycle",
     "run_checklist",
+    "set_run_deadline",
     "settings_data",
     "upsert_vote",
 ]

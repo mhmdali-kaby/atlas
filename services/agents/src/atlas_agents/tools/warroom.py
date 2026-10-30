@@ -596,7 +596,7 @@ class VoteOut(BaseModel):
 async def cast_vote(ctx: ToolContext, args: CastVoteInput) -> ToolResult:
     """Vote on a proposal version that is under review or voting: take, skip or change (put the fix
     you ask for in "fix"), with your confidence 0-1 and the reason. Voting again on the same version
-    replaces your earlier vote."""
+    replaces your earlier vote. A vote after the vote deadline is refused and nothing is stored."""
     _publishable(ctx)
     if args.vote == "change" and not (args.fix and args.fix.strip()):
         raise ToolError("invalid_vote", "a 'change' vote needs the fix you ask for in 'fix'")
@@ -606,6 +606,7 @@ async def cast_vote(ctx: ToolContext, args: CastVoteInput) -> ToolResult:
     with ctx.session_factory() as session:
         proposal = props.load_proposal(session, ctx, args.proposal_id)
         props.require_open(proposal, cfg, "a vote")
+        props.require_vote_window(session, ctx, proposal)
         vote_id = props.upsert_vote(
             session, ctx, proposal, vote=args.vote, confidence=confidence, reason=args.reason, fix=fix
         )
