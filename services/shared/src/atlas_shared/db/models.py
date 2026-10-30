@@ -857,6 +857,46 @@ class Fill(_Row, Base):
     exec_type: Mapped[str | None] = mapped_column(String(4), nullable=True)
     ts: Mapped[datetime] = mapped_column(_tz())
     raw: Mapped[Any] = _jsonb_obj()
+    # OKX fillPnl (ATL-172): realised PnL of a closing fill, 0 on opening fills.
+    fill_pnl: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+
+
+class PositionClosed(_Row, Base):
+    """One OKX ``account/positions-history`` record (ATL-172, brief §13 History): a full or partial
+    close, liquidation or ADL. Unique per (env, pos_id, closed_at). side is the closed position's
+    direction (long|short). proposal_id/agent are set when an Atlas entry order opened it
+    (origin atlas, CHECKed); otherwise origin external. R is derived by the API, not stored."""
+
+    __tablename__ = "positions_closed"
+    __table_args__ = (UniqueConstraint("env", "pos_id", "closed_at"),)
+
+    pos_id: Mapped[str] = mapped_column(String(64))
+    inst_id: Mapped[str] = mapped_column(String(64))
+    inst_type: Mapped[str] = mapped_column(String(16))
+    mgn_mode: Mapped[str] = mapped_column(String(16))
+    pos_side: Mapped[str] = mapped_column(String(255))
+    side: Mapped[str] = mapped_column(String(255))
+    close_type: Mapped[str] = mapped_column(String(8))
+    lever: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    ccy: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    size: Mapped[Decimal] = mapped_column(_num())
+    entry_px: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    exit_px: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    realised_pnl: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    pnl: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    fee: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    funding_fee: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    liq_penalty: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    pnl_ratio: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    opened_at: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
+    closed_at: Mapped[datetime] = mapped_column(_tz())
+    proposal_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("proposals.id", ondelete="SET NULL"), nullable=True
+    )
+    agent: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    setup_tag: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    origin: Mapped[str] = mapped_column(String(255), server_default=text("'external'"))
+    raw: Mapped[Any] = _jsonb_obj()
 
 
 class TradingState(_Row, Base):
