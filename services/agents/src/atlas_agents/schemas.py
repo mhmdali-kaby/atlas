@@ -54,6 +54,37 @@ class StopNoiseCheck(_Model):
     verdict: Literal["ok", "inside_noise"]
 
 
+class UnmatchedNumber(_Model):
+    """One number the agent stated that no tool returned (atlas_agents.numguard to_meta())."""
+
+    raw: str
+    value: float
+    kind: str
+    location: Literal["text", "card"]
+    span: tuple[int, int] | None = None
+    path: str | None = None
+
+
+class VerdictCorrectionMeta(_Model):
+    """A verdict enforce_verdict_rules changed, as the War Room card shows it."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True, populate_by_name=True)
+
+    from_: Verdict = Field(alias="from")
+    to: Verdict
+    rule: str = Field(description='"n_below_<min_n>" or "backtest_on_gapped_data"')
+    n: int = Field(ge=0)
+
+
+class CardMeta(_Model):
+    """Set by the runtime, never by the agent (ATL-93): the number guard's findings and the verdict
+    rules that changed the card."""
+
+    unmatched_numbers: list[UnmatchedNumber] = Field(default_factory=list)
+    checked: int = Field(default=0, ge=0)
+    verdict_corrections: list[VerdictCorrectionMeta] = Field(default_factory=list)
+
+
 class HistoryVerdict(_Model):
     """Brief §7.3 output schema. Distributions are keyed by horizon ("1h", "4h", "24h", "72h").
 
@@ -75,6 +106,7 @@ class HistoryVerdict(_Model):
     key_stat: str
     data_quality_notes: list[str] = Field(default_factory=list)
     data_as_of: AwareDatetime
+    meta: CardMeta | None = None
 
 
 class VerdictEvidence(_Model):
@@ -149,18 +181,24 @@ def enforce_verdict_rules(
 
 
 class RegimeRow(_Model):
+    """``label`` is detect_regime's label, or ``no_data`` / ``insufficient_data`` (then ``method``,
+    ``probability`` and ``days_in_regime`` are null). ``method``: hmm, or the ADX + vol fallback."""
+
     inst_id: str = Field(min_length=1, max_length=64)
     label: str = Field(min_length=1, max_length=32)
     probability: float | None = Field(default=None, ge=0, le=1)
     days_in_regime: float | None = Field(default=None, ge=0)
-    data_as_of: AwareDatetime
+    method: Literal["hmm", "fallback"] | None = None
 
 
 class RegimeTable(_Model):
-    """The Historian's regime table for the shortlist / universe (brief §7.3, §8 07:30)."""
+    """The Historian's regime table (brief §7.3, §8 07:30): the top instruments by 24h quote volume,
+    in that order. ``data_as_of`` is the newest bar close behind any row."""
 
     type: Literal["regime_table"] = "regime_table"
     rows: list[RegimeRow] = Field(min_length=1)
+    data_as_of: AwareDatetime
+    meta: CardMeta | None = None
 
 
 # War Room card registry: card ``type`` -> the one model it must validate against.
@@ -182,14 +220,17 @@ def card_rule_violations(card: BaseModel) -> list[str]:
 
 __all__ = [
     "CARD_TYPES",
+    "CardMeta",
     "HistoryVerdict",
     "HorizonDistribution",
     "RegimeRow",
     "RegimeSummary",
     "RegimeTable",
     "StopNoiseCheck",
+    "UnmatchedNumber",
     "Verdict",
     "VerdictCorrection",
+    "VerdictCorrectionMeta",
     "VerdictEvidence",
     "card_rule_violations",
     "enforce_verdict_rules",

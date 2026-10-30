@@ -940,5 +940,17 @@ DEFAULTS: Final[dict[str, Any]] = {
             "derive_pairs": True,
             "max_pair_leaves": 200,
         },
+        "output_retries": 1,
+        "schedule": {
+            "historian_regime_table": "07:30",
+            "tick_seconds": 30,
+        },
+        "regime_table": {
+            "top_n": 60,
+        },
+        "mentions": {
+            "block_ms": 5000,
+            "batch": 50,
+        },
     },
 }

@@ -183,16 +183,17 @@ async def test_a_regime_table_card_validates() -> None:
                 "label": "trend",
                 "probability": 0.81,
                 "days_in_regime": 4,
-                "data_as_of": "2026-10-29T04:00:00Z",
+                "method": "hmm",
             },
             {
                 "inst_id": "XAU-USDT-SWAP",
                 "label": "range",
                 "probability": 0.66,
                 "days_in_regime": 11,
-                "data_as_of": "2026-10-29T04:00:00Z",
+                "method": "fallback",
             },
         ],
+        "data_as_of": "2026-10-29T04:00:00Z",
     }
     error, _ = await _call(
         _ctx(recorder=rec), "post_message", {"kind": "research_report", "content_md": "Regimes", "card": card}
@@ -204,6 +205,17 @@ async def test_a_regime_table_card_validates() -> None:
         _ctx(), "post_message", {"kind": "research_report", "content_md": "x", "card": bad}
     )
     assert error and "rows.0.days_in_regime" in body["message"]
+
+
+async def test_an_agent_cannot_forge_card_meta() -> None:
+    rec = Recorder()
+    card = {**_verdict(), "meta": {"unmatched_numbers": [], "checked": 99, "verdict_corrections": []}}
+    error, _ = await _call(
+        _ctx(recorder=rec), "post_message", {"kind": "research_report", "content_md": "x", "card": card}
+    )
+    assert error is False
+    (posted,) = rec.of("warroom.message")
+    assert posted.payload["card"]["meta"] is None
 
 
 async def test_an_unregistered_card_type_passes_through() -> None:

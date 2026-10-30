@@ -53,6 +53,13 @@ class TimedRecorder:
     def of(self, type_: str) -> list[tuple[float, EventEnvelope]]:
         return [(t, e) for t, _s, e in self.events if e.type == type_]
 
+    def deltas(self) -> list[tuple[float, EventEnvelope]]:
+        """The thinking events before run_end."""
+        return [(t, e) for t, e in self.of("warroom.thinking") if e.payload["delta_type"] != "run_end"]
+
+    def run_ends(self) -> list[EventEnvelope]:
+        return [e for _t, e in self.of("warroom.thinking") if e.payload["delta_type"] == "run_end"]
+
 
 def _session(
     spec: AgentSpec, engine: Engine, client: fake.FakeClaudeClient, rec: TimedRecorder, time: FakeTime
@@ -109,11 +116,11 @@ async def test_200_thinking_deltas_are_throttled_coalesced_and_assembled_in_orde
     result = await _session(spec, engine, client, rec, time).run("regime table", correlation_id="cycle-1")
     assert result.status == "ok"
 
-    thinking = rec.of("warroom.thinking")
+    thinking = rec.deltas()
     assert 2 <= len(thinking) <= 30
     assert _max_in_any_second([t for t, _ in thinking]) <= 10
-    seqs = [e.payload["seq"] for _, e in thinking]
-    assert seqs == list(range(1, len(thinking) + 1))
+    seqs = [e.payload["seq"] for _, e in rec.of("warroom.thinking")]
+    assert seqs == list(range(1, len(thinking) + 2))  # run_end takes the last seq
     for _, e in thinking:
         assert e.source == f"agent:{spec.slug}"
         assert e.correlation_id == "cycle-1"
@@ -137,6 +144,10 @@ async def test_200_thinking_deltas_are_throttled_coalesced_and_assembled_in_orde
     assert p["tokens_in"] == 1200 and p["tokens_out"] == 300
     assert p["cost_usd"] == "0.012346"
     assert p["tool_calls"] == []
+    assert p["run_id"] == str(result.run_id)
+    (end,) = rec.run_ends()
+    assert end.payload["run_id"] == str(result.run_id) and end.payload["status"] == "ok"
+    assert rec.events[-1][2] is end  # the stream ends after the final message
 
 
 async def test_deltas_arriving_slower_than_the_limit_each_get_an_event(
@@ -146,7 +157,7 @@ async def test_deltas_arriving_slower_than_the_limit_each_get_an_event(
     rec = TimedRecorder(time)
     client = fake.FakeClaudeClient([[*(fake.thinking_delta(f"d{i} ") for i in range(5)), fake.result()]])
     await _session(spec, engine, client, rec, time).run("x")
-    assert [e.payload["text"] for _, e in rec.of("warroom.thinking")] == [f"d{i} " for i in range(5)]
+    assert [e.payload["text"] for _, e in rec.deltas()] == [f"d{i} " for i in range(5)]
 
 
 async def test_final_tool_calls_list_every_scripted_call_with_name_input_and_as_of(
@@ -202,12 +213,12 @@ async def test_final_tool_calls_list_every_scripted_call_with_name_input_and_as_
 
     thinking = [e for _, e in rec.of("warroom.thinking")]
     types = [e.payload["delta_type"] for e in thinking]
-    assert types == ["thinking", *(["tool_use", "tool_result"] * 4), "text"]
+    assert types == ["thinking", *(["tool_use", "tool_result"] * 4), "text", "run_end"]
     use = thinking[1].payload
     assert use["tool"] == calls[0][0] and use["input"] == calls[0][1] and use["tool_use_id"] == "toolu_0"
     res = thinking[2].payload
     assert res["tool"] == calls[0][0] and len(res["output"]) == CONFIG["tool_output_max_chars"]
-    assert _max_in_any_second([t for t, _ in rec.of("warroom.thinking")]) <= 10
+    assert _max_in_any_second([t for t, _ in rec.deltas()]) <= 10
 
 
 async def test_a_failing_publisher_never_fails_the_run(spec: AgentSpec, engine: Engine) -> None:
@@ -229,11 +240,14 @@ async def test_a_failing_publisher_never_fails_the_run(spec: AgentSpec, engine: 
     assert result.status == "ok" and result.text == "ok"
 
 
-async def test_a_run_with_nothing_to_show_posts_no_final_message() -> None:
+async def test_a_run_with_nothing_to_show_posts_no_final_message_only_run_end() -> None:
     rec = TimedRecorder(FakeTime())
     pub = ThinkingPublisher(agent="historian", env="demo", run_id=uuid.uuid4(), publish=rec, config=CONFIG)
     await pub.on_finish(RunResult(run_id=pub.run_id, status="error", error="boom"))
-    assert rec.events == []
+    assert rec.of("warroom.message") == []
+    (end,) = rec.run_ends()
+    assert end.payload["status"] == "error" and end.payload["error"] == "boom"
+    assert end.payload["run_id"] == str(pub.run_id)
 
 
 async def test_long_final_text_is_cut_to_the_war_room_cap() -> None:

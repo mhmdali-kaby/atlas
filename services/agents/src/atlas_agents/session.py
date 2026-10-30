@@ -53,7 +53,7 @@ FORBIDDEN_ENV: Final = ("ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN")
 ERROR_MAX_CHARS: Final = 1000
 RATE_LIMIT_TEXT: Final = re.compile(r"usage limit|rate[ _-]?limit|\b429\b|limit reached", re.IGNORECASE)
 
-RunStatus = Literal["ok", "error", "rate_limited", "over_budget"]
+RunStatus = Literal["ok", "error", "rate_limited", "over_budget", "degraded"]
 Trigger = Literal["mention", "schedule", "eval", "manual"]
 
 
@@ -80,6 +80,30 @@ class RunObserver(Protocol):
 
     async def on_message(self, message: Message) -> None: ...
     async def on_finish(self, result: RunResult) -> None: ...
+
+
+@dataclass(frozen=True)
+class Review:
+    """A reviewer's decision on one attempt of a run (ATL-93: output validation, brief §6.3).
+
+    * ``follow_up``: send this prompt in the same run and review the answer again;
+    * ``message``: accept; these keys override the run's final ``warroom.message`` payload
+      (kind, card, content_md, thread_id, reply_to, ...);
+    * ``failure``: give up; the run ends ``degraded`` and no message is published.
+
+    A Review with none of the three accepts the run as it is (the default final message).
+    """
+
+    follow_up: str | None = None
+    message: dict[str, Any] | None = None
+    failure: str | None = None
+
+
+class Reviewer(Protocol):
+    """Called after every attempt with that attempt's assistant text, every SDK message of the
+    run so far and the attempt number (1 = the first answer)."""
+
+    async def __call__(self, text: str, messages: list[Message], attempt: int) -> Review: ...
 
 
 ObserverFactory = Callable[[uuid.UUID, str | None], RunObserver]
@@ -116,17 +140,38 @@ class RunResult:
     error: str | None = None
     resets_at: datetime | None = None
     messages: list[Message] = field(default_factory=list)
+    message: dict[str, Any] | None = None
+    """Overrides for the run's final warroom.message payload, set by an accepting Review."""
+    attempts: int = 1
 
 
 @dataclass
 class _Exchange:
-    """What one query produced, before it is classified."""
+    """What one run's queries produced, before it is classified."""
 
     messages: list[Message] = field(default_factory=list)
-    result: ResultMessage | None = None
+    results: list[ResultMessage] = field(default_factory=list)
     rate_limited: bool = False
     resets_at: datetime | None = None
     error: str | None = None
+
+    @property
+    def result(self) -> ResultMessage | None:
+        return self.results[-1] if self.results else None
+
+    @property
+    def failed(self) -> bool:
+        return self.rate_limited or self.error is not None
+
+
+def _assistant_text(messages: list[Message]) -> str:
+    return "".join(
+        block.text
+        for message in messages
+        if isinstance(message, AssistantMessage)
+        for block in message.content
+        if isinstance(block, TextBlock)
+    )
 
 
 def _clip(text: str) -> str:
@@ -281,8 +326,13 @@ class AgentSession:
         task: str | None = None,
         correlation_id: str | None = None,
         routine: bool = False,
+        reviewer: Reviewer | None = None,
+        max_follow_ups: int = 1,
     ) -> RunResult:
-        """Send ``prompt`` to the agent and record the run. ``routine`` uses the cheaper model."""
+        """Send ``prompt`` to the agent and record the run. ``routine`` uses the cheaper model.
+
+        With a ``reviewer``, each answer is reviewed; the reviewer may ask for at most
+        ``max_follow_ups`` follow-up queries inside this same run (same run_id, same stream)."""
         started = self._clock()
         day = usage_day(started)
         model = self.spec.routine_model if routine else self.spec.model
@@ -291,6 +341,8 @@ class AgentSession:
 
         refusal = self._refusal(started, day, run_id, model, trigger, correlation_id)
         if refusal is not None:
+            # A refused run still ends its (empty) live row with run_end.
+            await self._finish_observer(self._observer(run_id, correlation_id), refusal)
             return refusal
 
         with Session(self._engine) as db:
@@ -322,14 +374,39 @@ class AgentSession:
             self._emit(events.AGENT_STATE, change, correlation_id)
 
         observer = self._observer(run_id, correlation_id)
-        exchange = await self._exchange(prompt, model, observer)
-        result = self._finish(run_id, day, model, label, correlation_id, exchange)
-        if observer is not None:
-            try:
-                await observer.on_finish(result)
-            except Exception:  # the stream is best effort; the run is already recorded
-                log.warning("agent %s: run observer failed on finish", self.spec.slug, exc_info=True)
+        exchange = _Exchange()
+        await self._exchange(prompt, model, observer, exchange)
+        review = Review()
+        attempts = 1
+        if reviewer is not None:
+            start = 0
+            while not exchange.failed:
+                answer = _assistant_text(exchange.messages[start:])
+                try:
+                    review = await reviewer(answer, list(exchange.messages), attempts)
+                except Exception as exc:  # a broken reviewer degrades the run, never the process
+                    log.exception("agent %s: reviewer failed", self.spec.slug)
+                    review = Review(failure=f"reviewer failed: {type(exc).__name__}: {exc}")
+                follow_up = review.follow_up
+                if follow_up is None:
+                    break
+                if attempts > max_follow_ups:
+                    review = Review(failure=review.failure or "output still invalid after the follow-up")
+                    break
+                start = len(exchange.messages)
+                attempts += 1
+                await self._exchange(follow_up, model, observer, exchange)
+        result = self._finish(run_id, day, model, label, correlation_id, exchange, review, attempts)
+        await self._finish_observer(observer, result)
         return result
+
+    async def _finish_observer(self, observer: RunObserver | None, result: RunResult) -> None:
+        if observer is None:
+            return
+        try:
+            await observer.on_finish(result)
+        except Exception:  # the stream is best effort; the run is already recorded
+            log.warning("agent %s: run observer failed on finish", self.spec.slug, exc_info=True)
 
     def _observer(self, run_id: uuid.UUID, correlation_id: str | None) -> RunObserver | None:
         if self._observer_factory is None:
@@ -401,8 +478,10 @@ class AgentSession:
             self._emit(events.AGENT_STATE, change, correlation_id)
         return RunResult(run_id=run_id, status=status, error=error, resets_at=resets_at)
 
-    async def _exchange(self, prompt: str, model: str, observer: RunObserver | None = None) -> _Exchange:
-        out = _Exchange()
+    async def _exchange(
+        self, prompt: str, model: str, observer: RunObserver | None, out: _Exchange
+    ) -> _Exchange:
+        """Send one query and add what it produced to ``out``."""
         try:
             client = await self._ensure_client()
             if model != self._model:
@@ -424,7 +503,7 @@ class AgentSession:
                 elif isinstance(message, AssistantMessage) and message.error == "rate_limit":
                     out.rate_limited = True
                 elif isinstance(message, ResultMessage):
-                    out.result = message
+                    out.results.append(message)
                     if message.is_error:
                         detail = message.result or "; ".join(message.errors or []) or message.subtype
                         out.error = _clip(detail)
@@ -446,8 +525,11 @@ class AgentSession:
         """tokens_in, tokens_out, turns and the notional cost of this run."""
         result = exchange.result
         if result is not None:
-            tokens_in, tokens_out = _tokens(result.usage)
-            turns = result.num_turns
+            # Every query of the run (a reviewed run can have a follow-up) adds its own usage.
+            per_query = [_tokens(r.usage) for r in exchange.results]
+            tokens_in = sum(t[0] for t in per_query)
+            tokens_out = sum(t[1] for t in per_query)
+            turns = sum(r.num_turns for r in exchange.results)
             cost = Decimal(0)
             if result.total_cost_usd is not None:
                 # The CLI reports the session's running total; a run costs the difference.
@@ -470,6 +552,8 @@ class AgentSession:
         label: str,
         correlation_id: str | None,
         exchange: _Exchange,
+        review: Review | None = None,
+        attempts: int = 1,
     ) -> RunResult:
         ended = self._clock()
         tokens_in, tokens_out, turns, cost = self._usage(exchange)
@@ -483,17 +567,14 @@ class AgentSession:
                 error = f"{error} (resets at {exchange.resets_at.isoformat()})"
         elif exchange.error is not None:
             status, state, error = "error", "degraded", exchange.error
+        elif review is not None and review.failure is not None:
+            # Invalid output after the follow-up (brief §6.3): the agent is marked degraded.
+            status, state, error = "degraded", "degraded", review.failure
         else:
             status, state, error = "ok", "idle", None
             self._rate_limited_until = None
         error = _clip(error) if error else None
-        text = "".join(
-            block.text
-            for message in exchange.messages
-            if isinstance(message, AssistantMessage)
-            for block in message.content
-            if isinstance(block, TextBlock)
-        )
+        text = _assistant_text(exchange.messages)
 
         fraction = budget_warning_fraction()
         with Session(self._engine) as db:
@@ -553,4 +634,6 @@ class AgentSession:
             error=error,
             resets_at=exchange.resets_at,
             messages=exchange.messages,
+            message=review.message if review is not None and status == "ok" else None,
+            attempts=attempts,
         )
