@@ -711,6 +711,15 @@ return [
     'watchlists_api' => [
         'writes_per_minute' => 30,
     ],
+    'proposals_api' => [
+        'writes_per_minute' => 30,
+        'list_limit' => 50,
+        'list_max_limit' => 200,
+    ],
+    'approvals' => [
+        'sweep_seconds' => 15,
+        'reminder_fraction' => '0.5',
+    ],
     'data_sources_api' => [
         'poll_seconds_min' => 60,
         'poll_seconds_max' => 86400,

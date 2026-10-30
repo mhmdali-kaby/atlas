@@ -501,3 +501,94 @@ def test_evaluate_refuses_unsigned_and_not_passed(engine: Engine, rds: redis.Red
     assert resp.status_code == 409 and resp.json()["error"] == "risk_engine_error"
     assert _evaluate(tc, "not-a-uuid").status_code == 404
     assert _rows(engine, world)[1] == []
+
+
+# --- ATL-162: POST /internal/proposals/{id}/execute re-checks, then (only if approved) executes ----
+
+
+def _awaiting(engine: Engine, inst_id: str, *, stop: D = D(3960), expires: datetime | None = None) -> uuid.UUID:
+    pid = _agent_proposal(engine, inst_id, "awaiting_owner")
+    with engine.begin() as c:
+        c.execute(
+            update(Proposal)
+            .where(Proposal.id == pid)
+            .values(stop=stop, approval_expires_at=expires or AT + timedelta(minutes=10))
+        )
+    return pid
+
+
+class _ExecutorSpy:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, str | None]] = []
+
+    async def __call__(self, risk_check_id: Any, approved_by: str | None = None, **_: Any) -> Any:
+        from trading_core.execution.executor import ExecutionResult
+
+        self.calls.append((str(risk_check_id), approved_by))
+        return ExecutionResult(
+            status="sent", reason="sent", detail="Order sent; stop confirmed on OKX.",
+            risk_check_id=str(risk_check_id), state="live", stop_verified=True,
+        )
+
+
+def _approve(
+    engine: Engine, rds: redis.Redis, pid: str, spy: _ExecutorSpy, headers: dict[str, str] | None = None
+) -> Any:
+    tc = client(engine, rds)
+    tc.app.state.approval_execute = spy  # type: ignore[attr-defined]
+    path = f"/internal/proposals/{pid}/execute"
+    body = json.dumps({"approved_by": "owner"}).encode()
+    hdrs = headers if headers is not None else signed_headers(SECRET, "POST", path, body)
+    return tc.post(path, content=body, headers={**hdrs, "Content-Type": "application/json"})
+
+
+def test_execute_reruns_the_risk_check_and_executes_the_fresh_check(
+    engine: Engine, rds: redis.Redis, world: str
+) -> None:
+    pid = _awaiting(engine, world)
+    spy = _ExecutorSpy()
+    resp = _approve(engine, rds, str(pid), spy)
+    assert resp.status_code == 200, resp.text
+    out = resp.json()
+    _, checks = _rows(engine, world)
+    assert len(checks) == 1  # the re-check ran here
+    assert spy.calls == [(str(checks[0].id), "owner")]
+    assert out["status"] == "sent" and out["proposal_id"] == str(pid)
+    assert out["risk_check"]["risk_check_id"] == str(checks[0].id)
+    assert out["risk_check"]["result"] in ("approved", "resized")
+    with Session(engine) as s:
+        row = s.get(Proposal, pid)
+        assert row is not None and row.decided_by == "owner" and row.decided_at is not None
+
+
+def test_a_rejected_recheck_never_calls_the_executor(engine: Engine, rds: redis.Redis, world: str) -> None:
+    # A stop 0.10 below a 4000 entry is far inside 0.8 × ATR(1H) (ATR 20): check 3 rejects it.
+    pid = _awaiting(engine, world, stop=D("3999.9"))
+    spy = _ExecutorSpy()
+    resp = _approve(engine, rds, str(pid), spy)
+    assert resp.status_code == 409, resp.text
+    assert resp.json()["reason"] == "risk_rejected" and resp.json()["risk_check"]["result"] == "rejected"
+    assert spy.calls == []
+    props, checks = _rows(engine, world)
+    assert len(checks) == 1 and checks[0].result == "rejected"
+    assert props[0].status == "rejected" and props[0].status_reason == "risk_rejected"
+
+
+def test_execute_refuses_expired_repeated_and_unsigned_approvals(
+    engine: Engine, rds: redis.Redis, world: str
+) -> None:
+    spy = _ExecutorSpy()
+    expired = _awaiting(engine, world, expires=AT - timedelta(seconds=1))
+    resp = _approve(engine, rds, str(expired), spy)
+    assert resp.status_code == 409 and resp.json()["reason"] == "approval_expired"
+    assert _rows(engine, world)[1] == []
+
+    assert _approve(engine, rds, str(uuid.uuid4()), spy).status_code == 404
+    pid = _awaiting(engine, world)
+    assert _approve(engine, rds, str(pid), spy, headers={}).status_code == 401
+    assert spy.calls == []
+
+    assert _approve(engine, rds, str(pid), spy).status_code == 200
+    again = _approve(engine, rds, str(pid), spy)
+    assert again.status_code == 409 and again.json()["reason"] == "not_awaiting_owner"
+    assert len(spy.calls) == 1
