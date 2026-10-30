@@ -23,11 +23,12 @@ from claude_agent_sdk import (
     RateLimitInfo,
     ResultMessage,
     TextBlock,
+    ThinkingBlock,
     ToolResultBlock,
     ToolUseBlock,
     UserMessage,
 )
-from claude_agent_sdk.types import Message
+from claude_agent_sdk.types import Message, StreamEvent
 
 Step = Message | BaseException
 ScriptedRun = Sequence[Step]
@@ -102,6 +103,36 @@ def _usage(tokens_in: int, tokens_out: int, cache_read: int = 0, cache_write: in
 
 def assistant_text(text: str, *, model: str = "opus", message_id: str | None = None) -> AssistantMessage:
     return AssistantMessage(content=[TextBlock(text=text)], model=model, message_id=message_id)
+
+
+def thinking(text: str, *, model: str = "opus") -> AssistantMessage:
+    """A whole thinking block (what the CLI sends without partial messages)."""
+    return AssistantMessage(content=[ThinkingBlock(thinking=text, signature="sig")], model=model)
+
+
+def _delta(delta: dict[str, Any], index: int) -> StreamEvent:
+    return StreamEvent(
+        uuid=f"se-{index}",
+        session_id="fake-session",
+        event={"type": "content_block_delta", "index": index, "delta": delta},
+    )
+
+
+def thinking_delta(text: str, *, index: int = 0) -> StreamEvent:
+    """A partial-message thinking delta (``include_partial_messages=True``)."""
+    return _delta({"type": "thinking_delta", "thinking": text}, index)
+
+
+def text_delta(text: str, *, index: int = 1) -> StreamEvent:
+    return _delta({"type": "text_delta", "text": text}, index)
+
+
+def block_stop(*, index: int = 0) -> StreamEvent:
+    return StreamEvent(
+        uuid=f"se-stop-{index}",
+        session_id="fake-session",
+        event={"type": "content_block_stop", "index": index},
+    )
 
 
 def tool_use(name: str, tool_input: dict[str, Any], *, tool_use_id: str = "toolu_1") -> AssistantMessage:

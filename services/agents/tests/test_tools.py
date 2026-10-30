@@ -183,6 +183,9 @@ IMPLEMENTED = {
     *(("atlas_data", n) for n in CATALOGUE["atlas_data"]),
     *(("news", n) for n in CATALOGUE["news"] if n != "web_search"),
     *(("memory", n) for n in CATALOGUE["memory"]),
+    # ATL-88: all six warroom tools are real; cast_vote, submit_proposal and request_human_input
+    # answer not_available_in_phase_1.
+    *(("warroom", n) for n in CATALOGUE["warroom"]),
     *(("history", n) for n in CATALOGUE["history"]),
 }
 
