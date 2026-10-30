@@ -184,6 +184,7 @@ DEFAULTS: Final[dict[str, Any]] = {
         "attach_refused_codes": [
             "51010",
         ],
+        "lifecycle_sweep_seconds": 30,
     },
     "okx": {
         "environments": {
@@ -592,6 +593,10 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "per_seconds": 2,
             },
             "trade/cancel-algos": {
+                "requests": 20,
+                "per_seconds": 2,
+            },
+            "trade/amend-algos": {
                 "requests": 20,
                 "per_seconds": 2,
             },

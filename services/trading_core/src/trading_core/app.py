@@ -25,6 +25,8 @@ from trading_core.backfill.runner import backfill_job
 from trading_core.config import Settings
 from trading_core.connection_test import router as connection_test_router
 from trading_core.execution.api import router as execution_router
+from trading_core.execution.lifecycle import JOB as LIFECYCLE_JOB
+from trading_core.execution.lifecycle import EntryLifecycle, sweep_job
 from trading_core.logs import AccessLogMiddleware
 from trading_core.marketdata.api import router as quality_router
 from trading_core.marketdata.derivatives import JOB as DERIVATIVES_POLLER_JOB
@@ -250,6 +252,14 @@ def create_app(
     pfeed = private_feed
     if pfeed is None and scheduler is None and settings.run_private_ws:
         pfeed = default_private_feed(settings.env, db, settings.app_key)
+    # Entry lifecycle (ATL-144): protection sized to every fill (from the private socket) and the entry
+    # timeout sweep. Same rule: only the real app, never one built around an injected scheduler.
+    lifecycle: EntryLifecycle | None = None
+    if scheduler is None:
+        lifecycle = EntryLifecycle(db, settings.env, app_key=settings.app_key)
+        jobs.add(LIFECYCLE_JOB, float(DEFAULTS["executor"]["lifecycle_sweep_seconds"]), sweep_job(lifecycle))
+        if pfeed is not None:
+            pfeed.on_order(lifecycle.on_order)
     # Circuit breakers (ATL-145): the 15 s loop, the bus events and the OKX error hook. Same rule.
     monitor = breaker_monitor
     if monitor is None and scheduler is None:
@@ -290,6 +300,7 @@ def create_app(
     application.state.market_feed = feed
     application.state.private_feed = pfeed
     application.state.breaker_monitor = monitor
+    application.state.entry_lifecycle = lifecycle
 
     @application.get("/health")
     async def health() -> dict[str, str]:
