@@ -11,6 +11,12 @@ Orchestrator (patch I), which all either call the Executor or have to agree with
   `place_algo_order` in the repo (`tests/test_executor.py::test_only_execution_calls_the_order_wrappers`
   scans every `services/*/src` file; add your module under `trading_core/execution/` if it must place
   orders, e.g. the kill-switch flatten).
+- Module layout in `trading_core/execution/`: `config.py` (ExecutorConfig, constants, `derived_id`,
+  `round_px`, `round_stop`), `plan.py` (every pre-HTTP check and the `_Plan`), `recorder.py` (DB
+  writes + events), `okx_ops.py` (`_Executor`: place/lookup/protect/verify/close — the module that
+  actually calls `place_order`/`place_algo_order`), `executor.py` (`execute`, `_run`, `ExecutionResult`).
+- The stop is rounded to tickSz toward the entry (a buy's stop up), never wider than sized. Only algo
+  states `live`/`partially_effective` count as a protecting stop; `effective` has already triggered.
 - Its only input is a `risk_checks` row. It never reads a proposal's size or leverage: size =
   `risk_checks.final_size`, leverage = `risk_checks.leverage`.
 - It refuses — with **no HTTP request** — unless: result `approved|resized`; decision `send_now`, or

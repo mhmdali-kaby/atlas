@@ -37,6 +37,7 @@ from sqlalchemy import Engine, delete, select, text, update
 from sqlalchemy.exc import OperationalError
 from trading_core.app import create_app
 from trading_core.config import Settings
+from trading_core.execution.config import round_stop
 from trading_core.execution.executor import derived_id, execute, round_px
 from trading_core.okx import OkxClient, OkxCredentials
 from trading_core.scheduler import Scheduler
@@ -741,7 +742,7 @@ def test_only_execution_calls_the_order_wrappers() -> None:
         if hits := order_calls(path):
             offenders[str(path.relative_to(SERVICES))] = hits
     assert offenders == {}
-    assert order_calls(TC / "execution" / "executor.py")  # the guard does see the real caller
+    assert order_calls(TC / "execution" / "okx_ops.py")  # the guard does see the real caller
 
 
 def test_the_order_guard_catches_a_call(tmp_path: Path) -> None:
@@ -804,3 +805,9 @@ def test_round_px_never_moves_a_buy_up_or_a_sell_down() -> None:
     assert round_px(D("4000.016"), D("0.01"), "buy") == D("4000.01")
     assert round_px(D("4000.011"), D("0.01"), "sell") == D("4000.02")
     assert round_px(D("4000"), None, "buy") == D("4000")
+
+
+def test_round_stop_moves_toward_the_entry_never_wider() -> None:
+    assert round_stop(D("3960.005"), D("0.01"), "buy") == D("3960.01")
+    assert round_stop(D("4040.005"), D("0.01"), "sell") == D("4040")
+    assert round_stop(D("3960"), D("0.01"), "buy") == D("3960")
