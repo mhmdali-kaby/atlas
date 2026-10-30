@@ -877,6 +877,32 @@ agents:
       atr_bars: 100
     news:
       latency_target_seconds: 90
+  # ATL-132, brief §7.4: the Technical Analyst's deterministic precompute (atlas_agents.ta), per
+  # timeframe. EMA/RSI/ATR/ADX are atlas_quant.indicators (the backtester's definitions).
+  #   slope_bars: EMA slope = (EMA_t / EMA_{t-k} - 1) x 100 / k, in % per bar.
+  #   zigzag_atr_mult: a swing is confirmed once price reverses this many ATR(atr_window) of that bar
+  #     (the ATR of the confirming bar) from the running extreme.
+  #   swings_reported: newest confirmed swings listed in the table.
+  #   divergence_max_age_bars: a divergence flag needs its later swing pivot within this many bars.
+  #   bb_width_lookback / squeeze_percentile: squeeze = Bollinger width's percentile among the last
+  #     bb_width_lookback widths (share <= current, x100) is below squeeze_percentile.
+  #   keltner: EMA(ema) ± mult x ATR(atr); breakout = the close outside a band.
+  ta:
+    timeframes: ["1D", "4H", "1H", "15m", "5m"]
+    ema_spans: [20, 50, 200]
+    slope_bars: 5
+    adx_window: 14
+    rsi_window: 14
+    macd: { fast: 12, slow: 26, signal: 9 }
+    roc_window: 10
+    atr_window: 14
+    zigzag_atr_mult: "1.5"
+    swings_reported: 10
+    divergence_max_age_bars: 60
+    bollinger: { window: 20, std: "2" }
+    bb_width_lookback: 180
+    squeeze_percentile: "10"
+    keltner: { ema: 20, atr: 10, mult: "2" }
   regime_table:
     top_n: 60
   mentions:
@@ -915,6 +941,58 @@ agents:
       min_event_importance: 2
       max_events: 30
       top_instruments: 5
+  # ATL-133, brief §7.4 (second part): structure precompute for the Technical Analyst
+  # (atlas_agents.ta.levels / volume / patterns / microstructure; exact rules in each module's
+  # docstring). ATR multiples are of the ATR the caller passes (the timeframe's Wilder ATR(14)).
+  # Sessions are UTC days and weeks are ISO weeks (Monday 00:00 UTC).
+  #   levels: swings in the last lookback_bars bars cluster into zones no wider than merge_atr_mult
+  #     x ATR. strength = touch_weight x min(touches / touch_cap, 1) + recency_weight x (1 - bars
+  #     since the last touch / lookback_bars). round_numbers: round_count levels each side of the
+  #     price, for round_asset_classes only.
+  #   volume: relative volume vs the mean of the rel_volume_bars bars before the bar; OBV trend =
+  #     least-squares slope of OBV over obv_bars / mean volume of those bars, flat within
+  #     +/- obv_flat_slope; the profile spreads each bar's volume evenly over its high-low range in
+  #     profile_bins rows over the last profile_sessions sessions; the value area holds
+  #     value_area_pct of it.
+  #   patterns: breakout_retest, failed_breakout, range, flag (flag/pennant) and double (top/bottom);
+  #     the geometric rule for each is in atlas_agents.ta.patterns.
+  #   microstructure: book imbalance over the top imbalance_depths levels of each side.
+  ta_structure:
+    levels:
+      lookback_bars: 120
+      merge_atr_mult: "0.3"
+      touch_cap: 4
+      touch_weight: "0.6"
+      recency_weight: "0.4"
+      round_count: 2
+      round_asset_classes: [stock, etf, index, commodity]
+    volume:
+      rel_volume_bars: 20
+      obv_bars: 20
+      obv_flat_slope: "0.05"
+      profile_sessions: 5
+      profile_bins: 50
+      value_area_pct: "70"
+    patterns:
+      breakout_buffer_atr: "0.1"
+      retest_tol_atr: "0.25"
+      breakout_max_age_bars: 20
+      failed_within_bars: 3
+      range_bars: 30
+      range_max_atr: "4"
+      range_edge_tol_atr: "0.25"
+      range_min_touches: 2
+      pole_bars: 8
+      pole_min_atr: "3"
+      flag_min_bars: 3
+      flag_max_bars: 15
+      flag_max_range_frac: "0.5"
+      flag_max_retrace_frac: "0.5"
+      double_peak_tol_atr: "0.25"
+      double_min_depth_atr: "1"
+      double_min_separation_bars: 5
+    microstructure:
+      imbalance_depths: [10, 50]
   # ATL-104, brief §7.1 steps 1-2 + decision #247 (2): Market Scout's code-run universe filter and
   # feature table (atlas_agents.scout). Every value is in force at the table's as_of (replay-bounded).
   #   universe: the filter. Per-market minimum 24h quote volume (USD) and max_spread_bps come from the

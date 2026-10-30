@@ -38,6 +38,7 @@ from numpy.typing import NDArray
 from pydantic import BaseModel, ConfigDict
 
 from atlas_quant._frame import bar_spacing, prepare, quant_cfg
+from atlas_quant.indicators import adx
 
 RegimeLabel = Literal["trend_up", "trend_down", "range", "high_vol", "low_vol"]
 _REQUIRED = ("h", "l", "c")
@@ -120,53 +121,10 @@ def _log_returns_pct(c: pd.Series[float]) -> pd.Series[float]:
     return pd.Series(values, index=c.index, dtype="float64")
 
 
-def _wilder_smooth(x: NDArray[np.float64], window: int) -> NDArray[np.float64]:
-    """Wilder's running mean of x[1:] (x[0] is undefined): seed = mean of the first ``window``."""
-    out = np.full(len(x), np.nan)
-    if len(x) < window + 1:
-        return out
-    value = float(np.mean(x[1 : window + 1]))
-    out[window] = value
-    for i in range(window + 1, len(x)):
-        value = (value * (window - 1) + float(x[i])) / window
-        out[i] = value
-    return out
-
-
 def _adx(frame: pd.DataFrame, window: int) -> tuple[pd.Series[float], pd.Series[float]]:
     """Wilder ADX and (+DI - -DI) per bar; NaN until defined (2 x window bars)."""
-    h = frame["h"].to_numpy(dtype="float64")
-    lo = frame["l"].to_numpy(dtype="float64")
-    c = frame["c"].to_numpy(dtype="float64")
-    n = len(frame)
-    up = np.zeros(n)
-    down = np.zeros(n)
-    tr = np.zeros(n)
-    up[1:] = h[1:] - h[:-1]
-    down[1:] = lo[:-1] - lo[1:]
-    plus_dm = np.where((up > down) & (up > 0), up, 0.0)
-    minus_dm = np.where((down > up) & (down > 0), down, 0.0)
-    tr[1:] = np.fmax(h[1:] - lo[1:], np.fmax(np.abs(h[1:] - c[:-1]), np.abs(lo[1:] - c[:-1])))
-    s_tr = _wilder_smooth(tr, window)
-    with np.errstate(divide="ignore", invalid="ignore"):
-        plus_di = 100.0 * _wilder_smooth(plus_dm, window) / s_tr
-        minus_di = 100.0 * _wilder_smooth(minus_dm, window) / s_tr
-        dx = 100.0 * np.abs(plus_di - minus_di) / (plus_di + minus_di)
-    adx = np.full(n, np.nan)
-    first = window  # first defined dx
-    if n >= first + window:
-        value = float(np.nanmean(dx[first : first + window]))
-        adx[first + window - 1] = value
-        for i in range(first + window, n):
-            d = float(dx[i])
-            if not math.isnan(d):
-                value = (value * (window - 1) + d) / window
-            adx[i] = value
-    index = frame.index
-    return (
-        pd.Series(adx, index=index, dtype="float64"),
-        pd.Series(plus_di - minus_di, index=index, dtype="float64"),
-    )
+    result = adx(frame, window)
+    return result.adx, result.plus_di - result.minus_di
 
 
 def _vol_percentile(vol: pd.Series[float], lookback: int, min_periods: int) -> pd.Series[float]:

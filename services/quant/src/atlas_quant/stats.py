@@ -36,6 +36,7 @@ from atlas_shared.defaults import DEFAULTS
 from pydantic import BaseModel, ConfigDict
 
 from atlas_quant.grid import bar_seconds, slot
+from atlas_quant.indicators import wilder_atr_values
 
 WEEKDAYS = ("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
 _REQUIRED = ("o", "h", "l", "c")
@@ -141,15 +142,7 @@ def _summary(r: pd.Series[float], total: float | None) -> ReturnsSummary:
 def _wilder_atr(df: pd.DataFrame, window: int) -> float | None:
     if len(df) < window:
         return None
-    h = df["h"].to_numpy(dtype="float64")
-    lo = df["l"].to_numpy(dtype="float64")
-    c = df["c"].to_numpy(dtype="float64")
-    prev = np.concatenate(([np.nan], c[:-1]))
-    tr = np.fmax(h - lo, np.fmax(np.abs(h - prev), np.abs(lo - prev)))
-    atr = float(np.mean(tr[:window]))
-    for value in tr[window:]:
-        atr = (atr * (window - 1) + float(value)) / window
-    return atr
+    return float(wilder_atr_values(df, window)[-1])
 
 
 def _drawdown(c: pd.Series[float]) -> DrawdownSummary:
