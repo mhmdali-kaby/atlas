@@ -215,6 +215,39 @@ portfolio_performance:
   # Internal precision for means, variances and square roots.
   calc_scale: 24
 
+# ATL-176, brief §13 Holdings: avg_cost_usd and change_24h_pct on GET /api/portfolio/holdings.
+#   quotes: USD quotes searched, in order, for an asset's price instrument (CCY-<quote>[-SWAP]).
+#   avg_cost_min_scale: decimals of avg_cost_usd; more when the spot instrument's tickSz has more.
+#   avg_cost_small_scale: decimals when there is no spot instrument and the cost is below 1 USD.
+#   change_bars: candle bars tried, in order, for the 24 h change (the newest close vs the newest
+#     close at least 24 h before it).
+portfolio_holdings:
+  quotes: ["USDT", "USDC"]
+  avg_cost_min_scale: 2
+  avg_cost_small_scale: 8
+  change_bars: ["1H", "1D"]
+  change_window_hours: 24
+
+# ATL-176, brief §13 Overview: GET /api/portfolio/benchmark?symbol=&range=. The series is the
+# symbol's perp candle closes rebased to the equity curve's first point in the range.
+#   symbols: symbol → instIds tried in order; the first in the env's universe is used (the demo
+#     and live universes differ).
+#   bars: range → candle bars tried in order (the first with candles in the range wins).
+#   value_scale: decimals of each rebased value (HALF_UP, then trailing zeros stripped).
+portfolio_benchmark:
+  symbols:
+    BTC: ["BTC-USDT-SWAP", "BTC-USDC-SWAP"]
+    SPY: ["SPY-USDT-SWAP", "SPY-USDC-SWAP"]
+    XAU: ["XAU-USDT-SWAP", "XAU-USDC-SWAP"]
+  bars:
+    1D: ["15m", "1H"]
+    1W: ["1H", "4H"]
+    1M: ["4H", "1D"]
+    3M: ["1D"]
+    YTD: ["1D"]
+    ALL: ["1D"]
+  value_scale: 8
+
 # ATL-46, brief §7.3: the resumable history backfill in trading_core. How far back each dataset
 # goes is backfill.depth_days (below, shared with the Data API); null depths walk back to
 # full_history_floor, i.e. until OKX returns no older data. Datasets are created and claimed in
