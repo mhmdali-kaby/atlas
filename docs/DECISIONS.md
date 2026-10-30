@@ -112,4 +112,11 @@ decisions where the brief was silent, as the brief asks.
   treated as `awaiting_owner` while autonomy 3–4 are not enabled, so the cycle never calls the
   Executor and the `executing` state is not reached yet. The approval window defaults to 15 minutes
   (`autonomy.approval_timeout_minutes`, overridable by a settings value of the same name).
+- **Protection follows the filled size; one stop per entry (ATL-144).** On every fill of an Atlas
+  entry the protective SL/OCO is amended (`trade/amend-algos`, size only) to exactly the filled size;
+  when OKX shows none, a stand-alone stop `p` + 31 hex of the risk check id is placed, and any second
+  protective algo for the same entry is cancelled. A stop that already fired, or one removed on
+  purpose (kill-switch flatten, a close order), is never replaced. Limit and post_only entries still
+  open `executor.entry_timeout_minutes` after they were created are cancelled; a partial fill keeps
+  its stop and the proposal stays `partially_filled`, an unfilled one becomes `expired`.
 - **Kill switch reads OKX, not the DB, and resume leaves `data_stale` alone (ATL-147).** The kill lists pending orders, algo orders and positions from OKX so it also catches orders Atlas does not know; per decision #251 it keeps SL/OCO algos unless their position was closed by flatten. OKX's "already gone" answers (51400/51401/51402, 51023) count as done, not failed. Resume clears every breaker except the self-clearing `data_stale`, which would re-trip at once while data is still stale.

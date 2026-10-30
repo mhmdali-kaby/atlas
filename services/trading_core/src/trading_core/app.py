@@ -19,6 +19,9 @@ from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import Engine
 
+from trading_core.approvals.api import router as approvals_router
+from trading_core.approvals.sweeper import JOB as APPROVALS_JOB
+from trading_core.approvals.sweeper import approvals_job
 from trading_core.backfill.api import router as backfill_router
 from trading_core.backfill.runner import STREAM as BACKFILL_JOB
 from trading_core.backfill.runner import backfill_job
@@ -26,6 +29,8 @@ from trading_core.config import Settings
 from trading_core.connection_test import router as connection_test_router
 from trading_core.execution.api import router as execution_router
 from trading_core.execution.control_api import router as control_router
+from trading_core.execution.lifecycle import JOB as LIFECYCLE_JOB
+from trading_core.execution.lifecycle import EntryLifecycle, sweep_job
 from trading_core.logs import AccessLogMiddleware
 from trading_core.marketdata.api import router as quality_router
 from trading_core.marketdata.derivatives import JOB as DERIVATIVES_POLLER_JOB
@@ -224,6 +229,8 @@ def default_scheduler(settings: Settings, engine: Engine | None = None) -> Sched
         DEFAULTS["quality"]["interval_seconds"],
         quality_job(settings.env, engine, client_factory=market_client),
     )
+    # ATL-162: approval reminders and the timeout reject.
+    scheduler.add(APPROVALS_JOB, DEFAULTS["approvals"]["sweep_seconds"], approvals_job(settings.env, engine))
     return scheduler
 
 
@@ -251,6 +258,14 @@ def create_app(
     pfeed = private_feed
     if pfeed is None and scheduler is None and settings.run_private_ws:
         pfeed = default_private_feed(settings.env, db, settings.app_key)
+    # Entry lifecycle (ATL-144): protection sized to every fill (from the private socket) and the entry
+    # timeout sweep. Same rule: only the real app, never one built around an injected scheduler.
+    lifecycle: EntryLifecycle | None = None
+    if scheduler is None:
+        lifecycle = EntryLifecycle(db, settings.env, app_key=settings.app_key)
+        jobs.add(LIFECYCLE_JOB, float(DEFAULTS["executor"]["lifecycle_sweep_seconds"]), sweep_job(lifecycle))
+        if pfeed is not None:
+            pfeed.on_order(lifecycle.on_order)
     # Circuit breakers (ATL-145): the 15 s loop, the bus events and the OKX error hook. Same rule.
     monitor = breaker_monitor
     if monitor is None and scheduler is None:
@@ -291,6 +306,7 @@ def create_app(
     application.state.market_feed = feed
     application.state.private_feed = pfeed
     application.state.breaker_monitor = monitor
+    application.state.entry_lifecycle = lifecycle
 
     @application.get("/health")
     async def health() -> dict[str, str]:
@@ -303,6 +319,7 @@ def create_app(
     application.include_router(risk_router)
     application.include_router(execution_router)
     application.include_router(control_router)
+    application.include_router(approvals_router)
     if extra_internal is not None:
         application.include_router(extra_internal)
     # Last added runs first: the access log wraps the signature check, so rejected calls are logged too.

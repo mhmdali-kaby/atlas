@@ -185,6 +185,7 @@ return [
         'attach_refused_codes' => [
             '51010',
         ],
+        'lifecycle_sweep_seconds' => 30,
     ],
     'okx' => [
         'environments' => [
@@ -596,6 +597,10 @@ return [
                 'requests' => 20,
                 'per_seconds' => 2,
             ],
+            'trade/amend-algos' => [
+                'requests' => 20,
+                'per_seconds' => 2,
+            ],
             'trade/orders-pending' => [
                 'requests' => 60,
                 'per_seconds' => 2,
@@ -733,6 +738,15 @@ return [
     ],
     'watchlists_api' => [
         'writes_per_minute' => 30,
+    ],
+    'proposals_api' => [
+        'writes_per_minute' => 30,
+        'list_limit' => 50,
+        'list_max_limit' => 200,
+    ],
+    'approvals' => [
+        'sweep_seconds' => 15,
+        'reminder_fraction' => '0.5',
     ],
     'data_sources_api' => [
         'poll_seconds_min' => 60,
