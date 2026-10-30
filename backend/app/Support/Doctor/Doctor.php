@@ -83,13 +83,18 @@ final class Doctor
      * ATL-113: only the `claude` CLI checks (installed, logged in, no Anthropic key variable),
      * for GET /api/agents/claude-status. Same order and rules as in run().
      *
+     * ATL-122 (security round 11, finding 2): the HTTP path never falls back to the `claude -p`
+     * prompt probe — that can spend a real model turn on every uncached request. When the CLI's
+     * `auth status --json` cannot be parsed, this reports the login check as "unknown" instead
+     * of guessing with a probe. `atlas:doctor` on the CLI keeps the probe via run().
+     *
      * @return list<CheckResult>
      */
     public function claudeChecks(): array
     {
         $this->claudeBin = null;
 
-        return [$this->claudeCli(), $this->claudeLogin(), $this->claudeApiKey()];
+        return [$this->claudeCli(), $this->claudeLogin(allowProbe: false), $this->claudeApiKey()];
     }
 
     private function postgres(): CheckResult
@@ -395,8 +400,12 @@ final class Doctor
     /**
      * A cheap non-interactive auth check: the CLI's own `auth status --json` when it understands
      * it, otherwise one short prompt turn. Never runs when claudeCli() did not find the CLI.
+     *
+     * ATL-122: $allowProbe is false for the HTTP path (claudeChecks()). When `auth status` cannot
+     * be parsed there, this returns "unknown" (a warn) rather than spending a model turn on the
+     * `-p` probe on every request. `run()` (the CLI command) keeps $allowProbe true.
      */
-    private function claudeLogin(): CheckResult
+    private function claudeLogin(bool $allowProbe = true): CheckResult
     {
         if ($this->claudeBin === null) {
             return CheckResult::fail('claude_cli_login', self::t('skipped_no_cli'));
@@ -417,6 +426,10 @@ final class Doctor
             return $decoded['loggedIn'] === true
                 ? CheckResult::pass('claude_cli_login', self::t('claude_cli_login_ok'))
                 : CheckResult::fail('claude_cli_login', self::t('claude_cli_login_failed'));
+        }
+
+        if (! $allowProbe) {
+            return CheckResult::warn('claude_cli_login', self::t('claude_cli_login_unknown'));
         }
 
         // This build of the CLI has no status command we could parse: fall back to one cheap,

@@ -100,10 +100,11 @@ export function keyVars(c: ClaudeStatus): string[] {
 }
 
 /** Which Claude panel to draw, in the order the problems block agents. */
-export type ClaudeView = 'ok' | 'missing' | 'logged_out' | 'api_key'
+export type ClaudeView = 'ok' | 'missing' | 'logged_out' | 'login_unknown' | 'api_key'
 
 export function claudeView(c: ClaudeStatus): ClaudeView {
   if (!c.installed) return 'missing'
+  if (c.logged_in === null) return 'login_unknown'
   if (!c.logged_in) return 'logged_out'
   if (!c.api_key_env_clear) return 'api_key'
   return 'ok'

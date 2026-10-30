@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Illuminate\Process\FakeProcessResult;
 use Illuminate\Process\PendingProcess;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Str;
@@ -258,6 +260,8 @@ it('reports a missing or logged-out CLI with the login command', function (): vo
         ->assertJsonPath('data.api_key_env_clear', true)
         ->assertJsonPath('data.checks.1.status', 'fail');
 
+    // ATL-122: each distinct check here needs its own, uncached run.
+    Cache::forget('agents.claude-status');
     atl113FakeClaude([], versionExit: 127);
     $this->getJson('/api/agents/claude-status')->assertOk()
         ->assertJsonPath('data.installed', false)
@@ -272,4 +276,54 @@ it('reports ok when installed, logged in and no key is set', function (): void {
     $this->getJson('/api/agents/claude-status')->assertOk()
         ->assertJsonPath('data.ok', true)
         ->assertJsonPath('data.checks.0.detail', 'Installed (2.4.1 (Claude Code))');
+});
+
+// ATL-122, security round 11 finding 2: the endpoint used to spawn the claude CLI (and could
+// fall back to a paid prompt turn) on every single request, with no throttle or cache.
+
+it('caches the checks for a minute: two calls within that window run the CLI once', function (): void {
+    $this->actingAs(User::factory()->create(), 'web');
+    $calls = 0;
+    Process::fake(function (PendingProcess $process) use (&$calls): FakeProcessResult {
+        $calls++;
+        $command = is_array($process->command) ? $process->command : [];
+        if (in_array('--version', $command, true)) {
+            return Process::result(output: "2.4.1 (Claude Code)\n");
+        }
+        if (in_array('status', $command, true)) {
+            return Process::result(output: (string) json_encode(['loggedIn' => true]));
+        }
+
+        // The -p probe must never run from this endpoint; fail loudly if it does.
+        return Process::result(output: 'unexpected probe call', exitCode: 1);
+    });
+
+    $this->getJson('/api/agents/claude-status')->assertOk()->assertJsonPath('data.logged_in', true);
+    $this->getJson('/api/agents/claude-status')->assertOk()->assertJsonPath('data.logged_in', true);
+
+    // --version once, auth status once: the second HTTP call was served from cache.
+    expect($calls)->toBe(2);
+});
+
+it('throttles claude-status to 6 per minute per user; the 7th call gets 429', function (): void {
+    $this->actingAs(User::factory()->create(), 'web');
+    atl113FakeClaude(['loggedIn' => true]);
+
+    for ($i = 0; $i < 6; $i++) {
+        $this->getJson('/api/agents/claude-status')->assertOk();
+    }
+    $this->getJson('/api/agents/claude-status')->assertTooManyRequests();
+});
+
+it('never runs the -p prompt probe from the HTTP status endpoint, even when auth status is unparseable', function (): void {
+    $this->actingAs(User::factory()->create(), 'web');
+    // No "loggedIn" key: the CLI answered, but not in a shape the endpoint can parse.
+    atl113FakeClaude(['unexpected' => 'shape']);
+
+    $this->getJson('/api/agents/claude-status')->assertOk()
+        ->assertJsonPath('data.installed', true)
+        ->assertJsonPath('data.logged_in', null)
+        ->assertJsonPath('data.checks.1.status', 'warn');
+
+    Process::assertNotRan(fn (PendingProcess $p): bool => is_array($p->command) && in_array('-p', $p->command, true));
 });

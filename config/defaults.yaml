@@ -172,6 +172,14 @@ doctor:
   # installed CLI has no status/auth command to ask instead; a real model turn is slower.
   claude_cli_probe_timeout_seconds: 30
 
+# ATL-122, security round 11 finding 2: GET /api/agents/claude-status would otherwise spawn
+# the claude CLI (and could fall back to a paid prompt turn) on every request. Rate-limited
+# per user; the result is cached so a burst of calls shares one run of the checks, and the
+# HTTP path never runs the `-p` probe (atlas:doctor on the CLI keeps it).
+agents_api:
+  claude_status_per_minute: 6
+  claude_status_cache_seconds: 60
+
 # ATL-10: account sync. Funding-account coins are valued in USD with OKX SPOT tickers
 # (<CCY>-<quote> last price, quotes tried in order). Stablecoins count 1:1 with USD in Phase 0.
 account_sync:

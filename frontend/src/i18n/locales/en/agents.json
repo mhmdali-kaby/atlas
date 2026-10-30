@@ -73,6 +73,8 @@
     "checking": "Checking…",
     "outTitle": "Claude isn’t signed in on this Mac",
     "outBody": "Agents can’t run until you sign in. Run this in Terminal, then check again.",
+    "unknownTitle": "Couldn’t confirm Claude is signed in",
+    "unknownBody": "The sign-in state is unknown for now. Check again, or run claude login in Terminal if agents fail to run.",
     "keyTitle": "An Anthropic API key is set",
     "keyBody": "<cmd>{{var}}</cmd> is set, so agent usage could fall back to pay-as-you-go billing. Remove it from <cmd>backend/.env</cmd> and your shell, then restart Atlas.",
     "missTitle": "Claude Code isn’t installed on this Mac",
@@ -95,11 +97,13 @@
     "loginPass": "Signed in",
     "loginFail": "Not signed in",
     "loginSkip": "Not checked: Claude Code wasn’t found",
+    "loginUnknown": "Unknown",
     "keyPass": "No Anthropic API key is set",
     "keyFail": "<cmd>{{var}}</cmd> is set",
     "pass": "Passed",
     "fail": "Failed",
-    "skip": "Not checked"
+    "skip": "Not checked",
+    "unknown": "Unknown"
   },
   "err": {
     "title": "Couldn’t load the agents",

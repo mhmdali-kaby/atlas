@@ -172,6 +172,10 @@ return [
         'claude_cli_timeout_seconds' => 15,
         'claude_cli_probe_timeout_seconds' => 30,
     ],
+    'agents_api' => [
+        'claude_status_per_minute' => 6,
+        'claude_status_cache_seconds' => 60,
+    ],
     'account_sync' => [
         'usd_stablecoins' => [
             'USDT',
