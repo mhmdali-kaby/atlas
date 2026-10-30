@@ -1260,6 +1260,25 @@ return [
                 'top_instruments' => 5,
             ],
         ],
+        'technical_analyst' => [
+            'history_bars' => [
+                '1D' => 400,
+                '4H' => 500,
+                '1H' => 500,
+                '15m' => 500,
+                '5m' => 300,
+            ],
+            'stale_bars' => 2,
+            'stale_check_bars' => [
+                '1H',
+            ],
+            'min_stop_atr_mult' => '1.0',
+            'max_slippage_bps' => '10',
+            'watchlist_max_runs' => 10,
+            'mention_max_instruments' => 3,
+            'position_bar' => '1H',
+            'zones_reported' => 8,
+        ],
         'ta_structure' => [
             'levels' => [
                 'lookback_bars' => 120,

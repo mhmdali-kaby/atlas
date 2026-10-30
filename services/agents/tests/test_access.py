@@ -32,6 +32,7 @@ OKX_ALL = {
     "get_taker_volume",
     "get_mark_price",
     "get_instrument_spec",
+    "get_ta_table",  # ATL-135: the Technical Analyst's pre-computed table
 }
 ATLAS_DATA_ALL = {
     "get_account_summary",
@@ -306,9 +307,7 @@ async def test_web_search_hook_denies_when_allow_equals_deny(engine: Engine) -> 
 
 
 async def test_web_search_hook_overwrites_model_supplied_domain_lists(engine: Engine) -> None:
-    ctx = dataclasses.replace(
-        _ctx("news_intelligence", engine), web_policy=lambda: (("coindesk.com",), ())
-    )
+    ctx = dataclasses.replace(_ctx("news_intelligence", engine), web_policy=lambda: (("coindesk.com",), ()))
     options = access.build_options("news_intelligence", ctx)
     hook = _web_search_hook(options)
     result = await hook(
@@ -346,6 +345,29 @@ def test_proposals_votes_and_human_input(agent: str) -> None:
     assert ("mcp__warroom__cast_vote" in allowed) == (agent in VOTERS)
     assert ("mcp__warroom__request_human_input" in allowed) == (agent == "orchestrator")
     assert any(t.startswith("mcp__orchestration__") for t in allowed) == (agent == "orchestrator")
+
+
+def test_technical_analyst_row_cell_by_cell() -> None:
+    """ATL-135 AC1: brief §7.10's Technical Analyst row, written out cell by cell."""
+    allowed = set(access.allowed_tools("technical_analyst"))
+    by_server: dict[str, set[str]] = {}
+    for name in allowed:
+        _mcp, server, tool = name.split("__", 2)
+        by_server.setdefault(server, set()).add(tool)
+    assert by_server["okx_market"] == OKX_ALL  # all read, including get_ta_table
+    assert "get_ta_table" in by_server["okx_market"]
+    assert by_server["atlas_data"] == ATLAS_DATA_ALL  # read
+    assert "news" not in by_server  # no news
+    assert not any(t in allowed for t in ("WebSearch", "WebFetch", "mcp__news__web_search"))  # no web
+    assert by_server["history"] == {
+        "compute_stats",
+        "find_analogs",
+        "volatility_forecast",
+    }  # stats, analogs, vol
+    assert by_server["memory"] == {"read_journal", "get_my_scores"}  # read journal (+ own scores)
+    assert by_server["warroom"] == {"post_message", "reply", "mention", "cast_vote"}  # cast_vote yes
+    assert "mcp__warroom__submit_proposal" not in allowed  # no submit_proposal
+    assert set(by_server) == {"okx_market", "atlas_data", "history", "memory", "warroom"}
 
 
 def test_orchestrator_cannot_vote() -> None:
