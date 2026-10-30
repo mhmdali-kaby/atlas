@@ -1,12 +1,51 @@
 {
   "agent": "historian",
-  "mode": "fake",
-  "label": "example-fake",
-  "started_at": "2026-10-29T11:50:20.450487+00:00",
-  "finished_at": "2026-10-29T11:50:20.619245+00:00",
+  "mode": "real",
+  "label": "real-cli ATL-94 (two batches: real-cli-batchA + real-cli-batchB)",
+  "started_at": "2026-10-30T10:27:04.183206+00:00",
+  "finished_at": "2026-10-30T10:41:46.611944+00:00",
   "cases": [
     {
-      "case_id": "btc_regime_1h",
+      "case_id": "analog_btc_after_selloff",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 5,
+      "pass_rate": 80.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 96 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": false,
+          "detail": "verdict = 'does_not_support', expected one of ['supports', 'weakly_supports']"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 50"
+        }
+      ],
+      "tool_calls": 4,
+      "tokens_in": 35650,
+      "tokens_out": 2390,
+      "turns": 5
+    },
+    {
+      "case_id": "analog_btc_august_lookahead",
       "status": "ok",
       "error": null,
       "passed": 5,
@@ -21,12 +60,480 @@
         {
           "name": "no_invented_numbers",
           "passed": true,
-          "detail": "stub: 10 numbers, all traced to tool outputs"
+          "detail": "numguard: 99 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = does_not_support"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 20"
+        }
+      ],
+      "tool_calls": 3,
+      "tokens_in": 30951,
+      "tokens_out": 1805,
+      "turns": 4
+    },
+    {
+      "case_id": "analog_eth_continuation",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 75 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = does_not_support"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 20"
+        }
+      ],
+      "tool_calls": 3,
+      "tokens_in": 30540,
+      "tokens_out": 1744,
+      "turns": 4
+    },
+    {
+      "case_id": "analog_nvda_vol_spike",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 91 numbers, all traced to tool outputs"
         },
         {
           "name": "verdict_in",
           "passed": true,
           "detail": "verdict = weakly_supports"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 20"
+        }
+      ],
+      "tool_calls": 6,
+      "tokens_in": 52725,
+      "tokens_out": 2353,
+      "turns": 7
+    },
+    {
+      "case_id": "analog_sol_breakdown_short",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 99 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = does_not_support"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 20"
+        }
+      ],
+      "tool_calls": 4,
+      "tokens_in": 32673,
+      "tokens_out": 2114,
+      "turns": 5
+    },
+    {
+      "case_id": "analog_tsla_weekend_drift",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 100 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = does_not_support"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 20"
+        }
+      ],
+      "tool_calls": 8,
+      "tokens_in": 52116,
+      "tokens_out": 2590,
+      "turns": 9
+    },
+    {
+      "case_id": "analog_xau_trend_long",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 102 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = weakly_supports"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 20"
+        }
+      ],
+      "tool_calls": 4,
+      "tokens_in": 32779,
+      "tokens_out": 2190,
+      "turns": 5
+    },
+    {
+      "case_id": "analog_xrp_quiet_range",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 123 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = does_not_support"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 20"
+        }
+      ],
+      "tool_calls": 4,
+      "tokens_in": 33101,
+      "tokens_out": 2305,
+      "turns": 5
+    },
+    {
+      "case_id": "backtest_btc_sma_20_50",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 113 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = weakly_supports"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 10"
+        }
+      ],
+      "tool_calls": 5,
+      "tokens_in": 52262,
+      "tokens_out": 2897,
+      "turns": 6
+    },
+    {
+      "case_id": "backtest_eth_ema_12_26",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 103 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = does_not_support"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 19"
+        }
+      ],
+      "tool_calls": 5,
+      "tokens_in": 53694,
+      "tokens_out": 2668,
+      "turns": 6
+    },
+    {
+      "case_id": "backtest_overfit_btc_short_tuned",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 88 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = does_not_support"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 27"
+        }
+      ],
+      "tool_calls": 6,
+      "tokens_in": 52673,
+      "tokens_out": 2989,
+      "turns": 7
+    },
+    {
+      "case_id": "backtest_overfit_sol_tuned",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 96 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = does_not_support"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 98"
+        }
+      ],
+      "tool_calls": 5,
+      "tokens_in": 35764,
+      "tokens_out": 2859,
+      "turns": 6
+    },
+    {
+      "case_id": "backtest_xau_rsi_dip",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 113 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = does_not_support"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 6"
+        }
+      ],
+      "tool_calls": 4,
+      "tokens_in": 33323,
+      "tokens_out": 2246,
+      "turns": 5
+    },
+    {
+      "case_id": "btc_regime_1h",
+      "status": "ok",
+      "error": null,
+      "passed": 3,
+      "total": 5,
+      "pass_rate": 60.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": false,
+          "detail": "no card in the answer"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 16 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": false,
+          "detail": "verdict = None, expected one of ['weakly_supports', 'does_not_support']"
         },
         {
           "name": "no_trade",
@@ -40,32 +547,71 @@
         }
       ],
       "tool_calls": 2,
-      "tokens_in": 2600,
-      "tokens_out": 240,
+      "tokens_in": 26898,
+      "tokens_out": 910,
       "turns": 3
     },
     {
       "case_id": "btc_stats_1h",
       "status": "ok",
       "error": null,
-      "passed": 5,
+      "passed": 2,
       "total": 5,
-      "pass_rate": 100.0,
+      "pass_rate": 40.0,
       "properties": [
         {
           "name": "valid_schema",
-          "passed": true,
-          "detail": "card is a valid HistoryVerdict"
+          "passed": false,
+          "detail": "no card in the answer"
         },
         {
           "name": "no_invented_numbers",
           "passed": true,
-          "detail": "stub: 14 numbers, all traced to tool outputs"
+          "detail": "numguard: 31 numbers, all traced to tool outputs"
         },
         {
           "name": "verdict_in",
+          "passed": false,
+          "detail": "verdict = None, expected one of ['supports', 'weakly_supports']"
+        },
+        {
+          "name": "no_trade",
           "passed": true,
-          "detail": "verdict = weakly_supports"
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": false,
+          "detail": "the answer does not state its sample size n"
+        }
+      ],
+      "tool_calls": 4,
+      "tokens_in": 51453,
+      "tokens_out": 2094,
+      "turns": 5
+    },
+    {
+      "case_id": "doge_no_data",
+      "status": "ok",
+      "error": null,
+      "passed": 2,
+      "total": 5,
+      "pass_rate": 40.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": false,
+          "detail": "no card in the answer"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": false,
+          "detail": "numguard: 2 of 8 numbers unmatched: 30, 30"
+        },
+        {
+          "name": "verdict_in",
+          "passed": false,
+          "detail": "verdict = None, expected one of ['does_not_support']"
         },
         {
           "name": "no_trade",
@@ -75,16 +621,55 @@
         {
           "name": "mentions_n",
           "passed": true,
-          "detail": "n = 72"
+          "detail": "n = 0"
         }
       ],
-      "tool_calls": 4,
-      "tokens_in": 4200,
-      "tokens_out": 380,
-      "turns": 5
+      "tool_calls": 8,
+      "tokens_in": 59394,
+      "tokens_out": 1496,
+      "turns": 9
     },
     {
-      "case_id": "doge_no_data",
+      "case_id": "event_cpi_crypto",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 5,
+      "pass_rate": 80.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": false,
+          "detail": "HistoryVerdict: 3 errors, first distribution.4h.pct_positive: Input should be a valid number"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 122 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = does_not_support"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 40"
+        }
+      ],
+      "tool_calls": 8,
+      "tokens_in": 114215,
+      "tokens_out": 3852,
+      "turns": 9
+    },
+    {
+      "case_id": "event_fomc_crypto",
       "status": "ok",
       "error": null,
       "passed": 5,
@@ -99,7 +684,7 @@
         {
           "name": "no_invented_numbers",
           "passed": true,
-          "detail": "stub: 5 numbers, all traced to tool outputs"
+          "detail": "numguard: 49 numbers, all traced to tool outputs"
         },
         {
           "name": "verdict_in",
@@ -117,21 +702,591 @@
           "detail": "n = 0"
         }
       ],
-      "tool_calls": 2,
-      "tokens_in": 1500,
-      "tokens_out": 160,
-      "turns": 3
+      "tool_calls": 7,
+      "tokens_in": 69094,
+      "tokens_out": 2482,
+      "turns": 8
+    },
+    {
+      "case_id": "event_hype_listing",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 25 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = does_not_support"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 0"
+        }
+      ],
+      "tool_calls": 13,
+      "tokens_in": 102622,
+      "tokens_out": 2299,
+      "turns": 14
+    },
+    {
+      "case_id": "event_sol_token_unlock",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 49 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = does_not_support"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 0"
+        }
+      ],
+      "tool_calls": 3,
+      "tokens_in": 29299,
+      "tokens_out": 1564,
+      "turns": 4
+    },
+    {
+      "case_id": "event_tsla_earnings",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 37 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = does_not_support"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 0"
+        }
+      ],
+      "tool_calls": 8,
+      "tokens_in": 78589,
+      "tokens_out": 2453,
+      "turns": 9
+    },
+    {
+      "case_id": "gap_avax_ema_backtest",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 5,
+      "pass_rate": 80.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 94 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": false,
+          "detail": "verdict = 'contradicts', expected one of ['does_not_support']"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 18"
+        }
+      ],
+      "tool_calls": 4,
+      "tokens_in": 33573,
+      "tokens_out": 1850,
+      "turns": 5
+    },
+    {
+      "case_id": "gap_doge_sma_backtest",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 62 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = does_not_support"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 10"
+        }
+      ],
+      "tool_calls": 3,
+      "tokens_in": 30734,
+      "tokens_out": 1636,
+      "turns": 4
+    },
+    {
+      "case_id": "gap_link_rsi_backtest",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 69 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = does_not_support"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 4"
+        }
+      ],
+      "tool_calls": 4,
+      "tokens_in": 32413,
+      "tokens_out": 2098,
+      "turns": 5
+    },
+    {
+      "case_id": "regime_table_oct13",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid RegimeTable"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 26 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 7"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 13759,
+      "tokens_out": 1217,
+      "turns": 1
+    },
+    {
+      "case_id": "regime_table_oct20",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid RegimeTable"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 25 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 7"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 13756,
+      "tokens_out": 1041,
+      "turns": 1
+    },
+    {
+      "case_id": "small_btc_1h_analogs",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 98 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = does_not_support"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 5"
+        }
+      ],
+      "tool_calls": 3,
+      "tokens_in": 29354,
+      "tokens_out": 1682,
+      "turns": 4
+    },
+    {
+      "case_id": "small_hype_new_listing_analogs",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 90 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = does_not_support"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 3"
+        }
+      ],
+      "tool_calls": 5,
+      "tokens_in": 31535,
+      "tokens_out": 1913,
+      "turns": 6
+    },
+    {
+      "case_id": "small_xau_fomc",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 50 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = does_not_support"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 0"
+        }
+      ],
+      "tool_calls": 6,
+      "tokens_in": 58354,
+      "tokens_out": 1849,
+      "turns": 7
+    },
+    {
+      "case_id": "small_xau_rare_rsi",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 95 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = does_not_support"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 2"
+        }
+      ],
+      "tool_calls": 5,
+      "tokens_in": 53156,
+      "tokens_out": 2110,
+      "turns": 6
+    },
+    {
+      "case_id": "stopnoise_btc_tight",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 67 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = does_not_support"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 42"
+        }
+      ],
+      "tool_calls": 6,
+      "tokens_in": 52861,
+      "tokens_out": 3870,
+      "turns": 7
+    },
+    {
+      "case_id": "stopnoise_eth_wide",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 112 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = supports"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 60"
+        }
+      ],
+      "tool_calls": 7,
+      "tokens_in": 57672,
+      "tokens_out": 4920,
+      "turns": 8
+    },
+    {
+      "case_id": "stopnoise_xau_borderline",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid HistoryVerdict"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 70 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "verdict_in",
+          "passed": true,
+          "detail": "verdict = does_not_support"
+        },
+        {
+          "name": "no_trade",
+          "passed": true,
+          "detail": "no trade proposed"
+        },
+        {
+          "name": "mentions_n",
+          "passed": true,
+          "detail": "n = 60"
+        }
+      ],
+      "tool_calls": 5,
+      "tokens_in": 53929,
+      "tokens_out": 3936,
+      "turns": 6
     }
   ],
   "overall": {
-    "passed": 15,
-    "total": 15,
-    "pass_rate": 100.0
+    "passed": 152,
+    "total": 163,
+    "pass_rate": 93.25
   },
-  "baseline": {
-    "path": "/Users/mhmd/Work/atlas/wt-task-atl-92/services/agents/evals/historian/baseline.json",
-    "pass_rate": null,
-    "max_drop_points": 5.0,
-    "ok": true
-  }
+  "baseline": null
 }
