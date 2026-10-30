@@ -187,7 +187,7 @@ def _setup_levels(session: Session, ctx: ToolContext, inst_id: str) -> list[Deci
     )
     if found is None:
         return []
-    levels = found[0].get("levels_used") or []
+    levels = found.card.get("levels_used") or []
     prices = [_dec(level.get("price")) for level in levels if isinstance(level, Mapping)]
     return [p for p in prices if p is not None]
 

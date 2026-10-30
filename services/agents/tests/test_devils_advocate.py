@@ -368,6 +368,40 @@ async def test_proposal_opened_posts_one_review_reply_and_casts_one_vote(world: 
     await sup.close()
 
 
+async def test_chasing_uses_the_latest_technical_setup_levels(world: World) -> None:
+    """A stored TechnicalSetup card feeds item 5's nearest level (ATL-159 review: LatestCard)."""
+    world.store(
+        EventEnvelope(
+            type="warroom.message",
+            env=ENV,
+            source="agent:technical_analyst",
+            payload={
+                "author_type": "agent",
+                "author": "technical_analyst",
+                "kind": "research_report",
+                "content_md": "Pullback long.",
+                "card": {
+                    "type": "technical_setup",
+                    "inst_id": world.inst,
+                    "levels_used": [{"id": "1H:z1", "price": "99.8"}],
+                },
+            },
+        )
+    )
+    client = fake.FakeClaudeClient([_reply(_card())])
+    rec = Recorder()
+    sup = _supervisor(world.engine, client, rec)
+    await sup.handle_proposals_envelope(_opened(world))
+    await hooks.settled()
+
+    [message] = _reviews(rec)
+    chase = message.payload["card"]["precomputed"]["chasing"]
+    assert chase["available"] is True, chase
+    assert chase["nearest_level"] == "99.8"
+    assert chase["level_source"] == "technical_setup.levels_used"
+    await sup.close()
+
+
 async def test_an_event_older_than_the_deadline_starts_no_review(world: World) -> None:
     client = fake.FakeClaudeClient([])
     sup = _supervisor(world.engine, client, Recorder())
