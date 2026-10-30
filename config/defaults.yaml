@@ -60,6 +60,9 @@ autonomy:
   default_level: 2                 # 1 advise only, 2 approve each trade, 3 auto within limits, 4 full auto
   levels: [1, 2, 3, 4]
   on_approval_timeout: reject
+  # ATL-160: how long an awaiting_owner proposal stays approvable (proposals.approval_expires_at).
+  # A settings-table value `approval_timeout_minutes` overrides it. ATL-162 expires it.
+  approval_timeout_minutes: 15
   # ATL-33 AC2: autonomy 3 (auto within limits) and 4 (full auto) place orders without the owner's
   # per-trade approval; neither the Risk Engine nor the Executor exist before Phase 2, so Settings
   # must refuse them until then. Raise this when the build phase that implements them ships.
@@ -871,6 +874,31 @@ agents:
     strategist: { model: strong }
     devils_advocate: { model: strong }
     portfolio_manager: {}
+  # ATL-160, brief §7.9/§8: the Orchestrator's cycle state machine (code, atlas_agents.orchestrator).
+  #   check_seconds: how often the orchestrator's schedule hook looks for a due slot.
+  #   research_timeout_seconds / review_timeout_seconds / vote_seconds: research (Technical +
+  #     Derivatives per watchlist instrument), the Devil's Advocate review per proposal, the vote.
+  #   strategist_timeout_seconds: the Strategist's whole cycle run; late = recorded, no proposals.
+  #   poll_seconds: how often a wait re-reads the DB (DA card, votes).
+  #   research_agents: the agents whose runs the cycle starts and waits for.
+  #   blocking_agents: when any is in one of unavailable_states (or not enabled), the cycle makes no
+  #     new proposals and closes after research with the reason.
+  #   risk_timeout_seconds: the signed call to trading_core /internal/risk/evaluate/{id}.
+  #   trading_core_url: default for the TRADING_CORE_URL env var.
+  #   watchlist_max_instruments: research runs per agent per cycle.
+  orchestrator:
+    check_seconds: 60
+    research_timeout_seconds: 300
+    review_timeout_seconds: 120
+    vote_seconds: 180
+    strategist_timeout_seconds: 900
+    poll_seconds: 5
+    research_agents: [technical_analyst, derivatives_sentiment]
+    blocking_agents: [technical_analyst, strategist]
+    unavailable_states: [degraded, rate_limited, paused, disabled]
+    risk_timeout_seconds: 30
+    trading_core_url: "http://127.0.0.1:8100"
+    watchlist_max_instruments: 10
   # ATL-92, brief §7.11/§9: the eval harness (python -m atlas_agents.evals).
   #   max_drop_points: `run` exits 1 when the overall pass rate (percent) is more than this many
   #     points below the agent's committed evals/<agent>/baseline.json.
@@ -1041,6 +1069,12 @@ agents:
     # News Intelligence) for the previous Baghdad days in agents.scoring.lookback_days.
     scoring: "00:15"
     tick_seconds: 30
+    # ATL-160, brief §8: Orchestrator analysis cycles start every analysis_interval_minutes from
+    # analysis_first_slot while the slot is at or before analysis_last_slot (Asia/Baghdad), so the
+    # defaults give 08:10, 08:40 ... 22:40. A slot is caught up only inside its own interval.
+    analysis_interval_minutes: 30
+    analysis_first_slot: "08:10"
+    analysis_last_slot: "23:00"
   # ATL-110, brief §7.1 Scoring / §7.2 latency / §9.3 + decision #247 (6): agent_scores written by
   # code (atlas_agents.scoring) at agents.schedule.scoring for each Baghdad day in
   # [today - lookback_days, today - 1]. Re-scoring a day overwrites its row (one per agent/env/day).

@@ -9,15 +9,14 @@ is rejected (ATL-34). The PHP twin is App\\Support\\TradingCore.
 
 from __future__ import annotations
 
-import hashlib
 import hmac
 import re
-import secrets
 import threading
 import time
 from collections.abc import Callable
 
 from atlas_shared.defaults import DEFAULTS
+from atlas_shared.internal_api import new_nonce, sign, signed_headers
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 TIMESTAMP_HEADER = "x-atlas-timestamp"
@@ -33,33 +32,7 @@ NONCE_TTL_SECONDS = 60
 MAX_INTERNAL_BODY_BYTES: int = DEFAULTS["internal_api"]["max_body_bytes"]
 _NONCE_RE = re.compile(r"[0-9a-f]{32}")
 
-
-def sign(secret: str, timestamp: str, nonce: str, method: str, path: str, body: bytes) -> str:
-    message = f"{timestamp}{nonce}{method.upper()}{path}".encode() + body
-    return hmac.new(secret.encode(), message, hashlib.sha256).hexdigest()
-
-
-def new_nonce() -> str:
-    return secrets.token_hex(16)
-
-
-def signed_headers(
-    secret: str,
-    method: str,
-    path: str,
-    body: bytes = b"",
-    *,
-    timestamp: int | None = None,
-    nonce: str | None = None,
-) -> dict[str, str]:
-    """The three X-Atlas-* headers for one call, exactly as Laravel sends them. Used by tests."""
-    ts = str(int(time.time()) if timestamp is None else timestamp)
-    n = new_nonce() if nonce is None else nonce
-    return {
-        "X-Atlas-Timestamp": ts,
-        "X-Atlas-Nonce": n,
-        "X-Atlas-Signature": sign(secret, ts, n, method, path, body),
-    }
+__all__ = ["InternalSignatureMiddleware", "NonceStore", "is_protected", "new_nonce", "sign", "signed_headers"]
 
 
 class NonceStore:

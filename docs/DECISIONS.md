@@ -82,3 +82,17 @@ decisions where the brief was silent, as the brief asks.
   fail code, or a pending SL/OCO algo for it exists on OKX; a partially filled entry is also accepted
   on its attached SL, since OKX may create the algo only at full fill. With no confirmed stop the entry
   is cancelled and whatever filled is closed with a reduce-only market order.
+- **Orchestrator cycle rules the brief leaves open** (ATL-160, `atlas_agents/orchestrator/cycle.py`).
+  Slots run every 30 min from 08:10 while the slot is at or before 23:00 Baghdad (08:10 … 22:40);
+  a slot is caught up only inside its own interval, runs once (`cycles` is unique on env + slot_at)
+  and never while another cycle runs. The cycle is code, but it is hooked on the `orchestrator` agent,
+  which is off by default, so no cycle runs until the owner enables the Orchestrator. A late
+  research run is recorded in `cycles.timeouts` and left to finish (its card still serves the next
+  cycle); it is not cancelled mid-run. "Degraded" for the no-new-proposals rule means the Technical
+  Analyst or the Strategist is not enabled or is `degraded`, `rate_limited` or `paused`. The vote
+  closes early once all five voters have voted. A risk-rejected proposal is closed `rejected` (so it
+  does not block the instrument for the rest of the day); autonomy 1 gives the new proposal status
+  `advise_only` (never an Executor status) even if the Risk Engine said otherwise; `send_now` is
+  treated as `awaiting_owner` while autonomy 3–4 are not enabled, so the cycle never calls the
+  Executor and the `executing` state is not reached yet. The approval window defaults to 15 minutes
+  (`autonomy.approval_timeout_minutes`, overridable by a settings value of the same name).
