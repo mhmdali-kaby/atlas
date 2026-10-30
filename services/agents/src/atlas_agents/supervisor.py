@@ -18,6 +18,10 @@ It is also the long-running process's brain (``python -m atlas_agents``, ATL-93)
   with ``HOOKS.event`` (ATL-107: ``news.alert`` starts News Intelligence and nobody else).
 
 Runs of one agent never overlap: each agent has its own lock.
+
+The owner's agent settings (ATL-114) are applied by :mod:`atlas_agents.settings_applier`, on
+``system.settings_changed`` (:meth:`Supervisor.consume_system`) and re-checked before every
+mention, tick and run.
 """
 
 from __future__ import annotations
@@ -27,7 +31,7 @@ import contextvars
 import dataclasses
 import logging
 import uuid
-from collections.abc import Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from datetime import UTC, date, datetime, time
 from pathlib import Path
 from typing import Any, Final
@@ -42,6 +46,7 @@ from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from atlas_agents import access, events, mentions, prompts, streaming
+from atlas_agents.agent_settings import AgentSettings
 from atlas_agents.registry import (
     REGISTRY,
     AgentHooks,
@@ -49,9 +54,9 @@ from atlas_agents.registry import (
     ScheduleFire,
     ScheduleHook,
     discover_hooks,
-    enabled_agents,
 )
 from atlas_agents.session import AgentSession, ClientFactory, RunResult, Trigger, default_client_factory
+from atlas_agents.settings_applier import SettingsApplier
 from atlas_agents.tools import ToolContext
 from atlas_agents.tools.framework import RunScope
 
@@ -60,9 +65,48 @@ log = logging.getLogger(__name__)
 SessionBuilder = Callable[[AgentSpec], AgentSession]
 Clock = Callable[[], datetime]
 WARROOM_STREAM: Final = "atlas.warroom"
+SYSTEM_STREAM: Final = events.SYSTEM_STREAM
 
 # The mention depth of the run a mention handler starts (0 outside a handler).
 _MENTION_DEPTH: contextvars.ContextVar[int] = contextvars.ContextVar("atlas_mention_depth", default=0)
+
+
+async def _consume_stream(
+    client: redis.Redis,
+    stream: str,
+    handler: Callable[[EventEnvelope], Awaitable[object]],
+    *,
+    stop: asyncio.Event,
+    start_id: str = "$",
+    block_ms: int | None = None,
+) -> str:
+    """Read ``stream`` from ``start_id`` (default: only new entries) until ``stop`` is set, handing
+    each envelope to ``handler``. An unreadable entry or a failing handler is logged and skipped.
+    Returns the last entry id read."""
+    config: Mapping[str, Any] = DEFAULTS["agents"]["mentions"]
+    block = int(config["block_ms"]) if block_ms is None else block_ms
+    last = start_id
+    if last == "$":
+        # Pin "$" to a concrete id so entries arriving between two reads are not skipped.
+        latest: Any = await asyncio.to_thread(client.xrevrange, stream, "+", "-", 1)
+        last = str(latest[0][0]) if latest else "0-0"
+    while not stop.is_set():
+        batches: Any = await asyncio.to_thread(
+            client.xread, {stream: last}, count=int(config["batch"]), block=block
+        )
+        for _stream, entries in batches or []:
+            for entry_id, fields in entries:
+                last = str(entry_id)
+                try:
+                    envelope = EventEnvelope.model_validate_json(fields[bus.FIELD])
+                except Exception:
+                    log.warning("agents: unreadable %s entry %s", stream, entry_id, exc_info=True)
+                    continue
+                try:
+                    await handler(envelope)
+                except Exception:  # one bad event must not stop the consumer
+                    log.exception("agents: handling %s entry %s failed", stream, entry_id)
+    return last
 
 
 class AgentUnavailableError(LookupError):
@@ -103,15 +147,22 @@ class Supervisor:
         clock: Clock | None = None,
         hooks: Mapping[str, AgentHooks] | None = None,
     ) -> None:
-        sessions = sessionmaker(bind=engine)
-        enabled = enabled_agents(registry)
-        # Every enabled agent's current prompt version is recorded once, at start (ATL-90).
-        self.prompts = prompts.sync_versions(engine, [spec.slug for spec in enabled], prompts_dir=prompts_dir)
+        self.env = env
         self._engine = engine
-        self._session_factory = sessions
-        self._publish = publisher
         self._replay_as_of = replay_as_of
+        self._session_factory = sessionmaker(bind=engine)
+        self._publish = publisher
         self._clock: Clock = clock or (lambda: datetime.now(UTC))
+        # The owner's settings merged over the default specs, and the sessions they enable (ATL-114).
+        self._applier = SettingsApplier(
+            env=env,
+            engine=engine,
+            base=registry,
+            replaying=replay_as_of is not None,
+            prompts_dir=prompts_dir,
+            publish=publisher,
+            clock=self._clock,
+        )
         # Mention handlers and schedule hooks by slug (atlas_agents.agents.*, ATL-101).
         self.hooks: dict[str, AgentHooks] = dict(hooks if hooks is not None else discover_hooks())
         self._scopes: dict[str, RunScope] = {}
@@ -140,10 +191,8 @@ class Supervisor:
                 system_prompt=prompts.renderer(ctx, prompt[0]) if prompt else None,
             )
 
-        make = session_builder or build
-        self.env = env
-        self.sessions: dict[str, AgentSession] = {spec.slug: make(spec) for spec in enabled}
-        self._locks: dict[str, asyncio.Lock] = {slug: asyncio.Lock() for slug in self.sessions}
+        self._applier.start(session_builder or build)
+        self._locks = self._applier.locks
 
     @property
     def replaying(self) -> bool:
@@ -160,6 +209,55 @@ class Supervisor:
             replay_as_of=self._replay_as_of,
             clock=self._clock,
             run=self._scope(agent),
+            web_policy=self._applier.web_policy,
+        )
+
+    # -- settings (ATL-114, atlas_agents.settings_applier) ----------------------------------------
+
+    @property
+    def settings(self) -> AgentSettings:
+        return self._applier.settings
+
+    @property
+    def sessions(self) -> dict[str, AgentSession]:
+        return self._applier.sessions
+
+    @property
+    def prompts(self) -> dict[str, tuple[prompts.PromptSource, int]]:
+        return self._applier.prompts
+
+    def is_enabled(self, agent: str) -> bool:
+        return self._applier.is_enabled(agent)
+
+    async def refresh_settings(self, *, force: bool = False) -> bool:
+        """Re-read the settings version and apply the row if it changed (or ``force``)."""
+        return await self._applier.refresh(force=force)
+
+    async def handle_system_envelope(self, envelope: EventEnvelope) -> bool:
+        """Apply settings on this env's ``system.settings_changed``; ignore every other event."""
+        return await self._applier.handle_system_envelope(envelope)
+
+    async def settled(self) -> None:
+        """Wait until every disabled agent's session has closed."""
+        await self._applier.settled()
+
+    async def consume_system(
+        self,
+        client: redis.Redis,
+        *,
+        stop: asyncio.Event,
+        start_id: str = "$",
+        block_ms: int | None = None,
+    ) -> str:
+        """Read ``atlas.system`` from ``start_id`` until ``stop`` is set, handing each envelope to
+        :meth:`handle_system_envelope`. Returns the last entry id read."""
+        return await _consume_stream(
+            client,
+            SYSTEM_STREAM,
+            self.handle_system_envelope,
+            stop=stop,
+            start_id=start_id,
+            block_ms=block_ms,
         )
 
     def _scope(self, agent: str) -> RunScope:
@@ -170,12 +268,15 @@ class Supervisor:
         """Run ``prompt`` on ``agent``. Raises only AgentUnavailableError; every other failure is a
         RunResult with status ``error``. Started from a mention handler, the run takes the mention's
         depth, so a ``warroom.mention`` it writes is one deeper (see :mod:`atlas_agents.mentions`)."""
+        await self.refresh_settings()
         session = self.sessions.get(agent)
         if session is None:
             raise AgentUnavailableError(agent)
         trigger: Trigger = kwargs.pop("trigger", "manual")
         scope = self._scope(agent)
         async with self._locks[agent]:
+            if self.sessions.get(agent) is not session:  # disabled while this run waited
+                raise AgentUnavailableError(agent)
             scope.correlation_id = kwargs.get("correlation_id")
             scope.mention_depth = _MENTION_DEPTH.get()
             try:
@@ -193,6 +294,7 @@ class Supervisor:
     async def handle_envelope(self, envelope: EventEnvelope) -> list[RunResult]:
         """Start the run of every enabled agent with a mention handler that ``envelope`` mentions.
         A mention at depth ``agents.mentions.max_depth`` or deeper starts no run and is logged."""
+        await self.refresh_settings()
         results: list[RunResult] = []
         limit = mentions.max_depth()
         for slug, hooks in self.hooks.items():
@@ -248,30 +350,9 @@ class Supervisor:
     ) -> str:
         """Read ``atlas.warroom`` from ``start_id`` (default: only new entries) until ``stop`` is
         set, handing each envelope to :meth:`handle_envelope`. Returns the last entry id read."""
-        config: Mapping[str, Any] = DEFAULTS["agents"]["mentions"]
-        block = int(config["block_ms"]) if block_ms is None else block_ms
-        last = start_id
-        if last == "$":
-            # Pin "$" to a concrete id so entries arriving between two reads are not skipped.
-            latest: Any = await asyncio.to_thread(client.xrevrange, WARROOM_STREAM, "+", "-", 1)
-            last = str(latest[0][0]) if latest else "0-0"
-        while not stop.is_set():
-            batches: Any = await asyncio.to_thread(
-                client.xread, {WARROOM_STREAM: last}, count=int(config["batch"]), block=block
-            )
-            for _stream, entries in batches or []:
-                for entry_id, fields in entries:
-                    last = str(entry_id)
-                    try:
-                        envelope = EventEnvelope.model_validate_json(fields[bus.FIELD])
-                    except Exception:
-                        log.warning("agents: unreadable atlas.warroom entry %s", entry_id, exc_info=True)
-                        continue
-                    try:
-                        await self.handle_envelope(envelope)
-                    except Exception:  # one bad message must not stop the consumer
-                        log.exception("agents: handling atlas.warroom entry %s failed", entry_id)
-        return last
+        return await _consume_stream(
+            client, WARROOM_STREAM, self.handle_envelope, stop=stop, start_id=start_id, block_ms=block_ms
+        )
 
     # -- schedule ---------------------------------------------------------------------------------
 
@@ -299,6 +380,7 @@ class Supervisor:
 
     async def tick(self, now: datetime | None = None) -> list[RunResult]:
         """Fire every schedule hook of an enabled agent that is due."""
+        await self.refresh_settings()
         at = now or self._clock()
         results: list[RunResult] = []
         for slug, hooks in self.hooks.items():
@@ -348,8 +430,11 @@ class Supervisor:
                 except TimeoutError:
                     pass
 
-        await asyncio.gather(self.consume_warroom(client, stop=stop), schedule())
+        await asyncio.gather(
+            self.consume_warroom(client, stop=stop), self.consume_system(client, stop=stop), schedule()
+        )
 
     async def close(self) -> None:
+        await self.settled()
         for session in self.sessions.values():
             await session.close()
