@@ -42,3 +42,11 @@ decisions where the brief was silent, as the brief asks.
   (decision #250: sizing equity is then the account equity). Asset-class toggles are stored as `enabled_markets`, the list of
   `markets.kinds` that are on (dated futures and options start off); `whitelist` and `blocklist` are
   upper-case instId lists, the blocklist always wins.
+- **Executor tables enforce rules 1 and 8 at the database** (ATL-141). `orders` refuses an
+  `origin='atlas'` row with no `cl_ord_id`, and an atlas `entry` with no `proposal_id` and
+  `risk_check_id`; protect/close/kill orders and reconciled `external` orders may leave them null.
+  Trade-call retries resend the identical body, so a lost answer comes back as sCode 51016
+  (duplicated clOrdId) and the Executor looks the order up rather than placing a second one. GET and
+  POST `trade/order` share one rate-limit bucket. Executor defaults (`executor` in
+  config/defaults.yaml): entry timeout 30 min, perps tdMode isolated, stop check 3 s, 3 tries,
+  emergency stop 2.0 × ATR(1H).

@@ -1,0 +1,52 @@
+{
+  "code": "0",
+  "msg": "",
+  "data": [
+    {
+      "accFillSz": "0.05",
+      "algoClOrdId": "",
+      "algoId": "",
+      "attachAlgoClOrdId": "",
+      "attachAlgoOrds": [
+        {
+          "attachAlgoId": "681096944655273990",
+          "attachAlgoClOrdId": "atlslatt01",
+          "tpTriggerPx": "",
+          "tpOrdPx": "",
+          "slTriggerPx": "66900",
+          "slOrdPx": "-1",
+          "sz": "",
+          "state": "live",
+          "failCode": "",
+          "failReason": ""
+        }
+      ],
+      "avgPx": "68000.5",
+      "cTime": "1793207736700",
+      "cancelSource": "",
+      "category": "normal",
+      "ccy": "",
+      "clOrdId": "atlb1946ac9b2c64f2c8d0b6a1f3e9c7",
+      "fee": "-0.0017",
+      "feeCcy": "USDT",
+      "fillPx": "68000.5",
+      "fillSz": "0.05",
+      "fillTime": "1793207736800",
+      "instId": "BTC-USDT-SWAP",
+      "instType": "SWAP",
+      "lever": "3",
+      "ordId": "312269865356374016",
+      "ordType": "limit",
+      "pnl": "0",
+      "posSide": "net",
+      "px": "68000.5",
+      "reduceOnly": "false",
+      "side": "buy",
+      "state": "partially_filled",
+      "sz": "0.12",
+      "tag": "",
+      "tdMode": "isolated",
+      "uTime": "1793207736800"
+    }
+  ]
+}

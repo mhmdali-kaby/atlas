@@ -758,3 +758,115 @@ class RiskCheck(_Row, Base):
     leverage: Mapped[int | None] = mapped_column(Integer, nullable=True)
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     decision: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
+
+class Order(_Row, Base):
+    """An order the Executor placed or reconciliation imported (ATL-141, brief §5, §11).
+
+    state is CHECKed to the Executor machine: new, sending, live, partially_filled, filled,
+    canceled, rejected, failed. origin atlas|external; purpose entry|protect|close|kill. cl_ord_id
+    is unique (rule 8: retries reuse it) and required when origin is atlas; an atlas entry also
+    needs proposal_id and risk_check_id (rule 1, CHECKed). px is null for market orders; sizes are
+    contracts (or base currency for spot); filled_sz <= sz."""
+
+    __tablename__ = "orders"
+    __table_args__ = (UniqueConstraint("env", "ord_id"),)
+
+    proposal_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("proposals.id", ondelete="SET NULL"), nullable=True
+    )
+    risk_check_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("risk_checks.id", ondelete="SET NULL"), nullable=True
+    )
+    cl_ord_id: Mapped[str | None] = mapped_column(String(32), unique=True, nullable=True)
+    ord_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    inst_id: Mapped[str] = mapped_column(String(64))
+    side: Mapped[str] = mapped_column(String(255))
+    pos_side: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    ord_type: Mapped[str] = mapped_column(String(255))
+    td_mode: Mapped[str] = mapped_column(String(255))
+    px: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    sz: Mapped[Decimal] = mapped_column(_num())
+    filled_sz: Mapped[Decimal] = mapped_column(_num(), server_default=text("0"))
+    avg_px: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    lever: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    fee: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    fee_ccy: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    state: Mapped[str] = mapped_column(String(255), server_default=text("'new'"))
+    reduce_only: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    origin: Mapped[str] = mapped_column(String(255), server_default=text("'atlas'"))
+    purpose: Mapped[str] = mapped_column(String(255), server_default=text("'entry'"))
+    last_error_code: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    last_error_msg: Mapped[str | None] = mapped_column(Text, nullable=True)
+    raw: Mapped[Any] = _jsonb_obj()
+
+
+class AlgoOrder(_Row, Base):
+    """A server-side TP/SL or trigger order (ATL-141, brief §1 rule 3, §11). kind sl|tp|oco|trigger;
+    sl/tp/trigger carry trigger_px, an oco carries sl_trigger_px and tp_trigger_px (CHECKed). ord_px
+    null = market on trigger; sz null = the whole position. state: new, sending, failed (ours) or
+    OKX's live, pause, effective, partially_effective, canceled, order_failed, partially_failed.
+    algo_cl_ord_id is unique and required when origin is atlas."""
+
+    __tablename__ = "algo_orders"
+    __table_args__ = (UniqueConstraint("env", "algo_id"),)
+
+    order_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("orders.id", ondelete="SET NULL"), nullable=True
+    )
+    algo_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    algo_cl_ord_id: Mapped[str | None] = mapped_column(String(32), unique=True, nullable=True)
+    inst_id: Mapped[str] = mapped_column(String(64))
+    kind: Mapped[str] = mapped_column(String(255))
+    side: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    pos_side: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    trigger_px: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    sl_trigger_px: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    tp_trigger_px: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    ord_px: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    sz: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    state: Mapped[str] = mapped_column(String(255), server_default=text("'new'"))
+    reduce_only: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
+    origin: Mapped[str] = mapped_column(String(255), server_default=text("'atlas'"))
+    last_error_code: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    last_error_msg: Mapped[str | None] = mapped_column(Text, nullable=True)
+    raw: Mapped[Any] = _jsonb_obj()
+
+
+class Fill(_Row, Base):
+    """One OKX fill (ATL-141, brief §5). Unique per (env, inst_id, trade_id). fee follows OKX's
+    sign: negative = paid, positive = rebate. exec_type T taker / M maker."""
+
+    __tablename__ = "fills"
+    __table_args__ = (UniqueConstraint("env", "inst_id", "trade_id"),)
+
+    order_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid, ForeignKey("orders.id", ondelete="SET NULL"), nullable=True
+    )
+    trade_id: Mapped[str] = mapped_column(String(64))
+    ord_id: Mapped[str] = mapped_column(String(64))
+    cl_ord_id: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    bill_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    inst_id: Mapped[str] = mapped_column(String(64))
+    side: Mapped[str] = mapped_column(String(255))
+    pos_side: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    fill_px: Mapped[Decimal] = mapped_column(_num())
+    fill_sz: Mapped[Decimal] = mapped_column(_num())
+    fee: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    fee_ccy: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    exec_type: Mapped[str | None] = mapped_column(String(4), nullable=True)
+    ts: Mapped[datetime] = mapped_column(_tz())
+    raw: Mapped[Any] = _jsonb_obj()
+
+
+class TradingState(_Row, Base):
+    """Whether new orders are paused in an env, and why (ATL-141; circuit breakers are ATL-127's).
+    One row per env. breakers maps a breaker name to {"active", "since", "detail"}."""
+
+    __tablename__ = "trading_state"
+    __table_args__ = (UniqueConstraint("env"),)
+
+    paused: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    breakers: Mapped[Any] = _jsonb_obj()
+    paused_at: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)

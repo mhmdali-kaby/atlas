@@ -112,6 +112,17 @@ return [
         'market_data_max_age_seconds' => 30,
         'margin_buffer' => '0.9',
     ],
+    'executor' => [
+        'entry_timeout_minutes' => 30,
+        'td_mode_perps' => 'isolated',
+        'td_modes_perps' => [
+            'isolated',
+            'cross',
+        ],
+        'stop_verify_seconds' => 3,
+        'order_max_retries' => 3,
+        'emergency_stop_atr_mult' => '2.0',
+    ],
     'okx' => [
         'environments' => [
             'demo' => [
@@ -366,11 +377,74 @@ return [
                 'requests' => 5,
                 'per_seconds' => 2,
             ],
+            'trade/order' => [
+                'requests' => 60,
+                'per_seconds' => 2,
+            ],
+            'trade/batch-orders' => [
+                'requests' => 60,
+                'per_seconds' => 2,
+            ],
+            'trade/amend-order' => [
+                'requests' => 60,
+                'per_seconds' => 2,
+            ],
+            'trade/cancel-order' => [
+                'requests' => 60,
+                'per_seconds' => 2,
+            ],
+            'trade/close-position' => [
+                'requests' => 20,
+                'per_seconds' => 2,
+            ],
+            'trade/order-algo' => [
+                'requests' => 20,
+                'per_seconds' => 2,
+            ],
+            'trade/cancel-algos' => [
+                'requests' => 20,
+                'per_seconds' => 2,
+            ],
+            'trade/orders-pending' => [
+                'requests' => 60,
+                'per_seconds' => 2,
+            ],
+            'trade/orders-algo-pending' => [
+                'requests' => 20,
+                'per_seconds' => 2,
+            ],
+            'trade/orders-history' => [
+                'requests' => 40,
+                'per_seconds' => 2,
+            ],
+            'trade/fills' => [
+                'requests' => 60,
+                'per_seconds' => 2,
+            ],
+            'trade/fills-history' => [
+                'requests' => 10,
+                'per_seconds' => 2,
+            ],
+            'account/set-leverage' => [
+                'requests' => 20,
+                'per_seconds' => 2,
+            ],
+            'account/max-size' => [
+                'requests' => 20,
+                'per_seconds' => 2,
+            ],
         ],
         'page_limits' => [
             'market/candles' => 300,
             'market/history-candles' => 100,
             'public/funding-rate-history' => 100,
+            'trade/orders-pending' => 100,
+            'trade/orders-algo-pending' => 100,
+            'trade/orders-history' => 100,
+            'trade/fills' => 100,
+            'trade/fills-history' => 100,
+            'trade/batch-orders' => 20,
+            'trade/cancel-algos' => 10,
         ],
         'rate_limit_codes' => [
             '50011',

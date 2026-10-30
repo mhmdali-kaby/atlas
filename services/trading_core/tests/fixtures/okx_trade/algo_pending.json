@@ -1,0 +1,31 @@
+{
+  "code": "0",
+  "msg": "",
+  "data": [
+    {
+      "algoId": "681096944655273984",
+      "algoClOrdId": "atlsl0001",
+      "instType": "SWAP",
+      "instId": "BTC-USDT-SWAP",
+      "ordType": "conditional",
+      "side": "sell",
+      "posSide": "net",
+      "tdMode": "isolated",
+      "sz": "0.12",
+      "closeFraction": "",
+      "state": "live",
+      "slTriggerPx": "66900",
+      "slOrdPx": "-1",
+      "tpTriggerPx": "",
+      "tpOrdPx": "",
+      "triggerPx": "",
+      "ordPx": "",
+      "reduceOnly": "true",
+      "actualPx": "",
+      "actualSz": "",
+      "ordId": "",
+      "cTime": "1793207736700",
+      "uTime": "1793207736700"
+    }
+  ]
+}
