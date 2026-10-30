@@ -316,7 +316,7 @@ def test_news_intelligence_is_enabled_and_registers_mention_schedule_and_alert_h
     assert REGISTRY[SLUG].enabled
     hooks = discover_hooks()[SLUG]
     assert hooks.on_mention is hooks_module.answer_mention
-    assert [h.name for h in hooks.schedule] == ["news_morning_brief"]
+    assert [h.name for h in hooks.schedule] == ["news_morning_brief", "scoring"]  # scoring: ATL-110
     assert hooks.schedule[0].time_of_day().isoformat() == "07:30:00"
     assert set(hooks.on_event) == {"news.alert"}
     # Only News Intelligence reacts to news.alert.

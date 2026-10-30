@@ -36,7 +36,7 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Any, Final
 
-from atlas_shared.db import ResearchReport, Watchlist, WatchlistItem, owner_day
+from atlas_shared.db import AgentScore, ResearchReport, Watchlist, WatchlistItem, owner_day
 from atlas_shared.events import EventEnvelope
 from claude_agent_sdk.types import Message
 from pydantic import ValidationError
@@ -332,10 +332,33 @@ def _recent_picks(ctx: ToolContext, day: date) -> list[dict[str, Any]]:
                         for i in items
                         if i.removed_by_owner_at is None
                     ],
-                    "outcome": "not scored yet",
+                    "outcome": _outcome(session, ctx, wl.date),
                 }
             )
     return out
+
+
+def _outcome(session: Session, ctx: ToolContext, day: date) -> dict[str, Any] | str:
+    """The day's agent_scores row (ATL-110) in short, or "not scored yet"."""
+    row = session.scalars(
+        select(AgentScore).where(
+            AgentScore.agent == SLUG,
+            AgentScore.env == ctx.env,
+            AgentScore.day == day,
+            ctx.bound(AgentScore.created_at),
+        )
+    ).first()
+    if row is None:
+        return "not scored yet"
+    data = dict(row.data or {})
+    return {
+        "selection_edge_atr": data.get("selection_edge_atr"),
+        "directional_accuracy": data.get("directional_accuracy"),
+        "picks": [
+            {"inst_id": p.get("inst_id"), "bias": p.get("bias"), "move_24h_atr": p.get("move_atr")}
+            for p in data.get("picks") or []
+        ],
+    }
 
 
 def _row_json(row: Any) -> dict[str, Any]:

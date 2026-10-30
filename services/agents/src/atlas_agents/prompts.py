@@ -24,7 +24,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
-from typing import Final
+from typing import Any, Final
 
 from atlas_shared.db import AgentScore, PromptVersion, usage_day
 from sqlalchemy import Engine, func, select
@@ -78,6 +78,25 @@ class ScoreLine:
     hit_rate: Decimal | None = None
     brier_score: Decimal | None = None
     pnl_attributed_usd: Decimal | None = None
+    metrics: Mapping[str, Decimal | None] = field(default_factory=dict)
+    """Agent-specific daily numbers written by atlas_agents.scoring (ATL-110), e.g. Market Scout's
+    selection_edge_atr or News Intelligence's latency_p90_s, from ``agent_scores.data.metrics``."""
+
+
+def score_metrics(data: Mapping[str, Any] | None) -> dict[str, Decimal | None]:
+    """``data.metrics`` of an agent_scores row as Decimals rounded to 4 places (None kept)."""
+    raw = (data or {}).get("metrics") or {}
+    out: dict[str, Decimal | None] = {}
+    if not isinstance(raw, Mapping):
+        return out
+    for key, value in raw.items():
+        if not isinstance(key, str) or not key.replace("_", "").isalnum():
+            continue
+        if value is None:
+            out[key] = None
+        elif isinstance(value, int | float) and not isinstance(value, bool):
+            out[key] = Decimal(str(round(float(value), 4)))
+    return out
 
 
 @dataclass(frozen=True)
@@ -161,13 +180,22 @@ def scorecard_block(ctx: PromptContext) -> str:
     def show(value: Decimal | None) -> str:
         return "n/a" if value is None else _number(value)
 
-    lines.append("| day | n | hit_rate | brier_score | pnl_attributed_usd |")
-    lines.append("| --- | --- | --- | --- | --- |")
+    with_metrics = any(s.metrics for s in ctx.scores)
+    if with_metrics:
+        lines.append("| day | n | hit_rate | brier_score | pnl_attributed_usd | metrics |")
+        lines.append("| --- | --- | --- | --- | --- | --- |")
+    else:
+        lines.append("| day | n | hit_rate | brier_score | pnl_attributed_usd |")
+        lines.append("| --- | --- | --- | --- | --- |")
     for s in sorted(ctx.scores, key=lambda s: s.day, reverse=True):
-        lines.append(
+        row = (
             f"| {s.day.isoformat()} | {s.n} | {show(s.hit_rate)} | {show(s.brier_score)} "
             f"| {show(s.pnl_attributed_usd)} |"
         )
+        if with_metrics:
+            metrics = ", ".join(f"{k}={show(v)}" for k, v in sorted(s.metrics.items()))
+            row += f" {metrics or 'n/a'} |"
+        lines.append(row)
     return "\n".join(lines)
 
 
@@ -225,6 +253,7 @@ def load_context(tool_ctx: ToolContext) -> PromptContext:
             hit_rate=r.hit_rate,
             brier_score=r.brier_score,
             pnl_attributed_usd=r.pnl_attributed_usd,
+            metrics=score_metrics(r.data),
         )
         for r in rows
     )
