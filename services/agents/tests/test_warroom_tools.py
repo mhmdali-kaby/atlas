@@ -183,16 +183,17 @@ async def test_a_regime_table_card_validates() -> None:
                 "label": "trend",
                 "probability": 0.81,
                 "days_in_regime": 4,
-                "data_as_of": "2026-10-29T04:00:00Z",
+                "method": "hmm",
             },
             {
                 "inst_id": "XAU-USDT-SWAP",
                 "label": "range",
                 "probability": 0.66,
                 "days_in_regime": 11,
-                "data_as_of": "2026-10-29T04:00:00Z",
+                "method": "fallback",
             },
         ],
+        "data_as_of": "2026-10-29T04:00:00Z",
     }
     error, _ = await _call(
         _ctx(recorder=rec), "post_message", {"kind": "research_report", "content_md": "Regimes", "card": card}

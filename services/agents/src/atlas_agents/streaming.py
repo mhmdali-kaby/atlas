@@ -13,10 +13,16 @@ For every SDK message it sees it queues a segment:
 Segments are published on ``atlas.warroom`` as ``warroom.thinking`` envelopes, at most
 ``agents.streaming.max_events_per_second`` per run: events are spaced at least 1/max apart, and
 deltas of the same type that arrive in between are coalesced into one event. Whatever is still
-queued when the run ends is flushed (still spaced), then one ``warroom.message`` is published that
-carries the whole record: ``reasoning_md`` (all thinking, in order), ``tool_calls`` (name, input,
-``as_of`` read from the tool result, truncated output), tokens and the notional cost. The record is
-complete without the stream.
+queued when the run ends is flushed (still spaced), then, for a run whose status is ``ok``, one
+``warroom.message`` is published that carries the whole record: ``run_id``, ``reasoning_md`` (all
+thinking, in order), ``tool_calls`` (name, input, ``as_of`` read from the tool result, truncated
+output), tokens and the notional cost. The record is complete without the stream. A run whose
+output was reviewed (ATL-93) overrides that message's kind, card, thread and reply
+(``RunResult.message``).
+
+Every run, whatever its outcome, then ends with one ``warroom.thinking`` event of delta_type
+``run_end`` carrying ``status`` ok|error|rate_limited|degraded (ATL-93), so the UI can close the
+run's live row. Failed runs publish no message.
 
 Publishing never fails a run: a publish error is logged and dropped.
 """
@@ -57,7 +63,16 @@ MESSAGE_EVENT: Final = "warroom.message"
 NO_MESSAGE_TEXT: Final = "Run finished without a message."
 ELLIPSIS: Final = "…"
 
-DeltaType = Literal["thinking", "text", "tool_use", "tool_result"]
+DeltaType = Literal["thinking", "text", "tool_use", "tool_result", "run_end"]
+RunEndStatus = Literal["ok", "error", "rate_limited", "degraded"]
+# RunResult.status -> the run_end status the UI sees (over budget is a degraded agent).
+RUN_END_STATUS: Final[Mapping[str, RunEndStatus]] = {
+    "ok": "ok",
+    "error": "error",
+    "rate_limited": "rate_limited",
+    "over_budget": "degraded",
+    "degraded": "degraded",
+}
 _TEXT_TYPES: Final = ("thinking", "text")
 
 
@@ -104,6 +119,8 @@ class _Segment:
     tool_use_id: str | None = None
     tool_input: Any = None
     is_error: bool | None = None
+    status: RunEndStatus | None = None
+    error: str | None = None
 
 
 @dataclass
@@ -312,6 +329,9 @@ class ThinkingPublisher:
             "is_error": segment.is_error,
             "truncated": truncated,
         }
+        if segment.delta_type == "run_end":
+            payload["status"] = segment.status
+            payload["error"] = segment.error
         self._send(
             EventEnvelope(
                 type=THINKING_EVENT,
@@ -333,47 +353,75 @@ class ThinkingPublisher:
         await self._drain(final=True)
 
     def final_envelope(
-        self, *, content_md: str, tokens_in: int, tokens_out: int, cost_usd: Decimal | None
+        self,
+        *,
+        content_md: str,
+        tokens_in: int,
+        tokens_out: int,
+        cost_usd: Decimal | None,
+        overrides: Mapping[str, Any] | None = None,
     ) -> EventEnvelope:
-        content, _ = _cut(content_md, self._content_max)
+        """The run's one final message. ``overrides`` replace payload keys (a ``thread_id`` replaces
+        ``thread``); the record keys (run_id, reasoning, tool calls, usage) are always the run's."""
         cost = None if cost_usd is None else str(cost_usd.quantize(Decimal("0.000001"), ROUND_HALF_UP))
+        payload: dict[str, Any] = {
+            "thread": {"kind": "main", "key": "main"},
+            "author_type": "agent",
+            "author": self.agent,
+            "kind": "text",
+            "content_md": content_md,
+            "card": None,
+            "reply_to": None,
+            "mentions": [],
+        }
+        for key, value in (overrides or {}).items():
+            if key == "thread_id":
+                payload.pop("thread", None)
+            payload[key] = value
+        payload["content_md"], _ = _cut(str(payload["content_md"]), self._content_max)
+        payload.update(
+            {
+                "run_id": str(self.run_id),
+                "reasoning_md": self.reasoning_md or None,
+                "tool_calls": self.tool_calls,
+                "tokens_in": tokens_in,
+                "tokens_out": tokens_out,
+                "cost_usd": cost,
+            }
+        )
         return EventEnvelope(
             type=MESSAGE_EVENT,
             ts=self._wall_clock(),
             env=self.env,
             source=f"agent:{self.agent}",
             correlation_id=self.correlation_id,
-            payload={
-                "thread": {"kind": "main", "key": "main"},
-                "author_type": "agent",
-                "author": self.agent,
-                "kind": "text",
-                "content_md": content,
-                "card": None,
-                "reply_to": None,
-                "mentions": [],
-                "reasoning_md": self.reasoning_md or None,
-                "tool_calls": self.tool_calls,
-                "tokens_in": tokens_in,
-                "tokens_out": tokens_out,
-                "cost_usd": cost,
-            },
+            payload=payload,
         )
 
     async def on_finish(self, result: RunResult) -> None:
-        """Flush the queued events, then publish the final message (unless the run produced
-        nothing at all: no text, no thinking, no tool call)."""
+        """Flush the queued events; for an ok run publish the final message (unless the run
+        produced nothing at all and has no override); then end the stream with ``run_end``."""
         await self.flush()
-        text = result.text.strip()
-        if not text and not self._reasoning and not self._tool_calls:
-            return
-        self.final = self.final_envelope(
-            content_md=text or NO_MESSAGE_TEXT,
-            tokens_in=result.tokens_in,
-            tokens_out=result.tokens_out,
-            cost_usd=result.cost_usd_notional,
+        if result.status == "ok":
+            text = result.text.strip()
+            override = result.message
+            if override is not None or text or self._reasoning or self._tool_calls:
+                self.final = self.final_envelope(
+                    content_md=text or NO_MESSAGE_TEXT,
+                    tokens_in=result.tokens_in,
+                    tokens_out=result.tokens_out,
+                    cost_usd=result.cost_usd_notional,
+                    overrides=override,
+                )
+                self._send(self.final)
+        self._emit(
+            _Segment(
+                delta_type="run_end",
+                status=RUN_END_STATUS.get(result.status, "error"),
+                error=result.error,
+            )
         )
-        self._send(self.final)
+        self._last_emit = self._clock()
 
 
 def observer_factory(
