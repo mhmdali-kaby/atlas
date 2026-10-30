@@ -258,6 +258,21 @@ class UpcomingEvent(_Model):
     forecast: str | None = None
     previous: str | None = None
     sensitive_instruments: list[str] = Field(default_factory=list)
+    importance: int | None = Field(default=None, ge=1, le=5)
+    """ATL-107: from economic_events (the highest importance scheduled at exactly ``time``), set by
+    the runtime; null when Atlas has no event at that time."""
+
+
+class NewsFlow(_Model):
+    """One instrument's news flow in a morning brief (ATL-107), computed in code over the brief's
+    lookback: the distinct stories (clusters) linking it and the mean sentiment of those items."""
+
+    inst_id: str = Field(min_length=1, max_length=64)
+    stories: int = Field(ge=0)
+    net_sentiment: float | None = Field(default=None, ge=-1, le=1)
+
+
+NewsBriefForm = Literal["instrument_brief", "morning_brief", "alert_analysis"]
 
 
 class NewsBrief(_Model):
@@ -273,6 +288,14 @@ class NewsBrief(_Model):
     priced_in: Literal["yes", "partly", "no"]
     what_to_watch: str = Field(min_length=1)
     data_as_of: AwareDatetime
+    form: NewsBriefForm = "instrument_brief"
+    """ATL-107: instrument_brief (an @News answer), morning_brief (the 07:30 brief) or
+    alert_analysis (a news.alert analysis). Set by the runtime from the trigger."""
+    top_instruments: list[NewsFlow] = Field(default_factory=list)
+    """ATL-107, morning brief only: the instruments with the most news flow, computed in code."""
+    degraded_asset_classes: list[str] = Field(default_factory=list)
+    """ATL-107: asset classes whose every news source is disabled, needs_key or degraded, computed
+    in code when the brief is posted (brief §7.2 failure behaviour)."""
     meta: CardMeta | None = None
 
 
@@ -327,7 +350,9 @@ __all__ = [
     "HorizonDistribution",
     "NewsBrief",
     "NewsBriefCluster",
+    "NewsBriefForm",
     "NewsBriefSource",
+    "NewsFlow",
     "NewsStatus",
     "PriceMoveAtr",
     "RegimeRow",
