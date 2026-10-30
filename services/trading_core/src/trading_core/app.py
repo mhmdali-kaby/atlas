@@ -25,6 +25,8 @@ from trading_core.backfill.runner import backfill_job
 from trading_core.config import Settings
 from trading_core.connection_test import router as connection_test_router
 from trading_core.execution.api import router as execution_router
+from trading_core.execution.reconcile import JOB as RECONCILE_JOB
+from trading_core.execution.reconcile import ReconcileGate, reconcile_job
 from trading_core.logs import AccessLogMiddleware
 from trading_core.marketdata.api import router as quality_router
 from trading_core.marketdata.derivatives import JOB as DERIVATIVES_POLLER_JOB
@@ -172,10 +174,20 @@ async def sync_bills_now(request: Request) -> dict[str, Any] | JSONResponse:
     return {"ok": True, **result}
 
 
-def default_scheduler(settings: Settings, engine: Engine | None = None) -> Scheduler:
-    """The jobs trading_core runs in production."""
+def default_scheduler(
+    settings: Settings, engine: Engine | None = None, reconcile_gate: ReconcileGate | None = None
+) -> Scheduler:
+    """The jobs trading_core runs in production. ``reconcile_gate`` is opened by the first successful
+    reconciliation (ATL-146); the Executor refuses /execute until then."""
     scheduler = Scheduler()
     engine = engine if engine is not None else make_engine()
+    # Reconciliation first (brief §4.4, rule 8): every job runs once at startup, and this one gates
+    # the Executor.
+    scheduler.add(
+        RECONCILE_JOB,
+        DEFAULTS["reconciliation"]["interval_seconds"],
+        reconcile_job(settings.env, engine, settings.app_key, reconcile_gate or ReconcileGate()),
+    )
     scheduler.add(
         INSTRUMENTS_JOB,
         DEFAULTS["sync"]["instruments_interval_seconds"],
@@ -235,12 +247,24 @@ def create_app(
     market_feed: MarketFeed | None = None,
     private_feed: PrivateFeed | None = None,
     breaker_monitor: BreakerMonitor | None = None,
+    reconcile_gate: ReconcileGate | None = None,
 ) -> FastAPI:
     settings = settings or Settings.from_env()
     if not settings.internal_shared_secret:
         logger.warning("INTERNAL_SHARED_SECRET is empty; every /internal call will be rejected")
     db = engine if engine is not None else make_engine()
-    jobs = scheduler if scheduler is not None else default_scheduler(settings, db)
+    # Rule 8 (ATL-146): /execute is refused until reconciliation has run once. An injected scheduler
+    # without the reconcile job (tests) starts with the gate open unless the test passes one in.
+    if scheduler is None:
+        gate = reconcile_gate if reconcile_gate is not None else ReconcileGate()
+        jobs = default_scheduler(settings, db, gate)
+    else:
+        jobs = scheduler
+        gate = (
+            reconcile_gate
+            if reconcile_gate is not None
+            else ReconcileGate(ready=RECONCILE_JOB not in scheduler.jobs)
+        )
     # The live feed (ATL-125) is built only for the real app or when a test passes one in, so an
     # app made around an injected scheduler never opens a socket to OKX.
     feed = market_feed
@@ -250,6 +274,12 @@ def create_app(
     pfeed = private_feed
     if pfeed is None and scheduler is None and settings.run_private_ws:
         pfeed = default_private_feed(settings.env, db, settings.app_key)
+    if pfeed is not None and RECONCILE_JOB in jobs.jobs:
+        # Brief §4.4: reconcile after every private WebSocket re-login (ws.private.reconnected).
+        def _reconcile_on_reconnect(_payload: dict[str, Any]) -> None:
+            jobs.trigger(RECONCILE_JOB)
+
+        pfeed.on_reconnected(_reconcile_on_reconnect)
     # Circuit breakers (ATL-145): the 15 s loop, the bus events and the OKX error hook. Same rule.
     monitor = breaker_monitor
     if monitor is None and scheduler is None:
@@ -290,6 +320,7 @@ def create_app(
     application.state.market_feed = feed
     application.state.private_feed = pfeed
     application.state.breaker_monitor = monitor
+    application.state.reconcile_gate = gate
 
     @application.get("/health")
     async def health() -> dict[str, str]:

@@ -3,8 +3,9 @@
 Signed like every /internal route (InternalSignatureMiddleware); an unsigned call gets 401 before this
 code runs. Body (optional JSON): ``{"approved_by": "owner"}`` when the owner approved an
 ``awaiting_owner`` risk check. Answers 200 when the order was sent with a confirmed stop, 409 when the
-Executor refused without contacting OKX, 422 for a malformed body and 502 when OKX refused it or no
-stop could be confirmed. The body is :meth:`ExecutionResult.payload`.
+Executor refused without contacting OKX (``not_reconciled`` until the first reconciliation after
+startup has finished, ATL-146), 422 for a malformed body and 502 when OKX refused it or no stop could
+be confirmed. The body is :meth:`ExecutionResult.payload`.
 
 Tests override the OKX client with ``app.state.executor_client_factory`` and Redis with
 ``app.state.executor_redis``.
@@ -41,6 +42,19 @@ async def execute_risk_check(risk_check_id: str, request: Request) -> JSONRespon
         if approved_by is not None and not isinstance(approved_by, str):
             return JSONResponse(status_code=422, content={"ok": False, "error": "invalid_approved_by"})
     state = request.app.state
+    gate = getattr(state, "reconcile_gate", None)
+    if gate is not None and not gate.ready:
+        # Rule 8 (ATL-146): nothing is sent before the first reconciliation with OKX has finished.
+        return JSONResponse(
+            status_code=409,
+            content={
+                "ok": False,
+                "status": "refused",
+                "reason": "not_reconciled",
+                "detail": "Atlas is still reconciling with OKX after a restart; try again shortly.",
+                "risk_check_id": risk_check_id,
+            },
+        )
     result = await execute(
         risk_check_id,
         approved_by,
