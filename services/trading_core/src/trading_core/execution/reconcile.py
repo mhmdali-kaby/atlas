@@ -112,6 +112,19 @@ class ReconcileGate:
             self.opened_at = at or datetime.now(UTC)
 
 
+NOT_RECONCILED_DETAIL = "Atlas is still reconciling with OKX after a restart; try again shortly."
+
+
+def not_reconciled_refusal(state: Any) -> dict[str, Any] | None:
+    """The refusal body every route that calls the Executor returns (409) while the startup
+    reconciliation has not finished (rule 8), or None when it may proceed. ``state`` is the FastAPI
+    ``app.state``; an app without a gate (tests that do not run the reconcile job) is never blocked."""
+    gate = getattr(state, "reconcile_gate", None)
+    if gate is None or gate.ready:
+        return None
+    return {"ok": False, "status": "refused", "reason": "not_reconciled", "detail": NOT_RECONCILED_DETAIL}
+
+
 # -- result ----------------------------------------------------------------------------------------
 
 
@@ -499,7 +512,11 @@ def _executor_busy(engine: Engine, env: str, inst_id: str, now: datetime) -> boo
                     Order.env == env,
                     Order.inst_id == inst_id,
                     Order.origin == "atlas",
-                    (Order.state.in_(UNSENT_ORDER_STATES)) | (Order.created_at >= grace),
+                    (Order.created_at >= grace)
+                    | (
+                        Order.state.in_(UNSENT_ORDER_STATES)
+                        & (func.coalesce(Order.updated_at, Order.created_at) >= grace)
+                    ),
                 )
             )
             or 0

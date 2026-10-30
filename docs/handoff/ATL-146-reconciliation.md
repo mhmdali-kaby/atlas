@@ -12,9 +12,12 @@ anyone reading `algo_orders` / `orders` / `sync_status`.
 - **Startup gate (rule 8):** `ReconcileGate` lives on `app.state.reconcile_gate`. Closed until the
   first run succeeds (or finds no verified connection). Until then `POST /internal/execute/{id}`
   answers **409** `{"ok": false, "status": "refused", "reason": "not_reconciled", "detail": "...",
-  "risk_check_id": "..."}` without touching OKX. It never closes again. An injected test scheduler
+  "risk_check_id": "..."}` and the owner-approval route `POST /internal/proposals/{id}/execute` answers
+  **409** with the same body plus `"proposal_id": "...", "risk_check": null` (checked before the fresh
+  risk check), both without touching OKX. It never closes again. An injected test scheduler
   without the job gets an open gate; pass `reconcile_gate=` to `create_app` to test it closed.
-  **Any new route that calls `execute()` must check the same gate.**
+  **Any new route that calls `execute()` must check the same gate** with
+  `execution.reconcile.not_reconciled_refusal(app.state)` (returns the refusal dict, or None).
 - **Reconnect:** `create_app` registers `private_feed.on_reconnected(...)` → `scheduler.trigger("reconcile")`
   (skipped if a run is already in flight).
 - Order/algo writes go through `execution.order_store` (same rules as the private WS); fills through
@@ -53,7 +56,8 @@ Mismatch entry: `{"inst_id", "pos_id", "pos_side", "okx_pos": "10", "db_pos": "4
 
 Protected = a pending `conditional|oco` algo on the instrument with `slTriggerPx`, state
 `live|partially_effective`, side = closing side (posSide must match in long/short mode). Skipped while an
-Atlas order on the instrument is `new|sending` or younger than `protect_grace_seconds` (30).
+Atlas order on the instrument was created, or is `new|sending` and was last updated, within
+`protect_grace_seconds` (30). An older stuck `new|sending` row does not block protection.
 
 Stop price (`plan_stop`): the stop of the Atlas proposal whose entry has an opening-side fill since
 `cTime` (newest), if still below the mark (long) / above it (short); else

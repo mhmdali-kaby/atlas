@@ -565,6 +565,72 @@ async def test_a_protected_position_is_left_alone_and_a_second_run_places_nothin
     assert [e for e in envelopes(rds, "atlas.system") if e.type == "system.alert"] == []
 
 
+
+def _sending_entry(engine: Engine, inst_id: str, age: timedelta) -> str:
+    """An Atlas entry stuck in ``sending`` (never reached OKX, never marked failed) since ``AT - age``."""
+    pid, rid = make_check(engine, inst_id)
+    cl = derived_id("e", rid)
+    with engine.begin() as c:
+        c.execute(
+            Order.__table__.insert().values(
+                id=uuid.uuid4(),
+                env=ENV,
+                proposal_id=pid,
+                risk_check_id=rid,
+                cl_ord_id=cl,
+                ord_id=None,
+                inst_id=inst_id,
+                side="buy",
+                pos_side="net",
+                ord_type="limit",
+                td_mode="isolated",
+                px=D(4000),
+                sz=D(5),
+                filled_sz=D(0),
+                state="sending",
+                origin="atlas",
+                purpose="entry",
+                created_at=AT - age,
+                updated_at=AT - age,
+            )
+        )
+    return cl
+
+
+async def test_an_old_stuck_sending_order_does_not_block_protection(
+    engine: Engine, rds: redis.Redis, world: dict[str, Any], okx: Okx
+) -> None:
+    inst = world["inst_id"]
+    pid, rid = make_check(engine, inst, stop="3960.004")
+    cl = atlas_entry(engine, inst, pid, rid, "500003", "10")
+    _sending_entry(engine, inst, timedelta(hours=2))
+    okx.positions = [position(inst)]
+    okx.fills = [fill_row(inst, "500003", "10", "t3", cl)]
+
+    result = await run(engine, rds)
+
+    placed = okx.placed()
+    assert len(placed) == 1
+    assert placed[0]["slTriggerPx"] == "3960.01"
+    assert result.protected[0]["stop_source"] == "proposal"
+
+
+async def test_a_fresh_sending_order_leaves_protection_to_the_executor(
+    engine: Engine, rds: redis.Redis, world: dict[str, Any], okx: Okx
+) -> None:
+    inst = world["inst_id"]
+    pid, rid = make_check(engine, inst)
+    cl = atlas_entry(engine, inst, pid, rid, "500004", "10")
+    _sending_entry(engine, inst, timedelta(seconds=5))
+    okx.positions = [position(inst)]
+    okx.fills = [fill_row(inst, "500004", "10", "t4", cl)]
+
+    result = await run(engine, rds)
+
+    assert okx.placed() == []
+    assert result.protected == []
+
+
 # --- AC2: no Atlas proposal → emergency stop, never beyond max_stop_pct -----------------------------
 
 
@@ -854,6 +920,45 @@ async def test_execute_is_refused_until_the_startup_reconciliation_has_run(
         other = f"/internal/execute/{uuid.uuid4()}"
         after = http.post(other, headers=signed_headers(SECRET, "POST", other))
     assert after.json()["reason"] == "risk_check_not_found"
+
+
+
+async def test_owner_approval_execute_is_refused_until_the_startup_reconciliation_has_run(
+    engine: Engine, rds: redis.Redis, okx: Okx
+) -> None:
+    gate = ReconcileGate()
+    scheduler = Scheduler()
+    scheduler.add(
+        JOB,
+        300,
+        reconcile_job(ENV, engine, "app-key", gate, client_factory=factory, redis_client=rds, now=lambda: AT),
+    )
+    application = create_app(_settings(), scheduler=scheduler, engine=engine, reconcile_gate=gate)
+    calls: list[Any] = []
+
+    async def spy(*args: Any, **kwargs: Any) -> Any:
+        calls.append(args)
+        raise AssertionError("the Executor must not be called before reconciliation")
+
+    application.state.approval_execute = spy
+    application.state.risk_redis = rds
+    pid = uuid.uuid4()
+    path = f"/internal/proposals/{pid}/execute"
+    body = json.dumps({"approved_by": "owner"}).encode()
+    with TestClient(application) as http:
+        before = http.post(path, content=body, headers=signed_headers(SECRET, "POST", path, body))
+        assert before.status_code == 409
+        assert before.json()["reason"] == "not_reconciled"
+        assert before.json()["proposal_id"] == str(pid)
+        assert calls == []
+        assert posts(okx.router, "trade/order") == []
+
+        await scheduler.run_now(JOB)
+        assert gate.ready
+
+        after = http.post(path, content=body, headers=signed_headers(SECRET, "POST", path, body))
+    assert after.json()["reason"] != "not_reconciled"
+    assert calls == []
 
 
 def test_the_real_app_registers_reconciliation_first_and_starts_closed(engine: Engine) -> None:

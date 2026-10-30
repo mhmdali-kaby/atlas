@@ -20,6 +20,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from trading_core.execution.executor import execute
+from trading_core.execution.reconcile import not_reconciled_refusal
 from trading_core.security import PROTECTED_PREFIX
 
 router = APIRouter(prefix=PROTECTED_PREFIX)
@@ -42,19 +43,10 @@ async def execute_risk_check(risk_check_id: str, request: Request) -> JSONRespon
         if approved_by is not None and not isinstance(approved_by, str):
             return JSONResponse(status_code=422, content={"ok": False, "error": "invalid_approved_by"})
     state = request.app.state
-    gate = getattr(state, "reconcile_gate", None)
-    if gate is not None and not gate.ready:
+    refusal = not_reconciled_refusal(state)
+    if refusal is not None:
         # Rule 8 (ATL-146): nothing is sent before the first reconciliation with OKX has finished.
-        return JSONResponse(
-            status_code=409,
-            content={
-                "ok": False,
-                "status": "refused",
-                "reason": "not_reconciled",
-                "detail": "Atlas is still reconciling with OKX after a restart; try again shortly.",
-                "risk_check_id": risk_check_id,
-            },
-        )
+        return JSONResponse(status_code=409, content={**refusal, "risk_check_id": risk_check_id})
     result = await execute(
         risk_check_id,
         approved_by,
