@@ -1002,7 +1002,21 @@ return [
             'historian_regime_table' => '07:30',
             'news_morning_brief' => '07:30',
             'scout_watchlist' => '08:00',
+            'scoring' => '00:15',
             'tick_seconds' => 30,
+        ],
+        'scoring' => [
+            'lookback_days' => 3,
+            'scout' => [
+                'outcome_hours' => 24,
+                'price_bar' => '1H',
+                'max_price_lag_minutes' => 120,
+                'atr_bar' => '1D',
+                'atr_bars' => 100,
+            ],
+            'news' => [
+                'latency_target_seconds' => 90,
+            ],
         ],
         'regime_table' => [
             'top_n' => 60,

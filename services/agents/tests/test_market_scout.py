@@ -347,7 +347,7 @@ def _cards(bridge: Bridge) -> list[EventEnvelope]:
 def test_market_scout_is_enabled_and_scheduled_at_0800() -> None:
     assert REGISTRY[SLUG].enabled
     hooks = {h.name: h for h in discover_hooks()[SLUG].schedule}
-    assert set(hooks) == {"scout_watchlist", "scout_spike_check"}  # ATL-109 added the spike check
+    assert set(hooks) == {"scout_watchlist", "scout_spike_check", "scoring"}  # ATL-109, ATL-110
     hook = hooks["scout_watchlist"]
     assert hook.daily and hook.time_of_day().isoformat() == "08:00:00"
     assert discover_hooks()[SLUG].on_mention is not None

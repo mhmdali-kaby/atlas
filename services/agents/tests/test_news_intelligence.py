@@ -317,8 +317,9 @@ def test_news_intelligence_is_enabled_and_registers_mention_schedule_and_alert_h
     assert REGISTRY[SLUG].enabled
     hooks = discover_hooks()[SLUG]
     assert hooks.on_mention is hooks_module.answer_mention
-    assert [h.name for h in hooks.schedule] == ["news_morning_brief"]
-    assert hooks.schedule[0].time_of_day().isoformat() == "07:30:00"
+    schedule = {h.name: h for h in hooks.schedule}  # registration order follows import order
+    assert set(schedule) == {"news_morning_brief", "scoring"}  # scoring: ATL-110
+    assert schedule["news_morning_brief"].time_of_day().isoformat() == "07:30:00"
     assert set(hooks.on_event) == {"news.alert"}
     # News Intelligence analyses every alert; the only other listener is Market Scout's code-only
     # intraday re-run trigger (ATL-109, importance 5), which starts no News run.
