@@ -24,6 +24,12 @@ Every run, whatever its outcome, then ends with one ``warroom.thinking`` event o
 ``run_end`` carrying ``status`` ok|error|rate_limited|degraded (ATL-93), so the UI can close the
 run's live row. Failed runs publish no message.
 
+Every ``warroom.thinking`` event of a run, run_end included, carries ``thread_id`` and
+``reply_to`` (ATL-98): for a run started from an @mention, the mention's thread id and message id
+(the same values the run's final reply uses); null for a scheduled or manual run, which the UI
+shows in Main. ``AgentSession.run(..., thread_id=, reply_to=)`` passes them through to the
+observer at creation, so they are on the stream from the first event, not only the final one.
+
 Publishing never fails a run: a publish error is logged and dropped.
 """
 
@@ -162,6 +168,8 @@ class ThinkingPublisher:
         run_id: uuid.UUID,
         publish: events.Publisher = events.bus_publisher,
         correlation_id: str | None = None,
+        thread_id: str | None = None,
+        reply_to: str | None = None,
         config: Mapping[str, Any] | None = None,
         clock: Clock = time.monotonic,
         sleep: Sleep = asyncio.sleep,
@@ -172,6 +180,10 @@ class ThinkingPublisher:
         self.env = env
         self.run_id = run_id
         self.correlation_id = correlation_id
+        # ATL-98: the triggering mention's thread and message id, carried on every thinking event
+        # of this run (including run_end); both None for a scheduled or manual run.
+        self.thread_id = thread_id
+        self.reply_to = reply_to
         self._publish = publish
         self._clock = clock
         self._sleep = sleep
@@ -321,6 +333,8 @@ class ThinkingPublisher:
             "agent": self.agent,
             "seq": self.seq,
             "delta_type": segment.delta_type,
+            "thread_id": self.thread_id,
+            "reply_to": self.reply_to,
             "text": text,
             "tool": segment.tool,
             "tool_use_id": segment.tool_use_id,
@@ -426,12 +440,20 @@ class ThinkingPublisher:
 
 def observer_factory(
     *, agent: str, env: str, publish: events.Publisher = events.bus_publisher
-) -> Callable[[uuid.UUID, str | None], RunObserver]:
+) -> Callable[[uuid.UUID, str | None, str | None, str | None], RunObserver]:
     """For ``AgentSession(observer_factory=...)``: one ThinkingPublisher per run."""
 
-    def make(run_id: uuid.UUID, correlation_id: str | None) -> RunObserver:
+    def make(
+        run_id: uuid.UUID, correlation_id: str | None, thread_id: str | None, reply_to: str | None
+    ) -> RunObserver:
         return ThinkingPublisher(
-            agent=agent, env=env, run_id=run_id, publish=publish, correlation_id=correlation_id
+            agent=agent,
+            env=env,
+            run_id=run_id,
+            publish=publish,
+            correlation_id=correlation_id,
+            thread_id=thread_id,
+            reply_to=reply_to,
         )
 
     return make

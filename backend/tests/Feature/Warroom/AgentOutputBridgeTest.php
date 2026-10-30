@@ -116,6 +116,8 @@ function atl89Thinking(array $payload = []): array
             'agent' => 'historian',
             'seq' => 3,
             'delta_type' => 'thinking',
+            'thread_id' => null,
+            'reply_to' => null,
             'text' => 'Checking the regime before the analogs.',
             'tool' => null,
             'tool_use_id' => null,
@@ -239,6 +241,58 @@ it('cuts a thinking payload over the byte cap to the cap and marks it truncated'
         ->and($payload['seq'])->toBe(3)
         ->and($sent[0]['payload']['id'])->toBe($envelope['id'])
         ->and(WarroomMessage::query()->count())->toBe(0);
+});
+
+it('relays a thinking envelope\'s thread_id and reply_to unchanged', function (): void {
+    $envelope = atl89Thinking([
+        'thread_id' => (string) Str::uuid(),
+        'reply_to' => (string) Str::uuid(),
+    ]);
+    atl89Publish($envelope);
+    atl89Drain();
+
+    $sent = collect($this->broadcasts->sent)->where('event', 'warroom.thinking')->values();
+    expect($sent)->toHaveCount(1)
+        ->and($sent[0]['payload'])->toBe($envelope)
+        ->and($sent[0]['payload']['payload']['thread_id'])->toBe($envelope['payload']['thread_id'])
+        ->and($sent[0]['payload']['payload']['reply_to'])->toBe($envelope['payload']['reply_to']);
+});
+
+it('keeps thread_id and reply_to through the byte-cap truncation', function (): void {
+    config()->set('atlas_defaults.warroom.thinking_max_bytes', 1024);
+    $threadId = (string) Str::uuid();
+    $replyTo = (string) Str::uuid();
+    $envelope = atl89Thinking([
+        'delta_type' => 'tool_result',
+        'thread_id' => $threadId,
+        'reply_to' => $replyTo,
+        'text' => null,
+        'tool' => 'mcp__history__find_analogs',
+        'tool_use_id' => 'toolu_2',
+        'output' => str_repeat('analog row é ', 400),
+    ]);
+    atl89Publish($envelope);
+    atl89Drain();
+
+    $sent = collect($this->broadcasts->sent)->where('event', 'warroom.thinking')->values();
+    $payload = $sent[0]['payload']['payload'];
+
+    expect($payload['truncated'])->toBeTrue()
+        ->and($payload['thread_id'])->toBe($threadId)
+        ->and($payload['reply_to'])->toBe($replyTo);
+});
+
+it('keeps thread_id and reply_to even in the capped payload\'s last-resort shape', function (): void {
+    $capped = BridgeEventHandler::capPayload([
+        'run_id' => 'r', 'agent' => 'historian', 'seq' => 1, 'delta_type' => 'text',
+        'thread_id' => 'thread-1', 'reply_to' => 'msg-1',
+        'tool' => str_repeat('x', 900),
+    ], 200);
+
+    expect($capped)->toBe([
+        'truncated' => true, 'run_id' => 'r', 'agent' => 'historian', 'seq' => 1, 'delta_type' => 'text',
+        'thread_id' => 'thread-1', 'reply_to' => 'msg-1',
+    ]);
 });
 
 it('caps a thinking payload whose input object is the bulk', function (): void {
