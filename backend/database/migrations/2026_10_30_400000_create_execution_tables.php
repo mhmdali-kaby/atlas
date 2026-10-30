@@ -143,18 +143,18 @@ return new class extends Migration
             $table->index(['env', 'ord_id']);
         });
 
-        DB::statement("ALTER TABLE orders ADD CONSTRAINT orders_sz_positive CHECK (sz > 0)");
-        DB::statement("ALTER TABLE orders ADD CONSTRAINT orders_filled_sz_range CHECK (filled_sz >= 0 AND filled_sz <= sz)");
-        DB::statement("ALTER TABLE orders ADD CONSTRAINT orders_lever_positive CHECK (lever >= 1)");
+        DB::statement('ALTER TABLE orders ADD CONSTRAINT orders_sz_positive CHECK (sz > 0)');
+        DB::statement('ALTER TABLE orders ADD CONSTRAINT orders_filled_sz_range CHECK (filled_sz >= 0 AND filled_sz <= sz)');
+        DB::statement('ALTER TABLE orders ADD CONSTRAINT orders_lever_positive CHECK (lever >= 1)');
         // Rule 8: every order Atlas places carries a clOrdId.
         DB::statement("ALTER TABLE orders ADD CONSTRAINT orders_atlas_has_cl_ord_id CHECK (origin <> 'atlas' OR cl_ord_id IS NOT NULL)");
         // Rule 1: an entry Atlas places exists only for a proposal that passed a risk check.
         DB::statement("ALTER TABLE orders ADD CONSTRAINT orders_atlas_entry_risk_checked CHECK (origin <> 'atlas' OR purpose <> 'entry' OR (proposal_id IS NOT NULL AND risk_check_id IS NOT NULL))");
         DB::statement("ALTER TABLE algo_orders ADD CONSTRAINT algo_orders_atlas_has_cl_ord_id CHECK (origin <> 'atlas' OR algo_cl_ord_id IS NOT NULL)");
-        DB::statement("ALTER TABLE algo_orders ADD CONSTRAINT algo_orders_sz_positive CHECK (sz > 0)");
+        DB::statement('ALTER TABLE algo_orders ADD CONSTRAINT algo_orders_sz_positive CHECK (sz > 0)');
         DB::statement("ALTER TABLE algo_orders ADD CONSTRAINT algo_orders_oco_has_both CHECK (kind <> 'oco' OR (sl_trigger_px IS NOT NULL AND tp_trigger_px IS NOT NULL))");
         DB::statement("ALTER TABLE algo_orders ADD CONSTRAINT algo_orders_single_has_trigger CHECK (kind = 'oco' OR trigger_px IS NOT NULL)");
-        DB::statement("ALTER TABLE fills ADD CONSTRAINT fills_sz_positive CHECK (fill_sz > 0)");
+        DB::statement('ALTER TABLE fills ADD CONSTRAINT fills_sz_positive CHECK (fill_sz > 0)');
 
         // ATL-127 owns circuit breakers and may have created this first; same shape either way.
         if (! Schema::hasTable('trading_state')) {

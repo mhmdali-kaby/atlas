@@ -1,0 +1,16 @@
+{
+  "code": "0",
+  "msg": "",
+  "data": [
+    {
+      "clOrdId": "atlb1946ac9b2c64f2c8d0b6a1f3e9c7",
+      "ordId": "312269865356374016",
+      "tag": "",
+      "ts": "1793207736700",
+      "sCode": "0",
+      "sMsg": "Order placed"
+    }
+  ],
+  "inTime": "1793207736690000",
+  "outTime": "1793207736701000"
+}

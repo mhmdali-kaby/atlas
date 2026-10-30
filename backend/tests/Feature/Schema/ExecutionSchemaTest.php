@@ -109,8 +109,8 @@ it('enforces unique algo_cl_ord_id and an OCO with both triggers', function (): 
     expect(fn () => DB::transaction(fn () => DB::table('algo_orders')->insert(['id' => (string) Str::uuid(), ...$row])))
         ->toThrow(UniqueConstraintViolationException::class);
     expect(fn () => DB::table('algo_orders')->insert([
-            'id' => (string) Str::uuid(), ...$row, 'algo_cl_ord_id' => 'atloco01', 'kind' => 'oco',
-            'trigger_px' => null, 'sl_trigger_px' => '66900',
+        'id' => (string) Str::uuid(), ...$row, 'algo_cl_ord_id' => 'atloco01', 'kind' => 'oco',
+        'trigger_px' => null, 'sl_trigger_px' => '66900',
     ]))->toThrow(QueryException::class);
 });
 

@@ -1,0 +1,21 @@
+{
+  "code": "2",
+  "msg": "",
+  "data": [
+    {
+      "algoId": "681096944655273984",
+      "algoClOrdId": "",
+      "clOrdId": "",
+      "sCode": "0",
+      "sMsg": "",
+      "tag": ""
+    },
+    {
+      "algoId": "681096944655273985",
+      "algoClOrdId": "",
+      "clOrdId": "",
+      "sCode": "51400",
+      "sMsg": "Cancellation failed as the order does not exist."
+    }
+  ]
+}
