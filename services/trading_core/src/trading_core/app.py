@@ -19,6 +19,9 @@ from fastapi import APIRouter, FastAPI, Request
 from fastapi.responses import JSONResponse
 from sqlalchemy import Engine
 
+from trading_core.approvals.api import router as approvals_router
+from trading_core.approvals.sweeper import JOB as APPROVALS_JOB
+from trading_core.approvals.sweeper import approvals_job
 from trading_core.backfill.api import router as backfill_router
 from trading_core.backfill.runner import STREAM as BACKFILL_JOB
 from trading_core.backfill.runner import backfill_job
@@ -223,6 +226,8 @@ def default_scheduler(settings: Settings, engine: Engine | None = None) -> Sched
         DEFAULTS["quality"]["interval_seconds"],
         quality_job(settings.env, engine, client_factory=market_client),
     )
+    # ATL-162: approval reminders and the timeout reject.
+    scheduler.add(APPROVALS_JOB, DEFAULTS["approvals"]["sweep_seconds"], approvals_job(settings.env, engine))
     return scheduler
 
 
@@ -301,6 +306,7 @@ def create_app(
     application.include_router(quality_router)
     application.include_router(risk_router)
     application.include_router(execution_router)
+    application.include_router(approvals_router)
     if extra_internal is not None:
         application.include_router(extra_internal)
     # Last added runs first: the access log wraps the signature check, so rejected calls are logged too.
