@@ -765,7 +765,31 @@ agents:
     historian_regime_table: "07:30"
     news_morning_brief: "07:30"
     scout_watchlist: "08:00"
+    # ATL-110: the daily agent_scores job (atlas_agents.scoring), run per agent (Market Scout,
+    # News Intelligence) for the previous Baghdad days in agents.scoring.lookback_days.
+    scoring: "00:15"
     tick_seconds: 30
+  # ATL-110, brief §7.1 Scoring / §7.2 latency / §9.3 + decision #247 (6): agent_scores written by
+  # code (atlas_agents.scoring) at agents.schedule.scoring for each Baghdad day in
+  # [today - lookback_days, today - 1]. Re-scoring a day overwrites its row (one per agent/env/day).
+  #   scout.outcome_hours: a pick's move is close-to-close over this many hours from the watchlist's
+  #     created_at (the day's current version); the day is skipped until that window has closed.
+  #   scout.price_bar / max_price_lag_minutes: the prices at both ends are the close of the last
+  #     price_bar candle closed by that instant, refused when it closed more than this long before.
+  #   scout.atr_bar: the move is divided by Wilder ATR(quant.atr_window) of these bars closed by
+  #     created_at (ATR(1D)); scout.atr_bars is how many bars are loaded for it.
+  #   news.latency_target_seconds: the brief's ingest-to-alert target (< 90 s for RSS sources); the
+  #     share of alerts within it is the News Intelligence row's hit_rate.
+  scoring:
+    lookback_days: 3
+    scout:
+      outcome_hours: 24
+      price_bar: 1H
+      max_price_lag_minutes: 120
+      atr_bar: 1D
+      atr_bars: 100
+    news:
+      latency_target_seconds: 90
   regime_table:
     top_n: 60
   mentions:
