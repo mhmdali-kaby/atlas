@@ -46,17 +46,17 @@ from typing import Any, Final, Protocol
 from atlas_shared.db import AgentState, Cycle, Proposal, Vote, owner_day
 from atlas_shared.defaults import DEFAULTS
 from atlas_shared.events import EventEnvelope
-from sqlalchemy import Table, select, text, update
+from sqlalchemy import Table, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from atlas_agents import proposals as proposal_reads
 from atlas_agents import votes
+from atlas_agents.orchestrator import approval
 from atlas_agents.orchestrator.trading_core import TradingCoreClient, TradingCoreError
 from atlas_agents.registry import AgentHost
 from atlas_agents.tools import ToolContext
 from atlas_agents.tools.framework import RunScope, ToolError
-from atlas_agents.tools.warroom import MAIN_THREAD, message_envelope
+from atlas_agents.tools.warroom import MAIN_THREAD
 from atlas_agents.watchlists import current_watchlist, listed_ids
 
 log = logging.getLogger(__name__)
@@ -445,28 +445,9 @@ class CycleRunner:
         return [v for v in voters if v not in got]
 
     def autonomy_level(self) -> int:
-        """The owner's autonomy level: settings.data, else the typed column, else the default."""
+        """The owner's autonomy level (:func:`approval.autonomy_level`)."""
         with self._session() as session:
-            data = proposal_reads.settings_data(session, self.ctx).data
-            row = session.execute(
-                text("SELECT autonomy_level FROM settings WHERE env = :e"), {"e": self.host.env}
-            ).first()
-        raw = data.get("autonomy_level", row[0] if row is not None else None)
-        try:
-            level = int(raw) if raw is not None else int(self.defaults["autonomy"]["default_level"])
-        except (TypeError, ValueError):
-            level = int(self.defaults["autonomy"]["default_level"])
-        return level
-
-    def approval_timeout(self) -> timedelta:
-        with self._session() as session:
-            data = proposal_reads.settings_data(session, self.ctx).data
-        raw = data.get("approval_timeout_minutes", self.defaults["autonomy"]["approval_timeout_minutes"])
-        try:
-            minutes = int(raw)
-        except (TypeError, ValueError):
-            minutes = int(self.defaults["autonomy"]["approval_timeout_minutes"])
-        return timedelta(minutes=max(1, minutes))
+            return approval.autonomy_level(session, self.ctx, self.defaults)
 
     # -- waits ---------------------------------------------------------------------------------------
 
@@ -726,60 +707,20 @@ class CycleRunner:
             )
             self.system_line(cycle_id, "risk_check", f"Risk check on {item.inst_id} failed: {exc.code}.")
             return "error"
-        ctx = self._vote_ctx(cycle_id)
-        card = {"type": "risk_check", **{k: v for k, v in body.items() if k != "ok"}}
-        content = f"**Risk {body.get('result')}** on {item.inst_id}: {body.get('reason') or ''}".strip()
-        self.host.publish(
-            WARROOM_STREAM, message_envelope(ctx, kind="risk_check", content_md=content, card=card)
+        status, _expires, row = approval.apply_risk_result(
+            self._vote_ctx(cycle_id),
+            item.head,
+            body,
+            cycle_id=cycle_id,
+            source=SOURCE,
+            now=self.clock.now(),
+            autonomy=autonomy,
+            inst_id=item.inst_id,
+            defaults=self.defaults,
         )
-
-        at = self.clock.now()
-        if body.get("result") == "rejected":
-            status, expires = "rejected", None
-        elif autonomy <= 1 or body.get("decision") == "advise_only":
-            status, expires = "advise_only", None
-        else:
-            # awaiting_owner, and send_now while autonomy 3-4 are not enabled: the owner approves.
-            status, expires = "awaiting_owner", at + await asyncio.to_thread(self.approval_timeout)
-        values: dict[str, Any] = {"status": status, "updated_at": at}
-        if expires is not None:
-            values["approval_expires_at"] = expires
-        with self._session() as session:
-            row = session.execute(
-                update(Proposal)
-                .where(Proposal.id == item.head, Proposal.status == "risk_checked")
-                .values(**values)
-                .returning(Proposal.id, Proposal.version, Proposal.inst_id, Proposal.side)
-            ).first()
-            session.commit()
         if row is None:
             log.warning("orchestrator: proposal %s was not risk_checked after the check", item.head)
             return "error"
-        if status in ("awaiting_owner", "advise_only"):
-            self.host.publish(
-                PROPOSALS_STREAM,
-                EventEnvelope(
-                    type=f"proposal.{status}",
-                    ts=at,
-                    env=self.host.env,
-                    source=SOURCE,
-                    correlation_id=correlation_id(cycle_id),
-                    payload={
-                        "proposal_id": str(row.id),
-                        "version": row.version,
-                        "cycle_id": str(cycle_id),
-                        "inst_id": row.inst_id,
-                        "side": row.side,
-                        "risk_check_id": body.get("risk_check_id"),
-                        "result": body.get("result"),
-                        "decision": body.get("decision"),
-                        "final_contracts": body.get("final_contracts"),
-                        "final_notional_usd": body.get("final_notional_usd"),
-                        "leverage": body.get("leverage"),
-                        "approval_expires_at": _iso(expires) if expires else None,
-                    },
-                ),
-            )
         return status
 
 
