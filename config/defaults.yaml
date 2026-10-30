@@ -348,23 +348,30 @@ news:
   # ATL-65: headline RSS feeds poll every 60 s so an alert lands < 90 s after the story is posted
   # (brief §7.2 latency target); the per-symbol Yahoo template stays at 300 s (one request per symbol).
   # ATL-71: provider owns the API key (one key per provider, written to all its sources).
+  # ATL-106 (decision #247 (4), brief §7.2): reputable / official decide a story cluster's status in
+  # code. CONFIRMED = any official source or 2+ distinct reputable sources; REPORTED = exactly one
+  # reputable; else RUMOUR. Official = the exchange's own announcements. Reputable = newsrooms with
+  # editorial standards (CoinDesk, The Block, CNBC, MarketWatch) and Finnhub's news feed. Not
+  # reputable: CryptoPanic (aggregated community/social posts), Cointelegraph and Decrypt (more
+  # opinion and sponsored content), Yahoo per-symbol feeds (mixed press releases). The seeder and the
+  # migration set these on install; the owner cannot edit them (read-only in the Data sources API).
   # covers: source keys this source takes over when it is enabled and keyed (decision #244:
   # Finnhub's calendar replaces ForexFactory); the API reports it as covered_by on those sources.
   sources:
-    okx.announcements: { provider: okx, kind: api, category: exchange, name: OKX announcements, url: "https://www.okx.com/api/v5/support/announcements", poll_seconds: 120, requires_key: false }
-    cryptopanic: { provider: cryptopanic, kind: api, category: crypto_news, name: CryptoPanic, url: "https://cryptopanic.com/api/v1/posts/", poll_seconds: 180, requires_key: true }
-    rss.coindesk: { provider: coindesk, kind: rss, category: crypto_news, name: CoinDesk, url: "https://www.coindesk.com/arc/outboundfeeds/rss", poll_seconds: 60, requires_key: false }
-    rss.cointelegraph: { provider: cointelegraph, kind: rss, category: crypto_news, name: Cointelegraph, url: "https://cointelegraph.com/rss", poll_seconds: 60, requires_key: false }
-    rss.theblock: { provider: theblock, kind: rss, category: crypto_news, name: The Block, url: "https://www.theblock.co/rss.xml", poll_seconds: 60, requires_key: false }
-    rss.decrypt: { provider: decrypt, kind: rss, category: crypto_news, name: Decrypt, url: "https://decrypt.co/feed", poll_seconds: 60, requires_key: false }
-    rss.cnbc: { provider: cnbc, kind: rss, category: markets_news, name: CNBC Top News, url: "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114", poll_seconds: 60, requires_key: false }
-    rss.marketwatch: { provider: marketwatch, kind: rss, category: markets_news, name: MarketWatch Top Stories, url: "https://feeds.content.dowjones.io/public/rss/mw_topstories", poll_seconds: 60, requires_key: false }
-    rss.yahoo: { provider: yahoo, kind: rss, category: markets_news, name: Yahoo Finance (per symbol), url: "https://feeds.finance.yahoo.com/rss/2.0/headline?s={symbol}&region=US&lang=en-US", poll_seconds: 300, requires_key: false }
-    finnhub.news: { provider: finnhub, kind: api, category: markets_news, name: Finnhub news, url: "https://finnhub.io/api/v1/news", poll_seconds: 180, requires_key: true }
-    finnhub.calendar: { provider: finnhub, kind: calendar, category: calendar, name: Finnhub economic calendar, url: "https://finnhub.io/api/v1/calendar/economic", poll_seconds: 900, requires_key: true, covers: [forexfactory.calendar] }
-    finnhub.earnings: { provider: finnhub, kind: earnings, category: earnings, name: Finnhub earnings calendar, url: "https://finnhub.io/api/v1/calendar/earnings", poll_seconds: 86400, requires_key: true }
-    forexfactory.calendar: { provider: forexfactory, kind: calendar, category: calendar, name: ForexFactory weekly calendar, url: "https://nfs.faireconomy.media/ff_calendar_thisweek.json", poll_seconds: 900, requires_key: false }
-    alternative_me.fng: { provider: alternative_me, kind: sentiment, category: sentiment, name: Crypto Fear & Greed Index, url: "https://api.alternative.me/fng/", poll_seconds: 3600, requires_key: false }
+    okx.announcements: { provider: okx, kind: api, category: exchange, name: OKX announcements, url: "https://www.okx.com/api/v5/support/announcements", poll_seconds: 120, requires_key: false, reputable: true, official: true }
+    cryptopanic: { provider: cryptopanic, kind: api, category: crypto_news, name: CryptoPanic, url: "https://cryptopanic.com/api/v1/posts/", poll_seconds: 180, requires_key: true, reputable: false, official: false }
+    rss.coindesk: { provider: coindesk, kind: rss, category: crypto_news, name: CoinDesk, url: "https://www.coindesk.com/arc/outboundfeeds/rss", poll_seconds: 60, requires_key: false, reputable: true, official: false }
+    rss.cointelegraph: { provider: cointelegraph, kind: rss, category: crypto_news, name: Cointelegraph, url: "https://cointelegraph.com/rss", poll_seconds: 60, requires_key: false, reputable: false, official: false }
+    rss.theblock: { provider: theblock, kind: rss, category: crypto_news, name: The Block, url: "https://www.theblock.co/rss.xml", poll_seconds: 60, requires_key: false, reputable: true, official: false }
+    rss.decrypt: { provider: decrypt, kind: rss, category: crypto_news, name: Decrypt, url: "https://decrypt.co/feed", poll_seconds: 60, requires_key: false, reputable: false, official: false }
+    rss.cnbc: { provider: cnbc, kind: rss, category: markets_news, name: CNBC Top News, url: "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114", poll_seconds: 60, requires_key: false, reputable: true, official: false }
+    rss.marketwatch: { provider: marketwatch, kind: rss, category: markets_news, name: MarketWatch Top Stories, url: "https://feeds.content.dowjones.io/public/rss/mw_topstories", poll_seconds: 60, requires_key: false, reputable: true, official: false }
+    rss.yahoo: { provider: yahoo, kind: rss, category: markets_news, name: Yahoo Finance (per symbol), url: "https://feeds.finance.yahoo.com/rss/2.0/headline?s={symbol}&region=US&lang=en-US", poll_seconds: 300, requires_key: false, reputable: false, official: false }
+    finnhub.news: { provider: finnhub, kind: api, category: markets_news, name: Finnhub news, url: "https://finnhub.io/api/v1/news", poll_seconds: 180, requires_key: true, reputable: true, official: false }
+    finnhub.calendar: { provider: finnhub, kind: calendar, category: calendar, name: Finnhub economic calendar, url: "https://finnhub.io/api/v1/calendar/economic", poll_seconds: 900, requires_key: true, covers: [forexfactory.calendar], reputable: false, official: false }
+    finnhub.earnings: { provider: finnhub, kind: earnings, category: earnings, name: Finnhub earnings calendar, url: "https://finnhub.io/api/v1/calendar/earnings", poll_seconds: 86400, requires_key: true, reputable: false, official: false }
+    forexfactory.calendar: { provider: forexfactory, kind: calendar, category: calendar, name: ForexFactory weekly calendar, url: "https://nfs.faireconomy.media/ff_calendar_thisweek.json", poll_seconds: 900, requires_key: false, reputable: false, official: false }
+    alternative_me.fng: { provider: alternative_me, kind: sentiment, category: sentiment, name: Crypto Fear & Greed Index, url: "https://api.alternative.me/fng/", poll_seconds: 3600, requires_key: false, reputable: false, official: false }
 
   # ATL-64: local embeddings (atlas_ingest.embedding) and story clustering (atlas_ingest.clustering).
   # The model is multilingual (Arabic, CJK and European headlines join their English story) and
@@ -665,6 +672,13 @@ agents:
     mark_price_bar: 1m
     series_limit: 200
     min_correlation_obs: 3
+  # ATL-106, brief §7.2: price_move_since_first_seen_atr on news clusters (atlas_quant.move_since_atr):
+  #   (price now - close of the last `bar` closed by first_seen) / Wilder ATR(quant.atr_window) of the
+  #   `bar` bars closed by first_seen, read from the last `history_bars` of them. Price now is the
+  #   market_tools.mark_price_bar proxy (newest closed 1m close).
+  news_price_move:
+    bar: 1H
+    history_bars: 200
   tools:
     max_result_tokens: 4000
     chars_per_token: 4

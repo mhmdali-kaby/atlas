@@ -20,6 +20,7 @@ const ATL66_FIELDS = [
     'key', 'name', 'kind', 'category', 'url', 'enabled', 'requires_key', 'has_key', 'key_last4',
     'poll_seconds', 'status', 'consecutive_failures', 'disabled_until', 'last_success_at',
     'last_item_at', 'last_error', 'updated_at', 'provider', 'hourly_24h', 'covered_by',
+    'reputable', 'official',
 ];
 
 function atl66Source(string $key): NewsSource

@@ -440,6 +440,8 @@ return [
                 'url' => 'https://www.okx.com/api/v5/support/announcements',
                 'poll_seconds' => 120,
                 'requires_key' => false,
+                'reputable' => true,
+                'official' => true,
             ],
             'cryptopanic' => [
                 'provider' => 'cryptopanic',
@@ -449,6 +451,8 @@ return [
                 'url' => 'https://cryptopanic.com/api/v1/posts/',
                 'poll_seconds' => 180,
                 'requires_key' => true,
+                'reputable' => false,
+                'official' => false,
             ],
             'rss.coindesk' => [
                 'provider' => 'coindesk',
@@ -458,6 +462,8 @@ return [
                 'url' => 'https://www.coindesk.com/arc/outboundfeeds/rss',
                 'poll_seconds' => 60,
                 'requires_key' => false,
+                'reputable' => true,
+                'official' => false,
             ],
             'rss.cointelegraph' => [
                 'provider' => 'cointelegraph',
@@ -467,6 +473,8 @@ return [
                 'url' => 'https://cointelegraph.com/rss',
                 'poll_seconds' => 60,
                 'requires_key' => false,
+                'reputable' => false,
+                'official' => false,
             ],
             'rss.theblock' => [
                 'provider' => 'theblock',
@@ -476,6 +484,8 @@ return [
                 'url' => 'https://www.theblock.co/rss.xml',
                 'poll_seconds' => 60,
                 'requires_key' => false,
+                'reputable' => true,
+                'official' => false,
             ],
             'rss.decrypt' => [
                 'provider' => 'decrypt',
@@ -485,6 +495,8 @@ return [
                 'url' => 'https://decrypt.co/feed',
                 'poll_seconds' => 60,
                 'requires_key' => false,
+                'reputable' => false,
+                'official' => false,
             ],
             'rss.cnbc' => [
                 'provider' => 'cnbc',
@@ -494,6 +506,8 @@ return [
                 'url' => 'https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114',
                 'poll_seconds' => 60,
                 'requires_key' => false,
+                'reputable' => true,
+                'official' => false,
             ],
             'rss.marketwatch' => [
                 'provider' => 'marketwatch',
@@ -503,6 +517,8 @@ return [
                 'url' => 'https://feeds.content.dowjones.io/public/rss/mw_topstories',
                 'poll_seconds' => 60,
                 'requires_key' => false,
+                'reputable' => true,
+                'official' => false,
             ],
             'rss.yahoo' => [
                 'provider' => 'yahoo',
@@ -512,6 +528,8 @@ return [
                 'url' => 'https://feeds.finance.yahoo.com/rss/2.0/headline?s={symbol}&region=US&lang=en-US',
                 'poll_seconds' => 300,
                 'requires_key' => false,
+                'reputable' => false,
+                'official' => false,
             ],
             'finnhub.news' => [
                 'provider' => 'finnhub',
@@ -521,6 +539,8 @@ return [
                 'url' => 'https://finnhub.io/api/v1/news',
                 'poll_seconds' => 180,
                 'requires_key' => true,
+                'reputable' => true,
+                'official' => false,
             ],
             'finnhub.calendar' => [
                 'provider' => 'finnhub',
@@ -533,6 +553,8 @@ return [
                 'covers' => [
                     'forexfactory.calendar',
                 ],
+                'reputable' => false,
+                'official' => false,
             ],
             'finnhub.earnings' => [
                 'provider' => 'finnhub',
@@ -542,6 +564,8 @@ return [
                 'url' => 'https://finnhub.io/api/v1/calendar/earnings',
                 'poll_seconds' => 86400,
                 'requires_key' => true,
+                'reputable' => false,
+                'official' => false,
             ],
             'forexfactory.calendar' => [
                 'provider' => 'forexfactory',
@@ -551,6 +575,8 @@ return [
                 'url' => 'https://nfs.faireconomy.media/ff_calendar_thisweek.json',
                 'poll_seconds' => 900,
                 'requires_key' => false,
+                'reputable' => false,
+                'official' => false,
             ],
             'alternative_me.fng' => [
                 'provider' => 'alternative_me',
@@ -560,6 +586,8 @@ return [
                 'url' => 'https://api.alternative.me/fng/',
                 'poll_seconds' => 3600,
                 'requires_key' => false,
+                'reputable' => false,
+                'official' => false,
             ],
         ],
         'embedding' => [
@@ -910,6 +938,10 @@ return [
             'mark_price_bar' => '1m',
             'series_limit' => 200,
             'min_correlation_obs' => 3,
+        ],
+        'news_price_move' => [
+            'bar' => '1H',
+            'history_bars' => 200,
         ],
         'tools' => [
             'max_result_tokens' => 4000,

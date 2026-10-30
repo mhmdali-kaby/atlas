@@ -16,7 +16,7 @@ class NewsSourcesSeeder extends Seeder
 {
     public function run(): void
     {
-        /** @var array<string, array{provider: string, kind: string, category: string, name: string, url: string|null, poll_seconds: int, requires_key: bool}> $sources */
+        /** @var array<string, array{provider: string, kind: string, category: string, name: string, url: string|null, poll_seconds: int, requires_key: bool, reputable?: bool, official?: bool}> $sources */
         $sources = config('atlas_defaults.news.sources');
 
         foreach ($sources as $key => $source) {
@@ -31,6 +31,8 @@ class NewsSourcesSeeder extends Seeder
                     'enabled' => true,
                     'poll_seconds' => $source['poll_seconds'],
                     'requires_key' => $source['requires_key'],
+                    'reputable' => (bool) ($source['reputable'] ?? false),
+                    'official' => (bool) ($source['official'] ?? false),
                 ],
             );
         }
