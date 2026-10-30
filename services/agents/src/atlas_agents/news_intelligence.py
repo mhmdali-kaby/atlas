@@ -12,9 +12,10 @@
    (:class:`AlertLimiter`). No other agent registers that envelope type.
 
 In every brief the code owns these card fields, whatever the model wrote: each cluster's status,
-status sources, first_seen and price move (``warroom.apply_news_status``, ATL-106), ``brief_kind``
-(from the trigger), ``degraded_asset_classes`` (:func:`degraded_asset_classes`) and, for the morning
-brief, ``top_instruments``. The number guard's findings go in ``card.meta``.
+status sources, first_seen and price move (``warroom.apply_news_status``, ATL-106), ``form``
+(from the trigger), each upcoming event's ``importance`` (from economic_events),
+``degraded_asset_classes`` (:func:`degraded_asset_classes`) and, for the morning brief,
+``top_instruments``. The number guard's findings go in ``card.meta``.
 
 The hooks are registered in :mod:`atlas_agents.agents.news_intelligence`.
 """
@@ -40,7 +41,7 @@ from sqlalchemy import desc, func, select
 from atlas_agents import numguard
 from atlas_agents.historian import split_card, tool_calls
 from atlas_agents.mentions import MentionRequest
-from atlas_agents.schemas import CardMeta, NewsBrief, NewsBriefKind, NewsFlow
+from atlas_agents.schemas import CardMeta, NewsBrief, NewsBriefForm, NewsFlow, UpcomingEvent
 from atlas_agents.session import Review
 from atlas_agents.tools import ToolContext
 from atlas_agents.tools.framework import ToolError
@@ -181,15 +182,20 @@ def build_morning_context(ctx: ToolContext, defaults: Mapping[str, Any] = DEFAUL
             )
         }
         inst = func.unnest(NewsItem.instruments).label("inst")
-        unnested = select(inst, NewsItem.cluster_id.label("cid")).where(*window).subquery()
+        unnested = (
+            select(inst, NewsItem.cluster_id.label("cid"), NewsItem.sentiment.label("sentiment"))
+            .where(*window)
+            .subquery()
+        )
         flow_q = (
             select(
                 unnested.c.inst,
+                func.count(func.distinct(unnested.c.cid)).label("stories"),
                 func.count().label("items"),
-                func.count(func.distinct(unnested.c.cid)).label("clusters"),
+                func.avg(unnested.c.sentiment).label("sentiment"),
             )
             .group_by(unnested.c.inst)
-            .order_by(desc("items"), desc("clusters"), unnested.c.inst)
+            .order_by(desc("stories"), desc("items"), unnested.c.inst)
             .limit(int(cfg["top_instruments"]))
         )
         flow_rows = session.execute(flow_q).all()
@@ -254,7 +260,12 @@ def build_morning_context(ctx: ToolContext, defaults: Mapping[str, Any] = DEFAUL
         top_stories=stories,
         upcoming_events=calendar,
         top_instruments=[
-            NewsFlow(inst_id=str(r.inst), items=int(r.items), clusters=int(r.clusters)) for r in flow_rows
+            NewsFlow(
+                inst_id=str(r.inst),
+                stories=int(r.stories),
+                net_sentiment=None if r.sentiment is None else round(float(r.sentiment), 3),
+            )
+            for r in flow_rows
         ],
         degraded_asset_classes=degraded_asset_classes(ctx, defaults),
     )
@@ -384,6 +395,39 @@ def _validation_errors(exc: ValidationError) -> str:
     )
 
 
+def event_importance(ctx: ToolContext, events: Sequence[UpcomingEvent]) -> list[UpcomingEvent]:
+    """Each event with ``importance`` from economic_events: the highest importance of the events
+    scheduled at exactly its time (known by ``ctx.now()``), or null when there is none."""
+    times = sorted({e.time for e in events})
+    if not times:
+        return list(events)
+    with ctx.session_factory() as session:
+        rows = session.execute(
+            select(EconomicEvent.scheduled_at, func.max(EconomicEvent.importance))
+            .where(EconomicEvent.scheduled_at.in_(times), ctx.bound(EconomicEvent.created_at))
+            .group_by(EconomicEvent.scheduled_at)
+        ).all()
+    by_time = {at: int(importance) for at, importance in rows}
+    return [e.model_copy(update={"importance": by_time.get(e.time)}) for e in events]
+
+
+def code_facts(brief: NewsBrief) -> dict[str, Any]:
+    """The card fields the runtime wrote, for the number guard."""
+    return {
+        "clusters": [
+            {
+                "first_seen": c.first_seen.isoformat(),
+                "price_move_since_first_seen_atr": [
+                    m.model_dump(mode="json") for m in c.price_move_since_first_seen_atr
+                ],
+            }
+            for c in brief.clusters
+        ],
+        "top_instruments": [f.model_dump(mode="json") for f in brief.top_instruments],
+        "event_importance": [e.importance for e in brief.upcoming_events],
+    }
+
+
 class BriefReviewer:
     """Reviews one News Intelligence answer: the card must validate as NewsBrief and name only
     known clusters (the follow-up carries the errors); then the code-owned fields are written and
@@ -394,14 +438,14 @@ class BriefReviewer:
         self,
         ctx: ToolContext,
         *,
-        kind: NewsBriefKind,
+        form: NewsBriefForm,
         reply_to: str | None,
         thread_id: str | None,
         outputs: Sequence[Mapping[str, Any]] = (),
         top_instruments: Sequence[NewsFlow] = (),
     ) -> None:
         self.ctx = ctx
-        self.kind = kind
+        self.form = form
         self.reply_to = reply_to
         self.thread_id = thread_id
         self.outputs = list(outputs)
@@ -412,7 +456,7 @@ class BriefReviewer:
         content, card, error = split_card(text)
         brief: NewsBrief | None = None
         if card is not None:
-            for owned in ("meta", "brief_kind", "top_instruments", "degraded_asset_classes"):
+            for owned in ("meta", "form", "top_instruments", "degraded_asset_classes"):
                 card.pop(owned, None)  # the runtime's fields, never the agent's
             card.setdefault("type", "news_brief")
             try:
@@ -429,11 +473,13 @@ class BriefReviewer:
             return Review(follow_up=self._follow_up(reason), failure=f"invalid card after retry: {reason}")
 
         degraded = await asyncio.to_thread(degraded_asset_classes, self.ctx)
+        events = await asyncio.to_thread(event_importance, self.ctx, brief.upcoming_events)
         brief = brief.model_copy(
             update={
-                "brief_kind": self.kind,
+                "form": self.form,
                 "degraded_asset_classes": degraded,
-                "top_instruments": self.top_instruments if self.kind == "morning" else [],
+                "top_instruments": self.top_instruments if self.form == "morning_brief" else [],
+                "upcoming_events": events,
             }
         )
         if not content:
@@ -441,8 +487,10 @@ class BriefReviewer:
         outputs: list[Mapping[str, Any]] = [c.output for c in tool_calls(messages) if c.output is not None]
         outputs.extend(self.outputs)
         plain = brief.model_dump(mode="json", exclude={"meta"})
-        # The code-owned fields are tool facts as well.
-        outputs.append({"as_of": _iso(self.ctx.now()), "source": "atlas.news_status", "data": plain})
+        # The fields code wrote are facts as well; only those, never the model's own numbers.
+        outputs.append(
+            {"as_of": _iso(self.ctx.now()), "source": "atlas.news_brief_code", "data": code_facts(brief)}
+        )
         guard = numguard.check(content, plain, outputs).to_meta()
         final = brief.model_copy(update={"meta": CardMeta.model_validate(guard)})
         self.brief = final

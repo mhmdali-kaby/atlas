@@ -1,11 +1,11 @@
 """News Intelligence's hooks (brief §7.2, decision #247 (5), ATL-107).
 
-* @News: one ``research_report`` reply whose card validates as NewsBrief (``brief_kind``
-  ``instrument``), in the mention's thread.
+* @News: one ``research_report`` reply whose card validates as NewsBrief (``form``
+  ``instrument_brief``), in the mention's thread.
 * ``news_morning_brief`` (agents.schedule, 07:30 Baghdad): the morning brief in Main, once per
-  Baghdad day (``brief_kind`` ``morning``).
-* ``news.alert`` from ingest: an alert analysis replying to the alert message (``brief_kind``
-  ``alert``), at most ``agents.news_intelligence.alerts_per_hour`` per rolling hour.
+  Baghdad day (``form`` ``morning_brief``).
+* ``news.alert`` from ingest: an alert analysis replying to the alert message (``form``
+  ``alert_analysis``), at most ``agents.news_intelligence.alerts_per_hour`` per rolling hour.
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ async def answer_mention(host: AgentHost, request: MentionRequest) -> RunResult:
     degraded = await asyncio.to_thread(news.degraded_asset_classes, ctx)
     reviewer = news.BriefReviewer(
         ctx,
-        kind="instrument",
+        form="instrument_brief",
         reply_to=reply_to,
         thread_id=thread_id,
         # The asker's own numbers are quoted, not invented.
@@ -61,7 +61,7 @@ async def morning_brief(host: AgentHost, fire: ScheduleFire) -> RunResult:
     context = await asyncio.to_thread(news.build_morning_context, ctx)
     reviewer = news.BriefReviewer(
         ctx,
-        kind="morning",
+        form="morning_brief",
         reply_to=None,
         thread_id=None,
         outputs=[news.context_output(context)],
@@ -109,7 +109,7 @@ async def analyse_alert(host: AgentHost, envelope: EventEnvelope) -> RunResult |
     degraded = await asyncio.to_thread(news.degraded_asset_classes, ctx)
     reviewer = news.BriefReviewer(
         ctx,
-        kind="alert",
+        form="alert_analysis",
         reply_to=reply_to,
         thread_id=thread_id,
         outputs=[{"as_of": None, "source": "atlas.news_alert", "data": data}],

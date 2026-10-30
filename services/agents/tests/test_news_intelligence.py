@@ -11,6 +11,7 @@ import logging
 import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
+from decimal import Decimal
 from typing import Any
 
 import pytest
@@ -21,7 +22,15 @@ from atlas_agents.registry import REGISTRY, discover_hooks
 from atlas_agents.schemas import NewsBrief
 from atlas_agents.supervisor import Supervisor
 from atlas_agents.tools import ToolContext
-from atlas_shared.db import AgentRun, AgentState, AgentUsageDaily, NewsCluster, NewsItem, NewsSource
+from atlas_shared.db import (
+    AgentRun,
+    AgentState,
+    AgentUsageDaily,
+    EconomicEvent,
+    NewsCluster,
+    NewsItem,
+    NewsSource,
+)
 from atlas_shared.defaults import DEFAULTS
 from atlas_shared.events import EventEnvelope
 from sqlalchemy import Engine, delete, select, text
@@ -90,6 +99,7 @@ def db(engine: Engine) -> Iterator[Engine]:
         conn.execute(delete(NewsItem).where(NewsItem.url.like(f"%{RUN}%")))
         conn.execute(delete(NewsCluster).where(NewsCluster.headline.like(f"%{RUN}%")))
         conn.execute(delete(NewsSource).where(NewsSource.key.like(f"test.{RUN}.%")))
+        conn.execute(delete(EconomicEvent).where(EconomicEvent.source == f"test.{RUN}"))
         conn.execute(text("DELETE FROM warroom_threads WHERE key LIKE :k"), {"k": f"atl107-{RUN}%"})
     with factory() as s:
         for row in s.scalars(select(NewsSource).where(NewsSource.key.in_(list(was_enabled)))):
@@ -120,6 +130,7 @@ def _cluster(engine: Engine, importance: int = 4) -> str:
                 published_at=PUBLISHED,
                 fetched_at=PUBLISHED + timedelta(minutes=1),
                 importance=importance,
+                sentiment=Decimal("0.4"),
                 instruments=[INST],
                 cluster_id=cluster.id,
                 created_at=PUBLISHED,
@@ -188,7 +199,15 @@ def _search_output(cluster_id: str) -> dict[str, Any]:
         "source": "atlas.news_items",
         "truncated": False,
         "data": {
-            "items": [{"id": "x", "importance": 4, "sentiment": 0.4, "cluster_id": cluster_id}],
+            "items": [
+                {
+                    "id": "x",
+                    "url": f"https://news.test/{RUN}/1",
+                    "importance": 4,
+                    "sentiment": 0.4,
+                    "cluster_id": cluster_id,
+                }
+            ],
             "clusters": [{"cluster_id": cluster_id, "status": "REPORTED"}],
         },
     }
@@ -329,7 +348,7 @@ async def test_a_news_mention_gets_one_news_brief_reply_in_its_thread(db: Engine
     assert p["thread_id"] == owner.payload["thread_id"] and "thread" not in p
     assert p["run_id"] == str(result.run_id)
     brief = NewsBrief.model_validate(p["card"])
-    assert brief.brief_kind == "instrument"
+    assert brief.form == "instrument_brief"
     assert brief.degraded_asset_classes == []
     assert brief.top_instruments == []
     (cluster,) = brief.clusters
@@ -365,8 +384,35 @@ async def test_a_card_naming_an_unknown_cluster_is_retried_once_then_accepted(db
 async def test_the_morning_brief_is_posted_once_per_baghdad_day_even_after_a_restart(db: Engine) -> None:
     assert DEFAULTS["agents"]["schedule"]["news_morning_brief"] == "07:30"
     cluster_id = _cluster(db)
+    cpi_at = NOW + timedelta(hours=6)
+    with Session(db) as s:
+        s.add(
+            EconomicEvent(
+                source=f"test.{RUN}",
+                external_id=f"cpi-{RUN}",
+                country="US",
+                name="US CPI",
+                importance=3,
+                scheduled_at=cpi_at,
+                created_at=NOW - timedelta(days=1),
+                updated_at=NOW - timedelta(days=1),
+            )
+        )
+        s.commit()
+    events = [
+        {
+            "time": _iso(cpi_at),
+            "name": "US CPI",
+            "forecast": "0.3%",
+            "previous": "0.2%",
+            "sensitive_instruments": [],
+        },
+        {"time": _iso(cpi_at + timedelta(minutes=7)), "name": "Unknown", "sensitive_instruments": []},
+    ]
     rec = Recorder()
-    client = fake.FakeClaudeClient([_attempt(cluster_id, "Morning brief: one listing story.")])
+    client = fake.FakeClaudeClient(
+        [_attempt(cluster_id, "Morning brief: one listing story.", upcoming_events=events)]
+    )
 
     early = _supervisor(db, client, rec, now=NOW - timedelta(minutes=1))
     assert await early.tick() == []  # 07:29 Baghdad: not yet
@@ -379,9 +425,12 @@ async def test_the_morning_brief_is_posted_once_per_baghdad_day_even_after_a_res
     assert p["kind"] == "research_report" and p["thread"] == {"kind": "main", "key": "main"}
     assert p["reply_to"] is None and p["run_id"] == str(result.run_id)
     brief = NewsBrief.model_validate(p["card"])
-    assert brief.brief_kind == "morning"
+    assert brief.form == "morning_brief"
     flow = {f.inst_id: f for f in brief.top_instruments}
-    assert flow[INST].items == 1 and flow[INST].clusters == 1
+    assert flow[INST].stories == 1 and flow[INST].net_sentiment == 0.4
+    # Event importance comes from economic_events; an event Atlas does not have stays null.
+    assert [(e.name, e.importance) for e in brief.upcoming_events] == [("US CPI", 3), ("Unknown", None)]
+    assert p["card"]["top_instruments"][0].keys() >= {"inst_id", "stories", "net_sentiment"}
     # The code-computed context reached the model.
     assert cluster_id in client.queries[0] and "07:30 Baghdad" in client.queries[0]
     (end,) = _run_end(rec)
@@ -447,7 +496,7 @@ async def test_news_alerts_start_news_intelligence_only_and_the_seventh_in_an_ho
     assert p["reply_to"] == row_id and p["thread_id"] == thread_id
     assert p["kind"] == "research_report" and p["run_id"] == str(result.run_id)
     brief = NewsBrief.model_validate(p["card"])
-    assert brief.brief_kind == "alert" and brief.clusters[0].status == "REPORTED"
+    assert brief.form == "alert_analysis" and brief.clusters[0].status == "REPORTED"
     assert "untrusted_source" in client.queries[0]
 
     # Alerts not yet stored by the bridge are answered in Main without waiting in this test.
@@ -538,3 +587,19 @@ def test_warroom_message_cannot_be_registered_as_an_event_hook() -> None:
 
     with pytest.raises(ValueError, match="mentions"):
         HookRegistry().event("x", "warroom.message")
+
+
+async def test_an_invented_number_is_flagged_in_card_meta(db: Engine) -> None:
+    """The number guard sees only tool outputs and code-written fields, never the model's own card."""
+    cluster_id = _cluster(db)
+    rec = Recorder()
+    client = fake.FakeClaudeClient([_attempt(cluster_id, "REPORTED: the token lists; up 7.77% already.")])
+    sup = _supervisor(db, client, rec)
+
+    (result,) = await sup.handle_envelope(_owner_message())
+
+    assert result.status == "ok"
+    (reply,) = rec.of("warroom.message")
+    meta = NewsBrief.model_validate(reply.payload["card"]).meta
+    assert meta is not None
+    assert [(u.raw, u.location) for u in meta.unmatched_numbers] == [("7.77%", "text")]
