@@ -1,4 +1,4 @@
-import { CircleAlert, Plus, X } from 'lucide-react'
+import { CircleAlert, Plus, TriangleAlert, X } from 'lucide-react'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatFixed } from '../../lib/format'
@@ -135,7 +135,7 @@ export function DomainList({
             {changed && <span className="sr-only">, {t('changed')}</span>}
           </label>
           <span className="sa-list-count">
-            {list.length ? t('count', { count: list.length, n: formatFixed(list.length, 0, lang) }) : t(which === 'allow' ? 'anySite' : 'noSites')}
+            {list.length ? t('count', { count: list.length, n: formatFixed(list.length, 0, lang) }) : t('noSites')}
           </span>
         </div>
         <div className={cx('sa-tokens', error && 'is-error')}>
@@ -181,7 +181,7 @@ export function DomainList({
             autoCapitalize="off"
             spellCheck={false}
             aria-invalid={error ? true : undefined}
-            aria-describedby={`sa-${which}-note${error ? ` sa-${which}-err` : ''}`}
+            aria-describedby={`sa-${which}-note${which === 'allow' && list.length === 0 ? ' sa-allow-empty' : ''}${error ? ` sa-${which}-err` : ''}`}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={onInputKey}
           />
@@ -198,6 +198,12 @@ export function DomainList({
         <p className="text-footnote text-label-secondary" id={`sa-${which}-note`}>
           {t(which === 'allow' ? 'allowNote' : 'denyNote')}
         </p>
+        {which === 'allow' && list.length === 0 && (
+          <p className="sa-used is-warn text-footnote" id="sa-allow-empty" data-testid="allow-empty-note">
+            <TriangleAlert aria-hidden="true" strokeWidth={2} />
+            <span>{t('allowEmpty')}</span>
+          </p>
+        )}
       </div>
     </div>
   )
