@@ -12,7 +12,7 @@ from __future__ import annotations
 import importlib
 import pkgutil
 from collections.abc import Awaitable, Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime, time
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, Final, Protocol
@@ -131,6 +131,11 @@ MentionHandler = Callable[["AgentHost", "MentionRequest"], Awaitable["RunResult 
 """``(host, request) -> RunResult | None``: answer one mention, usually with ``host.run(slug, ...,
 trigger="mention", correlation_id=request.correlation_id, thread_id=..., reply_to=...)``."""
 
+EventHandler = Callable[["AgentHost", "EventEnvelope"], Awaitable["RunResult | None"]]
+"""``(host, envelope) -> RunResult | None``: react to one ``atlas.warroom`` envelope of a registered
+type that is not a mention (ATL-107: News Intelligence on ingest's ``news.alert``). Only the agents
+that register a type are called for it."""
+
 ScheduleRun = Callable[["AgentHost", "ScheduleFire"], Awaitable["RunResult | None"]]
 """``(host, fire) -> RunResult | None``: one firing of a schedule hook. Return None when nothing
 ran (a daily job is then tried again at the next tick)."""
@@ -178,6 +183,8 @@ class AgentHooks:
     slug: str
     on_mention: MentionHandler | None = None
     schedule: tuple[ScheduleHook, ...] = ()
+    on_event: Mapping[str, EventHandler] = field(default_factory=dict)
+    """envelope type -> handler (ATL-107)."""
 
 
 class HookRegistry:
@@ -190,11 +197,15 @@ class HookRegistry:
 
     @HOOKS.schedule("my_agent", "my_agent_job")          # agents.schedule.my_agent_job
     async def job(host: AgentHost, fire: ScheduleFire) -> RunResult | None: ...
+
+    @HOOKS.event("my_agent", "news.alert")               # any atlas.warroom envelope type
+    async def on_alert(host: AgentHost, envelope: EventEnvelope) -> RunResult | None: ...
     """
 
     def __init__(self) -> None:
         self._mentions: dict[str, MentionHandler] = {}
         self._schedules: dict[str, list[ScheduleHook]] = {}
+        self._events: dict[str, dict[str, EventHandler]] = {}
 
     def mention(self, slug: str) -> Callable[[MentionHandler], MentionHandler]:
         def register(handler: MentionHandler) -> MentionHandler:
@@ -217,13 +228,29 @@ class HookRegistry:
 
         return register
 
+    def event(self, slug: str, event_type: str) -> Callable[[EventHandler], EventHandler]:
+        """Register a handler for ``atlas.warroom`` envelopes of ``event_type``. Not for
+        ``warroom.message``: mentions have their own hook."""
+        if event_type == "warroom.message":
+            raise ValueError("warroom.message is dispatched as mentions; use HOOKS.mention")
+
+        def register(handler: EventHandler) -> EventHandler:
+            handlers = self._events.setdefault(slug, {})
+            if event_type in handlers and handlers[event_type] is not handler:
+                raise ValueError(f"agent {slug} already has a {event_type} handler")
+            handlers[event_type] = handler
+            return handler
+
+        return register
+
     def hooks(self) -> dict[str, AgentHooks]:
-        slugs = list(dict.fromkeys([*self._mentions, *self._schedules]))
+        slugs = list(dict.fromkeys([*self._mentions, *self._schedules, *self._events]))
         return {
             slug: AgentHooks(
                 slug=slug,
                 on_mention=self._mentions.get(slug),
                 schedule=tuple(self._schedules.get(slug, ())),
+                on_event=dict(self._events.get(slug, {})),
             )
             for slug in slugs
         }

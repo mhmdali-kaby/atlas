@@ -506,7 +506,7 @@ class PromptVersion(_Stamped, Base):
 
 
 class AgentRun(_Row, Base):
-    """One agent session turn. trigger: mention|schedule|eval|manual.
+    """One agent session turn. trigger: mention|schedule|eval|manual|alert (ATL-107).
     status: running|ok|error|degraded|rate_limited|over_budget. cost_usd_notional is display-only."""
 
     __tablename__ = "agent_runs"

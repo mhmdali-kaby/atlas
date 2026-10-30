@@ -611,7 +611,7 @@ agents:
   roster:
     orchestrator: {}
     market_scout: { model: strong }
-    news_intelligence: { model: strong }
+    news_intelligence: { model: strong, enabled: true }
     historian: { model: strong, enabled: true }
     technical_analyst: {}
     derivatives_sentiment: {}
@@ -761,6 +761,7 @@ agents:
   output_retries: 1
   schedule:
     historian_regime_table: "07:30"
+    news_morning_brief: "07:30"
     tick_seconds: 30
   regime_table:
     top_n: 60
@@ -768,6 +769,36 @@ agents:
     block_ms: 5000
     batch: 50
     max_depth: 2
+  # ATL-107, brief §7.2 + decision #247 (5): News Intelligence (atlas_agents.news_intelligence).
+  #   alerts_per_hour: ingest news.alert envelopes that start an alert analysis per rolling hour;
+  #     the rest are skipped and logged (counted in the supervisor's memory, so a restart resets it).
+  #   asset_class_categories: asset class -> news_sources.category values that cover it. When every
+  #     source of those categories is disabled, needs_key or degraded (disabled_until in the future),
+  #     the class is listed in the brief card's degraded_asset_classes.
+  #   mention_lookback_hours: the window an instrument brief covers (brief: last 72h).
+  #   alert_parent_tries / alert_parent_wait_ms: atlas:bridge stores the alert message from the same
+  #     stream, so the analysis looks it up this many times, this far apart, before replying in Main.
+  #   morning_brief: the code-computed context of the 07:30 brief. top_stories clusters by max
+  #     importance then item count over lookback_hours; events_hours of economic events at or above
+  #     min_event_importance (at most max_events); top_instruments by item count over lookback_hours.
+  news_intelligence:
+    alerts_per_hour: 6
+    asset_class_categories:
+      crypto: [crypto_news]
+      stock: [markets_news]
+      etf: [markets_news]
+      index: [markets_news]
+      commodity: [markets_news]
+    mention_lookback_hours: 72
+    alert_parent_tries: 10
+    alert_parent_wait_ms: 500
+    morning_brief:
+      lookback_hours: 24
+      top_stories: 10
+      events_hours: 48
+      min_event_importance: 2
+      max_events: 30
+      top_instruments: 5
   # ATL-104, brief §7.1 steps 1-2 + decision #247 (2): Market Scout's code-run universe filter and
   # feature table (atlas_agents.scout). Every value is in force at the table's as_of (replay-bounded).
   #   universe: the filter. Per-market minimum 24h quote volume (USD) and max_spread_bps come from the
