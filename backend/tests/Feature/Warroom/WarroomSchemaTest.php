@@ -112,6 +112,7 @@ it('renders a message through WarroomMessageResource', function (): void {
         'tokens_in' => 1200,
         'tokens_out' => 340,
         'cost_usd' => '0.012300',
+        'unmatched_numbers' => null,
         'created_at' => '2026-10-29T05:00:00.123456Z',
     ]);
 

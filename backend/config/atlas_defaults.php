@@ -319,6 +319,7 @@ return [
         'page_limit_max' => 100,
         'post_per_minute' => 30,
         'content_max_chars' => 4000,
+        'thinking_max_bytes' => 16384,
         'agents' => [
             'orchestrator' => [
                 'name' => 'Orchestrator',
