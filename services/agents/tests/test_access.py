@@ -125,7 +125,7 @@ EXPECTED: dict[str, dict[str, set[str]]] = {
     "devils_advocate": {
         "okx_market": OKX_ALL,
         "atlas_data": ATLAS_DATA_ALL,
-        "news": NEWS_ALL,
+        "news": NEWS_READ,
         "history": HISTORY_ALL,
         "memory": MEMORY_READ,
         "warroom": WARROOM_BASE | {"cast_vote"},
@@ -191,7 +191,7 @@ def test_each_cell_matches_the_brief(agent: str, server: str) -> None:
 def test_allowed_set_is_exactly_the_row(agent: str) -> None:
     expected = {f"mcp__{s}__{t}" for s, tools in EXPECTED[agent].items() if s != "web" for t in tools}
     if agent in WEB_AGENTS:
-        expected |= {"mcp__news__web_search", "WebSearch", "WebFetch"}
+        expected |= {"mcp__news__web_search", "WebSearch"}
     allowed = access.allowed_tools(agent)
     assert len(allowed) == len(set(allowed))
     assert set(allowed) == expected
@@ -201,15 +201,30 @@ def test_allowed_set_is_exactly_the_row(agent: str) -> None:
 def test_web_tools_only_for_scout_and_news(agent: str) -> None:
     allowed = set(access.allowed_tools(agent))
     disallowed = set(access.disallowed_tools(agent))
-    web = {"WebSearch", "WebFetch", "mcp__news__web_search"}
+    # ATL-100 (security round 9, low): WebFetch has no domain policy and is granted to nobody,
+    # including the two web agents — news.fetch_article is their guarded live-fetch path instead.
+    assert "WebFetch" not in allowed
+    assert "WebFetch" in disallowed
+    web = {"WebSearch", "mcp__news__web_search"}
     if agent in WEB_AGENTS:
         assert web <= allowed
-        assert not {"WebSearch", "WebFetch"} & disallowed
-        assert access.builtin_tools(agent) == ["WebSearch", "WebFetch"]
+        assert "WebSearch" not in disallowed
+        assert access.builtin_tools(agent) == ["WebSearch"]
     else:
         assert not web & allowed
-        assert {"WebSearch", "WebFetch"} <= disallowed
+        assert "WebSearch" in disallowed
         assert access.builtin_tools(agent) == []
+
+
+def test_devils_advocate_has_no_live_fetch() -> None:
+    """ATL-100 (security round 9, low): the Devil's Advocate read every news tool including
+    fetch_article, so it could reach any public URL with no domain policy. It now gets the same
+    read-only news row as Strategist/PM — no fetch_article, no web_search, no WebFetch."""
+    allowed = set(access.allowed_tools("devils_advocate"))
+    assert "mcp__news__fetch_article" not in allowed
+    assert "WebFetch" not in allowed
+    assert "WebSearch" not in allowed
+    assert "mcp__news__web_search" not in allowed
 
 
 @pytest.mark.parametrize("agent", sorted(EXPECTED))

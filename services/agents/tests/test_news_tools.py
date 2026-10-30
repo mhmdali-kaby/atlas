@@ -261,6 +261,73 @@ def test_guarded_fetch_is_the_ingest_guard() -> None:
     assert "Extractor" in news_tools.guarded_fetch.__code__.co_names
 
 
+def test_guarded_fetch_wires_domain_allowed_into_the_extractor() -> None:
+    assert "domain_allowed" in news_tools.guarded_fetch.__code__.co_names
+
+
+# -- domain policy (ATL-100, security round 9, low) ---------------------------------------------------
+
+
+def _set_web_policy(
+    monkeypatch: pytest.MonkeyPatch, *, allow: list[str] | None = None, deny: list[str] | None = None
+) -> None:
+    monkeypatch.setitem(
+        news_tools.DEFAULTS["agents"],
+        "web",
+        {"allow_domains": allow or [], "deny_domains": deny or []},
+    )
+
+
+def test_domain_allowed_empty_allow_list_permits_any_host_not_denied(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_web_policy(monkeypatch, deny=["evil.test"])
+    assert news_tools.domain_allowed("anything.example") is True
+    assert news_tools.domain_allowed("evil.test") is False
+    assert news_tools.domain_allowed("sub.evil.test") is False  # a subdomain of a denied host
+
+
+def test_domain_allowed_nonempty_allow_list_excludes_anything_else(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_web_policy(monkeypatch, allow=["coindesk.com"])
+    assert news_tools.domain_allowed("coindesk.com") is True
+    assert news_tools.domain_allowed("www.coindesk.com") is True  # a subdomain of an allowed host
+    assert news_tools.domain_allowed("other.test") is False
+
+
+def test_domain_allowed_deny_wins_over_allow(monkeypatch: pytest.MonkeyPatch) -> None:
+    _set_web_policy(monkeypatch, allow=["coindesk.com"], deny=["evil.coindesk.com"])
+    assert news_tools.domain_allowed("coindesk.com") is True
+    assert news_tools.domain_allowed("evil.coindesk.com") is False
+
+
+async def test_fetch_article_denied_domain_is_refused_without_a_request(
+    db: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _set_web_policy(monkeypatch, deny=["denied.test"])
+    called = False
+
+    async def must_not_fetch(url: str) -> str | None:
+        nonlocal called
+        called = True
+        return "unexpected"
+
+    monkeypatch.setattr(news_tools, "_fetcher", must_not_fetch)
+    body = await _call(_ctx(db), "fetch_article", {"url": "https://denied.test/story"})
+    assert body["error"] == "domain_denied"
+    assert called is False
+
+
+async def test_fetch_article_allows_a_host_not_on_either_list(
+    db: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _set_web_policy(monkeypatch)  # both lists empty: allow any public host
+
+    async def fake_guarded_fetch(url: str) -> str | None:
+        return "Fetched article text."
+
+    monkeypatch.setattr(news_tools, "_fetcher", fake_guarded_fetch)
+    body = await _call(_ctx(db), "fetch_article", {"url": f"https://example.com/{RUN}"})
+    assert body["data"]["origin"] == "fetched"
+
+
 # -- replay bounds, search, clusters, announcements --------------------------------------------------
 
 
