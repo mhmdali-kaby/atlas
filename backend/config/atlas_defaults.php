@@ -1011,6 +1011,25 @@ return [
             'max_depth' => 2,
             'parent_wait_seconds' => 3,
         ],
+        'news_intelligence' => [
+            'asset_class_categories' => [
+                'crypto' => [
+                    'crypto_news',
+                ],
+                'stock' => [
+                    'markets_news',
+                ],
+                'etf' => [
+                    'markets_news',
+                ],
+                'index' => [
+                    'markets_news',
+                ],
+                'commodity' => [
+                    'markets_news',
+                ],
+            ],
+        ],
         'scout' => [
             'watchlist_edit_window_minutes' => 10,
             'wait_seconds' => 300,

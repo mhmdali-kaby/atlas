@@ -13,8 +13,10 @@ database, no bus) so each rule is unit-testable:
   :func:`trim_correlated` then drops the lowest-ranked picks of each such group.
 * :func:`enforce` applies, in this order: drop instruments that are blocklisted, removed by the
   owner today, or not in the shortlist; trim correlated groups; carry today's owner pins; cap every
-  conviction at ``partial_conviction_cap`` when the evidence is partial; renumber ranks 1..n. Every
-  change is listed in ``corrections``.
+  conviction at ``partial_conviction_cap`` when the evidence is partial, and the convictions of
+  picks in an asset class whose news sources are all down (:func:`degraded_asset_classes`);
+  renumber ranks 1..n. Every change is listed in ``corrections``; every capped pick is in ``caps``
+  with its conviction before the cap and why (``partial_evidence`` wins over ``news_class_down``).
 """
 
 from __future__ import annotations
@@ -35,6 +37,7 @@ REJECTED_COUNT: Final = 3
 
 WatchlistStatus = Literal["published", "partial_evidence", "empty"]
 TeammateStatus = Literal["replied", "timed_out", "not_asked"]
+CapReason = Literal["partial_evidence", "news_class_down"]
 
 
 def publish_config(defaults: Mapping[str, Any] = DEFAULTS) -> Mapping[str, Any]:
@@ -90,6 +93,45 @@ def answer_problems(answer: ScoutAnswer, *, max_picks: int, shortlist_ids: Seque
     if not answer.picks and not (answer.no_pick_reason or "").strip():
         problems.append("with no picks, give no_pick_reason")
     return problems
+
+
+# -- news sources down per asset class (brief §7.2 failure behaviour) ---------------------------------
+
+
+@dataclass(frozen=True)
+class SourceHealth:
+    """The columns of a ``news_sources`` row that decide whether it can deliver anything."""
+
+    category: str
+    enabled: bool
+    requires_key: bool
+    has_key: bool
+    disabled_until: datetime | None
+
+
+def source_down(source: SourceHealth, now: datetime) -> bool:
+    """Laravel's ``SourceStatus::DOWN`` (ATL-66): disabled, needs_key, or degraded (inside the
+    failure back-off window)."""
+    if not source.enabled:
+        return True
+    if source.requires_key and not source.has_key:
+        return True
+    return source.disabled_until is not None and source.disabled_until > now
+
+
+def degraded_asset_classes(
+    sources: Iterable[SourceHealth], now: datetime, categories: Mapping[str, Sequence[str]]
+) -> list[str]:
+    """Asset classes (keys of ``categories``, ``agents.scout.news_categories``) none of whose news
+    source categories has a source up. Like ``SourceStatus::summary``'s ``all_down``, a class with
+    no source at all counts as down. Sorted."""
+    rows = list(sources)
+    out: list[str] = []
+    for asset_class, cats in categories.items():
+        wanted = set(cats)
+        if not any(s.category in wanted and not source_down(s, now) for s in rows):
+            out.append(asset_class)
+    return sorted(out)
 
 
 # -- correlation (step 4) ----------------------------------------------------------------------------
@@ -215,11 +257,19 @@ class Evidence(_Model):
         return reasons
 
 
+@dataclass(frozen=True)
+class Cap:
+    conviction_before_cap: float
+    cap_reason: CapReason
+
+
 @dataclass
 class Enforced:
     picks: list[WatchlistPick]
     pinned: list[str]
     corrections: list[Correction] = field(default_factory=list)
+    caps: dict[str, Cap] = field(default_factory=dict)
+    """inst_id -> its cap, for each saved pick whose conviction was lowered."""
 
 
 def enforce(
@@ -235,6 +285,8 @@ def enforce(
     max_members: int,
     partial: bool,
     cap: float,
+    degraded_classes: Iterable[str] = (),
+    asset_class_of: Mapping[str, str] | None = None,
 ) -> Enforced:
     """The picks as they are saved (see the module docstring for the order of the rules)."""
     blocked = {b.upper() for b in blocklist}
@@ -274,24 +326,40 @@ def enforce(
                     rule="pinned", inst_id=item.inst_id, detail="owner pin carried from today's watchlist"
                 )
             )
-    if partial:
-        capped: list[WatchlistPick] = []
-        for pick in kept:
-            if pick.conviction > cap:
-                corrections.append(
-                    Correction(
-                        rule="conviction_cap",
-                        inst_id=pick.inst_id,
-                        detail=f"conviction {pick.conviction:g} capped at {cap:g} (partial evidence)",
-                    )
+    down = set(degraded_classes)
+    classes = asset_class_of or {}
+    caps: dict[str, Cap] = {}
+    capped: list[WatchlistPick] = []
+    for pick in kept:
+        reason: CapReason | None = None
+        if partial:
+            reason = "partial_evidence"
+        elif classes.get(pick.inst_id, pick.asset_class) in down:
+            reason = "news_class_down"
+        if reason is not None and pick.conviction > cap:
+            why = (
+                "partial evidence"
+                if reason == "partial_evidence"
+                else f"every {classes.get(pick.inst_id, pick.asset_class)} news source is down"
+            )
+            corrections.append(
+                Correction(
+                    rule="conviction_cap",
+                    inst_id=pick.inst_id,
+                    detail=f"conviction {pick.conviction:g} capped at {cap:g} ({why})",
                 )
-                pick = pick.model_copy(update={"conviction": cap})
-            capped.append(pick)
-        kept = capped
+            )
+            caps[pick.inst_id] = Cap(conviction_before_cap=pick.conviction, cap_reason=reason)
+            pick = pick.model_copy(update={"conviction": cap})
+        capped.append(pick)
+    kept = capped
     ordered = sorted(kept, key=lambda p: p.rank)
     final = [p.model_copy(update={"rank": i}) for i, p in enumerate(ordered, start=1)]
     return Enforced(
-        picks=final, pinned=[p.inst_id for p in final if p.inst_id in pin_ids], corrections=corrections
+        picks=final,
+        pinned=[p.inst_id for p in final if p.inst_id in pin_ids],
+        corrections=corrections,
+        caps=caps,
     )
 
 
@@ -305,18 +373,23 @@ __all__ = [
     "BACKDROP_LINES",
     "CARD_TYPE",
     "REJECTED_COUNT",
+    "Cap",
+    "CapReason",
     "Correction",
     "Enforced",
     "Evidence",
     "Pair",
     "RejectedCandidate",
     "ScoutAnswer",
+    "SourceHealth",
     "TeammateReply",
     "answer_problems",
     "correlated_groups",
     "correlation_violations",
+    "degraded_asset_classes",
     "enforce",
     "publish_config",
+    "source_down",
     "status_for",
     "trim_correlated",
 ]

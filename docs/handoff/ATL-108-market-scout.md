@@ -46,14 +46,24 @@ Code: `services/agents/src/atlas_agents/agents/market_scout.py` (pipeline + hook
 3. `enforce`: drop blocklisted (settings `blocklist`, else `agents.scout.universe.blocklist`),
    owner-removed today, and not-in-shortlist picks. Then trim correlated picks. Then carry today's
    owner pins (from the current version, `pinned_by_owner` and not removed) that the model left
-   out. Then cap convictions at `partial_conviction_cap` (0.5) when evidence is partial. Then
-   renumber ranks 1..n.
+   out. Then cap convictions at `partial_conviction_cap` (0.5): every pick when evidence is
+   partial, else each pick whose asset class (from the feature table, else the pick) is in
+   `degraded_asset_classes`. Then renumber ranks 1..n. A pick above the cap gets
+   `conviction_before_cap` and `cap_reason` on the card (`partial_evidence` wins when both apply).
+3a. `degraded_asset_classes` is computed in `prepare()` from `news_sources`: a class in
+   `agents.news_intelligence.asset_class_categories` is degraded when no source in its categories is
+   up (up = enabled, not requires_key-without-key, not inside `disabled_until`; the same rule as
+   Laravel's `SourceStatus::DOWN`). A class with no source row is degraded. The news-down cap alone
+   does **not** make the status `partial_evidence`.
 4. Status: `empty` when no picks remain, else `partial_evidence` when evidence is partial, else
    `published`. Saved by `save_watchlist` with `created_at = now`, `edit_window_ends_at = created_at
    + watchlist_edit_window_minutes` (10). The carried pins get `pinned_by_owner = true` again.
 5. The card is the run's final `warroom.message`. Afterwards `watchlists.message_id` is filled from
    the bridge-stored row (`card->>'watchlist_id'`), waiting up to `link_seconds` (5). If the bridge
    is late it stays null.
+
+Code layout: `agents/market_scout.py` (hooks, pipeline, reviewer), `scout/teammates.py` (the
+@News/@Historian requests and the reply wait), `scout/publish.py` (the pure rules).
 
 ## Envelopes
 
@@ -88,8 +98,12 @@ Published (run-posted: the payload also carries `run_id`, `reasoning_md`, `tool_
     {"inst_id": "SOL-USDT-SWAP", "rank": 1, "asset_class": "crypto", "bias": "long", "conviction": 0.72,
      "thesis": "…", "catalysts": [{"name": "US CPI", "time": "2026-10-31T12:30:00Z", "source": "forexfactory", "importance": 5}],
      "key_levels": {"support": 100.0, "resistance": 120.0}, "invalidation": "…",
-     "data_as_of": "2026-10-31T04:59:00Z", "pinned_by_owner": false}
+     "data_as_of": "2026-10-31T04:59:00Z", "pinned_by_owner": false,
+     "conviction_before_cap": 0.8, "cap_reason": "news_class_down"},
+    {"inst_id": "XAU-USDT-SWAP", "rank": 2, "asset_class": "commodity", "bias": "long", "conviction": 0.7,
+     "…": "…", "pinned_by_owner": false}
   ],
+  "degraded_asset_classes": ["crypto"],
   "backdrop": ["BTC trending up.", "Gold flat ahead of CPI.", "No big US event in 48h."],
   "rejected": [{"inst_id": "ETH-USDT-SWAP", "reason": "weaker evidence"}, {"…": "3 in total"}],
   "corrections": [{"rule": "blocked", "inst_id": "DOGE-USDT-SWAP", "detail": "on the blocklist"}],
@@ -111,12 +125,19 @@ Published (run-posted: the payload also carries `run_id`, `reasoning_md`, `tool_
 - `corrections[].rule` ∈ `blocked | removed_by_owner | not_in_shortlist | correlation |
   conviction_cap | pinned`.
 - `teammates[].status` ∈ `replied | timed_out | not_asked`.
+- `picks[].conviction_before_cap` / `picks[].cap_reason` are present **only** on a pick whose
+  conviction was lowered; `cap_reason` ∈ `partial_evidence | news_class_down`. `conviction` is
+  already the capped value. `degraded_asset_classes` is always present (`[]` when every class has
+  news), also on both empty variants.
+- `content_md` starts with `**News down** for crypto: convictions in that class capped at 0.5.`
+  when a class is degraded.
 - `meta` is the number guard (same shape as other cards; ATL-96 highlights from it).
 - `content_md`: the 3 backdrop lines plus `Today's watchlist: SOL-USDT-SWAP long (0.72), …`.
 
 **Partial evidence**: `status: "partial_evidence"`, every `picks[].conviction` ≤ 0.5,
 `reason: "Partial evidence: historian did not reply in time"` (also `feature table is 17 min old
-(limit 15 min)`), `conviction_cap` corrections. `content_md` starts with `**Partial evidence**: …`.
+(limit 15 min)`), `conviction_cap` corrections, and `cap_reason: "partial_evidence"` with
+`conviction_before_cap` on each pick that was above 0.5. `content_md` starts with `**Partial evidence**: …`.
 
 **Empty, from the shortlist** (code-posted, no model call; the payload has no `run_id`):
 `status: "empty"`, `picks: []`, `backdrop: []`, `rejected: []`, `evidence` absent,
@@ -138,5 +159,3 @@ created_at, edit_window_ends_at, reason, picks, meta` (those are columns, items 
   ATL-110 writes agent_scores.
 - In replay (`host.replaying`) nothing is published, so the teammate wait times out. ATL-112's
   evals should stub `wait_for_replies` (or seed reply rows) and `prepare`, the way the tests do.
-- The "all news sources for an asset class down → cap that class at 0.5" rule (PM) is not here. It
-  needs News's degraded-source data (ATL-107); `enforce` is the place to add it.

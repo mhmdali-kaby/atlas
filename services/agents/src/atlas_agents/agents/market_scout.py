@@ -7,15 +7,16 @@
      blocklist always wins.
   2. An empty shortlist posts a "no watchlist today" card with the filter reason and saves an
      ``empty`` watchlist. The model is not called.
-  3. Code posts a @News mention (shortlist instruments with news or catalysts) and a @Historian
-     mention (the top ``historian_top_n``) and polls ``warroom_messages`` for their replies
-     (``reply_to`` = the mention's row) up to ``agents.scout.wait_seconds``.
+  3. (:mod:`atlas_agents.scout.teammates`) Code posts a @News mention (shortlist instruments
+     with news or catalysts) and a @Historian mention (the top ``historian_top_n``) and polls
+     ``warroom_messages`` for their replies (``reply_to`` = the mention's row)
+     up to ``agents.scout.wait_seconds``.
   4. The Scout session gets the shortlist, pins, blocklist, open positions, the 48h calendar, the
      replies and its last ``history_days`` days of picks, and answers with a fenced JSON
      :class:`~atlas_agents.scout.publish.ScoutAnswer`.
   5. :class:`WatchlistReviewer` validates it (one retry), refuses once a pick set that breaks the
      correlation rule, then :func:`~atlas_agents.scout.publish.enforce` applies the code rules
-     (blocklist, partial-evidence conviction cap, ...), the watchlist is saved with
+     (blocklist, partial-evidence and news-class-down conviction caps, ...), the watchlist is saved with
      ``save_watchlist`` (edit window = created_at + ``watchlist_edit_window_minutes``) and the
      ``watchlist`` card is the run's final War Room message.
 
@@ -32,14 +33,14 @@ import time
 import uuid
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 from typing import Any, Final
 
-from atlas_shared.db import ResearchReport, Watchlist, WatchlistItem, owner_day
+from atlas_shared.db import NewsSource, ResearchReport, Watchlist, WatchlistItem, owner_day
 from atlas_shared.events import EventEnvelope
 from claude_agent_sdk.types import Message
 from pydantic import ValidationError
-from sqlalchemy import bindparam, func, select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from atlas_agents import events, historian, numguard
@@ -51,22 +52,33 @@ from atlas_agents.scout.features import FeatureTable, build_feature_table, save_
 from atlas_agents.scout.prescore import Shortlist, build_shortlist, prescore_config, shortlist_correlations
 from atlas_agents.scout.publish import (
     CARD_TYPE,
+    Cap,
     Evidence,
     Pair,
     ScoutAnswer,
+    SourceHealth,
     TeammateReply,
     answer_problems,
     correlation_violations,
+    degraded_asset_classes,
     enforce,
     publish_config,
     status_for,
+)
+from atlas_agents.scout.teammates import (
+    Reply,
+    historian_request,
+    mention_envelope,
+    news_request,
+    news_targets,
+    wait_for_replies,
 )
 from atlas_agents.scout.universe import build_universe, load_config
 from atlas_agents.session import Review, RunResult
 from atlas_agents.tools import ToolContext
 from atlas_agents.tools.account import compute_correlations, get_positions
 from atlas_agents.tools.framework import NoInput
-from atlas_agents.tools.warroom import MAIN_THREAD, agent_handles, message_envelope
+from atlas_agents.tools.warroom import MAIN_THREAD
 from atlas_agents.watchlists import save_watchlist
 
 log = logging.getLogger(__name__)
@@ -121,6 +133,14 @@ class Prepared:
     pinned_items: list[WatchlistPick] = field(default_factory=list)
     removed: list[str] = field(default_factory=list)
     previous_version: int | None = None
+    degraded_asset_classes: list[str] = field(default_factory=list)
+    """Asset classes whose news sources are all down (their picks' convictions are capped)."""
+
+    def asset_class_of(self) -> dict[str, str]:
+        """inst_id -> asset class as code knows it (feature table, then owner pins)."""
+        out = {p.inst_id: p.asset_class for p in self.pinned_items}
+        out.update({r.inst_id: r.asset_class for r in self.table.rows})
+        return out
 
 
 def _current_watchlist(session: Session, ctx: ToolContext, day: date) -> Watchlist | None:
@@ -219,12 +239,46 @@ def _settings_data(session: Session, ctx: ToolContext) -> Mapping[str, Any] | No
     return data
 
 
+def news_categories() -> dict[str, list[str]]:
+    """``agents.news_intelligence.asset_class_categories``: asset class -> news_sources categories."""
+    from atlas_shared.defaults import DEFAULTS
+
+    raw: Mapping[str, Any] = DEFAULTS["agents"]["news_intelligence"]["asset_class_categories"]
+    return {str(k): [str(c) for c in v] for k, v in raw.items()}
+
+
+def news_degraded_classes(session: Session, ctx: ToolContext) -> list[str]:
+    """Asset classes none of whose news sources is up now (see :func:`degraded_asset_classes`).
+    news_sources holds current health only, so a replay reads it as it is today."""
+    rows = session.execute(
+        select(
+            NewsSource.category,
+            NewsSource.enabled,
+            NewsSource.requires_key,
+            NewsSource.api_key.is_not(None),
+            NewsSource.disabled_until,
+        )
+    ).all()
+    sources = [
+        SourceHealth(
+            category=str(r[0]),
+            enabled=bool(r[1]),
+            requires_key=bool(r[2]),
+            has_key=bool(r[3]),
+            disabled_until=r[4],
+        )
+        for r in rows
+    ]
+    return degraded_asset_classes(sources, ctx.now(), news_categories())
+
+
 def prepare(ctx: ToolContext, day: date) -> Prepared:
     """Step 1 (synchronous, DB-bound: call it with ``asyncio.to_thread``)."""
     with ctx.session_factory() as session:
         pinned_items, removed, version = _owner_edits(session, ctx, day)
         config = load_config(session, ctx)
         max_picks = _max_picks(_settings_data(session, ctx))
+        degraded = news_degraded_classes(session, ctx)
         reused = _reusable_table(session, ctx)
     if reused is None:
         table = build_feature_table(ctx, build_universe(ctx))
@@ -247,6 +301,7 @@ def prepare(ctx: ToolContext, day: date) -> Prepared:
         pinned_items=pinned_items,
         removed=removed,
         previous_version=version,
+        degraded_asset_classes=degraded,
     )
 
 
@@ -262,112 +317,6 @@ def empty_reason(table: FeatureTable) -> str:
         f"{reason} {n}" for reason, n in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
     )
     return f"No instrument passed the universe filter: {len(table.rejected)} rejected (by check: {detail})."
-
-
-# -- step 3: ask News and Historian, wait for their replies --------------------------------------------
-
-
-def news_targets(shortlist: Shortlist) -> list[str]:
-    """Shortlist instruments with news in the last 24h or their own catalysts in the next 48h."""
-    return [
-        r.inst_id
-        for r in shortlist.rows
-        if r.features.news_count_24h > 0
-        or r.features.catalysts
-        or (r.features.news_max_importance_24h or 0) > 0
-    ]
-
-
-def news_request(shortlist: Shortlist, table: FeatureTable) -> str:
-    targets = news_targets(shortlist)
-    if targets:
-        listed = ", ".join(targets)
-        return (
-            f"instrument briefs for today's shortlist instruments with news or catalysts: {listed}. "
-            "For each: story clusters with CONFIRMED/REPORTED/RUMOUR, upcoming catalysts in 48h, "
-            "net sentiment and whether it is priced in."
-        )
-    top = ", ".join(r.inst_id for r in shortlist.rows[:5])
-    return (
-        f"no shortlist instrument has news or its own catalyst; please brief the 48h event calendar "
-        f"({len(table.shared_catalysts)} shared events) and anything new on {top}."
-    )
-
-
-def historian_request(shortlist: Shortlist) -> str:
-    top = ", ".join(r.inst_id for r in shortlist.rows[: _int("historian_top_n")])
-    return f"regime and analog check for today's top Market Scout candidates: {top}."
-
-
-def mention_envelope(
-    ctx: ToolContext, target: str, request: str, *, correlation_id: str, depth: int
-) -> EventEnvelope:
-    handle = agent_handles()[target]
-    envelope = message_envelope(
-        ctx, kind="text", content_md=f"@{handle} {request}", mentions=[target], mention_depth=depth
-    )
-    return envelope.model_copy(update={"correlation_id": correlation_id})
-
-
-_REPLIES_SQL = text(
-    "SELECT p.event_id AS mention_id, r.id, r.author, r.created_at "
-    "FROM warroom_messages r JOIN warroom_messages p ON r.reply_to = p.id "
-    "WHERE r.env = :env AND r.author_type = 'agent' AND p.event_id IN :ids "
-    "ORDER BY r.created_at"
-).bindparams(bindparam("ids", expanding=True))
-
-
-@dataclass(frozen=True)
-class Reply:
-    agent: str
-    mention_id: str
-    message_id: str
-    replied_at: datetime
-    kind: str
-    content_md: str
-    card: Mapping[str, Any] | None
-
-
-def _find_replies(ctx: ToolContext, asked: Mapping[str, str]) -> dict[str, str]:
-    """{agent: reply row id} for the mentions in ``asked`` ({agent: mention envelope id})."""
-    by_mention = {mention_id: agent for agent, mention_id in asked.items()}
-    found: dict[str, str] = {}
-    with ctx.session_factory() as session:
-        rows = session.execute(
-            _REPLIES_SQL, {"env": ctx.env, "ids": [uuid.UUID(m) for m in by_mention]}
-        ).all()
-    for mention_id, row_id, author, _created in rows:
-        agent = by_mention.get(str(mention_id))
-        if agent is not None and author == agent and agent not in found:
-            found[agent] = str(row_id)
-    return found
-
-
-def _load_reply(ctx: ToolContext, agent: str, mention_id: str, row_id: str) -> Reply:
-    with ctx.session_factory() as session:
-        row = session.execute(
-            text("SELECT kind, content_md, card, created_at FROM warroom_messages WHERE id = :id"),
-            {"id": uuid.UUID(row_id)},
-        ).one()
-    card = row[2] if isinstance(row[2], dict) else None
-    return Reply(agent, mention_id, row_id, row[3], str(row[0]), str(row[1]), card)
-
-
-def wait_for_replies(
-    ctx: ToolContext, asked: Mapping[str, str], *, timeout: float, poll: float
-) -> dict[str, Reply]:
-    """Poll warroom_messages until every agent in ``asked`` replied or ``timeout`` seconds passed.
-    Synchronous: call it with ``asyncio.to_thread``."""
-    deadline = time.monotonic() + timeout
-    found: dict[str, str] = {}
-    while True:
-        missing = {a: m for a, m in asked.items() if a not in found}
-        if missing:
-            found.update(_find_replies(ctx, missing))
-        if len(found) == len(asked) or time.monotonic() >= deadline:
-            break
-        time.sleep(max(0.0, min(poll, deadline - time.monotonic())))
-    return {agent: _load_reply(ctx, agent, asked[agent], row_id) for agent, row_id in found.items()}
 
 
 # -- step 4: the Scout session's prompt ----------------------------------------------------------------
@@ -459,6 +408,7 @@ class Inputs:
             "max_picks": p.max_picks,
             "your_recent_watchlists": self.recent,
             "teammates": [t.model_dump(mode="json") for t in self.evidence.teammates],
+            "news_down_asset_classes": p.degraded_asset_classes,
         }
 
     def tool_output(self) -> dict[str, Any]:
@@ -493,6 +443,11 @@ def scout_prompt(inputs: Inputs) -> str:
             f"\n\nEVIDENCE IS PARTIAL ({reasons}). Atlas will publish this watchlist as "
             f"'partial evidence' and cap every conviction at {_cap():g}."
         )
+    if p.degraded_asset_classes:
+        partial += (
+            f"\n\nEVERY NEWS SOURCE IS DOWN for: {', '.join(p.degraded_asset_classes)}. Atlas caps the "
+            f"conviction of picks in those asset classes at {_cap():g}."
+        )
     return (
         "It is time for today's watchlist (brief §7.1). Atlas computed the shortlist (top by "
         "pre-score, plus owner pins), the 48h calendar, open positions and your recent watchlists; "
@@ -514,15 +469,33 @@ def scout_prompt(inputs: Inputs) -> str:
 
 
 def _summary(
-    picks: Sequence[WatchlistPick], status: str, reasons: Sequence[str], backdrop: Sequence[str]
+    picks: Sequence[WatchlistPick],
+    status: str,
+    reasons: Sequence[str],
+    backdrop: Sequence[str],
+    degraded: Sequence[str] = (),
 ) -> str:
     lines = [line.strip() for line in backdrop if line.strip()]
+    if degraded:
+        lines.insert(
+            0,
+            f"**News down** for {', '.join(degraded)}: convictions in that class capped at {_cap():g}.",
+        )
     if status == "partial_evidence":
         lines.insert(0, f"**Partial evidence**: {'; '.join(reasons)}. Convictions capped at {_cap():g}.")
     if picks:
         listed = ", ".join(f"{p.inst_id} {p.bias} ({p.conviction:g})" for p in picks)
         lines.append(f"Today's watchlist: {listed}.")
     return "\n".join(lines)
+
+
+def _card_pick(pick: WatchlistPick, pinned: Sequence[str], caps: Mapping[str, Cap]) -> dict[str, Any]:
+    out: dict[str, Any] = {**pick.model_dump(mode="json"), "pinned_by_owner": pick.inst_id in pinned}
+    cap = caps.get(pick.inst_id)
+    if cap is not None:
+        out["conviction_before_cap"] = cap.conviction_before_cap
+        out["cap_reason"] = cap.cap_reason
+    return out
 
 
 @dataclass
@@ -542,6 +515,7 @@ def save_and_card(
     status: str,
     reason: str | None,
     data: dict[str, Any],
+    caps: Mapping[str, Cap] | None = None,
 ) -> Saved:
     """Save the watchlist (new version for the day) and return its card. Synchronous."""
     created = ctx.now()
@@ -576,7 +550,7 @@ def save_and_card(
         "created_at": created.isoformat(),
         "edit_window_ends_at": window.isoformat(),
         "reason": reason,
-        "picks": [{**p.model_dump(mode="json"), "pinned_by_owner": p.inst_id in pinned} for p in picks],
+        "picks": [_card_pick(p, pinned, caps or {}) for p in picks],
         **data,
     }
     return Saved(watchlist_id, version, status, card)
@@ -665,6 +639,8 @@ class WatchlistReviewer:
             max_members=max_members,
             partial=partial,
             cap=_cap(),
+            degraded_classes=p.degraded_asset_classes,
+            asset_class_of=p.asset_class_of(),
         )
         status = status_for(enforced.picks, partial)
         reasons = evidence.partial_reasons(_int("stale_minutes")) if partial else []
@@ -691,9 +667,10 @@ class WatchlistReviewer:
             status=status,
             reason=reason,
             data=data,
+            caps=enforced.caps,
         )
         self.saved = saved
-        summary = _summary(enforced.picks, status, reasons, answer.backdrop)
+        summary = _summary(enforced.picks, status, reasons, answer.backdrop, p.degraded_asset_classes)
         if status == "empty":
             summary = f"No watchlist today: {reason}\n{summary}".strip()
         outputs: list[Mapping[str, Any]] = [
@@ -853,6 +830,7 @@ async def run_watchlist(
         "feature_table_as_of": prepared.table.as_of.isoformat(),
         "shortlist": [r.inst_id for r in prepared.shortlist.rows],
         "previous_version": prepared.previous_version,
+        "degraded_asset_classes": prepared.degraded_asset_classes,
     }
     if not prepared.shortlist.rows:
         await _post_empty(host, ctx, today, prepared, base, correlation_id)

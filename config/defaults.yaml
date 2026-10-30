@@ -758,9 +758,9 @@ agents:
   #   mentions.max_depth (ATL-101): an agent-written @mention is one deeper than the run that wrote
   #     it (owner, system and scheduled runs are depth 0); a mention at this depth or deeper starts
   #     no run, so with 2 the chain A -> B -> C stops before C.
-  output_retries: 1
   #   mentions.parent_wait_seconds (ATL-108): how long a mention handler waits for atlas:bridge to
   #     store an agent-written mention before replying to Main (so the reply carries reply_to).
+  output_retries: 1
   schedule:
     historian_regime_table: "07:30"
     scout_watchlist: "08:00"
@@ -772,6 +772,17 @@ agents:
     batch: 50
     max_depth: 2
     parent_wait_seconds: 3
+  # ATL-107 / ATL-108 (brief §7.2 failure behaviour): asset_class_categories maps an asset class to
+  #   the news_sources.category values that cover it. When every source of those categories is
+  #   disabled, needs_key or degraded (disabled_until in the future), the class is degraded: Market
+  #   Scout caps that class's convictions at agents.scout.partial_conviction_cap.
+  news_intelligence:
+    asset_class_categories:
+      crypto: [crypto_news]
+      stock: [markets_news]
+      etf: [markets_news]
+      index: [markets_news]
+      commodity: [markets_news]
   # ATL-104, brief §7.1 steps 1-2 + decision #247 (2): Market Scout's code-run universe filter and
   # feature table (atlas_agents.scout). Every value is in force at the table's as_of (replay-bounded).
   #   universe: the filter. Per-market minimum 24h quote volume (USD) and max_spread_bps come from the
@@ -811,6 +822,9 @@ agents:
     # rank; blocked or owner-removed instruments are dropped. history_days: past days of own picks
     # shown to the model. link_seconds: how long to wait for the bridge to store the card before
     # watchlists.message_id is left null.
+    # A class in agents.news_intelligence.asset_class_categories none of whose news sources is up is
+    # listed in the card's degraded_asset_classes and its picks' convictions are capped at
+    # partial_conviction_cap (cap_reason news_class_down).
     wait_seconds: 300
     poll_seconds: 2
     historian_top_n: 8

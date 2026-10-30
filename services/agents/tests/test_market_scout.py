@@ -26,10 +26,18 @@ from atlas_agents.registry import REGISTRY, discover_hooks
 from atlas_agents.schemas import WatchlistPick
 from atlas_agents.scout.features import FeatureTable, InstrumentFeatures
 from atlas_agents.scout.prescore import CorrelatedPair, build_shortlist
-from atlas_agents.scout.publish import Pair, correlated_groups, enforce, trim_correlated
+from atlas_agents.scout.publish import (
+    Pair,
+    SourceHealth,
+    correlated_groups,
+    degraded_asset_classes,
+    enforce,
+    trim_correlated,
+)
 from atlas_agents.scout.universe import Rejected
 from atlas_agents.supervisor import Supervisor
-from atlas_shared.db import AgentRun, AgentState, AgentUsageDaily, Watchlist, WatchlistItem
+from atlas_agents.tools import ToolContext
+from atlas_shared.db import AgentRun, AgentState, AgentUsageDaily, NewsSource, Watchlist, WatchlistItem
 from atlas_shared.events import EventEnvelope
 from sqlalchemy import Engine, delete, select, text
 from sqlalchemy.orm import Session
@@ -81,6 +89,8 @@ def _row(inst_id: str, as_of: datetime, **kw: Any) -> InstrumentFeatures:
     return InstrumentFeatures(**base)
 
 
+CLASSES = {"XAU-USDT-SWAP": "commodity", "TSLA-USDT-SWAP": "stock"}
+
 INSTS = [
     "BTC-USDT-SWAP",
     "ETH-USDT-SWAP",
@@ -99,6 +109,7 @@ def _prepared(
     blocklist: list[str] | None = None,
     table_age: timedelta = timedelta(minutes=1),
     rejected: list[Rejected] | None = None,
+    sources: list[SourceHealth] | None = None,
 ) -> market_scout.Prepared:
     as_of = now - table_age
     ids = INSTS if rows is None else rows
@@ -114,6 +125,7 @@ def _prepared(
             _row(
                 i,
                 as_of,
+                asset_class=CLASSES.get(i, "crypto"),
                 news_count_24h=2 if i == "XAU-USDT-SWAP" else 0,
                 returns_pct={"1d": 1.0, "3d": 2.0, "7d": 3.0 + n, "30d": 4.0},
             )
@@ -133,14 +145,27 @@ def _prepared(
         report_id=None,
         blocklist=blocklist or [],
         max_picks=5,
+        degraded_asset_classes=degraded_asset_classes(
+            sources if sources is not None else _sources(), now, market_scout.news_categories()
+        ),
     )
+
+
+def _sources(*, crypto_down: bool = False) -> list[SourceHealth]:
+    """One crypto and one markets news source, each up unless asked otherwise."""
+    future = datetime(2100, 1, 1, tzinfo=UTC)
+    return [
+        SourceHealth("crypto_news", True, False, False, future if crypto_down else None),
+        SourceHealth("crypto_news", True, True, not crypto_down, None),
+        SourceHealth("markets_news", True, False, False, None),
+    ]
 
 
 def _pick(inst_id: str, rank: int, conviction: float, as_of: datetime) -> dict[str, Any]:
     return {
         "inst_id": inst_id,
         "rank": rank,
-        "asset_class": "crypto",
+        "asset_class": CLASSES.get(inst_id, "crypto"),
         "bias": "long",
         "conviction": conviction,
         "thesis": f"{inst_id} broke out on rising volume with a catalyst ahead.",
@@ -376,6 +401,8 @@ async def test_the_0800_hook_asks_news_and_historian_waits_and_publishes_the_wat
         "historian": "replied",
     }
     assert wl.message_id is not None  # linked to the card the bridge stored
+    assert card["degraded_asset_classes"] == []
+    assert not any("cap_reason" in p or "conviction_before_cap" in p for p in card["picks"])
 
     # A second tick the same day starts nothing.
     assert await sup.tick(now + timedelta(minutes=1)) == []
@@ -413,6 +440,46 @@ async def test_a_silent_historian_makes_the_watchlist_partial_with_convictions_c
         "XAU-USDT-SWAP",
     }
     assert "Partial evidence" in card_env.payload["content_md"]
+    caps = {p["inst_id"]: (p.get("conviction_before_cap"), p.get("cap_reason")) for p in card["picks"]}
+    assert caps == {
+        "SOL-USDT-SWAP": (0.9, "partial_evidence"),
+        "XAU-USDT-SWAP": (0.7, "partial_evidence"),
+        "TSLA-USDT-SWAP": (None, None),  # 0.4 was under the cap
+    }
+
+
+async def test_every_crypto_news_source_down_caps_only_crypto_picks(
+    engine: Engine, now: datetime, cleanup: list[Bridge], tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        market_scout, "prepare", lambda ctx, day: _prepared(now, sources=_sources(crypto_down=True))
+    )
+    bridge = Bridge(engine, now, answer={"news_intelligence", "historian"})
+    cleanup.append(bridge)
+    client = fake.FakeClaudeClient([_answer(now, [("SOL-USDT-SWAP", 0.8), ("XAU-USDT-SWAP", 0.7)])])
+
+    (result,) = await _supervisor(engine, bridge, client, now, tmp_path).tick(now)
+
+    assert result.status == "ok"
+    (prompt,) = client.queries
+    assert "EVERY NEWS SOURCE IS DOWN for: crypto" in prompt
+    wl, items = _saved(engine, now)
+    (card_env,) = _cards(bridge)
+    card = card_env.payload["card"]
+    assert wl.status == "published" == card["status"]  # both teammates replied, table fresh
+    assert card["degraded_asset_classes"] == ["crypto"]
+    assert [(i.inst_id, float(i.conviction)) for i in items] == [
+        ("SOL-USDT-SWAP", 0.5),
+        ("XAU-USDT-SWAP", 0.7),
+    ]
+    sol, xau = card["picks"]
+    assert (sol["conviction"], sol["conviction_before_cap"], sol["cap_reason"]) == (
+        0.5,
+        0.8,
+        "news_class_down",
+    )
+    assert xau["conviction"] == 0.7 and "cap_reason" not in xau and "conviction_before_cap" not in xau
+    assert "News down" in card_env.payload["content_md"]
 
 
 async def test_a_stale_feature_table_is_partial_evidence_too(
@@ -592,3 +659,93 @@ def test_empty_reason_counts_the_filter_checks() -> None:
     rej = [Rejected(inst_id="X", market="spot", reasons=["age"], detail=["new"])]
     reason = market_scout.empty_reason(_prepared(now, rows=[], rejected=rej).table)
     assert reason == "No instrument passed the universe filter: 1 rejected (by check: age 1)."
+
+
+def test_a_class_is_degraded_only_when_none_of_its_sources_is_up() -> None:
+    now = datetime(2034, 1, 1, 5, tzinfo=UTC)
+    cats = {"crypto": ["crypto_news"], "stock": ["markets_news"], "commodity": ["markets_news"]}
+    later, earlier = now + timedelta(minutes=5), now - timedelta(minutes=5)
+    down = [
+        SourceHealth("crypto_news", False, False, False, None),  # disabled
+        SourceHealth("crypto_news", True, True, False, None),  # needs_key
+        SourceHealth("crypto_news", True, False, False, later),  # degraded
+        SourceHealth("markets_news", True, False, False, earlier),  # back-off over: up
+    ]
+    assert degraded_asset_classes(down, now, cats) == ["crypto"]
+    # One crypto source up is enough; a class with no source at all is down.
+    up = [*down, SourceHealth("crypto_news", True, True, True, None)]
+    assert degraded_asset_classes(up, now, cats) == []
+    assert degraded_asset_classes([], now, {"crypto": ["crypto_news"]}) == ["crypto"]
+
+
+def test_partial_evidence_wins_over_news_class_down_and_other_classes_keep_their_conviction() -> None:
+    def common(**kw: Any) -> Any:
+        return enforce(
+            [_wp("A", 1, 0.9), _wp("X", 2, 0.8)],
+            blocklist=[],
+            removed=[],
+            shortlist_ids=["A", "X"],
+            pinned_items=[],
+            held_ids=[],
+            pairs=[],
+            threshold=0.8,
+            max_members=2,
+            cap=0.5,
+            degraded_classes=["crypto"],
+            asset_class_of={"A": "crypto", "X": "commodity"},
+            **kw,
+        )
+
+    news_only = common(partial=False)
+    assert [(p.inst_id, p.conviction) for p in news_only.picks] == [("A", 0.5), ("X", 0.8)]
+    assert {k: (c.conviction_before_cap, c.cap_reason) for k, c in news_only.caps.items()} == {
+        "A": (0.9, "news_class_down")
+    }
+    both = common(partial=True)
+    assert {k: (c.conviction_before_cap, c.cap_reason) for k, c in both.caps.items()} == {
+        "A": (0.9, "partial_evidence"),
+        "X": (0.8, "partial_evidence"),
+    }
+
+
+def test_news_degraded_classes_reads_news_sources(engine: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The DB loader. Inside one transaction that is rolled back, the sentiment category holds only
+    this test's rows: one source in its failure back-off and one keyed source with no key."""
+    now = datetime(2034, 1, 1, 5, tzinfo=UTC)
+    monkeypatch.setattr(
+        market_scout, "news_categories", lambda: {"testclass": ["sentiment"], "other": ["no_such"]}
+    )
+    ctx = ToolContext(
+        env=ENV,
+        session_factory=lambda: Session(engine),
+        agent=SLUG,
+        correlation_id="test",
+        clock=lambda: now,
+        publish=lambda stream, envelope: None,
+    )
+    tag = uuid.uuid4().hex[:8]
+    with Session(engine) as db:
+        try:
+            db.execute(delete(NewsSource).where(NewsSource.category == "sentiment"))
+            for n, (requires_key, until) in enumerate([(False, now + timedelta(minutes=10)), (True, None)]):
+                db.execute(
+                    text(
+                        "INSERT INTO news_sources (id, key, provider, kind, category, name, enabled, "
+                        "poll_seconds, requires_key, api_key, disabled_until, consecutive_failures, "
+                        "created_at, updated_at) VALUES (:id, :key, 'test', 'sentiment', 'sentiment', "
+                        ":key, true, 300, :rk, NULL, :until, 0, :ts, :ts)"
+                    ),
+                    {
+                        "id": str(uuid.uuid4()),
+                        "key": f"t{tag}{n}",
+                        "rk": requires_key,
+                        "until": until,
+                        "ts": now,
+                    },
+                )
+            assert market_scout.news_degraded_classes(db, ctx) == ["other", "testclass"]
+            # After the back-off window that source is up again; a class with no source stays down.
+            later = dataclasses.replace(ctx, clock=lambda: now + timedelta(minutes=11))
+            assert market_scout.news_degraded_classes(db, later) == ["other"]
+        finally:
+            db.rollback()
