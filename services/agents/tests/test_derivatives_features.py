@@ -22,12 +22,14 @@ from atlas_agents.derivatives.features import (
     compute_features,
     count_sign_flips,
     funding_features,
+    index_max_age_seconds,
     load_frames,
     long_short_features,
     oi_features,
     taker_features,
 )
 from atlas_shared.db import Candle, FundingRate, LongShortRatio, OpenInterest, TakerVolume
+from atlas_shared.defaults import DEFAULTS
 from atlas_shared.market_data import MarketSnapshot
 from sqlalchemy import Engine, delete
 from sqlalchemy.orm import Session
@@ -248,8 +250,16 @@ def test_taker_buy_sell_ratio_over_1h_and_4h() -> None:
 # -- basis (AC5) -------------------------------------------------------------------------------------
 
 
-def snapshot(mark_age_seconds: float, mark_px: str = "101") -> MarketSnapshot:
+def snapshot(
+    mark_age_seconds: float, mark_px: str = "101", index_age_seconds: float | None = None
+) -> MarketSnapshot:
     at = AS_OF - timedelta(seconds=mark_age_seconds)
+    channel_at = {"mark-price": at, "tickers": AS_OF}
+    index = None
+    if index_age_seconds is not None:
+        index_at = AS_OF - timedelta(seconds=index_age_seconds)
+        channel_at["index"] = index_at
+        index = {"idxPx": "100", "ts": str(int(index_at.timestamp() * 1000))}
     return MarketSnapshot(
         env="demo",
         inst_id="BTC-USDT-SWAP",
@@ -257,7 +267,8 @@ def snapshot(mark_age_seconds: float, mark_px: str = "101") -> MarketSnapshot:
         ticker=None,
         mark={"instId": "BTC-USDT-SWAP", "markPx": mark_px, "ts": "0"},
         books5=None,
-        channel_at={"mark-price": at, "tickers": AS_OF},
+        channel_at=channel_at,
+        index=index,
     )
 
 
@@ -276,6 +287,52 @@ def test_fresh_mark_price_gives_basis_in_bps() -> None:
     assert feats.mark_px == Decimal("101")
     missing_index = basis_features(snapshot(5), None, AS_OF)
     assert missing_index.basis_bps is None and missing_index.reason == "index_unavailable"
+
+
+def test_stored_index_limit_is_market_data_max_age_times_the_multiplier() -> None:
+    expected = float(DEFAULTS["market_ws"]["market_data_max_age_seconds"]) * float(
+        DEFAULTS["agents"]["derivatives"]["index_max_age_multiplier"]
+    )
+    assert index_max_age_seconds() == expected == 300.0
+
+
+def test_fresh_stored_index_gives_numeric_basis() -> None:
+    feats = basis_features(snapshot(5, index_age_seconds=120), None, AS_OF)
+    assert feats.reason is None
+    assert feats.basis_bps == pytest.approx(100.0)
+    assert feats.index_px == Decimal("100")
+    assert feats.index_as_of == AS_OF - timedelta(seconds=120)
+
+
+def test_stored_index_older_than_the_limit_gives_reason_stale() -> None:
+    limit = index_max_age_seconds()
+    assert basis_features(snapshot(5, index_age_seconds=limit), None, AS_OF).reason is None
+    feats = basis_features(snapshot(5, index_age_seconds=limit + 1), None, AS_OF)
+    assert feats.basis_bps is None
+    assert feats.reason == "stale"
+    assert feats.index_px == Decimal("100")
+
+
+def test_no_stored_index_gives_reason_index_unavailable() -> None:
+    feats = basis_features(snapshot(5), None, AS_OF)
+    assert feats.basis_bps is None
+    assert feats.reason == "index_unavailable"
+
+
+def test_compute_features_reads_the_snapshot_index() -> None:
+    empty = pd.Series([], index=pd.DatetimeIndex([], tz="UTC"), dtype=float)
+    frames = DerivativesFrames(
+        funding=empty,
+        oi=empty,
+        oi_series=None,
+        price=pd.DataFrame({"c": [], "vol": []}, index=pd.DatetimeIndex([], tz="UTC")),
+        long_short=empty,
+        taker=pd.DataFrame({"buy_vol": [], "sell_vol": []}, index=pd.DatetimeIndex([], tz="UTC")),
+    )
+    feats = compute_features("BTC-USDT-SWAP", frames, AS_OF, snapshot=snapshot(5, index_age_seconds=60))
+    assert feats.basis.basis_bps == pytest.approx(100.0)
+    stale = compute_features("BTC-USDT-SWAP", frames, AS_OF, snapshot=snapshot(5, index_age_seconds=3600))
+    assert stale.basis.reason == "stale"
 
 
 # -- loader (DB) -------------------------------------------------------------------------------------

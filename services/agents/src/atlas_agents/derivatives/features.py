@@ -25,7 +25,10 @@ Definitions:
   ``as_of - N hours < ts <= as_of``.
 * **Basis**: (mark - index) / index x 10 000 bps, mark from the ``mark-price`` channel of the
   ``atlas:md`` snapshot only while that channel is fresh (``market_ws.market_data_max_age_seconds``),
-  else null with reason ``stale``.
+  else null with reason ``stale``. The index is the snapshot's ``index`` field (``market/index-tickers``,
+  stored every 5 min by trading_core's derivatives poller) unless the caller passes ``index_px``. No
+  stored index gives reason ``index_unavailable``; an index older than
+  ``market_data_max_age_seconds`` x ``index_max_age_multiplier`` gives reason ``stale``.
 
 **Unreliable readings.** Demo data can be abnormal. Zero open interest in the OI window, zero candle
 volume over the longest OI window, or zero taker volume in a taker window sets ``unreliable=true``
@@ -53,7 +56,9 @@ from atlas_quant import load_candles
 from atlas_quant.grid import bar_delta
 from atlas_shared.db import FundingRate, LongShortRatio, OpenInterest, TakerVolume
 from atlas_shared.defaults import DEFAULTS
+from atlas_shared.market_data import INDEX as INDEX_CHANNEL
 from atlas_shared.market_data import MarketSnapshot
+from atlas_shared.market_data import max_age_seconds as md_max_age_seconds
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -132,6 +137,7 @@ class BasisFeatures(BaseModel):
     index_px: Decimal | None = None
     reason: BasisReason | None = None
     as_of: datetime | None = None  # the mark-price channel's last message
+    index_as_of: datetime | None = None  # OKX ts of the index price used
 
 
 class DerivativesFeatures(BaseModel):
@@ -433,27 +439,50 @@ def _decimal(raw: Any) -> Decimal | None:
     return value if value.is_finite() else None
 
 
+def index_max_age_seconds(cfg: Mapping[str, Any] | None = None) -> float:
+    """How old the stored index may be: the market-data max age x ``index_max_age_multiplier``."""
+    c = cfg or derivatives_config()
+    return md_max_age_seconds() * float(Decimal(str(c["index_max_age_multiplier"])))
+
+
 def basis_features(
     snapshot: MarketSnapshot | None,
     index_px: Decimal | None,
     now: datetime,
     *,
+    index_at: datetime | None = None,
     max_age_seconds: float | None = None,
+    index_max_age: float | None = None,
 ) -> BasisFeatures:
-    """Basis in bps from the snapshot's mark price while the mark-price channel is fresh."""
+    """Basis in bps from the snapshot's mark price while the mark-price channel is fresh.
+
+    ``index_px``/``index_at`` override the snapshot's stored index (``index``/``index_ms``); with
+    ``index_px`` None the stored one is used. An index older than ``index_max_age`` seconds
+    (default :func:`index_max_age_seconds`) is stale.
+    """
+    if index_px is None and snapshot is not None and snapshot.index is not None:
+        index_px = _decimal(snapshot.index.get("idxPx"))
+        index_at = snapshot.channel_at.get(INDEX_CHANNEL) if index_px is not None else None
     if snapshot is None or snapshot.channel_stale(MARK_CHANNEL, now, max_age_seconds):
         at = None if snapshot is None else snapshot.channel_at.get(MARK_CHANNEL)
-        return BasisFeatures(reason="stale", as_of=at, index_px=index_px)
+        return BasisFeatures(reason="stale", as_of=at, index_px=index_px, index_as_of=index_at)
     at = snapshot.channel_at.get(MARK_CHANNEL)
     mark = _decimal((snapshot.mark or {}).get("markPx"))
     if mark is None:
-        return BasisFeatures(reason="no_mark", as_of=at, index_px=index_px)
+        return BasisFeatures(reason="no_mark", as_of=at, index_px=index_px, index_as_of=index_at)
     if index_px is None:
         return BasisFeatures(reason="index_unavailable", mark_px=mark, as_of=at)
+    limit = index_max_age_seconds() if index_max_age is None else index_max_age
+    if index_at is not None and (now - index_at).total_seconds() > limit:
+        return BasisFeatures(reason="stale", mark_px=mark, index_px=index_px, as_of=at, index_as_of=index_at)
     if index_px <= 0:
-        return BasisFeatures(reason="bad_index", mark_px=mark, index_px=index_px, as_of=at)
+        return BasisFeatures(
+            reason="bad_index", mark_px=mark, index_px=index_px, as_of=at, index_as_of=index_at
+        )
     bps = (mark - index_px) / index_px * Decimal(10000)
-    return BasisFeatures(basis_bps=_finite(float(bps)), mark_px=mark, index_px=index_px, as_of=at)
+    return BasisFeatures(
+        basis_bps=_finite(float(bps)), mark_px=mark, index_px=index_px, as_of=at, index_as_of=index_at
+    )
 
 
 # -- all together ------------------------------------------------------------------------------------
@@ -495,7 +524,7 @@ def compute_features(
         open_interest=oi,
         long_short=long_short_features(frames.long_short, as_of, c),
         taker=taker,
-        basis=basis_features(snapshot, index_px, as_of),
+        basis=basis_features(snapshot, index_px, as_of, index_max_age=index_max_age_seconds(c)),
         unreliable=bool(reasons),
         unreliable_reasons=reasons,
         data_as_of=as_of,
@@ -632,6 +661,7 @@ __all__ = [
     "count_sign_flips",
     "derivatives_config",
     "funding_features",
+    "index_max_age_seconds",
     "load_frames",
     "long_short_features",
     "oi_features",

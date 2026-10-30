@@ -204,12 +204,16 @@ candle_poller:
 # market feed's instruments (today's watchlist and open positions). taker_inst_type is rubik's
 # instType (CONTRACTS = perps + futures). Upserted on (env, ccy, period, ts). The same tick stores
 # public/open-interest for each -SWAP in that instrument set (open_interest, keyed by OKX ts), the
-# 5-minute OI the derivatives features' 1h/4h windows need.
+# 5-minute OI the derivatives features' 1h/4h windows need. It also reads market/index-tickers once
+# per index_quote_ccys entry that a watched -SWAP's index (instFamily, BTC-USDT) uses, and writes the
+# index into the atlas:md:<env>:<instId> hash as `index` (JSON {idxPx, ts}) and `index_ms` (OKX ts)
+# for the basis (agents.derivatives.index_max_age_multiplier).
 derivatives_poller:
   interval_seconds: 300
   period: 5m
   taker_inst_type: CONTRACTS
   always_ccys: [BTC, ETH]
+  index_quote_ccys: [USDT, USDC]
   concurrency: 2
 candle_grid:
   offset_minutes: { "1m": 0, "5m": 0, "15m": 0, "1H": 0, "4H": 0, "1D": 960 }
@@ -339,6 +343,8 @@ okx_rest:
     public/funding-rate-history: { requests: 10, per_seconds: 2 }
     public/open-interest: { requests: 20, per_seconds: 2 }
     public/mark-price: { requests: 10, per_seconds: 2 }
+    # ATL-134: index prices for the basis (OKX v5 docs: 20 requests / 2 s per IP).
+    market/index-tickers: { requests: 20, per_seconds: 2 }
     rubik/stat/contracts/open-interest-volume: { requests: 5, per_seconds: 2 }
     rubik/stat/contracts/long-short-account-ratio: { requests: 5, per_seconds: 2 }
     rubik/stat/taker-volume: { requests: 5, per_seconds: 2 }
@@ -982,6 +988,8 @@ agents:
   # ts in the last N hours. max_age_minutes: the newest rubik / OI row older than this is null
   # (reason stale). window_stretch: the reference row of an N-hour change must be no older than
   # N x window_stretch before the newest row (so a 1D series never passes for a 1h change).
+  # index_max_age_multiplier: the basis' stored index (polled every 5 min by derivatives_poller) is
+  # stale when older than market_ws.market_data_max_age_seconds x this.
   # Zero OI or zero candle/taker volume marks the reading unreliable and nothing is computed on it.
   derivatives:
     funding_z_days: [7, 30]
@@ -997,6 +1005,7 @@ agents:
     taker_windows_hours: [1, 4]
     max_age_minutes: 30
     window_stretch: "1.5"
+    index_max_age_multiplier: 10
   regime_table:
     top_n: 60
   mentions:

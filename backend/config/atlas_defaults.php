@@ -208,6 +208,10 @@ return [
             'BTC',
             'ETH',
         ],
+        'index_quote_ccys' => [
+            'USDT',
+            'USDC',
+        ],
         'concurrency' => 2,
     ],
     'candle_grid' => [
@@ -386,6 +390,10 @@ return [
             ],
             'public/mark-price' => [
                 'requests' => 10,
+                'per_seconds' => 2,
+            ],
+            'market/index-tickers' => [
+                'requests' => 20,
                 'per_seconds' => 2,
             ],
             'rubik/stat/contracts/open-interest-volume' => [
@@ -1254,6 +1262,7 @@ return [
             ],
             'max_age_minutes' => 30,
             'window_stretch' => '1.5',
+            'index_max_age_multiplier' => 10,
         ],
         'regime_table' => [
             'top_n' => 60,
