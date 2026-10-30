@@ -250,6 +250,35 @@ return [
         'key_prefix' => 'atlas:md',
         'snapshot_ttl_seconds' => 86400,
     ],
+    'private_ws' => [
+        'key' => 'atlas:pws',
+        'channels' => [
+            [
+                'channel' => 'account',
+            ],
+            [
+                'channel' => 'positions',
+                'instType' => 'ANY',
+            ],
+            [
+                'channel' => 'balance_and_position',
+            ],
+            [
+                'channel' => 'orders',
+                'instType' => 'ANY',
+            ],
+            [
+                'channel' => 'orders-algo',
+                'instType' => 'ANY',
+            ],
+            [
+                'channel' => 'liquidation-warning',
+                'instType' => 'ANY',
+            ],
+        ],
+        'no_connection_retry_seconds' => 60,
+        'snapshot_min_interval_seconds' => 5,
+    ],
     'quality' => [
         'interval_seconds' => 900,
         'window_bars' => 500,

@@ -241,6 +241,24 @@ market_ws:
   key_prefix: "atlas:md"
   snapshot_ttl_seconds: 86400
 
+# ATL-142, brief §4.2: trading_core's private OKX WebSocket (URL okx.environments.<env>.ws_private_url),
+# logged in with the env's verified connection. Ping, reconnect backoff and the 30 s staleness rule
+# are market_ws's. Freshness lives in the Redis hash <key>:<env> (see atlas_shared.market_data
+# private_* helpers). Balance/position snapshot ticks from pushes are written at most once per
+# snapshot_min_interval_seconds (a skipped one is flushed by the stale check). With no verified
+# connection the feed retries every no_connection_retry_seconds.
+private_ws:
+  key: "atlas:pws"
+  channels:
+    - { channel: account }
+    - { channel: positions, instType: ANY }
+    - { channel: balance_and_position }
+    - { channel: orders, instType: ANY }
+    - { channel: orders-algo, instType: ANY }
+    - { channel: liquidation-warning, instType: ANY }
+  no_connection_retry_seconds: 60
+  snapshot_min_interval_seconds: 5
+
 # ATL-47, brief §7.3 data-quality checks, every interval_seconds and on demand
 # (POST /internal/quality/check). Each run looks at the last window_bars bars of every candle series
 # whose backfill is done. Gaps = missing ts in the bar grid (re-fetched from REST; repaired_at when
