@@ -1,0 +1,16 @@
+{
+  "code": "1",
+  "msg": "All operations failed",
+  "data": [
+    {
+      "clOrdId": "atlb1946ac9b2c64f2c8d0b6a1f3e9c7",
+      "ordId": "",
+      "tag": "",
+      "ts": "1793207736700",
+      "sCode": "51008",
+      "sMsg": "Order failed. Insufficient USDT margin in account"
+    }
+  ],
+  "inTime": "1793207736690000",
+  "outTime": "1793207736701000"
+}

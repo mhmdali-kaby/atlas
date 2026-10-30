@@ -1,0 +1,22 @@
+{
+  "code": "2",
+  "msg": "",
+  "data": [
+    {
+      "clOrdId": "atlbatch1",
+      "ordId": "312269865356374017",
+      "tag": "",
+      "ts": "1793207736700",
+      "sCode": "0",
+      "sMsg": "Order placed"
+    },
+    {
+      "clOrdId": "atlbatch2",
+      "ordId": "",
+      "tag": "",
+      "ts": "1793207736700",
+      "sCode": "51121",
+      "sMsg": "Order quantity must be a multiple of the lot size."
+    }
+  ]
+}

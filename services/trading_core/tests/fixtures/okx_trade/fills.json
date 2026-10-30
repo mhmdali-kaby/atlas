@@ -1,0 +1,23 @@
+{
+  "code": "0",
+  "msg": "",
+  "data": [
+    {
+      "instType": "SWAP",
+      "instId": "BTC-USDT-SWAP",
+      "tradeId": "744876980",
+      "ordId": "312269865356374016",
+      "clOrdId": "atlb1946ac9b2c64f2c8d0b6a1f3e9c7",
+      "billId": "680800019749904384",
+      "tag": "",
+      "side": "buy",
+      "posSide": "net",
+      "fillPx": "68000.5",
+      "fillSz": "0.05",
+      "fee": "-0.0017",
+      "feeCcy": "USDT",
+      "execType": "M",
+      "ts": "1793207736800"
+    }
+  ]
+}
