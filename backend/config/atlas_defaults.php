@@ -176,6 +176,19 @@ return [
         'instruments_interval_seconds' => 3600,
         'account_interval_seconds' => 60,
         'bills_interval_seconds' => 300,
+        'history_interval_seconds' => 300,
+        'history_overlap_seconds' => 3600,
+        'history_link_tolerance_seconds' => 5,
+        'history_fill_inst_types' => [
+            'SPOT',
+            'SWAP',
+            'FUTURES',
+        ],
+    ],
+    'portfolio_history' => [
+        'per_page_default' => 50,
+        'per_page_max' => 200,
+        'r_scale' => 2,
     ],
     'backfill_runner' => [
         'interval_seconds' => 300,

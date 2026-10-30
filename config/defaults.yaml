@@ -179,6 +179,22 @@ sync:
   instruments_interval_seconds: 3600
   account_interval_seconds: 60
   bills_interval_seconds: 300
+  # ATL-172: account/positions-history + trade/fills-history → positions_closed, fills. Later runs
+  # page back only to the last successful run minus history_overlap_seconds.
+  history_interval_seconds: 300
+  history_overlap_seconds: 3600
+  # A closed position is linked to the Atlas entry order whose first fill is within this many
+  # seconds before the position's open time (cTime), or later but before it closed.
+  history_link_tolerance_seconds: 5
+  # trade/fills-history needs instType; these are paged every run.
+  history_fill_inst_types: [SPOT, SWAP, FUTURES]
+
+# ATL-172, brief §13 History: GET /api/portfolio/history and /api/exports/{fills|closed}.csv.
+portfolio_history:
+  per_page_default: 50
+  per_page_max: 200
+  # Decimal places of R in the API and CSV.
+  r_scale: 2
 
 # ATL-46, brief §7.3: the resumable history backfill in trading_core. How far back each dataset
 # goes is backfill.depth_days (below, shared with the Data API); null depths walk back to
