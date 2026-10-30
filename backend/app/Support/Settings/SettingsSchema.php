@@ -60,6 +60,20 @@ final class SettingsSchema
         'onboarding_completed' => ['integer', 0, 1, false],
     ];
 
+    /** ATL-113: the model tiers an agent can run on (agents.models in config/defaults.yaml). */
+    public const AGENT_MODELS = ['strong', 'standard', 'routine'];
+
+    /** ATL-113: the per-agent settings, `agents.<slug>.<setting>`, and their kind. */
+    public const AGENT_SETTINGS = [
+        'enabled' => 'boolean',
+        'model' => 'model',
+        'daily_tokens' => 'integer',
+        'daily_turns' => 'integer',
+    ];
+
+    /** ATL-113: hostname lists for the web agents' fetch policy (ATL-100). */
+    public const WEB_DOMAIN_FIELDS = ['agents.web.allow_domains', 'agents.web.deny_domains'];
+
     /**
      * Every field the settings data holds, in display order.
      *
@@ -67,7 +81,120 @@ final class SettingsSchema
      */
     public static function fields(): array
     {
-        return ['risk_profile', ...array_keys(self::NUMERIC_FIELDS)];
+        return [
+            'risk_profile',
+            ...array_keys(self::NUMERIC_FIELDS),
+            ...array_keys(self::agentFields()),
+            ...self::WEB_DOMAIN_FIELDS,
+        ];
+    }
+
+    /**
+     * The nine roster agents' slugs (agents.roster in config/defaults.yaml), in roster order.
+     *
+     * @return list<string>
+     */
+    public static function agentSlugs(): array
+    {
+        $roster = config('atlas_defaults.agents.roster');
+
+        return is_array($roster) ? array_map(strval(...), array_keys($roster)) : [];
+    }
+
+    /**
+     * `agents.<slug>.<setting>` => kind (boolean | model | integer), for every roster agent.
+     *
+     * @return array<string, string>
+     */
+    public static function agentFields(): array
+    {
+        $fields = [];
+        foreach (self::agentSlugs() as $slug) {
+            foreach (self::AGENT_SETTINGS as $setting => $kind) {
+                $fields["agents.{$slug}.{$setting}"] = $kind;
+            }
+        }
+
+        return $fields;
+    }
+
+    public static function agentField(string $slug, string $setting): string
+    {
+        return "agents.{$slug}.{$setting}";
+    }
+
+    /**
+     * [min, max] of an integer agent setting (agents.settings_bounds).
+     *
+     * @return array{0: int, 1: int}
+     */
+    public static function agentIntegerBounds(string $setting): array
+    {
+        $min = config("atlas_defaults.agents.settings_bounds.{$setting}.min");
+        $max = config("atlas_defaults.agents.settings_bounds.{$setting}.max");
+
+        return [is_int($min) ? $min : 1, is_int($max) ? $max : PHP_INT_MAX];
+    }
+
+    public static function webDomainsMax(): int
+    {
+        $max = config('atlas_defaults.agents.settings_bounds.web_domains_max');
+
+        return is_int($max) ? $max : 200;
+    }
+
+    /**
+     * The agent settings a fresh env starts with: agents.defaults overridden by each roster entry,
+     * and agents.web's lists.
+     *
+     * @return array<string, bool|int|string|list<string>>
+     */
+    public static function agentDefaults(): array
+    {
+        $base = config('atlas_defaults.agents.defaults');
+        $base = is_array($base) ? $base : [];
+        $roster = config('atlas_defaults.agents.roster');
+        $roster = is_array($roster) ? $roster : [];
+
+        $values = [];
+        foreach (self::agentSlugs() as $slug) {
+            $entry = $roster[$slug] ?? [];
+            $merged = [...$base, ...(is_array($entry) ? $entry : [])];
+            foreach (array_keys(self::AGENT_SETTINGS) as $setting) {
+                $values[self::agentField($slug, $setting)] = $merged[$setting] ?? null;
+            }
+        }
+        foreach (self::WEB_DOMAIN_FIELDS as $field) {
+            $values[$field] = config('atlas_defaults.'.$field);
+        }
+
+        return self::normalise($values);
+    }
+
+    /**
+     * A hostname in its stored form: trimmed, one trailing dot dropped, lower-case and IDNA
+     * (punycode) encoded. Null when it is not a bare hostname (a URL, a port, a path, a space...).
+     */
+    public static function normaliseHostname(mixed $value): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+        $host = trim($value);
+        if (str_ends_with($host, '.')) {
+            $host = substr($host, 0, -1);
+        }
+        if ($host === '' || strlen($host) > 253 || preg_match('/[\s\/:@?#\[\]\\%*]/u', $host) === 1) {
+            return null;
+        }
+        $ascii = idn_to_ascii(mb_strtolower($host, 'UTF-8'), IDNA_NONTRANSITIONAL_TO_ASCII, INTL_IDNA_VARIANT_UTS46);
+        if (! is_string($ascii)) {
+            return null;
+        }
+        $ascii = strtolower($ascii);
+        $label = '[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?';
+
+        return strlen($ascii) <= 253 && preg_match("/^{$label}(?:\.{$label})*$/", $ascii) === 1 ? $ascii : null;
     }
 
     public static function isDecimal(string $field): bool
@@ -79,13 +206,13 @@ final class SettingsSchema
      * The settings a fresh env starts with: the default risk profile, the default autonomy level
      * and the market defaults.
      *
-     * @return array<string, int|string>
+     * @return array<string, bool|int|string|list<string>>
      */
     public static function defaults(): array
     {
         $profile = self::configString('atlas_defaults.risk_profiles.default');
 
-        return self::normalise([
+        return [...self::normalise([
             'risk_profile' => $profile,
             ...self::preset($profile),
             'autonomy_level' => config('atlas_defaults.autonomy.default_level'),
@@ -96,7 +223,7 @@ final class SettingsSchema
             'min_24h_volume_usd_commodity_perp' => config('atlas_defaults.markets.min_24h_volume_usd.commodity_perp'),
             'min_24h_volume_usd_spot' => config('atlas_defaults.markets.min_24h_volume_usd.spot'),
             'onboarding_completed' => 0,
-        ]);
+        ]), ...self::agentDefaults()];
     }
 
     /**
@@ -112,10 +239,10 @@ final class SettingsSchema
 
         $values = [];
         foreach (self::RISK_FIELDS as $field) {
-            $values[$field] = config("atlas_defaults.risk_profiles.{$profile}.{$field}");
+            $values[$field] = self::numeric($field, config("atlas_defaults.risk_profiles.{$profile}.{$field}"));
         }
 
-        return self::normalise($values);
+        return $values;
     }
 
     /**
@@ -132,14 +259,17 @@ final class SettingsSchema
     }
 
     /**
-     * Brings values to their canonical form: decimals as plain decimal strings, integers as int.
+     * Brings values to their canonical form: decimals as plain decimal strings, integers as int,
+     * agent switches as bool, models as their tier, domain lists as unique stored hostnames
+     * (entries that are not hostnames are dropped; validation refuses them first).
      * Unknown keys are dropped.
      *
      * @param  array<string, mixed>  $values
-     * @return array<string, int|string>
+     * @return array<string, bool|int|string|list<string>>
      */
     public static function normalise(array $values): array
     {
+        $agentFields = self::agentFields();
         $out = [];
         foreach ($values as $field => $value) {
             if ($field === 'risk_profile') {
@@ -147,23 +277,54 @@ final class SettingsSchema
 
                 continue;
             }
+            if (in_array($field, self::WEB_DOMAIN_FIELDS, true)) {
+                $hosts = [];
+                foreach (is_array($value) ? $value : [] as $entry) {
+                    $host = self::normaliseHostname($entry);
+                    if ($host !== null && ! in_array($host, $hosts, true)) {
+                        $hosts[] = $host;
+                    }
+                }
+                $out[$field] = $hosts;
+
+                continue;
+            }
+            if (isset($agentFields[$field])) {
+                $out[$field] = match ($agentFields[$field]) {
+                    'boolean' => $value === true,
+                    'model' => is_string($value) ? $value : '',
+                    default => is_numeric($value) ? (int) $value : 0,
+                };
+
+                continue;
+            }
             if (! isset(self::NUMERIC_FIELDS[$field])) {
                 continue;
             }
-            $out[$field] = self::isDecimal($field)
-                ? (string) BigDecimal::of(is_int($value) ? $value : (is_string($value) ? $value : '0'))
-                : (is_numeric($value) ? (int) $value : 0);
+            $out[$field] = self::numeric($field, $value);
         }
 
         return $out;
     }
 
-    /**
-     * Whether two values of a field are the same number ("1" equals "1.0").
-     */
-    public static function same(string $field, int|string|null $a, int|string|null $b): bool
+    /** A NUMERIC_FIELDS value in canonical form: decimals as plain decimal strings, integers as int. */
+    private static function numeric(string $field, mixed $value): int|string
     {
-        if ($a === null || $b === null) {
+        return self::isDecimal($field)
+            ? (string) BigDecimal::of(is_int($value) ? $value : (is_string($value) ? $value : '0'))
+            : (is_numeric($value) ? (int) $value : 0);
+    }
+
+    /**
+     * Whether two values of a field are the same ("1" equals "1.0" for decimals; lists compare
+     * in order; everything else strictly).
+     *
+     * @param  bool|int|string|list<string>|null  $a
+     * @param  bool|int|string|list<string>|null  $b
+     */
+    public static function same(string $field, bool|int|string|array|null $a, bool|int|string|array|null $b): bool
+    {
+        if ($a === null || $b === null || is_array($a) || is_array($b) || is_bool($a) || is_bool($b)) {
             return $a === $b;
         }
         if (self::isDecimal($field)) {

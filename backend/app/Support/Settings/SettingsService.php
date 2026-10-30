@@ -62,7 +62,7 @@ final class SettingsService
     /**
      * Current values with any field added since the row was saved filled from the defaults.
      *
-     * @return array<string, int|string>
+     * @return array<string, bool|int|string|list<string>>
      */
     public function values(Setting $setting): array
     {
@@ -78,7 +78,7 @@ final class SettingsService
     /**
      * Applies validated changes on top of $version.
      *
-     * @param  array<string, int|string>  $changes  validated by UpdateSettingsRequest
+     * @param  array<string, bool|int|string|list<string>>  $changes  validated by UpdateSettingsRequest
      *
      * @throws StaleSettingsVersion
      */
@@ -86,7 +86,7 @@ final class SettingsService
     {
         $this->current($env, $user);
 
-        /** @var array{0: Setting, 1: array<string, array{from: int|string|null, to: int|string|null}>} $result */
+        /** @var array{0: Setting, 1: array<string, array{from: bool|int|string|list<string>|null, to: bool|int|string|list<string>|null}>} $result */
         $result = DB::transaction(function () use ($env, $version, $changes, $user): array {
             $setting = Setting::query()->where('env', $env)->lockForUpdate()->firstOrFail();
 
@@ -132,9 +132,9 @@ final class SettingsService
      * Profile rules (brief §14.3): choosing a preset replaces the ten risk fields with it;
      * editing any of them away from the preset makes the profile "custom".
      *
-     * @param  array<string, int|string>  $current
-     * @param  array<string, int|string>  $changes
-     * @return array<string, int|string>
+     * @param  array<string, bool|int|string|list<string>>  $current
+     * @param  array<string, bool|int|string|list<string>>  $changes
+     * @return array<string, bool|int|string|list<string>>
      */
     public function apply(array $current, array $changes): array
     {
@@ -166,9 +166,9 @@ final class SettingsService
     }
 
     /**
-     * @param  array<string, int|string>  $before
-     * @param  array<string, int|string>  $after
-     * @return array<string, array{from: int|string|null, to: int|string|null}>
+     * @param  array<string, bool|int|string|list<string>>  $before
+     * @param  array<string, bool|int|string|list<string>>  $after
+     * @return array<string, array{from: bool|int|string|list<string>|null, to: bool|int|string|list<string>|null}>
      */
     private function diff(array $before, array $after): array
     {
@@ -185,20 +185,30 @@ final class SettingsService
     }
 
     /**
-     * @param  array<string, int|string>  $data
+     * @param  array<string, bool|int|string|list<string>>  $data
      */
     private function fill(Setting $setting, array $data): void
     {
         $setting->data = $data;
-        $setting->risk_profile = (string) $data['risk_profile'];
-        $setting->autonomy_level = (int) $data['autonomy_level'];
-        $setting->max_loss_per_trade_pct = (string) $data['max_loss_per_trade_pct'];
-        $setting->max_position_pct = (string) $data['max_position_pct'];
-        $setting->max_leverage = (int) $data['max_leverage'];
+        $setting->risk_profile = self::text($data['risk_profile']);
+        $setting->autonomy_level = (int) self::text($data['autonomy_level']);
+        $setting->max_loss_per_trade_pct = self::text($data['max_loss_per_trade_pct']);
+        $setting->max_position_pct = self::text($data['max_position_pct']);
+        $setting->max_leverage = (int) self::text($data['max_leverage']);
     }
 
     /**
-     * @param  array<string, array{from: int|string|null, to: int|string|null}>  $diff
+     * A typed-column mirror of a scalar field (the mirrored fields are never bool or list).
+     *
+     * @param  bool|int|string|list<string>  $value
+     */
+    private static function text(bool|int|string|array $value): string
+    {
+        return is_int($value) || is_string($value) ? (string) $value : '';
+    }
+
+    /**
+     * @param  array<string, array{from: bool|int|string|list<string>|null, to: bool|int|string|list<string>|null}>  $diff
      */
     private function writeHistory(Setting $setting, array $diff, ?User $user): void
     {
