@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Literal
 
 from atlas_shared.defaults import DEFAULTS
-from pydantic import AwareDatetime, BaseModel, ConfigDict, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
 
 Verdict = Literal["supports", "weakly_supports", "does_not_support", "contradicts"]
 
@@ -34,6 +34,12 @@ class HorizonDistribution(_Model):
     pct_positive: float = Field(ge=0, le=100)
     n: int | None = Field(default=None, ge=0)
 
+    @model_validator(mode="after")
+    def _ordered(self) -> HorizonDistribution:
+        if not self.p10 <= self.median <= self.p90:
+            raise ValueError("p10 <= median <= p90 must hold")
+        return self
+
 
 class RegimeSummary(_Model):
     label: str
@@ -49,8 +55,12 @@ class StopNoiseCheck(_Model):
 
 
 class HistoryVerdict(_Model):
-    """Brief §7.3 output schema. Distributions are keyed by horizon ("1h", "4h", "24h", "72h")."""
+    """Brief §7.3 output schema. Distributions are keyed by horizon ("1h", "4h", "24h", "72h").
 
+    ``type`` is the War Room card discriminator: a ``research_report`` card with
+    ``type: "history_verdict"`` is validated against this model (``CARD_TYPES``)."""
+
+    type: Literal["history_verdict"] = "history_verdict"
     question: str = Field(min_length=1)
     inst_id: str | None
     bar: str | None
@@ -138,13 +148,49 @@ def enforce_verdict_rules(
     return verdict.model_copy(update={"verdict": current, "data_quality_notes": notes}), corrections
 
 
+class RegimeRow(_Model):
+    inst_id: str = Field(min_length=1, max_length=64)
+    label: str = Field(min_length=1, max_length=32)
+    probability: float | None = Field(default=None, ge=0, le=1)
+    days_in_regime: float | None = Field(default=None, ge=0)
+    data_as_of: AwareDatetime
+
+
+class RegimeTable(_Model):
+    """The Historian's regime table for the shortlist / universe (brief §7.3, §8 07:30)."""
+
+    type: Literal["regime_table"] = "regime_table"
+    rows: list[RegimeRow] = Field(min_length=1)
+
+
+# War Room card registry: card ``type`` -> the one model it must validate against.
+CARD_TYPES: dict[str, type[BaseModel]] = {
+    "history_verdict": HistoryVerdict,
+    "regime_table": RegimeTable,
+}
+
+
+def card_rule_violations(card: BaseModel) -> list[str]:
+    """Rules a validated card breaks that the schema alone cannot express. A HistoryVerdict card must
+    already obey :func:`enforce_verdict_rules` (same config floor), so a ``supports`` on n < min_n is
+    refused rather than posted."""
+    if isinstance(card, HistoryVerdict):
+        _, corrections = enforce_verdict_rules(card)
+        return [c.reason for c in corrections]
+    return []
+
+
 __all__ = [
+    "CARD_TYPES",
     "HistoryVerdict",
     "HorizonDistribution",
+    "RegimeRow",
     "RegimeSummary",
+    "RegimeTable",
     "StopNoiseCheck",
     "Verdict",
     "VerdictCorrection",
     "VerdictEvidence",
+    "card_rule_violations",
     "enforce_verdict_rules",
 ]

@@ -72,6 +72,18 @@ class ClaudeClient(Protocol):
 
 
 ClientFactory = Callable[[ClaudeAgentOptions], ClaudeClient]
+
+
+class RunObserver(Protocol):
+    """Sees every SDK message of one run as it streams, then the run's result (ATL-88:
+    atlas_agents.streaming.ThinkingPublisher). Its failures are logged and never fail the run."""
+
+    async def on_message(self, message: Message) -> None: ...
+    async def on_finish(self, result: RunResult) -> None: ...
+
+
+ObserverFactory = Callable[[uuid.UUID, str | None], RunObserver]
+"""(run_id, correlation_id) -> the observer for that run."""
 Clock = Callable[[], datetime]
 
 
@@ -150,6 +162,8 @@ class AgentSession:
         publisher: events.Publisher = events.bus_publisher,
         prompt_version: int | None = None,
         clock: Clock | None = None,
+        observer_factory: ObserverFactory | None = None,
+        system_prompt: Callable[[], str] | None = None,
     ) -> None:
         base = options or ClaudeAgentOptions()
         passed = [key for key in FORBIDDEN_ENV if key in base.env]
@@ -160,9 +174,12 @@ class AgentSession:
         self.spec = spec
         self.env = env
         self.prompt_version = prompt_version
+        # Rendered at every connect, so a new session picks up current settings and scores (ATL-90).
+        self._system_prompt = system_prompt
         self._engine = engine
         self._factory = client_factory
         self._publish = publisher
+        self._observer_factory = observer_factory
         self._clock: Clock = clock or (lambda: datetime.now(UTC))
         self.options = dataclasses.replace(
             base,
@@ -185,6 +202,8 @@ class AgentSession:
     async def _ensure_client(self) -> ClaudeClient:
         if self._client is None:
             scrub_process_env()
+            if self._system_prompt is not None:
+                self.options = dataclasses.replace(self.options, system_prompt=self._system_prompt())
             client = self._factory(self.options)
             await client.connect()
             self._client = client
@@ -302,8 +321,24 @@ class AgentSession:
         if change:
             self._emit(events.AGENT_STATE, change, correlation_id)
 
-        exchange = await self._exchange(prompt, model)
-        return self._finish(run_id, day, model, label, correlation_id, exchange)
+        observer = self._observer(run_id, correlation_id)
+        exchange = await self._exchange(prompt, model, observer)
+        result = self._finish(run_id, day, model, label, correlation_id, exchange)
+        if observer is not None:
+            try:
+                await observer.on_finish(result)
+            except Exception:  # the stream is best effort; the run is already recorded
+                log.warning("agent %s: run observer failed on finish", self.spec.slug, exc_info=True)
+        return result
+
+    def _observer(self, run_id: uuid.UUID, correlation_id: str | None) -> RunObserver | None:
+        if self._observer_factory is None:
+            return None
+        try:
+            return self._observer_factory(run_id, correlation_id)
+        except Exception:
+            log.warning("agent %s: could not build the run observer", self.spec.slug, exc_info=True)
+            return None
 
     def _refusal(
         self,
@@ -366,7 +401,7 @@ class AgentSession:
             self._emit(events.AGENT_STATE, change, correlation_id)
         return RunResult(run_id=run_id, status=status, error=error, resets_at=resets_at)
 
-    async def _exchange(self, prompt: str, model: str) -> _Exchange:
+    async def _exchange(self, prompt: str, model: str, observer: RunObserver | None = None) -> _Exchange:
         out = _Exchange()
         try:
             client = await self._ensure_client()
@@ -376,6 +411,11 @@ class AgentSession:
             await client.query(prompt)
             async for message in client.receive_response():
                 out.messages.append(message)
+                if observer is not None:
+                    try:
+                        await observer.on_message(message)
+                    except Exception:  # never let the live stream break the run
+                        log.warning("agent %s: run observer failed", self.spec.slug, exc_info=True)
                 if isinstance(message, RateLimitEvent):
                     info = message.rate_limit_info
                     if info.status == "rejected":
