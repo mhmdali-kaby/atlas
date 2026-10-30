@@ -43,6 +43,9 @@ final class BridgeEventHandler
 
     public const NEWS_ALERT_SOURCE = 'system:news';
 
+    /** ATL-88: live agent run deltas, broadcast on `private-warroom` and never stored. */
+    public const THINKING_EVENT = 'warroom.thinking';
+
     public const OUTCOME_PERSISTED = 'persisted';
 
     public const OUTCOME_DUPLICATE = 'duplicate';
@@ -75,6 +78,9 @@ final class BridgeEventHandler
         $channel = self::CHANNELS[$stream] ?? null;
         if ($channel === null) {
             return self::OUTCOME_IGNORED;
+        }
+        if ($stream === 'atlas.warroom' && $envelope['type'] === self::THINKING_EVENT) {
+            $envelope['payload'] = self::capPayload($envelope['payload'], self::thinkingMaxBytes());
         }
         $this->broadcast($channel, $envelope['type'], $envelope);
 
@@ -111,6 +117,83 @@ final class BridgeEventHandler
 
         /** @var array{id: string, type: string, ts: string, env: 'demo'|'live', source: string, correlation_id: string|null, payload: array<string, mixed>} $decoded */
         return $decoded;
+    }
+
+    private static function thinkingMaxBytes(): int
+    {
+        $bytes = config('atlas_defaults.warroom.thinking_max_bytes');
+
+        return is_int($bytes) && $bytes > 0 ? $bytes : 16384;
+    }
+
+    /**
+     * A `warroom.thinking` payload whose JSON is at most $maxBytes long (ATL-89). A payload that
+     * already fits is returned unchanged. Otherwise `truncated` is set to true and the longest
+     * string fields (`text`, `output`, …; a non-scalar `input` becomes its JSON string first) are
+     * cut, at a UTF-8 character boundary, until the JSON fits. If the payload still does not fit
+     * with those strings emptied, only its identifying keys are kept.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    public static function capPayload(array $payload, int $maxBytes): array
+    {
+        if (self::jsonBytes($payload) <= $maxBytes) {
+            return $payload;
+        }
+
+        $payload['truncated'] = true;
+        if (isset($payload['input']) && ! is_scalar($payload['input'])) {
+            $payload['input'] = json_encode($payload['input'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE) ?: '';
+        }
+
+        // Longest string first, so the bulk (the text or the tool output) is what gets cut.
+        $strings = array_filter($payload, fn ($value, $key) => is_string($value) && ! in_array($key, ['run_id', 'agent', 'delta_type', 'tool', 'tool_use_id'], true), ARRAY_FILTER_USE_BOTH);
+        uasort($strings, fn (string $a, string $b) => strlen($b) <=> strlen($a));
+
+        foreach (array_keys($strings) as $key) {
+            $full = (string) $payload[$key];
+            $payload[$key] = '';
+            if (self::jsonBytes($payload) > $maxBytes) {
+                continue; // even empty this field does not make room; leave it empty and cut the next
+            }
+            // Longest prefix (in bytes) that still fits.
+            $low = 0;
+            $high = strlen($full);
+            while ($low < $high) {
+                $mid = intdiv($low + $high + 1, 2);
+                $payload[$key] = mb_strcut($full, 0, $mid, 'UTF-8');
+                if (self::jsonBytes($payload) <= $maxBytes) {
+                    $low = $mid;
+                } else {
+                    $high = $mid - 1;
+                }
+            }
+            $payload[$key] = mb_strcut($full, 0, $low, 'UTF-8');
+
+            return $payload;
+        }
+
+        if (self::jsonBytes($payload) <= $maxBytes) {
+            return $payload;
+        }
+
+        $kept = ['truncated' => true];
+        foreach (['run_id', 'agent', 'seq', 'delta_type'] as $key) {
+            if (array_key_exists($key, $payload) && (is_scalar($payload[$key]) || $payload[$key] === null)) {
+                $kept[$key] = is_string($payload[$key]) ? mb_strcut($payload[$key], 0, 128, 'UTF-8') : $payload[$key];
+            }
+        }
+
+        return $kept;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private static function jsonBytes(array $payload): int
+    {
+        return strlen(json_encode($payload, JSON_INVALID_UTF8_SUBSTITUTE) ?: '');
     }
 
     /**
