@@ -116,17 +116,74 @@ def read_snapshot(client: HashReader, env: str, inst_id: str) -> MarketSnapshot:
     )
 
 
+# -- the private feed (ATL-142) ----------------------------------------------------------------------
+#
+# One hash per env, ``<private_ws.key>:<env>`` (``atlas:pws:demo``): ``last_msg_ms`` (any frame,
+# including OKX's ``pong``, so a quiet but healthy socket stays fresh), ``login_ms`` (last successful
+# login), ``connected`` ("1" while logged in and subscribed, "0" otherwise) and ``<channel>_ms`` for
+# each private channel that pushed (``orders_ms``, ``positions_ms``, ...).
+
+CONNECTED = "connected"
+LOGIN_MS = "login_ms"
+
+
+def private_key(env: str) -> str:
+    return f"{DEFAULTS['private_ws']['key']}:{env}"
+
+
+@dataclass(frozen=True)
+class PrivateFeedSnapshot:
+    env: str
+    connected: bool
+    last_msg_at: datetime | None
+    login_at: datetime | None
+    channel_at: dict[str, datetime]
+
+    def is_stale(self, now: datetime, max_age: float | None = None) -> bool:
+        """Not logged in, or nothing (not even a pong) for more than ``max_age`` seconds."""
+        limit = max_age_seconds() if max_age is None else max_age
+        if not self.connected or self.last_msg_at is None:
+            return True
+        return (now - self.last_msg_at).total_seconds() > limit
+
+
+def read_private(client: HashReader, env: str) -> PrivateFeedSnapshot:
+    raw: dict[str, str] = {
+        (k.decode() if isinstance(k, bytes) else k): (v.decode() if isinstance(v, bytes) else v)
+        for k, v in (client.hgetall(private_key(env)) or {}).items()
+    }
+    last = raw.get(LAST_MSG_MS)
+    login = raw.get(LOGIN_MS)
+    channel_at = {
+        k[: -len("_ms")]: from_ms(v)
+        for k, v in raw.items()
+        if k.endswith("_ms") and k not in (LAST_MSG_MS, LOGIN_MS)
+    }
+    return PrivateFeedSnapshot(
+        env=env,
+        connected=raw.get(CONNECTED) == "1",
+        last_msg_at=from_ms(last) if last else None,
+        login_at=from_ms(login) if login else None,
+        channel_at=channel_at,
+    )
+
+
 __all__ = [
     "BOOKS5",
     "CLOSED_PREFIX",
+    "CONNECTED",
     "INDEX",
     "LAST_MSG_MS",
+    "LOGIN_MS",
     "MARK",
     "TICKER",
     "MarketSnapshot",
+    "PrivateFeedSnapshot",
     "from_ms",
     "max_age_seconds",
     "md_key",
+    "private_key",
+    "read_private",
     "read_snapshot",
     "to_ms",
 ]

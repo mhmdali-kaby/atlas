@@ -214,7 +214,23 @@ class MentionInput(ToolInput):
 
 
 class SubmitProposalInput(ToolInput):
-    proposal: dict[str, Any] = Field(description="TradeProposal JSON (brief §6.3)")
+    action: Literal["submit", "revise", "withdraw"] = Field(
+        default="submit",
+        description="submit a new proposal; revise proposal_id once (a new version); withdraw proposal_id",
+    )
+    kind: Literal["entry", "amend_stop", "amend_targets", "partial_close", "close"] = Field(
+        default="entry",
+        description="entry (Strategist) or a position action (Portfolio Manager only)",
+    )
+    proposal: dict[str, Any] | None = Field(
+        default=None,
+        description="entry: TradeProposal JSON (brief §6.3, stop required); position actions: "
+        "{inst_id, stop?, take_profits?, close_pct?, rule, rationale_md, evidence}. Not for withdraw.",
+    )
+    proposal_id: str | None = Field(default=None, description="the proposal to revise or withdraw")
+    summary_md: str | None = Field(
+        default=None, max_length=2000, description="the human summary shown on the War Room card"
+    )
 
 
 class CastVoteInput(ToolInput):
@@ -222,6 +238,7 @@ class CastVoteInput(ToolInput):
     vote: Literal["take", "skip", "change"]
     confidence: float = Field(ge=0, le=1)
     reason: str = Field(max_length=4000)
+    fix: str | None = Field(default=None, max_length=2000, description="the fix a 'change' vote asks for")
 
 
 class RequestHumanInput(ToolInput):
