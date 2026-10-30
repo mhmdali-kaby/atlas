@@ -28,7 +28,7 @@ from typing import Any, Literal
 
 from atlas_shared.defaults import DEFAULTS
 
-from trading_core.okx.errors import OkxError
+from trading_core.okx.errors import OkxClientError, OkxError
 from trading_core.okx.trade_models import AlgoAck, AmendAck, ClosePositionAck, LeverageResult, OrderAck
 from trading_core.okx.trade_read import (
     CL_ORD_ID,
@@ -258,10 +258,29 @@ class OkxTradeClient(OkxTradeReadClient):
     async def _post(self, endpoint: str, payload: object, *, partial_ok: bool = True) -> list[Any]:
         try:
             return await self._client._post(endpoint, payload, partial_ok=partial_ok)
-        except OkxTradeError:
+        except OkxTradeError as err:
+            self._report(err)
             raise
         except OkxError as err:
-            raise OkxTradeError(err.code, err.msg, path=endpoint, http_status=err.http_status) from err
+            wrapped = OkxTradeError(err.code, err.msg, path=endpoint, http_status=err.http_status)
+            self._report(wrapped)
+            raise wrapped from err
+        except OkxClientError as err:
+            self._report(err)
+            raise
+
+    def _check(self, ack: OrderAck | AmendAck | AlgoAck, path: str) -> None:
+        """Raise (and tell the error hooks) when OKX refused the item."""
+        err = ack_error(ack, path)
+        if err is not None:
+            self._report(err)
+            raise err
+
+    def _report_rows(self, acks: Sequence[OrderAck | AmendAck | AlgoAck], path: str) -> None:
+        for ack in acks:
+            err = ack_error(ack, path)
+            if err is not None:
+                self._report(err)
 
     # ---- orders ----------------------------------------------------------------------------------
 
@@ -269,7 +288,7 @@ class OkxTradeClient(OkxTradeReadClient):
         """POST trade/order. Raises ``OkxTradeError`` when OKX refuses it."""
         path = "trade/order"
         ack = OrderAck.model_validate(_one(await self._post(path, order.to_okx()), path))
-        _check(ack, path)
+        self._check(ack, path)
         return ack
 
     async def place_batch_orders(self, orders: Sequence[OrderRequest]) -> list[OrderAck]:
@@ -279,7 +298,9 @@ class OkxTradeClient(OkxTradeReadClient):
         if not 1 <= len(orders) <= cap:
             raise ValueError(f"{path} takes 1..{cap} orders, got {len(orders)}")
         rows = await self._post(path, [o.to_okx() for o in orders])
-        return [OrderAck.model_validate(r) for r in rows]
+        acks = [OrderAck.model_validate(r) for r in rows]
+        self._report_rows(acks, path)
+        return acks
 
     async def amend_order(
         self,
@@ -307,7 +328,7 @@ class OkxTradeClient(OkxTradeReadClient):
             }
         )
         ack = AmendAck.model_validate(_one(await self._post(path, body), path))
-        _check(ack, path)
+        self._check(ack, path)
         return ack
 
     async def cancel_order(
@@ -317,7 +338,7 @@ class OkxTradeClient(OkxTradeReadClient):
         path = "trade/cancel-order"
         body = {"instId": inst_id, **_id_pair(ord_id, cl_ord_id)}
         ack = OrderAck.model_validate(_one(await self._post(path, body), path))
-        _check(ack, path)
+        self._check(ack, path)
         return ack
 
     async def close_position(
@@ -353,7 +374,7 @@ class OkxTradeClient(OkxTradeReadClient):
         """POST trade/order-algo (a stand-alone TP/SL, OCO or trigger order)."""
         path = "trade/order-algo"
         ack = AlgoAck.model_validate(_one(await self._post(path, order.to_okx()), path))
-        _check(ack, path)
+        self._check(ack, path)
         return ack
 
     async def cancel_algos(self, algos: Sequence[tuple[str, str]]) -> list[AlgoAck]:
@@ -363,7 +384,9 @@ class OkxTradeClient(OkxTradeReadClient):
         if not 1 <= len(algos) <= cap:
             raise ValueError(f"{path} takes 1..{cap} algo orders, got {len(algos)}")
         rows = await self._post(path, [{"instId": inst, "algoId": algo} for inst, algo in algos])
-        return [AlgoAck.model_validate(r) for r in rows]
+        algo_acks = [AlgoAck.model_validate(r) for r in rows]
+        self._report_rows(algo_acks, path)
+        return algo_acks
 
     # ---- account writes / sizing -----------------------------------------------------------------
 

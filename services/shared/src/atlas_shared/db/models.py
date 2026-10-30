@@ -679,14 +679,23 @@ class Cycle(_Row, Base):
     """One Orchestrator cycle (ATL-124, brief §7.9). state is CHECKed to the §7.9 machine:
     cycle_start, research_requests_sent, research_collected, proposals_open, reviews_done, voting,
     vote_closed, risk_check, awaiting_owner, executing, cycle_closed. deadlines maps a step name to
-    an ISO-8601 UTC deadline."""
+    an ISO-8601 UTC deadline.
+
+    ATL-160: slot_at is the scheduled slot of a ``scheduled`` cycle (unique per env), transitions
+    maps each state to the ISO-8601 UTC time it was entered, timeouts lists every late agent the
+    cycle went on without, outcome/outcome_reason say how it closed."""
 
     __tablename__ = "cycles"
 
     kind: Mapped[str] = mapped_column(String(32))
     state: Mapped[str] = mapped_column(String(255), server_default=text("'cycle_start'"))
     started_at: Mapped[datetime] = mapped_column(_tz())
+    slot_at: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
     deadlines: Mapped[Any] = _jsonb_obj()
+    transitions: Mapped[Any] = _jsonb_obj()
+    timeouts: Mapped[Any] = _jsonb_list()
+    outcome: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    outcome_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     closed_at: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
 
 
@@ -695,10 +704,12 @@ class Proposal(_Row, Base):
     partial_close, close, from the Portfolio Manager). ATL-124, brief §5/§6.3/§8.
 
     status is CHECKed to the §8 lifecycle (draft, under_review, voting, passed, rejected,
-    risk_checked, awaiting_owner, sent, partially_filled, filled, closed, cancelled, expired).
-    An entry must carry side, order_type and stop. A revision is a new row with version + 1 and
-    parent_id = the revised row (version 1 has no parent). Prices are in the instrument's quote
-    currency; size_suggestion_pct is % of equity; probability is 0..1."""
+    risk_checked, awaiting_owner, advise_only, sent, partially_filled, filled, closed, cancelled,
+    expired). advise_only (ATL-160) = risk-approved at autonomy 1, never sent. approval_expires_at is
+    set when the Orchestrator moves a proposal to awaiting_owner (ATL-160). An entry must carry
+    side, order_type and stop. A revision is a new row with version + 1 and parent_id = the revised
+    row (version 1 has no parent). Prices are in the instrument's quote currency;
+    size_suggestion_pct is % of equity; probability is 0..1."""
 
     __tablename__ = "proposals"
     __table_args__ = (UniqueConstraint("parent_id"),)
@@ -728,6 +739,7 @@ class Proposal(_Row, Base):
     invalidation: Mapped[str] = _text_blank()
     evidence: Mapped[Any] = _jsonb_list()
     status: Mapped[str] = mapped_column(String(255), server_default=text("'draft'"))
+    approval_expires_at: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
 
 
 class Vote(_Row, Base):

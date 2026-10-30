@@ -160,3 +160,41 @@ async def risk_check(request: Request) -> JSONResponse:
         if injected is None:
             rds.close()
     return JSONResponse(status_code=200, content=decision_body(decision))
+
+
+# -- ATL-160: the Orchestrator's risk check of a proposal that passed its vote ---------------------
+
+
+def _evaluate_existing(
+    proposal_id: uuid.UUID, engine: Engine, rds: redis.Redis, now: Callable[[], datetime]
+) -> RiskDecision:
+    """evaluate() with its default evaluable statuses (passed, risk_checked): only a proposal whose
+    vote passed (or an owner Edit's re-check) is accepted."""
+    return evaluate(proposal_id, engine=engine, redis_client=rds, now=now)
+
+
+@router.post("/evaluate/{proposal_id}", response_model=None)
+async def risk_evaluate(proposal_id: str, request: Request) -> JSONResponse:
+    """Signed ``POST /internal/risk/evaluate/{proposal_id}`` (ATL-160): run the nine §10 checks on an
+    existing proposal row (status ``passed``). Same 200 body as ``/internal/risk/check``; 404
+    ``{"ok": false, "error": "unknown_proposal"}`` for a malformed id; 409 ``risk_engine_error`` when
+    the engine refuses (unknown id, wrong status or kind, no settings row). Nothing goes to OKX."""
+    try:
+        pid = uuid.UUID(proposal_id)
+    except ValueError:
+        return JSONResponse(status_code=404, content={"ok": False, "error": "unknown_proposal"})
+    engine: Engine = request.app.state.engine
+    injected: redis.Redis | None = getattr(request.app.state, "risk_redis", None)
+    now: Callable[[], datetime] = getattr(request.app.state, "clock", None) or (lambda: datetime.now(UTC))
+    rds = injected if injected is not None else bus.make_client()
+    try:
+        decision = await asyncio.to_thread(_evaluate_existing, pid, engine, rds, now)
+    except RiskEngineError as exc:
+        logger.warning("risk evaluate refused", extra={"proposal_id": proposal_id, "error": str(exc)})
+        return JSONResponse(
+            status_code=409, content={"ok": False, "error": "risk_engine_error", "detail": str(exc)}
+        )
+    finally:
+        if injected is None:
+            rds.close()
+    return JSONResponse(status_code=200, content=decision_body(decision))

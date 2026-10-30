@@ -57,8 +57,13 @@ it('accepts every §8 proposal status and refuses anything else', function (stri
     expect(DB::table('proposals')->where('id', $id)->value('status'))->toBe($status);
 })->with([
     'draft', 'under_review', 'voting', 'passed', 'rejected', 'risk_checked', 'awaiting_owner',
-    'sent', 'partially_filled', 'filled', 'closed', 'cancelled', 'expired',
+    'advise_only', 'sent', 'partially_filled', 'filled', 'closed', 'cancelled', 'expired',
 ]);
+
+it('adds the ATL-160 cycle columns and approval_expires_at', function (): void {
+    expect(Schema::hasColumns('cycles', ['slot_at', 'transitions', 'timeouts', 'outcome', 'outcome_reason']))->toBeTrue()
+        ->and(Schema::hasColumn('proposals', 'approval_expires_at'))->toBeTrue();
+});
 
 it('rejects a proposal status outside the §8 lifecycle', function (): void {
     insertProposal(['status' => 'approved_by_chat']);

@@ -9,8 +9,9 @@ Executor may import; ``tests/test_risk_engine.py`` enforces that.
 
 from __future__ import annotations
 
+import logging
 import re
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from decimal import Decimal
 from typing import Any, Literal
 
@@ -18,7 +19,7 @@ from atlas_shared.defaults import DEFAULTS
 
 from trading_core.okx.client import Cursor, OkxClient, _cursor_ms
 from trading_core.okx.error_messages import human_message
-from trading_core.okx.errors import OkxError
+from trading_core.okx.errors import OkxClientError, OkxError
 from trading_core.okx.trade_models import AlgoOrderDetail, FillDetail, MaxSize, OrderDetail
 
 TdMode = Literal["isolated", "cross", "cash"]
@@ -28,6 +29,34 @@ CL_ORD_ID = re.compile(r"^[A-Za-z0-9]{1,32}$")
 """OKX clOrdId / algoClOrdId: 1-32 case-sensitive alphanumerics."""
 
 DUPLICATE_CL_ORD_ID = "51016"
+
+log = logging.getLogger("trading_core.okx.trade")
+
+ErrorHook = Callable[[str, OkxClientError], None]
+"""``hook(env, error)``: told about every error a trade-client call ends in (ATL-145)."""
+
+_ERROR_HOOKS: list[ErrorHook] = []
+
+
+def add_error_hook(hook: ErrorHook) -> None:
+    """Register ``hook`` for every error raised by an ``OkxTradeReadClient``/``OkxTradeClient`` call
+    (after the client's own retries), and every refused row of a batch call. The circuit breakers
+    count them (``okx_errors``). A hook that raises is logged and ignored."""
+    if hook not in _ERROR_HOOKS:
+        _ERROR_HOOKS.append(hook)
+
+
+def remove_error_hook(hook: ErrorHook) -> None:
+    if hook in _ERROR_HOOKS:
+        _ERROR_HOOKS.remove(hook)
+
+
+def report_error(env: str, error: OkxClientError) -> None:
+    for hook in list(_ERROR_HOOKS):
+        try:
+            hook(env, error)
+        except Exception:
+            log.exception("okx error hook failed")
 
 
 class OkxTradeError(OkxError):
@@ -107,11 +136,19 @@ class OkxTradeReadClient:
     def env(self) -> str:
         return self._client.env
 
+    def _report(self, error: OkxClientError) -> None:
+        report_error(self.env, error)
+
     async def _get(self, endpoint: str, params: Mapping[str, str | None]) -> list[Any]:
         try:
             return await self._client._get(endpoint, params, signed=True)
         except OkxError as err:
-            raise OkxTradeError(err.code, err.msg, path=endpoint, http_status=err.http_status) from err
+            wrapped = OkxTradeError(err.code, err.msg, path=endpoint, http_status=err.http_status)
+            self._report(wrapped)
+            raise wrapped from err
+        except OkxClientError as err:
+            self._report(err)
+            raise
 
     async def get_order(
         self, inst_id: str, *, ord_id: str | None = None, cl_ord_id: str | None = None
