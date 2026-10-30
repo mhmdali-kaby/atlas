@@ -74,10 +74,29 @@ def test_small_sample_caps_supports_at_weakly_supports_and_records_it() -> None:
     assert original.verdict == "supports"  # input untouched
 
 
-@pytest.mark.parametrize("verdict", ["weakly_supports", "does_not_support", "contradicts"])
+@pytest.mark.parametrize("verdict", ["weakly_supports", "does_not_support"])
 def test_small_sample_leaves_weaker_verdicts_alone(verdict: str) -> None:
     fixed, corrections = enforce_verdict_rules(_verdict(n=5, verdict=verdict))
     assert fixed.verdict == verdict
+    assert corrections == []
+
+
+def test_small_sample_caps_contradicts_at_does_not_support_and_records_it() -> None:
+    """Brief §7.3's n<20 cap applies against an idea too: a 5-case "contradicts" cannot carry the
+    Strategist's veto (§7.6 item 4), so it is softened the same way "supports" is."""
+    original = _verdict(n=5, verdict="contradicts")
+    fixed, corrections = enforce_verdict_rules(original)
+    assert fixed.verdict == "does_not_support"
+    assert [(c.rule, c.from_verdict, c.to_verdict) for c in corrections] == [
+        ("small_sample", "contradicts", "does_not_support")
+    ]
+    assert "n=5" in corrections[0].reason
+    assert original.verdict == "contradicts"  # input untouched
+
+
+def test_small_sample_cap_on_contradicts_respects_the_n_floor() -> None:
+    fixed, corrections = enforce_verdict_rules(_verdict(n=20, verdict="contradicts"))
+    assert fixed.verdict == "contradicts"
     assert corrections == []
 
 

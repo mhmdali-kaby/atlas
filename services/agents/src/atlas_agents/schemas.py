@@ -141,6 +141,9 @@ def enforce_verdict_rules(
     changed. The input is never modified.
 
     1. n < agents.history.verdict.min_n (20): the verdict cannot be stronger than weakly_supports.
+       This caps both directions: a claim against the idea strong enough to say "contradicts" needs
+       the same minimum sample as a claim for it, so n below the floor softens it to
+       does_not_support.
     2. A backtest-based claim on data with an unrepaired gap is does_not_support, whatever it said,
        and a data_quality_note says why.
     """
@@ -161,6 +164,16 @@ def enforce_verdict_rules(
             )
         )
         current = "weakly_supports"
+    elif n < floor and current == "contradicts":
+        corrections.append(
+            VerdictCorrection(
+                rule="small_sample",
+                from_verdict=current,
+                to_verdict="does_not_support",
+                reason=f"n={n} < {floor}: evidence is weak, so the verdict is capped at does_not_support",
+            )
+        )
+        current = "does_not_support"
 
     if ev.backtest_based and ev.unrepaired_gap and current != "does_not_support":
         reason = "backtest on data with an unrepaired gap: claims from it are does_not_support"
