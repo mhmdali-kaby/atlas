@@ -66,6 +66,10 @@ class UpdateSettingsRequest extends FormRequest
         foreach (SettingsSchema::BOOLEAN_FIELDS as $field) {
             $rules["changes.{$field}"] = ['sometimes', 'boolean:strict'];
         }
+        // ATL-141: one value from a fixed list (td_mode_perps).
+        foreach (array_keys(SettingsSchema::CHOICE_FIELDS) as $field) {
+            $rules["changes.{$field}"] = ['sometimes', 'string', Rule::in(SettingsSchema::choices($field))];
+        }
         foreach (SettingsSchema::MARKET_LIST_FIELDS as $field) {
             $rules["changes.{$field}"] = ['sometimes', 'present', 'array', 'list'];
             $rules["changes.{$field}.*"] = ['required', 'string', 'distinct', Rule::in(SettingsSchema::marketKinds())];
