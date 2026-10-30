@@ -102,16 +102,40 @@ def source_available(source: NewsSource, now: datetime) -> bool:
     return not (source.disabled_until is not None and source.disabled_until > now)
 
 
-def degraded_asset_classes(ctx: ToolContext, defaults: Mapping[str, Any] = DEFAULTS) -> list[str]:
+class NewsCoverage(BaseModel):
+    """Which asset classes have no news right now, and since when (ATL-120)."""
+
+    degraded_asset_classes: list[str]
+    degraded_since: dict[str, str | None]
+    """One entry per degraded class: the latest ``last_success_at`` (ISO-8601 UTC, ``Z``) across
+    that class's sources, or null when none of them has ever succeeded."""
+
+
+def news_coverage(ctx: ToolContext, defaults: Mapping[str, Any] = DEFAULTS) -> NewsCoverage:
     """Asset classes (``agents.news_intelligence.asset_class_categories``) for which no news source
-    is available right now, in config order. A class whose categories have no source row at all
-    counts as degraded too: nothing is feeding it."""
+    is available right now, in config order, with when each last had news. A class whose
+    categories have no source row at all counts as degraded too: nothing is feeding it. A
+    ``last_success_at`` after ``ctx.now()`` (a replay) is not counted."""
     mapping: Mapping[str, Sequence[str]] = config(defaults)["asset_class_categories"]
     with ctx.session_factory() as session:
         sources = list(session.scalars(select(NewsSource)))
     now = ctx.now()
     available = {s.category for s in sources if source_available(s, now)}
-    return [cls for cls, categories in mapping.items() if not available.intersection(categories)]
+    degraded = [cls for cls, categories in mapping.items() if not available.intersection(categories)]
+    since: dict[str, str | None] = {}
+    for cls in degraded:
+        successes = [
+            s.last_success_at
+            for s in sources
+            if s.category in mapping[cls] and s.last_success_at is not None and s.last_success_at <= now
+        ]
+        since[cls] = _iso(max(successes)) if successes else None
+    return NewsCoverage(degraded_asset_classes=degraded, degraded_since=since)
+
+
+def degraded_asset_classes(ctx: ToolContext, defaults: Mapping[str, Any] = DEFAULTS) -> list[str]:
+    """The degraded classes of :func:`news_coverage`, in config order."""
+    return news_coverage(ctx, defaults).degraded_asset_classes
 
 
 # -- the morning brief's context -------------------------------------------------------------------
@@ -425,6 +449,7 @@ def code_facts(brief: NewsBrief) -> dict[str, Any]:
         ],
         "top_instruments": [f.model_dump(mode="json") for f in brief.top_instruments],
         "event_importance": [e.importance for e in brief.upcoming_events],
+        "degraded_since": dict(brief.degraded_since),
     }
 
 
@@ -456,7 +481,7 @@ class BriefReviewer:
         content, card, error = split_card(text)
         brief: NewsBrief | None = None
         if card is not None:
-            for owned in ("meta", "form", "top_instruments", "degraded_asset_classes"):
+            for owned in ("meta", "form", "top_instruments", "degraded_asset_classes", "degraded_since"):
                 card.pop(owned, None)  # the runtime's fields, never the agent's
             card.setdefault("type", "news_brief")
             try:
@@ -472,12 +497,13 @@ class BriefReviewer:
             reason = error or "no NewsBrief card"
             return Review(follow_up=self._follow_up(reason), failure=f"invalid card after retry: {reason}")
 
-        degraded = await asyncio.to_thread(degraded_asset_classes, self.ctx)
+        coverage = await asyncio.to_thread(news_coverage, self.ctx)
         events = await asyncio.to_thread(event_importance, self.ctx, brief.upcoming_events)
         brief = brief.model_copy(
             update={
                 "form": self.form,
-                "degraded_asset_classes": degraded,
+                "degraded_asset_classes": coverage.degraded_asset_classes,
+                "degraded_since": coverage.degraded_since,
                 "top_instruments": self.top_instruments if self.form == "morning_brief" else [],
                 "upcoming_events": events,
             }

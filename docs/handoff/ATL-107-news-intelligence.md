@@ -12,6 +12,7 @@ event. Brief §7.2, decision #247 (5). Built on ATL-101 (registry) and ATL-106 (
   then a `warroom.thinking` `run_end`. The three triggers differ only in where the message goes and
   in the card's `form`: `instrument_brief`, `morning_brief` or `alert_analysis`.
 - **Code owns these card fields**, whatever the model wrote: `form`, `degraded_asset_classes`,
+  `degraded_since` (ATL-120),
   `top_instruments` (morning only), `upcoming_events[].importance`, and each cluster's `status`,
   `status_sources`, `first_seen` and `price_move_since_first_seen_atr`. The model can't relabel or
   restate them. Render them as facts.
@@ -99,7 +100,8 @@ the parent row id. `run_id` equals `payload.run_id` of the run's `warroom.thinki
   "what_to_watch": "Follow-through after the listing.",
   "data_as_of": "2026-10-30T04:30:00Z",
   "top_instruments": [{"inst_id": "BTC-USDT", "stories": 3, "net_sentiment": 0.21}],
-  "degraded_asset_classes": [],
+  "degraded_asset_classes": ["crypto"],
+  "degraded_since": {"crypto": "2026-10-30T03:10:00Z"},
   "meta": {"unmatched_numbers": [], "checked": 12, "verdict_corrections": []}
 }
 ```
@@ -111,6 +113,7 @@ the parent row id. `run_id` equals `payload.run_id` of the run's `warroom.thinki
 | `upcoming_events[].importance` | code | the highest `economic_events.importance` scheduled at exactly that `time`, as known at the brief's time; `null` when Atlas has no event then (e.g. an earnings date) |
 | `top_instruments` | code, morning only (`[]` otherwise) | top `morning_brief.top_instruments` (5) by distinct stories (clusters) over the last `lookback_hours` (24), then item count, then id. `inst_id` is what `news_items.instruments` holds: instrument **families** such as `BTC-USDT`, not instIds. `net_sentiment` is the mean item sentiment rounded to 3 places, or `null` when no item has one |
 | `degraded_asset_classes` | code | asset classes, in config order, for which **every** news source in `agents.news_intelligence.asset_class_categories` (crypto→`crypto_news`; stock/etf/index/commodity→`markets_news`) is disabled, `needs_key` (keyed with no key) or degraded (`disabled_until` in the future). Computed when the card is posted. The model is also told in its prompt and must say so in the text |
+| `degraded_since` | code (ATL-120) | `{asset_class: ISO-8601 UTC with Z \| null}`, exactly one key per entry of `degraded_asset_classes` (`{}` when none). The value is the latest `news_sources.last_success_at` across that class's sources (all of them, including disabled ones), ignoring any later than the brief's time in a replay; `null` when none has ever succeeded. Computed by `news_intelligence.news_coverage(ctx)`, the same call Market Scout uses, so the brief and the same morning's watchlist show the same value. Use it for "No crypto news since 06:10" (convert to Baghdad in the UI). A model-sent value is dropped before validation and rewritten |
 | `meta` | code | number guard findings. It checks text and card against the run's tool outputs and the code-written fields only, never against the model's own card |
 | everything else | model | validated by NewsBrief (`extra="forbid"`) |
 
