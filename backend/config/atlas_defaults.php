@@ -114,6 +114,22 @@ return [
         'margin_buffer' => '0.9',
     ],
     'risk_rules' => [
+        'position_actions' => [
+            'positions_max_age_seconds' => 300,
+            'protecting_states' => [
+                'live',
+                'partially_effective',
+            ],
+            'stop_kinds' => [
+                'sl',
+                'oco',
+            ],
+            'paused_allowed_kinds' => [
+                'amend_stop',
+                'partial_close',
+                'close',
+            ],
+        ],
         'us_session' => [
             'timezone' => 'America/New_York',
             'open' => '09:30',
@@ -186,6 +202,13 @@ return [
             '51010',
         ],
         'lifecycle_sweep_seconds' => 30,
+    ],
+    'reconciliation' => [
+        'interval_seconds' => 300,
+        'fills_lookback_days' => 3,
+        'max_pages' => 50,
+        'protect_grace_seconds' => 30,
+        'fill_ts_slack_seconds' => 1,
     ],
     'okx' => [
         'environments' => [

@@ -131,7 +131,17 @@ risk_engine:
 #   evaluable_statuses: the only proposal statuses evaluate() accepts. passed = the vote passed;
 #   risk_checked = an owner Edit re-runs the check (brief §12). Any other status (cancelled, rejected,
 #   expired, sent, filled ...) is refused before anything is written, so it cannot re-enter approval.
+#   position_actions (ATL-184): the Portfolio Manager's amend_stop/amend_targets/partial_close/close
+#   checks. positions_max_age_seconds: the newest positions snapshot must be this fresh to prove a
+#   position is open. protecting_states/stop_kinds: the algo orders that count as the live exchange
+#   stop (sl trigger_px, oco sl_trigger_px). paused_allowed_kinds: the kinds that reduce risk and so
+#   pass while trading is paused or a breaker is tripped (a stop must still tighten).
 risk_rules:
+  position_actions:
+    positions_max_age_seconds: 300
+    protecting_states: [live, partially_effective]
+    stop_kinds: [sl, oco]
+    paused_allowed_kinds: [amend_stop, partial_close, close]
   us_session:
     timezone: America/New_York
     open: "09:30"
@@ -199,6 +209,22 @@ executor:
   # ATL-144: how often trading_core looks for limit/post_only entries past entry_timeout_minutes and for
   # filled entries whose protection does not yet match the filled size (restart recovery).
   lifecycle_sweep_seconds: 30
+
+# ATL-146, brief §4.4 and rule 8: reconciliation (trading_core/execution/reconcile.py). Runs at startup
+# (the Executor refuses /execute until one run succeeded), every interval_seconds and after every
+# private WebSocket re-login. Fixed engineering values, not owner settings.
+#   fills_lookback_days: fills-history window re-read on every run (OKX's trade/fills window).
+#   max_pages: safety cap on each paged OKX list per run.
+#   protect_grace_seconds: an unprotected position is left to the Executor while an Atlas order on
+#   that instrument is still new/sending or was created less than this many seconds ago (its own
+#   3 s stop check is still running).
+#   fill_ts_slack_seconds: fills this much before a position's cTime still count toward its size.
+reconciliation:
+  interval_seconds: 300
+  fills_lookback_days: 3
+  max_pages: 50
+  protect_grace_seconds: 30
+  fill_ts_slack_seconds: 1
 
 # Brief §4.1. Checked against the OKX v5 docs (https://www.okx.com/docs-v5/en/) at build time.
 okx:

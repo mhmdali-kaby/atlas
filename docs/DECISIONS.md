@@ -112,6 +112,19 @@ decisions where the brief was silent, as the brief asks.
   treated as `awaiting_owner` while autonomy 3–4 are not enabled, so the cycle never calls the
   Executor and the `executing` state is not reached yet. The approval window defaults to 15 minutes
   (`autonomy.approval_timeout_minutes`, overridable by a settings value of the same name).
+- **Reconciliation rules the brief leaves open** (ATL-146, `trading_core/execution/reconcile.py`).
+  "DB position size" is the sum of the stored fills on the instrument (and posSide in long/short
+  mode) since the position's OKX `cTime`; it is compared only for positions opened inside the
+  `reconciliation.fills_lookback_days` window the run re-reads, so a position older than that never
+  trips `reconciliation_mismatch` on missing history. A position counts as protected when a pending
+  conditional/oco algo on its closing side carries an `slTriggerPx` (size coverage is ATL-144's
+  job). The missing stop goes at the opening proposal's stop when that is still on the right side
+  of the mark; a stop already crossed falls back to the emergency distance
+  (`emergency_stop_atr_mult` x ATR(1H), capped at `max_stop_pct`; with no ATR the cap itself), and
+  the alert says so. Reconciliation leaves a position alone while an Atlas order on that instrument
+  is new/sending or less than `protect_grace_seconds` old (the Executor's own stop check owns it).
+  An unsent `new`/`sending` order OKX does not know stays resumable. `/execute` answers 409
+  `not_reconciled` until the first run after startup succeeded or found no verified connection.
 - **Protection follows the filled size; one stop per entry (ATL-144).** On every fill of an Atlas
   entry the protective SL/OCO is amended (`trade/amend-algos`, size only) to exactly the filled size;
   when OKX shows none, a stand-alone stop `p` + 31 hex of the risk check id is placed, and any second
@@ -120,3 +133,14 @@ decisions where the brief was silent, as the brief asks.
   open `executor.entry_timeout_minutes` after they were created are cancelled; a partial fill keeps
   its stop and the proposal stays `partially_filled`, an unfilled one becomes `expired`.
 - **Kill switch reads OKX, not the DB, and resume leaves `data_stale` alone (ATL-147).** The kill lists pending orders, algo orders and positions from OKX so it also catches orders Atlas does not know; per decision #251 it keeps SL/OCO algos unless their position was closed by flatten. OKX's "already gone" answers (51400/51401/51402, 51023) count as done, not failed. Resume clears every breaker except the self-clearing `data_stale`, which would re-trip at once while data is still stale.
+- **Position actions get their own risk checks (ATL-184, `trading_core/risk/position_actions.py`).**
+  A Portfolio Manager amend_stop/amend_targets/partial_close/close runs seven checks instead of the
+  nine entry checks: env_state, position_open, stop_tightens, stop_vs_mark, targets_vs_mark,
+  close_size, autonomy. A pause or tripped breaker refuses only amend_targets; stop tightening and
+  closes reduce risk and pass. "Tightens" is measured against the tightest live sl/oco algo order on
+  the position's side; with no live stop any stop on the safe side of mark passes (it adds
+  protection). The position must be in a positions snapshot no older than
+  `risk_rules.position_actions.positions_max_age_seconds` (300 s). A proposal side (buy = long) only
+  picks between a long and a short in long/short mode; two positions and no side is refused as
+  ambiguous. No vote; the autonomy decision is the entries' one. evaluate() leaves the row
+  `risk_checked` for both kinds; the caller moves it to awaiting_owner/advise_only/rejected.

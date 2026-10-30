@@ -150,6 +150,11 @@ class OkxTradeReadClient:
             self._report(err)
             raise
 
+    async def get_rows(self, endpoint: str, params: Mapping[str, str | None]) -> list[dict[str, Any]]:
+        """A signed GET returning OKX's own rows unparsed, for callers that store the row as OKX sent
+        it (reconciliation feeds them to ``execution.order_store`` like the private WS does)."""
+        return [r for r in await self._get(endpoint, params) if isinstance(r, dict)]
+
     async def get_order(
         self, inst_id: str, *, ord_id: str | None = None, cl_ord_id: str | None = None
     ) -> OrderDetail:
