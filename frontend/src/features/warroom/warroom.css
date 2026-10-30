@@ -667,6 +667,7 @@ mark.unv:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .disclosure-btn {
   display: inline-flex; align-items: center; gap: 5px; min-height: 28px; padding: 3px 6px; border-radius: 7px;
   font-size: var(--text-footnote); line-height: var(--lh-footnote); font-weight: 500; color: var(--label-secondary);
+}
 .disclosure-btn:hover { color: var(--label); }
 .reason-count { color: var(--label-secondary); font-weight: 400; }
 .reason-btn .disc-chev, .tool-head .tool-chev { width: 13px; height: 13px; flex: none; transition: transform var(--dur-base) var(--ease-settle); }
@@ -676,11 +677,13 @@ mark.unv:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .reason-panel {
   display: grid; gap: 12px; max-width: 68ch; margin: 6px 0 2px; margin-inline-start: 6px; padding: 12px 14px;
   border-radius: var(--radius-card); background: var(--fill-4); box-shadow: inset 0 0 0 0.5px var(--hairline-color);
+}
 .reason-text { font-size: var(--text-footnote); line-height: 1.55; color: var(--label-secondary); white-space: pre-line; overflow-wrap: anywhere; }
 .tool-calls { display: grid; gap: 2px; }
 .tool-head {
   width: 100%; display: grid; grid-template-columns: 14px auto minmax(0, 1fr) auto; align-items: center; column-gap: 8px;
   padding: 5px 6px; border-radius: 7px; text-align: start; font-size: var(--text-footnote); line-height: var(--lh-footnote);
+}
 .tool-head:hover { background: var(--fill-4); }
 .tool-head .tool-chev { color: var(--label-secondary); }
 .tool-name { font-family: var(--font-mono); font-size: 0.92em; direction: ltr; unicode-bidi: isolate; }
@@ -703,6 +706,7 @@ mark.unv:focus-visible { outline: none; box-shadow: var(--focus-ring); }
   margin: 0; padding: 9px 11px; border-radius: 8px; background: var(--bg); box-shadow: inset 0 0 0 0.5px var(--hairline-color);
   font-family: var(--font-mono); font-size: 12px; line-height: 1.5; color: var(--label);
   white-space: pre-wrap; overflow-wrap: anywhere; direction: ltr; text-align: left; unicode-bidi: isolate;
+}
 .io-pre .j-k { color: var(--label-secondary); }
 .io-cut { display: flex; align-items: center; gap: 5px; margin-top: 4px; font-size: var(--text-caption); line-height: var(--lh-caption); color: var(--label-secondary); }
 .io-cut svg { width: 12px; height: 12px; flex: none; }
@@ -729,6 +733,7 @@ mark.unv:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .run-text.has-caret > :last-child::after, .reason-text.has-caret::after {
   content: ''; display: inline-block; width: 2px; height: 1.05em; margin-inline-start: 2px; vertical-align: -2px; border-radius: 1px;
   background: var(--accent); animation: caret 1.1s steps(2, jump-none) infinite;
+}
 @keyframes caret { 0% { opacity: 1; } 100% { opacity: 0; } }
 .run-why { justify-self: stretch; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 8px 10px; max-width: 64ch; margin-top: 4px; padding: 10px 12px; border-radius: var(--radius-card); background: var(--warning-wash); }
 .run-why > svg { width: 16px; height: 16px; flex: none; margin-top: 1px; color: var(--warning-ink); }
@@ -740,3 +745,4 @@ mark.unv:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 @media (prefers-reduced-motion: reduce) {
   .run-text.has-caret > :last-child::after, .reason-text.has-caret::after, .run-pulse { animation: none; }
   .reason-btn .disc-chev, .tool-head .tool-chev { transition: none; }
+}
