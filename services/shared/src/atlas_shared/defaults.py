@@ -1515,6 +1515,31 @@ DEFAULTS: Final[dict[str, Any]] = {
             "position_bar": "1H",
             "zones_reported": 8,
         },
+        "derivatives_sentiment": {
+            "watchlist_max_runs": 10,
+            "mention_max_instruments": 3,
+            "debounce_minutes": 60,
+            "funding_settlement_hours_utc": [
+                0,
+                8,
+                16,
+            ],
+            "funding_delay_minutes": 5,
+            "funding_grace_minutes": 30,
+            "schedule_check_seconds": 60,
+            "extreme_check_seconds": 300,
+            "extreme_oi_window_hours": 1,
+            "extreme_oi_change_pct": "10",
+            "extreme_funding_z": "2.5",
+            "extreme_funding_z_keys": [
+                "7d",
+            ],
+            "regime_windows_hours": [
+                24,
+                4,
+                1,
+            ],
+        },
         "ta_structure": {
             "levels": {
                 "lookback_bars": 120,

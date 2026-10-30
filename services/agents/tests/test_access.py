@@ -33,6 +33,7 @@ OKX_ALL = {
     "get_mark_price",
     "get_instrument_spec",
     "get_ta_table",  # ATL-135: the Technical Analyst's pre-computed table
+    "get_positioning_features",  # ATL-136: the Derivatives & Sentiment features
 }
 ATLAS_DATA_ALL = {
     "get_account_summary",
@@ -368,6 +369,26 @@ def test_technical_analyst_row_cell_by_cell() -> None:
     assert by_server["warroom"] == {"post_message", "reply", "mention", "cast_vote"}  # cast_vote yes
     assert "mcp__warroom__submit_proposal" not in allowed  # no submit_proposal
     assert set(by_server) == {"okx_market", "atlas_data", "history", "memory", "warroom"}
+
+
+def test_derivatives_sentiment_row_cell_by_cell() -> None:
+    """ATL-136 AC1: brief §7.10's Derivatives & Sentiment row, written out cell by cell."""
+    allowed = set(access.allowed_tools("derivatives_sentiment"))
+    by_server: dict[str, set[str]] = {}
+    for name in allowed:
+        _mcp, server, tool = name.split("__", 2)
+        by_server.setdefault(server, set()).add(tool)
+    assert by_server["okx_market"] == OKX_ALL  # all read, including get_positioning_features
+    assert "get_positioning_features" in by_server["okx_market"]
+    assert by_server["atlas_data"] == ATLAS_DATA_ALL  # read
+    assert by_server["news"] == {"search_news"}  # sentiment: search_news only
+    assert not any(t in allowed for t in ("WebSearch", "WebFetch", "mcp__news__web_search"))  # no web
+    assert by_server["history"] == {"event_study", "compute_stats"}  # event_study, stats
+    assert by_server["memory"] == {"read_journal", "read_notebook", "get_my_scores"}  # read (+ own scores)
+    assert by_server["warroom"] == {"post_message", "reply", "mention", "cast_vote"}  # cast_vote yes
+    assert "mcp__warroom__submit_proposal" not in allowed  # no submit_proposal
+    assert "mcp__warroom__request_human_input" not in allowed
+    assert set(by_server) == {"okx_market", "atlas_data", "news", "history", "memory", "warroom"}
 
 
 def test_orchestrator_cannot_vote() -> None:
