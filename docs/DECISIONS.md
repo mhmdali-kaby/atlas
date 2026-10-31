@@ -201,3 +201,16 @@ decisions where the brief was silent, as the brief asks.
   #251: the owner never types it). The owner's control calls always write one audit row, also when
   trading_core is down (503). "Active env" for these routes and the orders list is
   `atlas_defaults.env.default` until the live switch exists.
+- **ATL-170: the 23:30 daily report is code's figures with the model's two notes.**
+  `atlas_agents.pm.daily_report` runs at `agents.schedule.pm_daily_report` (23:30 Baghdad) under the
+  Portfolio Manager, so it runs only while that agent is enabled. For the Baghdad day up to now:
+  realised = Σ bills `pnl`, fees = Σ bills `fee` (OKX sign, negative = paid), funding = Σ `bal_chg` of
+  type 8, over USD-like bills only (others are named in `notes`); equity start = the last equity point
+  at or before 00:00 Baghdad; change = end − start − the day's net deposits; closed trades are the
+  day's `positions_closed`, with R by the History API's formula and the closing rule = an executed PM
+  close/partial_close's rule label, else liquidation/ADL, else a triggered stop or target, else
+  `manual`. A peak daily loss above `max_daily_loss_pct`, or a peak open-position count above
+  `max_open_positions`, is a breach row plus `system.alert` (code `limit_breach`) and a War Room
+  `system_alert`. The message is a `research_report` whose card `type` is `daily_report` (no new
+  message kind); the model may only write `best_note`/`worst_note`, every other card field is code's.
+  Stored as `research_reports` kind `daily_report`; an existing row for the day stops a second post.
