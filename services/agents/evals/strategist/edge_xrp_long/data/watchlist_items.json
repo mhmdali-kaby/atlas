@@ -1,0 +1,17 @@
+[
+ {
+  "id": "2433f4f6-828d-5eed-a5bc-c1b008f975bb",
+  "watchlist_id": "1f6088d3-ab38-5322-8d5f-5c4d17a85dff",
+  "inst_id": "XRP-USDT-SWAP",
+  "rank": 1,
+  "asset_class": "crypto",
+  "bias": "long",
+  "conviction": "0.6",
+  "thesis": "Long bias on XRP-USDT-SWAP from structure and flow.",
+  "catalysts": [],
+  "key_levels": {},
+  "invalidation": "1H close beyond 0.5454",
+  "pinned_by_owner": false,
+  "data_as_of": "2026-09-12T06:00:00Z"
+ }
+]

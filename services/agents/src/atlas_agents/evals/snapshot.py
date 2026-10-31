@@ -25,6 +25,7 @@ from typing import Any
 from atlas_shared.db import Base
 from sqlalchemy import Connection, MetaData, Table, and_, delete, insert, or_
 from sqlalchemy.exc import NoSuchTableError
+from sqlalchemy.schema import sort_tables
 
 # Tables keyed by env alone: a snapshot replaces the env's row instead of adding a second one.
 _ONE_ROW_PER_ENV = frozenset({"settings"})
@@ -93,8 +94,13 @@ def load_snapshot(
     # Parents before children (watchlists before watchlist_items); tables that are not models first,
     # in the snapshot's own order (settings before settings_history).
     rank = {t.name: i for i, t in enumerate(Base.metadata.sorted_tables)}
-    for name, rows in sorted(snapshot.items(), key=lambda kv: rank.get(kv[0], -1)):
-        table = _table(name, conn, reflected)
+    tables = {name: _table(name, conn, reflected) for name in snapshot}
+    # Reflected tables go in foreign-key order among themselves (warroom_threads before
+    # warroom_messages, settings before settings_history), then the models in model order.
+    foreign = [t.name for t in sort_tables([t for n, t in tables.items() if n not in rank])]
+    order = {name: i - len(foreign) for i, name in enumerate(foreign)}
+    for name, rows in sorted(snapshot.items(), key=lambda kv: order.get(kv[0], rank.get(kv[0], -1))):
+        table = tables[name]
         values = [_coerce(table, row, replay_as_of) for row in rows]
         if name in _ONE_ROW_PER_ENV and "env" in table.c:
             envs = {v.get("env") for v in values}

@@ -1,0 +1,155 @@
+[
+ {
+  "id": "82277cf5-dce4-514a-a855-2a6772e81e8d",
+  "env": "demo",
+  "thread_id": "5b52408b-e155-511c-906f-d5907e8b2177",
+  "event_id": "705ba11c-db70-5846-aacc-3fbd24c8ecc0",
+  "author_type": "agent",
+  "author": "technical_analyst",
+  "kind": "research_report",
+  "content_md": "TechnicalSetup card",
+  "card": {
+   "type": "technical_setup",
+   "inst_id": "XAU-USDT-SWAP",
+   "timeframe_bias": {
+    "1D": "up",
+    "4H": "up",
+    "1H": "range",
+    "15m": "up"
+   },
+   "setup_type": "pullback_to_support",
+   "direction": "long",
+   "entry_zone": [
+    2652.87,
+    2657.12
+   ],
+   "trigger": "1H close back above 2657.12 inside 1H:z2",
+   "stop": 2627.38,
+   "targets": [
+    {
+     "price": 2688.13,
+     "r_multiple": 1.2,
+     "reason": "1H:z4",
+     "close_pct": null
+    },
+    {
+     "price": 2715.74,
+     "r_multiple": 2.2,
+     "reason": "1H:z5",
+     "close_pct": null
+    }
+   ],
+   "expected_r": 2.2,
+   "invalidation": "1H close below 2627.38",
+   "quality_score": 0.66,
+   "est_slippage_bps": null,
+   "levels_used": [
+    {
+     "id": "1H:z2",
+     "price": 2654.995
+    },
+    {
+     "id": "1H:z1",
+     "price": 2646.49
+    },
+    {
+     "id": "1H:z0",
+     "price": 2632.69
+    },
+    {
+     "id": "1H:z4",
+     "price": 2688.13
+    },
+    {
+     "id": "1H:z5",
+     "price": 2715.74
+    }
+   ],
+   "no_setup_reason": null,
+   "data_as_of": "2026-09-15T12:48:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-15T12:48:00Z",
+  "updated_at": "2026-09-15T12:48:00Z"
+ },
+ {
+  "id": "e07abdc0-df34-5b06-9495-5a2b72f1f399",
+  "env": "demo",
+  "thread_id": "5b52408b-e155-511c-906f-d5907e8b2177",
+  "event_id": "54f1b5f5-ea45-5950-8e58-8c26d179d0d9",
+  "author_type": "agent",
+  "author": "historian",
+  "kind": "research_report",
+  "content_md": "HistoryVerdict card",
+  "card": {
+   "type": "history_verdict",
+   "question": "analog check for a long on XAU-USDT-SWAP",
+   "inst_id": "XAU-USDT-SWAP",
+   "bar": "1H",
+   "n": 34,
+   "distribution": {
+    "24h": {
+     "median": 0.3,
+     "p10": -2.1,
+     "p90": 2.4,
+     "pct_positive": 52.0
+    }
+   },
+   "verdict": "supports",
+   "key_stat": "52% of 34 analogs positive at 24h",
+   "data_as_of": "2026-09-15T12:52:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-15T12:52:00Z",
+  "updated_at": "2026-09-15T12:52:00Z"
+ },
+ {
+  "id": "8d684630-5896-5bef-a48d-db148c87b6c4",
+  "env": "demo",
+  "thread_id": "5b52408b-e155-511c-906f-d5907e8b2177",
+  "event_id": "f489af16-8ff9-5747-ae70-dc6184e6f202",
+  "author_type": "agent",
+  "author": "news_intelligence",
+  "kind": "research_report",
+  "content_md": "NewsBrief card",
+  "card": {
+   "type": "news_brief",
+   "inst_ids": [
+    "XAU-USDT-SWAP"
+   ],
+   "clusters": [
+    {
+     "cluster_id": "9238ac8d-83f5-5999-bcdb-60f2bef6fbe8",
+     "headline": "Central bank reported selling gold reserves",
+     "status": "CONFIRMED",
+     "sources": [
+      {
+       "name": "Reuters",
+       "url": "https://www.reuters.com/markets/gold-sale",
+       "published_at": "2026-09-15T10:45:00Z"
+      },
+      {
+       "name": "AP",
+       "url": "https://apnews.com/gold-sale",
+       "published_at": "2026-09-15T11:45:00Z"
+      }
+     ],
+     "event_type": "central_bank",
+     "importance": 4,
+     "sentiment": -0.6,
+     "first_seen": "2026-09-15T10:45:00Z",
+     "price_move_since_first_seen_atr": null
+    }
+   ],
+   "upcoming_events": [],
+   "net_sentiment_24h": -0.6,
+   "net_sentiment_72h": -0.6,
+   "priced_in": "partly",
+   "what_to_watch": "the next scheduled release",
+   "data_as_of": "2026-09-15T12:45:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-15T12:45:00Z",
+  "updated_at": "2026-09-15T12:45:00Z"
+ }
+]

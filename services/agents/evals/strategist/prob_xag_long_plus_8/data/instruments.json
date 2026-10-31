@@ -1,0 +1,20 @@
+[
+ {
+  "id": "8860690a-803e-5248-bdd3-9dbcddde0fa2",
+  "env": "demo",
+  "inst_id": "XAG-USDT-SWAP",
+  "inst_type": "SWAP",
+  "inst_family": "XAG-USDT",
+  "base_ccy": "XAG",
+  "quote_ccy": "USDT",
+  "settle_ccy": "USDT",
+  "ct_val": "1",
+  "lot_sz": "1",
+  "min_sz": "1",
+  "tick_sz": "0.001",
+  "max_lever": "50",
+  "state": "live",
+  "asset_class": "commodity",
+  "list_time": "2025-08-06T13:00:00Z"
+ }
+]
