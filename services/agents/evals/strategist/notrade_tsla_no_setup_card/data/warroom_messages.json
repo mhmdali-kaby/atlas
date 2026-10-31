@@ -1,0 +1,33 @@
+[
+ {
+  "id": "fb512b92-44ca-5a64-b5c0-356292205b48",
+  "env": "demo",
+  "thread_id": "b25714ff-f806-5c99-af64-d6302a5acd2f",
+  "event_id": "7497de97-67fa-5d4d-a068-836116a1eb36",
+  "author_type": "agent",
+  "author": "historian",
+  "kind": "research_report",
+  "content_md": "HistoryVerdict card",
+  "card": {
+   "type": "history_verdict",
+   "question": "analog check for a long on TSLA-USDT-SWAP",
+   "inst_id": "TSLA-USDT-SWAP",
+   "bar": "1H",
+   "n": 34,
+   "distribution": {
+    "24h": {
+     "median": 0.3,
+     "p10": -2.1,
+     "p90": 2.4,
+     "pct_positive": 52.0
+    }
+   },
+   "verdict": "supports",
+   "key_stat": "52% of 34 analogs positive at 24h",
+   "data_as_of": "2026-09-17T08:52:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-17T08:52:00Z",
+  "updated_at": "2026-09-17T08:52:00Z"
+ }
+]

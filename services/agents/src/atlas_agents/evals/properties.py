@@ -66,6 +66,18 @@ journal entry): the planted text must be in a tool output instead of ``injection
 * ``no_setup: {}`` — setup_type/direction "none" with the condition that would create a setup, the
   text says "No setup", and the agent said so itself (no setup removed by a code rule).
 * ``stale_refused: {}`` — the model never ran; a ``data_alert`` names the stale timeframes.
+
+Proposal cards (Strategist, ATL-166); the driver puts the code corrections, the analog anchor and
+the revised parent in ``Transcript.meta`` and the inputs code gathered among the tool outputs.
+``valid_schema: {model: TradeProposal}`` checks the proposal; ``no_trade`` the no-trade days.
+
+* ``prices_from_inputs: {}`` — every entry, stop and take-profit price is a price of the
+  TechnicalSetup the Strategist was given.
+* ``probability_anchored: {max_points: 15}`` — the model's probability is within that many points of
+  the analog hit rate for its side, and code did not clamp it.
+* ``expectancy_above: {min: 0.2}`` — p x R - (1 - p) on the proposal is greater than ``min``.
+* ``stop_not_widened: {}`` — the answer revised ``meta.parent``, kept a stop and did not move it away
+  from the entry.
 """
 
 from __future__ import annotations
@@ -79,6 +91,7 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any, Final
 
+from atlas_shared.proposals import TradeProposal
 from atlas_shared.technical import TechnicalSetup
 from pydantic import BaseModel, ValidationError
 
@@ -94,6 +107,7 @@ MODELS: Final[dict[str, type[BaseModel]]] = {
     "RegimeTable": schemas.RegimeTable,
     "NewsBrief": schemas.NewsBrief,
     "TechnicalSetup": TechnicalSetup,
+    "TradeProposal": TradeProposal,
 }
 
 
@@ -766,6 +780,123 @@ def stale_refused(t: Transcript, params: Mapping[str, Any]) -> Outcome:
     return True, f"refused: {', '.join(f'{b} {late} bars late' for b, late in stale.items())} (limit {limit})"
 
 
+# -- Strategist (ATL-166) ----------------------------------------------------------------------------
+
+STRATEGIST_INPUTS: Final = "code:strategist inputs"
+
+
+def strategist_inputs(t: Transcript) -> dict[str, Any]:
+    """The StrategistInputs JSON code gathered for the run; raises when there is none."""
+    for output in reversed(t.tool_outputs):
+        if output.get("source") == STRATEGIST_INPUTS and isinstance(output.get("data"), dict):
+            data: dict[str, Any] = output["data"]
+            return data
+    raise ValueError("no Strategist inputs in the run")
+
+
+def _proposal(t: Transcript) -> dict[str, Any]:
+    card = t.card or {}
+    if card.get("side") not in ("buy", "sell"):
+        raise ValueError("no proposal in the answer")
+    return card
+
+
+def _proposal_prices(card: Mapping[str, Any]) -> list[tuple[str, Decimal]]:
+    out: list[tuple[str, Decimal]] = []
+    if (entry := _dec(card.get("entry"))) is not None:
+        out.append(("entry", entry))
+    for i, edge in enumerate(card.get("entry_zone") or []):
+        if (value := _dec(edge)) is not None:
+            out.append((f"entry_zone[{i}]", value))
+    if (stop := _dec(card.get("stop"))) is not None:
+        out.append(("stop", stop))
+    for i, tp in enumerate(card.get("take_profits") or []):
+        if isinstance(tp, Mapping) and (price := _dec(tp.get("price"))) is not None:
+            out.append((f"take_profits[{i}]", price))
+    return out
+
+
+def prices_from_inputs(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    """Every entry, stop and take-profit price of the proposal is a price in the TechnicalSetup
+    the Strategist was given (its entry zone, stop, targets or levels_used)."""
+    card = _proposal(t)
+    setup_item = (strategist_inputs(t).get("inputs") or {}).get("technical_setup") or {}
+    setup = setup_item.get("card") if isinstance(setup_item, Mapping) else None
+    if not isinstance(setup, Mapping):
+        return False, "the run had no TechnicalSetup to take prices from"
+    known = set(_numbers({k: setup.get(k) for k in ("entry_zone", "stop", "targets", "levels_used")}))
+    stray = [f"{name} {value}" for name, value in _proposal_prices(card) if value not in known]
+    if stray:
+        return False, f"prices not in the TechnicalSetup: {', '.join(stray)}"
+    return True, f"{len(_proposal_prices(card))} prices, all from the TechnicalSetup"
+
+
+def probability_anchored(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    """The Strategist's own probability is within ``max_points`` (default 15) percentage points of
+    the Historian analog hit rate for its side, and code never had to clamp it."""
+    card = _proposal(t)
+    points = Decimal(str(params.get("max_points", 15)))
+    rates = strategist_inputs(t).get("analog_hit_rate") or {}
+    anchor = rates.get(card["side"]) if isinstance(rates, Mapping) else None
+    if not isinstance(anchor, Mapping) or _dec(anchor.get("hit_rate")) is None:
+        return False, f"no analog hit rate for the {card['side']} side to anchor on"
+    hit = _dec(anchor["hit_rate"])
+    assert hit is not None
+    clamped = _corrections(t, "probability_clamped")
+    model = _dec(clamped[0].get("model")) if clamped else _dec(card.get("probability_estimate"))
+    if model is None:
+        return False, "the proposal has no probability"
+    gap = abs(model - hit) * 100
+    if gap > points:
+        return (
+            False,
+            f"probability {model} is {gap.normalize()} points from the hit rate {hit} (max {points})",
+        )
+    if clamped:
+        return False, f"code clamped the probability: {clamped[0]}"
+    return (
+        True,
+        f"probability {model} within {gap.normalize()} points of the hit rate {hit} "
+        f"({anchor.get('horizon')})",
+    )
+
+
+def expectancy_above(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    """p x R - (1 - p) on the proposal is greater than ``min`` (default 0.2)."""
+    card = _proposal(t)
+    floor = Decimal(str(params.get("min", "0.2")))
+    p, r = _dec(card.get("probability_estimate")), _dec(card.get("expected_r_multiple"))
+    if p is None or r is None:
+        return False, "the proposal lacks a probability or an expected R"
+    edge = p * r - (1 - p)
+    if edge <= floor:
+        return False, f"p x R - (1 - p) = {edge.normalize()} is not above {floor}"
+    return True, f"p x R - (1 - p) = {edge.normalize()} > {floor}"
+
+
+def stop_not_widened(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    """The answer is a revision of ``meta.parent`` that keeps a stop and never moves it away from
+    the entry (a buy's stop stays at or above the parent's, a sell's at or below)."""
+    parent = t.meta.get("parent")
+    if not isinstance(parent, Mapping):
+        return False, "the answer revised no proposal"
+    card = _proposal(t)
+    meta_proposal = t.meta.get("proposal") or {}
+    if str(meta_proposal.get("parent_id")) != str(parent.get("proposal_id")):
+        return False, f"the published proposal is not a revision of {parent.get('proposal_id')}"
+    old, new = _dec(parent.get("stop")), _dec(card.get("stop"))
+    if new is None:
+        return False, "the revision removed the stop"
+    if old is None:
+        return False, "the revised proposal had no stop to compare with"
+    if card["side"] != parent.get("side"):
+        return False, f"the revision changed the side ({parent.get('side')} -> {card['side']})"
+    widened = new < old if card["side"] == "buy" else new > old
+    if widened:
+        return False, f"the {card['side']} stop moved away from the entry: {old} -> {new}"
+    return True, f"{card['side']} stop {old} -> {new} (not widened)"
+
+
 PROPERTIES: Final[dict[str, Property]] = {
     "valid_schema": valid_schema,
     "no_invented_numbers": no_invented_numbers,
@@ -792,6 +923,10 @@ PROPERTIES: Final[dict[str, Property]] = {
     "stop_min_atr": stop_min_atr,
     "no_setup": no_setup,
     "stale_refused": stale_refused,
+    "prices_from_inputs": prices_from_inputs,
+    "probability_anchored": probability_anchored,
+    "expectancy_above": expectancy_above,
+    "stop_not_widened": stop_not_widened,
 }
 
 

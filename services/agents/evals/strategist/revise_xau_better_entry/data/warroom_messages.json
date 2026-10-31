@@ -1,0 +1,120 @@
+[
+ {
+  "id": "3caa610b-d1a6-528a-8f36-0e765cb2a212",
+  "env": "demo",
+  "thread_id": "0ac6b2d8-a856-5b4a-9272-c5f37c74929a",
+  "event_id": "f4e2623f-cb5e-5d26-a066-b7275a9b6178",
+  "author_type": "agent",
+  "author": "technical_analyst",
+  "kind": "research_report",
+  "content_md": "TechnicalSetup card",
+  "card": {
+   "type": "technical_setup",
+   "inst_id": "XAU-USDT-SWAP",
+   "timeframe_bias": {
+    "1D": "up",
+    "4H": "up",
+    "1H": "range",
+    "15m": "up"
+   },
+   "setup_type": "pullback_to_support",
+   "direction": "long",
+   "entry_zone": [
+    2652.87,
+    2657.12
+   ],
+   "trigger": "1H close back above 2657.12 inside 1H:z2",
+   "stop": 2627.38,
+   "targets": [
+    {
+     "price": 2688.13,
+     "r_multiple": 1.2,
+     "reason": "1H:z4",
+     "close_pct": null
+    },
+    {
+     "price": 2715.74,
+     "r_multiple": 2.2,
+     "reason": "1H:z5",
+     "close_pct": null
+    }
+   ],
+   "expected_r": 2.2,
+   "invalidation": "1H close below 2627.38",
+   "quality_score": 0.66,
+   "est_slippage_bps": null,
+   "levels_used": [
+    {
+     "id": "1H:z2",
+     "price": 2654.995
+    },
+    {
+     "id": "1H:z1",
+     "price": 2646.49
+    },
+    {
+     "id": "1H:z0",
+     "price": 2632.69
+    },
+    {
+     "id": "1H:z4",
+     "price": 2688.13
+    },
+    {
+     "id": "1H:z5",
+     "price": 2715.74
+    }
+   ],
+   "no_setup_reason": null,
+   "data_as_of": "2026-09-07T12:48:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-07T12:48:00Z",
+  "updated_at": "2026-09-07T12:48:00Z"
+ },
+ {
+  "id": "e5431201-d1b0-59de-96c2-210fca4a7dea",
+  "env": "demo",
+  "thread_id": "0ac6b2d8-a856-5b4a-9272-c5f37c74929a",
+  "event_id": "45f42515-4d91-5650-8b52-12299e522591",
+  "author_type": "agent",
+  "author": "historian",
+  "kind": "research_report",
+  "content_md": "HistoryVerdict card",
+  "card": {
+   "type": "history_verdict",
+   "question": "analog check for a long on XAU-USDT-SWAP",
+   "inst_id": "XAU-USDT-SWAP",
+   "bar": "1H",
+   "n": 34,
+   "distribution": {
+    "24h": {
+     "median": 0.3,
+     "p10": -2.1,
+     "p90": 2.4,
+     "pct_positive": 55.0
+    }
+   },
+   "verdict": "supports",
+   "key_stat": "55% of 34 analogs positive at 24h",
+   "data_as_of": "2026-09-07T12:52:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-07T12:52:00Z",
+  "updated_at": "2026-09-07T12:52:00Z"
+ },
+ {
+  "id": "91e2c704-f34d-50f9-ad19-d6fa40ff3dda",
+  "env": "demo",
+  "thread_id": "0ac6b2d8-a856-5b4a-9272-c5f37c74929a",
+  "event_id": "708fa4a2-cde8-5ca7-b232-0d96aef722e1",
+  "author_type": "agent",
+  "author": "devils_advocate",
+  "kind": "text",
+  "content_md": "Strongest objection: chasing. Move the entry to the 1H:z1 level at 2646.49.",
+  "card": null,
+  "mentions": [],
+  "created_at": "2026-09-07T12:58:00Z",
+  "updated_at": "2026-09-07T12:58:00Z"
+ }
+]

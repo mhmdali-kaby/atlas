@@ -1,0 +1,106 @@
+[
+ {
+  "id": "7edcff98-64b4-5e00-b018-a18c07a07ae8",
+  "env": "demo",
+  "thread_id": "3babfabf-1bfd-5a7d-939f-abd0b60cb995",
+  "event_id": "46dc1c0b-a455-5c52-b63e-cb86f05fa939",
+  "author_type": "agent",
+  "author": "technical_analyst",
+  "kind": "research_report",
+  "content_md": "TechnicalSetup card",
+  "card": {
+   "type": "technical_setup",
+   "inst_id": "SOL-USDT-SWAP",
+   "timeframe_bias": {
+    "1D": "down",
+    "4H": "down",
+    "1H": "range",
+    "15m": "down"
+   },
+   "setup_type": "rally_to_resistance",
+   "direction": "short",
+   "entry_zone": [
+    152.27,
+    152.52
+   ],
+   "trigger": "1H close back below 152.27 inside 1H:z2",
+   "stop": 153.97,
+   "targets": [
+    {
+     "price": 150.5,
+     "r_multiple": 1.2,
+     "reason": "1H:z4",
+     "close_pct": null
+    },
+    {
+     "price": 148.93,
+     "r_multiple": 2.2,
+     "reason": "1H:z5",
+     "close_pct": null
+    }
+   ],
+   "expected_r": 2.2,
+   "invalidation": "1H close above 153.97",
+   "quality_score": 0.66,
+   "est_slippage_bps": null,
+   "levels_used": [
+    {
+     "id": "1H:z2",
+     "price": 152.395
+    },
+    {
+     "id": "1H:z1",
+     "price": 152.88
+    },
+    {
+     "id": "1H:z0",
+     "price": 153.67
+    },
+    {
+     "id": "1H:z4",
+     "price": 150.5
+    },
+    {
+     "id": "1H:z5",
+     "price": 148.93
+    }
+   ],
+   "no_setup_reason": null,
+   "data_as_of": "2026-09-10T08:48:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-10T08:48:00Z",
+  "updated_at": "2026-09-10T08:48:00Z"
+ },
+ {
+  "id": "83532f35-b0f5-5df9-8394-721eb31aca0a",
+  "env": "demo",
+  "thread_id": "3babfabf-1bfd-5a7d-939f-abd0b60cb995",
+  "event_id": "063bbe68-93c8-5346-8fb4-7f61960fa7d7",
+  "author_type": "agent",
+  "author": "historian",
+  "kind": "research_report",
+  "content_md": "HistoryVerdict card",
+  "card": {
+   "type": "history_verdict",
+   "question": "analog check for a short on SOL-USDT-SWAP",
+   "inst_id": "SOL-USDT-SWAP",
+   "bar": "1H",
+   "n": 34,
+   "distribution": {
+    "24h": {
+     "median": -0.3,
+     "p10": -2.1,
+     "p90": 2.4,
+     "pct_positive": 40.0
+    }
+   },
+   "verdict": "supports",
+   "key_stat": "40% of 34 analogs positive at 24h",
+   "data_as_of": "2026-09-10T08:52:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-10T08:52:00Z",
+  "updated_at": "2026-09-10T08:52:00Z"
+ }
+]
