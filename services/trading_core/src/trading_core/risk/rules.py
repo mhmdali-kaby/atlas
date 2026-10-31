@@ -103,6 +103,7 @@ class EngineSettings:
     market_data_max_age_seconds: int
     enabled_markets: frozenset[str]
     blocklist: frozenset[str]  # upper-case
+    whitelist: frozenset[str]  # upper-case; empty = no restriction (decision #250)
     avoid_stock_perps_outside_us_hours: bool
     max_open_positions: int
     max_correlated_exposure_pct: Decimal
@@ -113,6 +114,7 @@ class EngineSettings:
     liq_buffer_mult: Decimal
     event_blackout_minutes: int
     autonomy_level: int
+    bot_capital_cap_usdt: Decimal | None = None  # None = no cap (decision #250)
 
     @classmethod
     def from_settings_data(cls, data: Mapping[str, Any]) -> EngineSettings:
@@ -136,6 +138,7 @@ class EngineSettings:
             ),
             enabled_markets=frozenset(str(m) for m in get("enabled_markets", markets)),
             blocklist=frozenset(str(i).upper() for i in get("blocklist", markets)),
+            whitelist=frozenset(str(i).upper() for i in (get("whitelist", markets) or [])),
             avoid_stock_perps_outside_us_hours=avoid,
             max_open_positions=_int(get("max_open_positions", preset), "max_open_positions"),
             max_correlated_exposure_pct=_dec(
@@ -155,7 +158,24 @@ class EngineSettings:
             autonomy_level=_int(
                 get("autonomy_level", DEFAULTS["autonomy"], "default_level"), "autonomy_level"
             ),
+            bot_capital_cap_usdt=_cap(get("bot_capital_cap_usdt", DEFAULTS["money_limits"])),
         )
+
+
+def _cap(raw: Any) -> Decimal | None:
+    """bot_capital_cap_usdt: JSON null (or a non-positive value) means no cap."""
+    if raw is None:
+        return None
+    cap = _dec(raw, "bot_capital_cap_usdt")
+    return cap if cap > 0 else None
+
+
+def sizing_equity(equity: Decimal, cap: Decimal | None) -> tuple[Decimal, bool]:
+    """Decision #250: the base for every percentage limit is min(account equity, bot capital cap);
+    with no cap it is the account equity. The flag is true only when the cap is below equity."""
+    if cap is not None and cap < equity:
+        return cap, True
+    return equity, False
 
 
 # --- Check 1: environment and kill switch -------------------------------------------------------
@@ -278,6 +298,14 @@ def check_instrument(
         )
     if inst_id.upper() in settings.blocklist:
         return CheckResult(name, False, "blocklisted", f"{inst_id} is on the blocklist.", values)
+    if settings.whitelist and inst_id.upper() not in settings.whitelist:
+        return CheckResult(
+            name,
+            False,
+            "not_whitelisted",
+            f"{inst_id} is not on the Markets whitelist; only listed instruments can be traded.",
+            values,
+        )
     if state != "live":
         return CheckResult(
             name, False, "instrument_not_live", f"{inst_id} state is {state}, not live.", values
@@ -354,7 +382,8 @@ def check_portfolio(
 ) -> CheckResult:
     """Trades today < max; open positions < max; same-direction exposure in instruments with
     30-day corr > threshold (the instrument itself included) and the asset class's net exposure,
-    each with the new trade, <= max_correlated_exposure_pct of equity."""
+    each with the new trade, <= max_correlated_exposure_pct of ``equity``, the sizing equity
+    (decision #250: min(account equity, bot capital cap))."""
     name = "portfolio"
     cap = equity * settings.max_correlated_exposure_pct / HUNDRED
     held = {p.inst_id for p in positions}
@@ -384,6 +413,7 @@ def check_portfolio(
         "asset_class": asset_class,
         "asset_class_net_exposure_usd": net_class,
         "exposure_cap_usd": cap,
+        "sizing_equity": equity,
     }
     if trades_today >= settings.max_trades_per_day:
         return CheckResult(
@@ -407,7 +437,7 @@ def check_portfolio(
             False,
             "correlated_exposure",
             f"Correlated exposure would be {correlated_usd:.2f} USD, above the cap "
-            f"{cap:.2f} USD ({settings.max_correlated_exposure_pct}% of equity).",
+            f"{cap:.2f} USD ({settings.max_correlated_exposure_pct}% of sizing equity {equity:.2f} USD).",
             values,
         )
     if abs(net_class) > cap:
@@ -434,16 +464,28 @@ def check_loss_limits(
     settings: EngineSettings,
 ) -> CheckResult:
     """Loss = start equity + net deposits since then - current equity (realised + unrealised), as %
-    of the start equity. At or above the limit rejects (the brief passes only loss < limit). With no
-    start equity (no equity point since the period began) the loss reads 0% and ``values`` lists the
-    period in ``base_unknown`` so the gap is visible."""
+    of the period's sizing equity: min(start equity, bot capital cap) (decision #250), so a 300 USD
+    loss with a 10,000 USD cap is 3% however large the account is. At or above the limit rejects
+    (the brief passes only loss < limit). With no start equity (no equity point since the period
+    began) the loss reads 0% and ``values`` lists the period in ``base_unknown`` so the gap is
+    visible. The breakers (breakers.py) reuse this check, so they trip on the same base."""
     name = "loss_limits"
 
-    def pct(loss: Decimal, base: Decimal | None) -> Decimal:
-        return ZERO if base is None or base <= 0 else loss / base * HUNDRED
+    cap = settings.bot_capital_cap_usdt
 
-    day_pct, week_pct = pct(day_loss_usd, day_base_usd), pct(week_loss_usd, week_base_usd)
+    def capped(base: Decimal | None) -> Decimal | None:
+        return None if base is None or base <= 0 else sizing_equity(base, cap)[0]
+
+    day_sizing, week_sizing = capped(day_base_usd), capped(week_base_usd)
+
+    def pct(loss: Decimal, base: Decimal | None) -> Decimal:
+        return ZERO if base is None else loss / base * HUNDRED
+
+    day_pct, week_pct = pct(day_loss_usd, day_sizing), pct(week_loss_usd, week_sizing)
     values: dict[str, Any] = {
+        "day_sizing_equity": day_sizing,
+        "week_sizing_equity": week_sizing,
+        "bot_capital_cap_usdt": cap,
         "day_loss_usd": day_loss_usd,
         "day_loss_pct": day_pct,
         "max_daily_loss_pct": settings.max_daily_loss_pct,
@@ -463,7 +505,7 @@ def check_loss_limits(
             name,
             False,
             "daily_loss_limit",
-            f"Today's loss is {day_pct:.2f}% of equity; the limit is {settings.max_daily_loss_pct}%.",
+            f"Today's loss is {day_pct:.2f}% of sizing equity; the limit is {settings.max_daily_loss_pct}%.",
             values,
         )
     if week_pct >= settings.max_weekly_loss_pct:
@@ -471,7 +513,8 @@ def check_loss_limits(
             name,
             False,
             "weekly_loss_limit",
-            f"This week's loss is {week_pct:.2f}%; the limit is {settings.max_weekly_loss_pct}%.",
+            f"This week's loss is {week_pct:.2f}% of sizing equity; the limit is "
+            f"{settings.max_weekly_loss_pct}%.",
             values,
         )
     if consecutive_losses >= settings.max_consecutive_losses:

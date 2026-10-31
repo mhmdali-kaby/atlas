@@ -120,7 +120,12 @@ def ctx(inst: InstrumentInfo = XAU, settings: dict[str, Any] | None = None, **kw
         now=NOW,
         proposal=proposal(inst),
         settings_version=7,
-        settings_data={"risk_profile": "balanced", "autonomy_level": 2, **(settings or {})},
+        settings_data={
+            "risk_profile": "balanced",
+            "autonomy_level": 2,
+            "bot_capital_cap_usdt": None,  # no cap unless a test sets one (decision #250)
+            **(settings or {}),
+        },
         connection_verified=True,
         ticker_at=NOW - timedelta(seconds=2),
         instrument=inst,
@@ -189,6 +194,24 @@ def test_breaker_and_unverified_connection_reject_at_check_1() -> None:
 
 def test_blocklisted_instrument_is_rejected_at_check_2() -> None:
     _rejected_at(run_checks(ctx(settings={"blocklist": ["xau-usdt-swap"]})), 2, "blocklisted")
+
+
+def test_whitelist_restricts_check_2_and_the_blocklist_still_wins() -> None:
+    """Decision #250 (ATL-156 AC3): a non-empty whitelist admits only its instruments."""
+    eth = replace(XAU, inst_id="ETH-USDT-SWAP", asset_class="crypto")
+    btc = replace(XAU, inst_id="BTC-USDT-SWAP", asset_class="crypto")
+    only_btc = {"whitelist": ["BTC-USDT-SWAP"]}
+    out = run_checks(ctx(eth, settings=only_btc, proposal=proposal(eth)))
+    _rejected_at(out, 2, "not_whitelisted")
+    assert run_checks(ctx(btc, settings=only_btc, proposal=proposal(btc))).checks[1]["status"] == "passed"
+    both = {"whitelist": ["BTC-USDT-SWAP"], "blocklist": ["BTC-USDT-SWAP"]}
+    _rejected_at(run_checks(ctx(btc, settings=both, proposal=proposal(btc))), 2, "blocklisted")
+    for inst in (eth, btc):
+        empty = run_checks(ctx(inst, settings={"whitelist": []}, proposal=proposal(inst)))
+        assert empty.checks[1]["status"] == "passed"
+    # Every other filter still applies to a whitelisted instrument.
+    off = {"whitelist": ["BTC-USDT-SWAP"], "enabled_markets": ["spot"]}
+    _rejected_at(run_checks(ctx(btc, settings=off, proposal=proposal(btc))), 2, "market_disabled")
 
 
 def test_disabled_market_and_unknown_instrument_reject_at_check_2() -> None:
@@ -276,6 +299,61 @@ def test_a_missing_day_start_equity_is_recorded_as_base_unknown() -> None:
     values = run_checks(ctx(day_loss_usd=D(9000), day_base_usd=None)).checks[5]["values"]
     assert values["base_unknown"] == ["day"]
     assert run_checks(ctx()).checks[5]["values"]["base_unknown"] == []
+
+
+# --- Decision #250: sizing equity = min(account equity, bot capital cap) ----------------------
+
+BIG = dict(equity=D(5000000), available_usd=D(5000000), day_base_usd=D(5000000), week_base_usd=D(5000000))
+
+
+def test_bot_capital_cap_is_the_base_for_the_per_trade_risk() -> None:
+    """ATL-156 AC1: 5,000,000 equity, a 10,000 cap and 1 % risk -> risk_usd 100, not 50,000."""
+    out = run_checks(ctx(settings={"bot_capital_cap_usdt": "10000"}, **BIG))
+    assert out.result != "rejected", out.checks
+    assert out.sizing is not None and out.sizing.risk_usd == D(100)
+    size = out.checks[3]["values"]
+    assert size["sizing_equity"] == "10000" and size["cap_bound"] is True
+    assert size["equity"] == "5000000" and size["bot_capital_cap_usdt"] == "10000"
+    # max_position_pct is 5 % of the 10,000 sizing equity, not of 5,000,000.
+    assert out.sizing.caps["max_position_pct"] == D(500)
+    assert out.checks[4]["values"]["sizing_equity"] == "10000"
+
+
+def test_no_cap_or_a_cap_above_equity_sizes_on_account_equity() -> None:
+    for cap in (None, "250000"):
+        out = run_checks(ctx(settings={"bot_capital_cap_usdt": cap}))
+        size = out.checks[3]["values"]
+        assert size["sizing_equity"] == "100000" and size["cap_bound"] is False
+        assert out.sizing is not None and out.sizing.risk_usd == D(1000)
+
+
+def test_correlated_exposure_cap_uses_sizing_equity() -> None:
+    # 35 % of a 10,000 sizing equity is 3,500; 3,100 held + the new 500 trade breaks it.
+    xag = (OpenPosition("XAG-USDT-SWAP", 1, D(3100), "commodity"),)
+    out = run_checks(
+        ctx(positions=xag, correlations={"XAG-USDT-SWAP": 0.9}, settings={"bot_capital_cap_usdt": "10000"})
+    )
+    _rejected_at(out, 5, "correlated_exposure")
+    assert D(out.checks[4]["values"]["exposure_cap_usd"]) == D(3500)
+
+
+def test_daily_loss_limit_is_a_percentage_of_sizing_equity() -> None:
+    """ATL-156 AC2: 300 USD lost with a 10,000 cap and a 2 % limit rejects (3 % >= 2 %)."""
+    capped = {"bot_capital_cap_usdt": "10000", "max_daily_loss_pct": "2"}
+    out = run_checks(ctx(day_loss_usd=D(300), settings=capped, **BIG))
+    _rejected_at(out, 6, "daily_loss_limit")
+    values = out.checks[5]["values"]
+    assert values["day_sizing_equity"] == "10000" and D(values["day_loss_pct"]) == D(3)
+    # 199.99 USD is below 2 % of 10,000 and passes; uncapped, 300 USD of 5,000,000 passes too.
+    assert run_checks(ctx(day_loss_usd=D("199.99"), settings=capped, **BIG)).checks[5]["status"] == "passed"
+    uncapped = {"bot_capital_cap_usdt": None, "max_daily_loss_pct": "2"}
+    assert run_checks(ctx(day_loss_usd=D(300), settings=uncapped, **BIG)).checks[5]["status"] == "passed"
+
+
+def test_weekly_loss_limit_is_a_percentage_of_sizing_equity() -> None:
+    # Balanced weekly limit 10 % of a 10,000 sizing equity = 1,000 USD.
+    out = run_checks(ctx(week_loss_usd=D(1000), settings={"bot_capital_cap_usdt": "10000"}))
+    _rejected_at(out, 6, "weekly_loss_limit")
 
 
 def test_weekly_loss_and_consecutive_losses_reject_at_check_6() -> None:
@@ -445,7 +523,7 @@ def world(engine: Engine, rds: redis.Redis) -> Iterator[dict[str, Any]]:
         old_state = c.execute(
             select(TradingState.paused, TradingState.breakers).where(TradingState.env == ENV)
         ).first()
-        data = json.dumps({"risk_profile": "balanced", "autonomy_level": 2})
+        data = json.dumps({"risk_profile": "balanced", "autonomy_level": 2, "bot_capital_cap_usdt": None})
         c.execute(
             text(
                 "INSERT INTO settings (id, env, version, data, risk_profile, autonomy_level,"
@@ -663,6 +741,28 @@ def test_evaluate_writes_one_row_with_nine_checks_and_publishes_one_decision(
     assert ev.payload["result"] == "resized" and ev.payload["decision"] == "awaiting_owner"
     assert ev.payload["settings_version"] == 7
     assert decision.risk_check_id == row.id
+
+
+def test_evaluate_records_sizing_equity_and_cap_bound_in_the_row(
+    engine: Engine, rds: redis.Redis, world: dict[str, Any]
+) -> None:
+    """ATL-156 AC1 end to end: a 5,000,000 account with a 10,000 bot capital cap."""
+    data = {"risk_profile": "balanced", "autonomy_level": 2, "bot_capital_cap_usdt": "10000"}
+    with engine.begin() as c:
+        c.execute(
+            text("UPDATE settings SET data = CAST(:d AS jsonb) WHERE env = :e"),
+            {"d": json.dumps(data), "e": ENV},
+        )
+        c.execute(update(EquityPoint).where(EquityPoint.env == ENV).values(total_eq_usd=D(5000000)))
+    pid = _proposal_row(engine, world["inst_id"])
+    decision = evaluate(pid, engine=engine, redis_client=rds, now=lambda: AT)
+    assert decision.result != "rejected"
+    with engine.connect() as c:
+        row = c.execute(select(RiskCheck).where(RiskCheck.proposal_id == pid)).one()
+    size = row.checks[3]["values"]
+    assert D(size["equity"]) == D(5000000) and D(size["sizing_equity"]) == D(10000)
+    assert size["cap_bound"] is True and D(size["risk_usd"]) == D(100)
+    assert row.final_notional_usd == D(500)  # 5 % of 10,000
 
 
 def test_evaluate_with_trading_paused_rejects_at_check_1(

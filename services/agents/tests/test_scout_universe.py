@@ -106,6 +106,49 @@ def test_settings_values_override_the_defaults() -> None:
     assert result.settings_version == 7
 
 
+def test_whitelist_keeps_only_listed_instruments_that_pass_every_other_check() -> None:
+    """Decision #250 (ATL-156 AC4): the whitelist restricts; volume/spread/state still apply."""
+    candidates = [
+        _c("BTC-USDT-SWAP", volume="900000000"),
+        _c("XAU-USDT-SWAP", asset_class="commodity", volume="6000000"),
+        _c("ETH-USDT-SWAP", volume="900000000"),  # passes everything but is not listed
+    ]
+    config = config_from({"whitelist": ["BTC-USDT-SWAP", "xau-usdt-swap"]})
+    result = filter_universe(candidates, config, AS_OF)
+    assert [k.inst_id for k in result.kept] == ["BTC-USDT-SWAP", "XAU-USDT-SWAP"]
+    assert {r.inst_id: r.reasons for r in result.rejected} == {"ETH-USDT-SWAP": ["whitelist"]}
+
+    # Whitelisted but failing another filter: still rejected, for that filter only.
+    failing = [
+        _c("BTC-USDT-SWAP", volume="1000"),
+        _c("XAU-USDT-SWAP", asset_class="commodity", state="suspend", spread="9"),
+    ]
+    result = filter_universe(failing, config, AS_OF)
+    assert result.kept == []
+    assert {r.inst_id: r.reasons for r in result.rejected} == {
+        "BTC-USDT-SWAP": ["volume"],
+        "XAU-USDT-SWAP": ["state", "spread"],
+    }
+
+    # The blocklist still wins over the whitelist; an empty whitelist restricts nothing.
+    both = config_from({"whitelist": ["BTC-USDT-SWAP"], "blocklist": ["BTC-USDT-SWAP"]})
+    assert filter_universe(candidates[:1], both, AS_OF).rejected[0].reasons == ["blocklist"]
+    empty = filter_universe(candidates, config_from({"whitelist": []}), AS_OF)
+    assert len(empty.kept) == 3
+
+
+def test_saved_empty_enabled_markets_admits_nothing() -> None:
+    """Every asset-class toggle off ([] saved) is not "use the defaults"."""
+    config = config_from({"enabled_markets": []})
+    assert config.enabled_markets == frozenset()
+    result = filter_universe(FIXTURE, config, AS_OF)
+    assert result.kept == []
+    assert all("market" in r.reasons for r in result.rejected)
+    # A settings row without the key still falls back to the default toggles.
+    defaults = frozenset({"spot", "crypto_perp", "stock_perp", "commodity_perp"})
+    assert config_from({}).enabled_markets == defaults
+
+
 def test_market_mapping() -> None:
     assert market_of("SWAP", "crypto") == "crypto_perp"
     assert market_of("SWAP", "etf") == "stock_perp"
