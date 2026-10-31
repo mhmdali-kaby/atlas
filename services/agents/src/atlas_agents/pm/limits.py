@@ -3,7 +3,8 @@
 Computed in code from the owner's settings (rule 2: limits come only from the settings table, with
 the risk profile's preset for a key the row does not set, as the Risk Engine reads them) and the
 synced account: today's and this week's loss (start equity of the Baghdad day / week + net deposits
-since then - current equity, the Risk Engine's check 6 formula) and the open-position count.
+since then - current equity, as % of min(start equity, bot capital cap): the Risk Engine's
+check 6 formula) and the open-position count.
 
 :func:`due_warnings` returns the limits at or above ``limit_warning_pct`` (70) % of use that have not
 been warned about in the last ``limit_warning_interval_minutes`` (60): one warning per limit per hour,
@@ -27,6 +28,7 @@ from sqlalchemy.orm import Session
 
 from atlas_agents import proposals as props
 from atlas_agents.pm import inputs as inp
+from atlas_agents.tools.account import bot_capital_cap, sizing_equity
 from atlas_agents.tools.framework import ToolContext
 
 USD_LIKE: Final = frozenset({"USD", "USDT", "USDC"})
@@ -38,7 +40,7 @@ class LimitUsage:
     limit: str
     """The settings key: max_daily_loss_pct, max_weekly_loss_pct or max_open_positions."""
     used: Decimal
-    """Loss % of start equity, or open positions."""
+    """Loss % of sizing equity (min(start equity, bot capital cap)), or open positions."""
     cap: Decimal
     usage_pct: Decimal
     """used / cap x 100."""
@@ -91,12 +93,21 @@ def _net_flows(session: Session, ctx: ToolContext, since: datetime) -> Decimal:
     return total
 
 
-def loss_pct(session: Session, ctx: ToolContext, since: datetime) -> Decimal | None:
-    """Loss since ``since`` as % of the first equity point since then; None without one."""
+def loss_pct(
+    session: Session, ctx: ToolContext, since: datetime, cap: Decimal | None = None
+) -> Decimal | None:
+    """Loss since ``since`` as % of that period's sizing equity: min(first equity point since then,
+    bot capital cap) (decision #250, the Risk Engine's check 6 base). None without an equity point.
+    With a cap of 0 any loss is 100 %, as in the engine."""
     base, now_eq = _equity_since(session, ctx, since), _equity_now(session, ctx)
     if base is None or now_eq is None or base <= 0:
         return None
-    return (base + _net_flows(session, ctx, since) - now_eq) / base * HUNDRED
+    loss = base + _net_flows(session, ctx, since) - now_eq
+    divisor = sizing_equity(base, cap)[0]
+    assert divisor is not None
+    if divisor <= 0:
+        return HUNDRED if loss > 0 else Decimal(0)
+    return loss / divisor * HUNDRED
 
 
 def limit_values(session: Session, ctx: ToolContext) -> dict[str, Decimal]:
@@ -119,10 +130,11 @@ def limit_values(session: Session, ctx: ToolContext) -> dict[str, Decimal]:
 
 def usage(session: Session, ctx: ToolContext) -> list[LimitUsage]:
     caps = limit_values(session, ctx)
+    cap = bot_capital_cap(props.settings_data(session, ctx).data)
     now = ctx.now()
     used: dict[str, Decimal | None] = {
-        "max_daily_loss_pct": loss_pct(session, ctx, _owner_start(now, week=False)),
-        "max_weekly_loss_pct": loss_pct(session, ctx, _owner_start(now, week=True)),
+        "max_daily_loss_pct": loss_pct(session, ctx, _owner_start(now, week=False), cap),
+        "max_weekly_loss_pct": loss_pct(session, ctx, _owner_start(now, week=True), cap),
         "max_open_positions": Decimal(len(inp.held_snapshots(session, ctx))),
     }
     out: list[LimitUsage] = []

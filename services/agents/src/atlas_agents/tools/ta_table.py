@@ -41,7 +41,13 @@ from atlas_agents.ta.microstructure import summarise_book, walk_book
 from atlas_agents.ta.patterns import detect_patterns
 from atlas_agents.ta.swings import Swing
 from atlas_agents.ta.volume import anchored_vwap, obv_trend, relative_volume, session_vwap, volume_profile
-from atlas_agents.tools.account import _latest_equity, _settings, _settings_history
+from atlas_agents.tools.account import (
+    _latest_equity,
+    _settings,
+    _settings_history,
+    bot_capital_cap,
+    sizing_equity,
+)
 from atlas_agents.tools.catalogue import GetOrderbookInput, InstIdInput
 from atlas_agents.tools.framework import ToolContext, ToolResult, atlas_tool
 from atlas_agents.tools.market import OrderbookOut, find_instrument, get_orderbook, newest
@@ -160,9 +166,9 @@ def max_notional(session: Session, ctx: ToolContext) -> tuple[Decimal | None, st
         return None, "max_position_pct is not set"
     if equity is None or equity <= 0:
         return None, "no account equity has been synced"
-    cap = _decimal(data.get("bot_capital_cap_usdt"))
-    sizing = min(equity, cap) if cap is not None and cap > 0 else equity
-    basis = "bot capital cap" if cap is not None and 0 < cap < equity else "account equity"
+    sizing, cap_bound = sizing_equity(equity, bot_capital_cap(data))
+    assert sizing is not None
+    basis = "bot capital cap" if cap_bound else "account equity"
     return sizing * pct / 100, f"sizing equity ({basis}) x max_position_pct {pct}%"
 
 

@@ -197,6 +197,7 @@ class Supervisor:
                 observer_factory=observe,
                 prompt_version=prompt[1] if prompt else None,
                 system_prompt=prompts.renderer(ctx, prompt[0]) if prompt else None,
+                clock=self._clock,
             )
 
         self._applier.start(session_builder or build)

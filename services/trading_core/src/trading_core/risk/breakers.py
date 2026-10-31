@@ -421,7 +421,8 @@ class Breakers:
         out: list[str] = []
         if day_pct >= settings.max_daily_loss_pct and self.trip(
             DAILY_LOSS,
-            f"Today's loss is {_fmt_pct(day_pct)}% of equity; the limit is {settings.max_daily_loss_pct}%.",
+            f"Today's loss is {_fmt_pct(day_pct)}% of sizing equity; the limit is "
+            f"{settings.max_daily_loss_pct}%.",
             {
                 "loss_usd": losses.day_loss_usd,
                 "loss_pct": day_pct,
@@ -433,7 +434,7 @@ class Breakers:
             out.append(DAILY_LOSS)
         if week_pct >= settings.max_weekly_loss_pct and self.trip(
             WEEKLY_LOSS,
-            f"This week's loss is {_fmt_pct(week_pct)}% of equity; the limit is "
+            f"This week's loss is {_fmt_pct(week_pct)}% of sizing equity; the limit is "
             f"{settings.max_weekly_loss_pct}%.",
             {
                 "loss_usd": losses.week_loss_usd,

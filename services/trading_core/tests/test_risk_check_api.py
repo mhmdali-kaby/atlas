@@ -101,7 +101,9 @@ def world(engine: Engine, rds: redis.Redis) -> Iterator[str]:
             {
                 "id": uuid.uuid4(),
                 "e": ENV,
-                "d": json.dumps({"risk_profile": "balanced", "autonomy_level": 2}),
+                "d": json.dumps(
+                    {"risk_profile": "balanced", "autonomy_level": 2, "bot_capital_cap_usdt": None}
+                ),
             },
         )
         if old_conn is None:
