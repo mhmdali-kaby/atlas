@@ -1,0 +1,41 @@
+[
+ {
+  "id": "c9f66e1b-a0c0-5d94-98f4-60cdc924a8f8",
+  "env": "demo",
+  "version": 1,
+  "kind": "entry",
+  "author": "strategist",
+  "inst_id": "ETH-USDT-SWAP",
+  "side": "sell",
+  "order_type": "limit",
+  "entry_zone": [
+   "2478.01",
+   "2481.98"
+  ],
+  "stop": "2505.78",
+  "take_profits": [
+   {
+    "price": "2449.05",
+    "pct": "50"
+   },
+   {
+    "price": "2428.42",
+    "pct": "30"
+   },
+   {
+    "price": "2407.79",
+    "pct": "20"
+   }
+  ],
+  "time_stop_minutes": 1440,
+  "size_suggestion_pct": "1.875",
+  "leverage_suggestion": 1,
+  "expected_r": "2.80",
+  "probability": "0.62",
+  "rationale_md": "v1",
+  "invalidation": "1H close beyond 2505.78",
+  "evidence": [],
+  "status": "under_review",
+  "created_at": "2026-09-08T08:55:00Z"
+ }
+]

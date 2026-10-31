@@ -1,0 +1,17 @@
+[
+ {
+  "id": "2c76bf24-e6f9-5a40-8181-bc56663b368f",
+  "watchlist_id": "7f749aa5-f960-5fc6-9506-48aa8e9e6fd5",
+  "inst_id": "SPY-USDT-SWAP",
+  "rank": 1,
+  "asset_class": "etf",
+  "bias": "long",
+  "conviction": "0.6",
+  "thesis": "Long bias on SPY-USDT-SWAP from structure and flow.",
+  "catalysts": [],
+  "key_levels": {},
+  "invalidation": "1H close beyond 565.45",
+  "pinned_by_owner": false,
+  "data_as_of": "2026-09-05T12:00:00Z"
+ }
+]

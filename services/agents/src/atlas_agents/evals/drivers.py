@@ -21,6 +21,14 @@ eval scores what the owner would see:
   the corrections' figures) and the model's own quality_score. A stale-data refusal is scored as an
   ``ok`` run with ``meta.model_ran = False`` and the data alert as its card.
 
+* ``strategist`` (ATL-166) runs :func:`atlas_agents.strategist.run.plan` for ``inputs.inst_id`` (or,
+  with ``inputs.mode: revise``, sends the case prompt once so the model can revise
+  ``inputs.proposal_id``). The transcript card is the TradeProposal part of the published proposal
+  card; the code corrections, the analog anchor and the revised parent go to ``Transcript.meta``.
+  The tool outputs are the run's plus the inputs code gathered and the Strategist's own
+  judgments (its probability and size). A code "no trade" (no usable TechnicalSetup) is an ``ok``
+  run with ``meta.model_ran = False``.
+
 ``inputs.replies`` in ``case.yaml``::
 
     inputs:
@@ -31,6 +39,7 @@ eval scores what the owner would see:
 
 from __future__ import annotations
 
+import re
 import uuid
 from collections.abc import Awaitable, Callable, Mapping
 from decimal import Decimal
@@ -266,9 +275,200 @@ async def technical_analyst_driver(
     )
 
 
+# -- strategist --------------------------------------------------------------------------------------
+
+# The proposal card's fields that are a TradeProposal; the rest (ids, versions, statuses, clocks, the
+# code checklist and the evidence ids) is the runtime's and goes to Transcript.meta.
+_PROPOSAL_FIELDS = (
+    "inst_id",
+    "side",
+    "order_type",
+    "entry",
+    "entry_zone",
+    "stop",
+    "take_profits",
+    "time_stop_minutes",
+    "size_suggestion_pct_equity",
+    "leverage_suggestion",
+    "expected_r_multiple",
+    "probability_estimate",
+    "rationale_md",
+    "invalidation",
+)
+_UUID = re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", re.IGNORECASE)
+
+
+def _proposal_cards(recorder: Any, since: int) -> list[dict[str, Any]]:
+    """Proposal cards published on atlas.warroom after event ``since`` of the case recorder."""
+    events = list(getattr(recorder, "events", []))[since:]
+    return [
+        dict(env.payload["card"])
+        for stream, env in events
+        if stream == "atlas.warroom"
+        and env.payload.get("kind") == "proposal"
+        and isinstance(env.payload.get("card"), Mapping)
+    ]
+
+
+def _parent(supervisor: Supervisor, proposal_id: str) -> dict[str, Any] | None:
+    from atlas_shared.db import Proposal
+
+    try:
+        wanted = uuid.UUID(proposal_id)
+    except ValueError:
+        return None
+    with supervisor.tool_context("strategist").session_factory() as session:
+        row = session.get(Proposal, wanted)
+        if row is None:
+            return None
+        return {
+            "proposal_id": str(row.id),
+            "side": row.side,
+            "stop": None if row.stop is None else format(row.stop.normalize(), "f"),
+            "entry": None if row.entry is None else format(row.entry.normalize(), "f"),
+            "entry_zone": row.entry_zone,
+            "version": row.version,
+        }
+
+
+def _strategist_card(raw: Mapping[str, Any], meta: dict[str, Any]) -> dict[str, Any]:
+    card_meta = dict(raw.get("meta") or {})
+    meta["corrections"] = list(card_meta.get("corrections") or [])
+    meta["analog_hit_rate"] = card_meta.get("analog_hit_rate")
+    meta["sizing"] = card_meta.get("sizing")
+    meta["proposal"] = {
+        k: raw.get(k) for k in ("proposal_id", "version", "parent_id", "status", "expectancy_r", "checklist")
+    }
+    meta["summary_md"] = raw.get("summary_md")
+    return {k: raw.get(k) for k in _PROPOSAL_FIELDS if raw.get(k) is not None}
+
+
+def _judgments(card: Mapping[str, Any], corrections: list[Any], expectancy: Any) -> dict[str, Any]:
+    """The Strategist's own judgments (its probability and any size it cut to) and what code
+    derived from the card, for the number guard's pool, as market_scout's driver does for ranks."""
+    zone = card.get("entry_zone")
+    model_p = [
+        c.get("model")
+        for c in corrections
+        if isinstance(c, Mapping) and c.get("rule") == "probability_clamped"
+    ]
+    return {
+        "as_of": None,
+        "source": "agent:strategist judgments",
+        "data": {
+            "probability_estimate": card.get("probability_estimate"),
+            "probability_model": model_p,
+            "size_suggestion_pct_equity": card.get("size_suggestion_pct_equity"),
+            "expectancy_r": expectancy,
+            "entry_mid": [str((Decimal(str(zone[0])) + Decimal(str(zone[1]))) / 2)] if zone else [],
+            "corrections": corrections,
+        },
+    }
+
+
+async def strategist_driver(
+    supervisor: Supervisor, case: EvalCase
+) -> tuple[RunResult | None, props.Transcript]:
+    """``inputs.mode`` ``plan`` (default): :func:`atlas_agents.strategist.run.plan` for
+    ``inputs.inst_id`` — code gathers the inputs, a missing/none/stale TechnicalSetup is a code
+    "no trade" with no model run, else the model answers and code submits its decision block.
+    ``revise``: the case prompt (a Devil's Advocate objection on ``inputs.proposal_id``, a v1 in the
+    snapshot) goes to the Strategist once, and the model may revise through submit_proposal.
+
+    The transcript card is the TradeProposal part of the proposal card the run published (its
+    runtime fields, code corrections and analog anchor in ``Transcript.meta``); for a revision
+    ``meta.parent`` is the revised proposal. The tool outputs are the run's plus the inputs code
+    gathered and the Strategist's own judgments."""
+    from atlas_agents.strategist import inputs as inp
+    from atlas_agents.strategist import run as strategist_run
+
+    inst_id = str(case.inputs["inst_id"])
+    mode = str(case.inputs.get("mode", "plan"))
+    why = str(case.inputs.get("why") or f"Eval {case.case_id}: plan {inst_id}.")
+    recorder = getattr(supervisor, "_publish", None)
+    since = len(getattr(recorder, "events", []))
+    ctx = supervisor.tool_context(strategist_run.SLUG)
+    with ctx.session_factory() as session:
+        gathered = inp.gather(session, ctx, inst_id)
+    inputs_output = {
+        "as_of": gathered.as_of.isoformat(),
+        "source": "code:strategist inputs",
+        "data": gathered.to_json(),
+    }
+    meta: dict[str, Any] = {"model_ran": True, "mode": mode}
+
+    host = _RecordingHost(supervisor)
+    if mode == "revise":
+        parent_id = str(case.inputs["proposal_id"])
+        meta["parent"] = _parent(supervisor, parent_id)
+        result: RunResult | None = await supervisor.run(
+            strategist_run.SLUG,
+            case.prompt,
+            trigger="eval",
+            task=f"eval {case.case_id}",
+            correlation_id=f"eval-{case.case_id}",
+        )
+    else:
+        result = await strategist_run.plan(
+            cast(AgentHost, host), inst_id, trigger="eval", correlation_id=f"eval-{case.case_id}", why=why
+        )
+    if result is None:
+        problem = strategist_run.setup_problem(gathered)
+        if host.prompt is not None or problem is None:
+            return None, props.Transcript(
+                status="error", error="the run returned nothing", prompt=case.prompt
+            )
+        body = strategist_run.no_trade_message(inst_id, [problem], reply_to=None, thread_id=None)
+        refused = RunResult(run_id=uuid.uuid5(uuid.NAMESPACE_URL, f"eval/{case.case_id}"), status="ok")
+        meta["model_ran"] = False
+        return refused, props.Transcript(
+            status="ok",
+            text=str(body["content_md"]),
+            card=None,
+            tool_outputs=[inputs_output],
+            prompt=case.prompt,
+            meta=meta,
+        )
+
+    base = transcript(result, host.prompt or case.prompt)
+    message = result.message or {}
+    outputs = [*base.tool_outputs, inputs_output]
+    cards = _proposal_cards(recorder, since)
+    card: dict[str, Any] | None = None
+    if cards:
+        raw = cards[-1]
+        card = _strategist_card(raw, meta)
+        outputs.append(_judgments(card, meta["corrections"], raw.get("expectancy_r")))
+        if mode == "plan" and raw.get("parent_id"):
+            meta["parent"] = _parent(supervisor, str(raw["parent_id"]))
+    posted = [
+        str(args.get("content_md", ""))
+        for name, args in base.tool_calls
+        if name in props.POST_TOOLS and args.get("content_md")
+    ]
+    parts = [
+        str(message.get("content_md", "")) if mode == "plan" else base.text,
+        *(posted if mode == "plan" else []),
+    ]
+    if meta.get("summary_md"):
+        parts.append(str(meta["summary_md"]))
+    text = _UUID.sub("<id>", "\n\n".join(p for p in parts if p).strip())
+    return result, props.Transcript(
+        status=result.status,
+        text=text,
+        card=card,
+        tool_calls=base.tool_calls,
+        tool_outputs=outputs,
+        error=result.error,
+        prompt=base.prompt,
+        meta=meta,
+    )
+
+
 DRIVERS: dict[str, Driver] = {
     "market_scout": market_scout_driver,
     "technical_analyst": technical_analyst_driver,
+    "strategist": strategist_driver,
 }
 
 

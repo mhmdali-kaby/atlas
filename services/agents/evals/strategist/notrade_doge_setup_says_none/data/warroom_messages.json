@@ -1,0 +1,74 @@
+[
+ {
+  "id": "3934d206-98da-5564-adfe-8827aaa50549",
+  "env": "demo",
+  "thread_id": "497bab2e-ff5a-5892-9ce6-be7a98dbafbc",
+  "event_id": "ca042059-00cf-54b5-a0c1-5716b91b9a50",
+  "author_type": "agent",
+  "author": "technical_analyst",
+  "kind": "research_report",
+  "content_md": "TechnicalSetup card",
+  "card": {
+   "type": "technical_setup",
+   "inst_id": "DOGE-USDT-SWAP",
+   "timeframe_bias": {
+    "1D": "range",
+    "4H": "range",
+    "1H": "range",
+    "15m": "range"
+   },
+   "setup_type": "none",
+   "direction": "none",
+   "entry_zone": null,
+   "trigger": "",
+   "stop": null,
+   "targets": [],
+   "expected_r": null,
+   "invalidation": "",
+   "quality_score": 0.2,
+   "est_slippage_bps": null,
+   "levels_used": [
+    {
+     "id": "1H:z1",
+     "price": 0.1213
+    }
+   ],
+   "no_setup_reason": "a 1H close beyond 0.12291 creates a breakout",
+   "data_as_of": "2026-09-17T12:48:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-17T12:48:00Z",
+  "updated_at": "2026-09-17T12:48:00Z"
+ },
+ {
+  "id": "56aca609-d398-52e8-ae90-ce9a9f7175a4",
+  "env": "demo",
+  "thread_id": "497bab2e-ff5a-5892-9ce6-be7a98dbafbc",
+  "event_id": "95a190dd-1679-5a4f-8d38-fbd358952333",
+  "author_type": "agent",
+  "author": "historian",
+  "kind": "research_report",
+  "content_md": "HistoryVerdict card",
+  "card": {
+   "type": "history_verdict",
+   "question": "analog check for a long on DOGE-USDT-SWAP",
+   "inst_id": "DOGE-USDT-SWAP",
+   "bar": "1H",
+   "n": 34,
+   "distribution": {
+    "24h": {
+     "median": 0.3,
+     "p10": -2.1,
+     "p90": 2.4,
+     "pct_positive": 52.0
+    }
+   },
+   "verdict": "supports",
+   "key_stat": "52% of 34 analogs positive at 24h",
+   "data_as_of": "2026-09-17T12:52:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-17T12:52:00Z",
+  "updated_at": "2026-09-17T12:52:00Z"
+ }
+]
