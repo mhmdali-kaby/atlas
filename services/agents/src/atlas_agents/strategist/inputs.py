@@ -45,8 +45,10 @@ from atlas_agents.tools.account import (
     _latest_equity,
     _positions_at,
     _sync_instant,
+    bot_capital_cap,
     load_settings,
 )
+from atlas_agents.tools.account import sizing_equity as capped_equity
 from atlas_agents.tools.framework import ToolContext, ToolError
 
 TECHNICAL: Final = "technical_setup"
@@ -283,10 +285,8 @@ def gather(
 
     equity_row = _latest_equity(session, ctx)
     equity = equity_row.total_eq_usd if equity_row is not None else None
-    cap = _dec(data.get("bot_capital_cap_usdt"))
-    sizing_equity = equity
-    if equity is not None and cap is not None and cap > 0:
-        sizing_equity = min(equity, cap)
+    cap = bot_capital_cap(data)
+    sizing_equity = capped_equity(equity, cap)[0]
     taken_at = _sync_instant(session, ctx)
     settle = None
     if inst is not None:

@@ -51,7 +51,13 @@ from trading_core.risk.engine import (
     run_checks,
 )
 from trading_core.risk.inputs import InstrumentSpec
-from trading_core.risk.rules import OpenPosition, ScheduledEvent, us_session_open
+from trading_core.risk.rules import (
+    EngineSettings,
+    OpenPosition,
+    ScheduledEvent,
+    check_loss_limits,
+    us_session_open,
+)
 
 # Wednesday 15 July 2026, 14:00 UTC = 10:00 New York (EDT, UTC-4).
 NOW = datetime(2026, 7, 15, 14, 0, tzinfo=UTC)
@@ -325,6 +331,27 @@ def test_no_cap_or_a_cap_above_equity_sizes_on_account_equity() -> None:
         size = out.checks[3]["values"]
         assert size["sizing_equity"] == "100000" and size["cap_bound"] is False
         assert out.sizing is not None and out.sizing.risk_usd == D(1000)
+
+
+def test_a_saved_cap_of_zero_is_a_real_cap_not_no_cap() -> None:
+    """Review round 1: "0" must not fail open to full equity (Laravel's preview shows $0 risk)."""
+    for cap in ("0", "-5"):
+        out = run_checks(ctx(settings={"bot_capital_cap_usdt": cap}, **BIG))
+        _rejected_at(out, 4, "no_capacity")
+        size = out.checks[3]["values"]
+        assert D(size["sizing_equity"]) == D(0) and size["cap_bound"] is True
+    assert EngineSettings.from_settings_data({"bot_capital_cap_usdt": "0"}).bot_capital_cap_usdt == D(0)
+    assert EngineSettings.from_settings_data({"bot_capital_cap_usdt": None}).bot_capital_cap_usdt is None
+
+
+def test_loss_limits_with_a_zero_cap_do_not_divide_by_zero() -> None:
+    settings = EngineSettings.from_settings_data({"bot_capital_cap_usdt": "0"})
+    kw: dict[str, Any] = dict(
+        week_loss_usd=D(0), week_base_usd=D(5000000), consecutive_losses=0, settings=settings
+    )
+    assert check_loss_limits(day_loss_usd=D(0), day_base_usd=D(5000000), **kw).passed
+    hit = check_loss_limits(day_loss_usd=D(1), day_base_usd=D(5000000), **kw)
+    assert not hit.passed and hit.code == "daily_loss_limit"
 
 
 def test_correlated_exposure_cap_uses_sizing_equity() -> None:

@@ -32,7 +32,7 @@ from atlas_shared.db import (
     Instrument,
     PositionSnapshot,
 )
-from sqlalchemy import Engine, delete, text
+from sqlalchemy import Engine, delete, text, update
 from sqlalchemy.orm import Session, sessionmaker
 
 ENV = "demo"
@@ -384,6 +384,37 @@ async def test_account_and_settings_output_carry_no_identifiers_or_keys(db: sess
     assert Decimal(budget["daily_loss_used_usd"]) == 0
     assert budget["positions_left"] == 5
     assert "Executor" in budget["note"]
+
+
+async def _budget_with(db: sessionmaker[Session], cap: object, equity: str) -> dict[str, Any]:
+    with db() as s:
+        _seed_account_and_settings(s)
+        s.execute(
+            text("update settings set data = data || cast(:d as jsonb) where env = :e"),
+            {"d": json.dumps({"bot_capital_cap_usdt": cap}), "e": ENV},
+        )
+        s.execute(update(EquityPoint).where(EquityPoint.env == ENV).values(total_eq_usd=Decimal(equity)))
+        s.commit()
+    body = await _call(_ctx(db), "atlas_data", "get_today_budget_left", {})
+    return dict(body["data"])
+
+
+async def test_budget_left_is_a_percentage_of_sizing_equity(db: sessionmaker[Session]) -> None:
+    """Decision #250 (ATL-156 review): a 10,000 cap on 5,000,000 equity and 1 % risk -> 100 USD."""
+    budget = await _budget_with(db, "10000", "5000000")
+    assert Decimal(budget["equity_usd"]) == Decimal(5000000)
+    assert Decimal(budget["sizing_equity"]) == Decimal(10000) and budget["cap_bound"] is True
+    assert Decimal(budget["max_risk_per_trade_usd"]) == Decimal(100)
+    assert Decimal(budget["max_position_usd"]) == Decimal(500)
+    assert Decimal(budget["daily_loss_limit_usd"]) == Decimal(400)
+
+
+async def test_budget_left_cap_rules_match_the_risk_engine(db: sessionmaker[Session]) -> None:
+    # null = no cap; a cap above equity does not bind; a saved 0 is a cap of 0, never "no cap".
+    for cap, sizing, bound in ((None, "5000000", False), ("9000000", "5000000", False), ("0", "0", True)):
+        budget = await _budget_with(db, cap, "5000000")
+        assert Decimal(budget["sizing_equity"]) == Decimal(sizing) and budget["cap_bound"] is bound, cap
+        assert Decimal(budget["max_risk_per_trade_usd"]) == Decimal(sizing) / 100
 
 
 async def test_settings_snapshot_in_replay_is_the_version_in_force_then(db: sessionmaker[Session]) -> None:

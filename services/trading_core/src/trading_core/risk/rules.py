@@ -163,11 +163,12 @@ class EngineSettings:
 
 
 def _cap(raw: Any) -> Decimal | None:
-    """bot_capital_cap_usdt: JSON null (or a non-positive value) means no cap."""
+    """bot_capital_cap_usdt: only JSON null means no cap. A saved value <= 0 is a real cap of 0
+    (the Laravel schema accepts 0 and its preview treats it as binding), so it never fails open."""
     if raw is None:
         return None
     cap = _dec(raw, "bot_capital_cap_usdt")
-    return cap if cap > 0 else None
+    return cap if cap > 0 else Decimal(0)
 
 
 def sizing_equity(equity: Decimal, cap: Decimal | None) -> tuple[Decimal, bool]:
@@ -479,7 +480,11 @@ def check_loss_limits(
     day_sizing, week_sizing = capped(day_base_usd), capped(week_base_usd)
 
     def pct(loss: Decimal, base: Decimal | None) -> Decimal:
-        return ZERO if base is None else loss / base * HUNDRED
+        if base is None:
+            return ZERO
+        if base <= 0:  # a bot capital cap of 0: any loss is all of it
+            return HUNDRED if loss > 0 else ZERO
+        return loss / base * HUNDRED
 
     day_pct, week_pct = pct(day_loss_usd, day_sizing), pct(week_loss_usd, week_sizing)
     values: dict[str, Any] = {
