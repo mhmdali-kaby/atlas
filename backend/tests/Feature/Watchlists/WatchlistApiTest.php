@@ -9,7 +9,6 @@ use App\Models\Watchlist;
 use App\Models\WatchlistItem;
 use App\Support\Settings\SettingsService;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
 use Illuminate\Support\Str;
@@ -178,6 +177,12 @@ it('gives a pinned item a rank after removed ones, so a restore keeps its old ra
 });
 
 it('refuses remove, restore and pin with 409 edit_window_closed after the window and changes nothing', function (): void {
+    // Pinned to a fixed instant, not an offset from the real clock (ATL-181): the old
+    // `now()->addMinutes(11)` crossed into the next Asia/Baghdad business day whenever the
+    // suite happened to run between 23:49 and midnight there, so "today"'s watchlist lookup
+    // at the end of the test silently stopped finding this one. travelTo keeps the whole test
+    // on one fixed business day regardless of the real wall clock, whatever it is faked to.
+    $this->travelTo(CarbonImmutable::parse('2026-06-15 10:00:00', 'Asia/Baghdad'));
     atl103Instrument('SOL-USDT-SWAP');
     $watchlist = atl103Watchlist(atl103Today(), 1, [['BTC-USDT-SWAP', 1], ['ETH-USDT-SWAP', 2]]);
     $btc = $watchlist->items()->where('inst_id', 'BTC-USDT-SWAP')->firstOrFail();
@@ -186,19 +191,15 @@ it('refuses remove, restore and pin with 409 edit_window_closed after the window
     Redis::connection('events')->command('executeRaw', [['DEL', 'atlas.warroom']]);
     $auditsBefore = AuditLog::query()->count();
 
-    Carbon::setTestNow(CarbonImmutable::now()->addMinutes(11));
-    try {
-        $this->postJson("/api/watchlists/{$watchlist->id}/items/{$btc->id}/remove")
-            ->assertStatus(409)->assertJsonPath('error', 'edit_window_closed')->assertJsonPath('ok', false);
-        $this->postJson("/api/watchlists/{$watchlist->id}/pin", ['inst_id' => 'SOL-USDT-SWAP'])
-            ->assertStatus(409)->assertJsonPath('error', 'edit_window_closed');
-        $this->postJson("/api/watchlists/{$watchlist->id}/items/{$eth->id}/restore")
-            ->assertStatus(409)->assertJsonPath('error', 'edit_window_closed');
+    $this->travelTo(CarbonImmutable::now()->addMinutes(11));
+    $this->postJson("/api/watchlists/{$watchlist->id}/items/{$btc->id}/remove")
+        ->assertStatus(409)->assertJsonPath('error', 'edit_window_closed')->assertJsonPath('ok', false);
+    $this->postJson("/api/watchlists/{$watchlist->id}/pin", ['inst_id' => 'SOL-USDT-SWAP'])
+        ->assertStatus(409)->assertJsonPath('error', 'edit_window_closed');
+    $this->postJson("/api/watchlists/{$watchlist->id}/items/{$eth->id}/restore")
+        ->assertStatus(409)->assertJsonPath('error', 'edit_window_closed');
 
-        $this->getJson('/api/watchlists')->assertOk()->assertJsonPath('watchlist.edit_window_open', false);
-    } finally {
-        Carbon::setTestNow();
-    }
+    $this->getJson('/api/watchlists')->assertOk()->assertJsonPath('watchlist.edit_window_open', false);
 
     expect($btc->fresh()?->removed_by_owner_at)->toBeNull()
         ->and($eth->fresh()?->removed_by_owner_at)->not->toBeNull()
