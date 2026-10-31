@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
@@ -25,7 +24,7 @@ from atlas_agents import testing as fake
 from atlas_agents.registry import REGISTRY
 from atlas_agents.schemas import HistoryVerdict, RegimeTable
 from atlas_agents.supervisor import Supervisor
-from atlas_shared import bus
+from atlas_shared import bus, testing
 from atlas_shared.db import AgentRun, AgentState, AgentUsageDaily, Candle, Instrument
 from atlas_shared.defaults import DEFAULTS
 from atlas_shared.events import EventEnvelope
@@ -168,14 +167,14 @@ def _state(engine: Engine) -> str | None:
 
 @pytest.fixture
 def redis_client() -> Iterator[redis.Redis]:
-    conn = bus.make_client({**os.environ, "REDIS_DB": os.environ.get("REDIS_TEST_DB", "15")})
+    conn = bus.make_client(testing.redis_settings())
     try:
         conn.ping()
     except redis.ConnectionError:
         pytest.skip("Redis is not running on REDIS_HOST:REDIS_PORT")
-    conn.delete("atlas.warroom")
+    conn.delete(bus.stream_key("atlas.warroom"))
     yield conn
-    conn.delete("atlas.warroom")
+    conn.delete(bus.stream_key("atlas.warroom"))
     conn.close()
 
 

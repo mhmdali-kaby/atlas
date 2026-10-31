@@ -6,7 +6,6 @@ OKX is mocked with respx; the database and Redis are the real test instances.
 from __future__ import annotations
 
 import json
-import os
 import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime
@@ -61,14 +60,14 @@ def engine() -> Engine:
 
 @pytest.fixture
 def rds() -> Iterator[redis.Redis]:
-    conn = bus.make_client({**os.environ, "REDIS_DB": os.environ.get("REDIS_TEST_DB", "15")})
+    conn = bus.make_client(testing.redis_settings())
     try:
         conn.ping()
     except redis.ConnectionError:
         pytest.fail("Redis is not running on REDIS_HOST:REDIS_PORT")
-    conn.delete(*STREAMS)
+    conn.delete(*map(bus.stream_key, STREAMS))
     yield conn
-    conn.delete(*STREAMS)
+    conn.delete(*map(bus.stream_key, STREAMS))
     conn.close()
 
 
@@ -245,7 +244,7 @@ def posts(router: respx.MockRouter, path: str) -> list[Any]:
 
 
 def envelopes(rds: redis.Redis, stream: str) -> list[EventEnvelope]:
-    return [EventEnvelope.model_validate_json(f[bus.FIELD]) for _id, f in rds.xrange(stream)]
+    return [EventEnvelope.model_validate_json(f[bus.FIELD]) for _id, f in rds.xrange(bus.stream_key(stream))]
 
 
 def paused(engine: Engine) -> bool:

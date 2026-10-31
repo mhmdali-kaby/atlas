@@ -22,6 +22,7 @@ from atlas_agents.tools import account, market
 from atlas_agents.tools import framework as fw
 from atlas_agents.tools.catalogue import CATALOGUE
 from atlas_agents.tools.framework import ToolContext, fq_name
+from atlas_shared import bus
 from atlas_shared import market_data as md
 from atlas_shared.db import (
     BalanceSnapshot,
@@ -495,7 +496,7 @@ async def test_orderbook_serves_the_live_books5_snapshot_while_fresh_and_refuses
             }
         ),
     }
-    assert md.md_key(ENV, inst) == f"atlas:md:demo:{inst}"
+    assert md.md_key(ENV, inst) == bus.redis_key(f"atlas:md:demo:{inst}")
 
     fresh = await _call(_ctx(db, hashes=hashes), "okx_market", "get_orderbook", {"inst_id": inst})
     assert fresh["data"]["available"] is True

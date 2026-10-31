@@ -94,13 +94,14 @@ async def _consume_stream(
     config: Mapping[str, Any] = DEFAULTS["agents"]["mentions"]
     block = int(config["block_ms"]) if block_ms is None else block_ms
     last = start_id
+    key = bus.stream_key(stream)
     if last == "$":
         # Pin "$" to a concrete id so entries arriving between two reads are not skipped.
-        latest: Any = await asyncio.to_thread(client.xrevrange, stream, "+", "-", 1)
+        latest: Any = await asyncio.to_thread(client.xrevrange, key, "+", "-", 1)
         last = str(latest[0][0]) if latest else "0-0"
     while not stop.is_set():
         batches: Any = await asyncio.to_thread(
-            client.xread, {stream: last}, count=int(config["batch"]), block=block
+            client.xread, {key: last}, count=int(config["batch"]), block=block
         )
         for _stream, entries in batches or []:
             for entry_id, fields in entries:

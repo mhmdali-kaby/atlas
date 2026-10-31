@@ -24,6 +24,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Protocol
 
+from atlas_shared import bus
 from atlas_shared.defaults import DEFAULTS
 
 LAST_MSG_MS = "last_msg_ms"
@@ -48,7 +49,7 @@ def max_age_seconds() -> float:
 
 
 def md_key(env: str, inst_id: str) -> str:
-    return f"{cfg()['key_prefix']}:{env}:{inst_id}"
+    return bus.redis_key(f"{cfg()['key_prefix']}:{env}:{inst_id}")
 
 
 def to_ms(ts: datetime) -> int:
@@ -128,7 +129,7 @@ LOGIN_MS = "login_ms"
 
 
 def private_key(env: str) -> str:
-    return f"{DEFAULTS['private_ws']['key']}:{env}"
+    return bus.redis_key(f"{DEFAULTS['private_ws']['key']}:{env}")
 
 
 @dataclass(frozen=True)

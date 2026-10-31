@@ -7,7 +7,6 @@ REDIS_HOST:REDIS_PORT (DB REDIS_TEST_DB, default 15, like Pest); Redis tests ski
 from __future__ import annotations
 
 import json
-import os
 import threading
 import uuid
 from collections.abc import Iterator
@@ -22,7 +21,7 @@ from atlas_agents.tools import framework as fw
 from atlas_agents.tools import news as news_tools
 from atlas_agents.tools.framework import ToolContext, fq_name
 from atlas_agents.tools.guard import GUARD_SOURCE
-from atlas_shared import bus
+from atlas_shared import bus, testing
 from atlas_shared.db import EarningsEvent, EconomicEvent, NewsCluster, NewsItem
 from atlas_shared.events import EventEnvelope
 from sqlalchemy import Engine, delete
@@ -55,7 +54,7 @@ def db(engine: Engine) -> Iterator[sessionmaker[Session]]:
 
 @pytest.fixture
 def redis_client() -> Iterator[redis.Redis]:
-    conn = bus.make_client({**os.environ, "REDIS_DB": os.environ.get("REDIS_TEST_DB", "15")})
+    conn = bus.make_client(testing.redis_settings())
     try:
         conn.ping()
     except redis.ConnectionError:
@@ -118,8 +117,10 @@ async def test_injection_in_a_body_is_quoted_flagged_and_alerted_once(
     db: sessionmaker[Session], redis_client: redis.Redis
 ) -> None:
     item = _item(db, body=f"Gold news. {INJECTION}.")
-    start = redis_client.xadd("atlas.warroom", {"envelope": "{}"}, maxlen=1000, approximate=True)
-    redis_client.xdel("atlas.warroom", start)
+    start = redis_client.xadd(
+        bus.stream_key("atlas.warroom"), {"envelope": "{}"}, maxlen=1000, approximate=True
+    )
+    redis_client.xdel(bus.stream_key("atlas.warroom"), start)
 
     def publish(stream: str, envelope: EventEnvelope) -> object:
         return bus.publish(stream, envelope, client=redis_client)
@@ -135,7 +136,7 @@ async def test_injection_in_a_body_is_quoted_flagged_and_alerted_once(
         {"item_id": str(item.id), "source": SOURCE, "fields": ["body"], "matches": 2}
     ]
 
-    entries = redis_client.xrange("atlas.warroom", min=f"({start}")
+    entries = redis_client.xrange(bus.stream_key("atlas.warroom"), min=f"({start}")
     envelopes = [EventEnvelope.model_validate_json(fields["envelope"]) for _id, fields in entries]
     alerts = [
         e for e in envelopes if e.source == GUARD_SOURCE and e.payload["card"]["item_id"] == str(item.id)
@@ -506,9 +507,7 @@ async def test_fetch_article_strips_the_query_for_an_allowed_host_that_is_not_a_
         return "Fetched article text."
 
     monkeypatch.setattr(news_tools, "_fetcher", fake_guarded_fetch)
-    body = await _call(
-        _ctx(db), "fetch_article", {"url": f"https://okx.com/leak/{RUN}?secret=abc#frag"}
-    )
+    body = await _call(_ctx(db), "fetch_article", {"url": f"https://okx.com/leak/{RUN}?secret=abc#frag"})
     assert body["data"]["origin"] == "fetched"
     assert seen == [f"https://okx.com/leak/{RUN}"]
     assert body["data"]["url"] == f"https://okx.com/leak/{RUN}"

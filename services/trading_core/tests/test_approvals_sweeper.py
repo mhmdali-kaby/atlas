@@ -8,7 +8,6 @@ Runs against this checkout's test DB (migrated by `cd backend && php artisan tes
 from __future__ import annotations
 
 import json
-import os
 import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
@@ -43,14 +42,14 @@ def engine() -> Engine:
 
 @pytest.fixture
 def rds() -> Iterator[redis.Redis]:
-    conn = bus.make_client({**os.environ, "REDIS_DB": os.environ.get("REDIS_TEST_DB", "15")})
+    conn = bus.make_client(testing.redis_settings())
     try:
         conn.ping()
     except redis.ConnectionError:
         pytest.fail("Redis is not running on REDIS_HOST:REDIS_PORT")
-    conn.delete("atlas.proposals", "atlas.warroom")
+    conn.delete(bus.stream_key("atlas.proposals"), bus.stream_key("atlas.warroom"))
     yield conn
-    conn.delete("atlas.proposals", "atlas.warroom")
+    conn.delete(bus.stream_key("atlas.proposals"), bus.stream_key("atlas.warroom"))
     conn.close()
 
 
@@ -90,7 +89,7 @@ def proposal(engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[uuid.U
 
 def _events(rds: redis.Redis, stream: str, pid: uuid.UUID) -> list[dict[str, Any]]:
     out = []
-    for _id, fields in rds.xrange(stream):
+    for _id, fields in rds.xrange(bus.stream_key(stream)):
         env = json.loads(fields[b"envelope"] if b"envelope" in fields else fields["envelope"])
         payload = env["payload"]
         if payload.get("proposal_id") == str(pid) or (payload.get("card") or {}).get("proposal_id") == str(

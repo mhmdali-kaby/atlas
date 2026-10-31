@@ -15,7 +15,6 @@ from __future__ import annotations
 import asyncio
 import dataclasses
 import json
-import os
 import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
@@ -33,7 +32,7 @@ from atlas_agents.supervisor import SYSTEM_STREAM, AgentUnavailableError, Superv
 from atlas_agents.tools import fq_name
 from atlas_agents.tools import framework as fw
 from atlas_agents.tools import news as news_tools
-from atlas_shared import bus
+from atlas_shared import bus, testing
 from atlas_shared.db import AgentRun, AgentState, AgentUsageDaily, add_usage, usage_day
 from atlas_shared.events import EventEnvelope
 from sqlalchemy import Engine, delete, select, text
@@ -293,14 +292,14 @@ async def test_other_envs_and_other_events_are_ignored(
 
 @pytest.fixture
 def redis_client() -> Iterator[redis.Redis]:
-    conn = bus.make_client({**os.environ, "REDIS_DB": os.environ.get("REDIS_TEST_DB", "15")})
+    conn = bus.make_client(testing.redis_settings())
     try:
         conn.ping()
     except redis.ConnectionError:
         pytest.skip("Redis is not running on REDIS_HOST:REDIS_PORT")
-    conn.delete(SYSTEM_STREAM)
+    conn.delete(bus.stream_key(SYSTEM_STREAM))
     yield conn
-    conn.delete(SYSTEM_STREAM)
+    conn.delete(bus.stream_key(SYSTEM_STREAM))
     conn.close()
 
 
@@ -334,7 +333,7 @@ async def test_consume_system_applies_settings_changed_and_skips_bad_and_foreign
 
     changed = settings_row.save(**{"agents.market_scout.enabled": False})
     live = EventEnvelope(type="system.settings_changed", env="live", source="backend:settings", payload={})
-    redis_client.xadd(SYSTEM_STREAM, {bus.FIELD: "not an envelope"})  # unreadable: skipped
+    redis_client.xadd(bus.stream_key(SYSTEM_STREAM), {bus.FIELD: "not an envelope"})  # unreadable: skipped
     bus.publish(SYSTEM_STREAM, live, client=redis_client)  # another env: ignored
     bus.publish(
         SYSTEM_STREAM,

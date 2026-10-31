@@ -1,11 +1,10 @@
 """Publishes to the real local Redis (REDIS_HOST/REDIS_PORT, default 127.0.0.1:6380), on DB 15 like Pest."""
 
-import os
 from collections.abc import Iterator
 
 import pytest
 import redis
-from atlas_shared import bus
+from atlas_shared import bus, testing
 from atlas_shared.events import EventEnvelope
 
 STREAM = "atlas.warroom"
@@ -13,14 +12,14 @@ STREAM = "atlas.warroom"
 
 @pytest.fixture
 def client() -> Iterator[redis.Redis]:
-    conn = bus.make_client({**os.environ, "REDIS_DB": os.environ.get("REDIS_TEST_DB", "15")})
+    conn = bus.make_client(testing.redis_settings())
     try:
         conn.ping()
     except redis.ConnectionError:
         pytest.skip("Redis is not running on REDIS_HOST:REDIS_PORT")
-    conn.delete(STREAM)
+    conn.delete(bus.stream_key(STREAM))
     yield conn
-    conn.delete(STREAM)
+    conn.delete(bus.stream_key(STREAM))
     conn.close()
 
 
@@ -35,7 +34,7 @@ def test_envelope_round_trips_through_the_stream(client: redis.Redis) -> None:
 
     entry_id = bus.publish(STREAM, envelope, client=client)
 
-    entries = client.xrange(STREAM)
+    entries = client.xrange(bus.stream_key(STREAM))
     assert entries is not None
     assert len(entries) == 1
     got_id, fields = entries[0]
@@ -52,13 +51,13 @@ def test_stream_is_trimmed_approximately(client: redis.Redis, monkeypatch: pytes
     for i in range(400):
         envelope = EventEnvelope(type="t", env="demo", source="test", payload={"i": i})
         bus.publish(STREAM, envelope, client=client)
-    assert 10 <= client.xlen(STREAM) < 400
+    assert 10 <= client.xlen(bus.stream_key(STREAM)) < 400
 
 
 def test_unknown_stream_is_refused(client: redis.Redis) -> None:
     with pytest.raises(bus.UnknownStreamError, match=r"atlas\.nope"):
         bus.publish("atlas.nope", EventEnvelope(type="t", env="demo", source="test"), client=client)
-    assert client.exists("atlas.nope") == 0
+    assert client.exists(bus.redis_key("atlas.nope")) == 0
 
 
 def test_unknown_stream_is_refused_before_connecting() -> None:
@@ -70,11 +69,11 @@ def test_unknown_stream_is_refused_before_connecting() -> None:
 def test_demo_system_message_cli_publishes_a_valid_warroom_message(
     client: redis.Redis, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    monkeypatch.setenv("REDIS_DB", os.environ.get("REDIS_TEST_DB", "15"))
+    monkeypatch.setenv("REDIS_DB", testing.redis_settings()["REDIS_DB"])
 
     assert bus.main(["--demo-system-message", "--text", "live check"]) == 0
 
-    entries = client.xrange(STREAM)
+    entries = client.xrange(bus.stream_key(STREAM))
     assert entries is not None
     assert len(entries) == 1
     envelope = EventEnvelope.model_validate_json(entries[0][1][bus.FIELD])

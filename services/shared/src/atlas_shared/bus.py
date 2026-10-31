@@ -3,6 +3,12 @@
 Same layout as Laravel's ``App\\Support\\Events\\EventBus``: each stream entry has one field,
 ``envelope``, holding the :class:`~atlas_shared.events.EventEnvelope` as JSON. Every XADD trims the
 stream to about ``event_bus.stream_maxlen`` entries (``MAXLEN ~``); Postgres is the record.
+
+Key prefix (ATL-186): ``ATLAS_REDIS_PREFIX``, empty in production, is put in front of every stream
+name (:func:`stream_key`) and every other Redis key the Python services write (:func:`redis_key`).
+Code keeps using the logical ``atlas.*`` names; only the physical Redis key carries the prefix.
+pytest sets it per checkout (``atlas_shared.testing.redis_prefix``), so parallel worktrees sharing
+the test Redis DB never touch each other's streams.
 """
 
 import argparse
@@ -17,6 +23,7 @@ from atlas_shared.defaults import DEFAULTS
 from atlas_shared.events import STREAMS, EventEnvelope
 
 FIELD: Final = "envelope"
+PREFIX_VAR: Final = "ATLAS_REDIS_PREFIX"
 
 
 class UnknownStreamError(ValueError):
@@ -51,12 +58,33 @@ def check_stream(stream: str) -> str:
     return stream
 
 
+def key_prefix() -> str:
+    """The configured Redis key prefix; empty (plain ``atlas.*`` / ``atlas:*`` keys) when unset."""
+    return os.environ.get(PREFIX_VAR, "")
+
+
+def redis_key(name: str) -> str:
+    """The physical Redis key for a logical key name."""
+    return key_prefix() + name
+
+
+def stream_key(stream: str) -> str:
+    """The physical Redis key of one of the seven bus streams."""
+    return redis_key(check_stream(stream))
+
+
+def logical_stream(key: str) -> str:
+    """The logical stream name of a physical stream key (the inverse of :func:`stream_key`)."""
+    prefix = key_prefix()
+    return key[len(prefix) :] if prefix and key.startswith(prefix) else key
+
+
 def publish(stream: str, envelope: EventEnvelope, *, client: "redis.Redis | None" = None) -> str:
     """XADD ``envelope`` to ``stream`` and return the stream entry id."""
-    check_stream(stream)
+    key = stream_key(stream)
     conn = client if client is not None else make_client()
     entry_id = conn.xadd(
-        stream,
+        key,
         {FIELD: envelope.model_dump_json()},
         maxlen=stream_maxlen(),
         approximate=True,
