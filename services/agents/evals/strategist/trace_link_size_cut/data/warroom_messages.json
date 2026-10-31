@@ -1,0 +1,141 @@
+[
+ {
+  "id": "6b4182c5-eb89-5467-ad84-94b45743159a",
+  "env": "demo",
+  "thread_id": "c3133060-1ddb-5c49-aec6-c5e8a8cad000",
+  "event_id": "e155d042-7f63-5b3c-9e76-fb693a2886af",
+  "author_type": "agent",
+  "author": "technical_analyst",
+  "kind": "research_report",
+  "content_md": "TechnicalSetup card",
+  "card": {
+   "type": "technical_setup",
+   "inst_id": "LINK-USDT-SWAP",
+   "timeframe_bias": {
+    "1D": "up",
+    "4H": "up",
+    "1H": "range",
+    "15m": "up"
+   },
+   "setup_type": "pullback_to_support",
+   "direction": "long",
+   "entry_zone": [
+    11.51,
+    11.529
+   ],
+   "trigger": "1H close back above 11.529 inside 1H:z2",
+   "stop": 11.399,
+   "targets": [
+    {
+     "price": 11.664,
+     "r_multiple": 1.2,
+     "reason": "1H:z4",
+     "close_pct": null
+    },
+    {
+     "price": 11.784,
+     "r_multiple": 2.2,
+     "reason": "1H:z5",
+     "close_pct": null
+    }
+   ],
+   "expected_r": 2.2,
+   "invalidation": "1H close below 11.399",
+   "quality_score": 0.66,
+   "est_slippage_bps": null,
+   "levels_used": [
+    {
+     "id": "1H:z2",
+     "price": 11.5195
+    },
+    {
+     "id": "1H:z1",
+     "price": 11.482
+    },
+    {
+     "id": "1H:z0",
+     "price": 11.422
+    },
+    {
+     "id": "1H:z4",
+     "price": 11.664
+    },
+    {
+     "id": "1H:z5",
+     "price": 11.784
+    }
+   ],
+   "no_setup_reason": null,
+   "data_as_of": "2026-09-06T12:48:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-06T12:48:00Z",
+  "updated_at": "2026-09-06T12:48:00Z"
+ },
+ {
+  "id": "1cfee6a6-0af5-514f-a76f-276b0c1ddb37",
+  "env": "demo",
+  "thread_id": "c3133060-1ddb-5c49-aec6-c5e8a8cad000",
+  "event_id": "40dbb29a-2ba3-5783-b49f-7d0243d32e5d",
+  "author_type": "agent",
+  "author": "historian",
+  "kind": "research_report",
+  "content_md": "HistoryVerdict card",
+  "card": {
+   "type": "history_verdict",
+   "question": "analog check for a long on LINK-USDT-SWAP",
+   "inst_id": "LINK-USDT-SWAP",
+   "bar": "1H",
+   "n": 34,
+   "distribution": {
+    "24h": {
+     "median": 0.3,
+     "p10": -2.1,
+     "p90": 2.4,
+     "pct_positive": 52.0
+    }
+   },
+   "verdict": "supports",
+   "key_stat": "52% of 34 analogs positive at 24h",
+   "data_as_of": "2026-09-06T12:52:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-06T12:52:00Z",
+  "updated_at": "2026-09-06T12:52:00Z"
+ },
+ {
+  "id": "4e2ac560-a4e5-57a9-bb12-58ab27097e6b",
+  "env": "demo",
+  "thread_id": "c3133060-1ddb-5c49-aec6-c5e8a8cad000",
+  "event_id": "d08cf4e2-1fd6-5d69-96bb-03b178ce79ee",
+  "author_type": "agent",
+  "author": "derivatives_sentiment",
+  "kind": "research_report",
+  "content_md": "PositioningReport card",
+  "card": {
+   "type": "positioning_report",
+   "inst_id": "LINK-USDT-SWAP",
+   "regime": "new_longs",
+   "crowding_score": 0.35,
+   "crowded_side": "none",
+   "squeeze_risk": {
+    "long_squeeze": 0.2,
+    "short_squeeze": 0.15
+   },
+   "funding_view": "funding neutral",
+   "basis_bps": 3.1,
+   "sentiment_score": 0.2,
+   "supports_direction": {
+    "long": "supports",
+    "short": "neutral"
+   },
+   "key_evidence": [
+    "OI-price quadrant and funding read"
+   ],
+   "data_as_of": "2026-09-06T12:50:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-06T12:50:00Z",
+  "updated_at": "2026-09-06T12:50:00Z"
+ }
+]

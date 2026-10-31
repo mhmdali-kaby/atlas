@@ -1,0 +1,37 @@
+[
+ {
+  "id": "0f629be2-a184-5af3-b3a2-454f5f3d00f7",
+  "env": "demo",
+  "version": 1,
+  "kind": "entry",
+  "author": "strategist",
+  "inst_id": "XAU-USDT-SWAP",
+  "side": "buy",
+  "order_type": "limit",
+  "entry_zone": [
+   "2652.87",
+   "2657.12"
+  ],
+  "stop": "2627.38",
+  "take_profits": [
+   {
+    "price": "2688.13",
+    "pct": "50"
+   },
+   {
+    "price": "2715.74",
+    "pct": "50"
+   }
+  ],
+  "time_stop_minutes": 1440,
+  "size_suggestion_pct": "1.875",
+  "leverage_suggestion": 1,
+  "expected_r": "2.20",
+  "probability": "0.59",
+  "rationale_md": "v1",
+  "invalidation": "1H close beyond 2627.38",
+  "evidence": [],
+  "status": "under_review",
+  "created_at": "2026-09-07T12:55:00Z"
+ }
+]

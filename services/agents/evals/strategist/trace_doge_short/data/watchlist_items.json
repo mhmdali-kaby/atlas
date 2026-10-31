@@ -1,0 +1,17 @@
+[
+ {
+  "id": "395d1389-2fe5-5dcd-8ebe-7ff9be2884c0",
+  "watchlist_id": "221e3847-23f1-51ff-842c-e353aa3afe8c",
+  "inst_id": "DOGE-USDT-SWAP",
+  "rank": 1,
+  "asset_class": "crypto",
+  "bias": "short",
+  "conviction": "0.6",
+  "thesis": "Short bias on DOGE-USDT-SWAP from structure and flow.",
+  "catalysts": [],
+  "key_levels": {},
+  "invalidation": "1H close beyond 0.12265",
+  "pinned_by_owner": false,
+  "data_as_of": "2026-09-06T06:00:00Z"
+ }
+]
