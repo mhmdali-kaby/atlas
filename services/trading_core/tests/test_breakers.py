@@ -114,10 +114,11 @@ def world(engine: Engine, rds: redis.Redis) -> Iterator[dict[str, Any]]:
             text(
                 "INSERT INTO settings (id, env, version, data, risk_profile, autonomy_level,"
                 " max_loss_per_trade_pct, max_position_pct, max_leverage, created_at, updated_at)"
-                " VALUES (:id, :e, 11, '{}'::jsonb, 'balanced', 2, 1, 5, 5, now(), now())"
-                " ON CONFLICT (env) DO UPDATE SET version = 11, data = '{}'::jsonb"
+                " VALUES (:id, :e, 11, CAST(:d AS jsonb), 'balanced', 2, 1, 5, 5, now(), now())"
+                " ON CONFLICT (env) DO UPDATE SET version = 11, data = EXCLUDED.data"
             ),
-            {"id": uuid.uuid4(), "e": ENV},
+            # No bot capital cap: the loss limits here are % of account equity (decision #250).
+            {"id": uuid.uuid4(), "e": ENV, "d": json.dumps({"bot_capital_cap_usdt": None})},
         )
         c.execute(delete(TradingState).where(TradingState.env == ENV))
         for inst in (held, flat):

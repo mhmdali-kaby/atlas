@@ -22,6 +22,7 @@ from __future__ import annotations
 import itertools
 import math
 import uuid
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
@@ -341,8 +342,8 @@ def _number(value: object) -> int | Decimal | None:
     return None
 
 
-def load_settings(session: Session, ctx: ToolContext) -> tuple[int, dict[str, int | Decimal], datetime]:
-    """(version, allow-listed numeric values, as_of) of the settings in force at ``ctx.now()``."""
+def _settings_row(session: Session, ctx: ToolContext) -> tuple[int, Any, datetime]:
+    """(version, raw settings JSON, stamp) in force at ``ctx.now()``; raises no_data if none."""
     if ctx.replaying:
         row = session.execute(
             select(_settings_history.c.version, _settings_history.c.data, _settings_history.c.created_at)
@@ -360,13 +361,42 @@ def load_settings(session: Session, ctx: ToolContext) -> tuple[int, dict[str, in
     if row is None:
         raise ToolError("no_data", f"no settings saved for env {ctx.env} by {ctx.now().isoformat()}")
     version, data, stamp = row
+    return int(version), data, stamp
+
+
+def load_settings(session: Session, ctx: ToolContext) -> tuple[int, dict[str, int | Decimal], datetime]:
+    """(version, allow-listed numeric values, as_of) of the settings in force at ``ctx.now()``."""
+    version, data, stamp = _settings_row(session, ctx)
     values: dict[str, int | Decimal] = {}
     if isinstance(data, dict):
         for key in sorted(SETTINGS_SNAPSHOT_KEYS):
             number = _number(data.get(key))
             if number is not None:
                 values[key] = number
-    return int(version), values, newest([stamp], ctx)
+    return version, values, newest([stamp], ctx)
+
+
+def bot_capital_cap(data: object) -> Decimal | None:
+    """The saved ``bot_capital_cap_usdt``, by the Risk Engine's rule (trading_core.risk.rules._cap):
+    only JSON null (or no key) means no cap; a value <= 0, or one that is not a number, is a cap of
+    0, so a broken or zero cap never fails open to the full account equity."""
+    raw = data.get("bot_capital_cap_usdt") if isinstance(data, Mapping) else None
+    if raw is None:
+        return None
+    number = _number(raw)
+    if number is None or number <= 0:
+        return Decimal(0)
+    return Decimal(number)
+
+
+def sizing_equity(equity: Decimal | None, cap: Decimal | None) -> tuple[Decimal | None, bool]:
+    """Decision #250: (min(account equity, bot capital cap), cap_bound). Same rule as the Risk
+    Engine's ``sizing_equity``: the flag is true only when the cap is below the equity."""
+    if equity is None:
+        return None, False
+    if cap is not None and cap < equity:
+        return cap, True
+    return equity, False
 
 
 @atlas_tool("atlas_data", "get_settings_snapshot", NoInput, SettingsSnapshotOut)
@@ -397,6 +427,8 @@ class BudgetOut(BaseModel):
     day: date
     settings_version: int
     equity_usd: Decimal | None
+    sizing_equity: Decimal | None
+    cap_bound: bool
     max_risk_per_trade_usd: Decimal | None
     max_position_usd: Decimal | None
     daily_loss_limit_usd: Decimal | None
@@ -418,15 +450,18 @@ def _pct_of(equity: Decimal | None, pct: int | Decimal | None) -> Decimal | None
 @atlas_tool("atlas_data", "get_today_budget_left", NoInput, BudgetOut)
 async def get_today_budget_left(ctx: ToolContext, args: NoInput) -> ToolResult:
     """What is left of today's (Asia/Baghdad day) risk budget under the owner's settings: max risk
-    per trade, max position size and daily loss limit in USD from the latest equity, loss used and
-    left today, and open-position slots left. Spend is 0 until Atlas can place orders."""
+    per trade, max position size and daily loss limit in USD as percentages of sizing equity (the
+    latest equity, or the owner's bot capital cap when it is lower; cap_bound says which), loss used
+    and left today, and open-position slots left. Spend is 0 until Atlas can place orders."""
     with ctx.session_factory() as session:
         version, values, settings_as_of = load_settings(session, ctx)
+        cap = bot_capital_cap(_settings_row(session, ctx)[1])
         equity = _latest_equity(session, ctx)
         taken_at = _sync_instant(session, ctx)
         open_positions = len([p for p in _positions_at(session, ctx, taken_at) if p.pos != 0])
     equity_usd = equity.total_eq_usd if equity is not None else None
-    daily_limit = _pct_of(equity_usd, values.get("max_daily_loss_pct"))
+    base, cap_bound = sizing_equity(equity_usd, cap)
+    daily_limit = _pct_of(base, values.get("max_daily_loss_pct"))
     used = Decimal(0)
     max_open = values.get("max_open_positions")
     max_open_int = int(max_open) if max_open is not None else None
@@ -437,8 +472,10 @@ async def get_today_budget_left(ctx: ToolContext, args: NoInput) -> ToolResult:
             day=day,
             settings_version=version,
             equity_usd=equity_usd,
-            max_risk_per_trade_usd=_pct_of(equity_usd, values.get("max_loss_per_trade_pct")),
-            max_position_usd=_pct_of(equity_usd, values.get("max_position_pct")),
+            sizing_equity=base,
+            cap_bound=cap_bound,
+            max_risk_per_trade_usd=_pct_of(base, values.get("max_loss_per_trade_pct")),
+            max_position_usd=_pct_of(base, values.get("max_position_pct")),
             daily_loss_limit_usd=daily_limit,
             daily_loss_used_usd=used,
             daily_loss_left_usd=None if daily_limit is None else daily_limit - used,

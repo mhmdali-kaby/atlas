@@ -7,6 +7,8 @@ every check passes, in this order:
   is enabled;
 * ``state``: OKX ``state`` is ``live``;
 * ``blocklist``: its instId is not on the owner's blocklist (case-insensitive);
+* ``whitelist``: when the owner's Markets whitelist is not empty, its instId is on it (decision
+  #250: the whitelist restricts, it never adds; every other check still applies);
 * ``age``: OKX ``listTime`` is more than ``min_listed_days`` before ``as_of``;
 * ``volume``: 24h quote volume, in USD, is at least the market's minimum. USDC and USD quotes count
   1:1 as USD (``usd_quote_ccys``); any other quote currency fails as ``volume_unknown``;
@@ -40,7 +42,9 @@ from atlas_agents.tools.framework import ToolContext
 from atlas_agents.tools.market import compute_tickers, listed
 
 Market = Literal["spot", "crypto_perp", "stock_perp", "commodity_perp", "futures", "options", "other"]
-RejectReason = Literal["market", "state", "blocklist", "age", "volume", "volume_unknown", "spread"]
+RejectReason = Literal[
+    "market", "state", "blocklist", "whitelist", "age", "volume", "volume_unknown", "spread"
+]
 KeepNote = Literal["age_unknown", "spread_unknown"]
 
 MARKETS: Final[tuple[str, ...]] = ("spot", "crypto_perp", "stock_perp", "commodity_perp")
@@ -76,6 +80,7 @@ class UniverseConfig(BaseModel):
 
     enabled_markets: frozenset[str]
     blocklist: frozenset[str]  # upper-case instIds
+    whitelist: frozenset[str] = frozenset()  # upper-case instIds; empty = no restriction
     min_volume_usd: dict[str, Decimal]  # per market
     max_spread_bps: Decimal
     min_listed_days: int
@@ -158,12 +163,16 @@ def config_from(data: Mapping[str, Any] | None, version: int | None = None) -> U
         default = Decimal(str(markets["min_24h_volume_usd"][market]))
         min_volume[market] = _decimal(settings.get(f"min_24h_volume_usd_{market}")) or default
     spread = _decimal(settings.get("max_spread_bps")) or Decimal(str(markets["max_spread_bps"]))
-    enabled = _str_list(settings.get("enabled_markets")) or list(universe["enabled_markets"])
+    # A saved [] means every toggle is off: only a missing (or malformed) key falls back.
+    enabled_saved = _str_list(settings.get("enabled_markets"))
+    enabled = enabled_saved if enabled_saved is not None else list(universe["enabled_markets"])
     blocklist = _str_list(settings.get("blocklist"))
     blocked = blocklist if blocklist is not None else list(universe["blocklist"])
+    allowed = _str_list(settings.get("whitelist")) or []
     return UniverseConfig(
         enabled_markets=frozenset(enabled),
         blocklist=frozenset(b.upper() for b in blocked),
+        whitelist=frozenset(w.upper() for w in allowed),
         min_volume_usd=min_volume,
         max_spread_bps=spread,
         min_listed_days=int(universe["min_listed_days"]),
@@ -201,6 +210,9 @@ def filter_universe(
         if c.inst_id.upper() in config.blocklist:
             reasons.append("blocklist")
             detail.append("on the owner's blocklist")
+        if config.whitelist and c.inst_id.upper() not in config.whitelist:
+            reasons.append("whitelist")
+            detail.append("not on the owner's Markets whitelist")
         if c.list_time is None:
             notes.append("age_unknown")
         elif c.list_time >= cutoff:

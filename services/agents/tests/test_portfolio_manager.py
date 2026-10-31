@@ -567,6 +567,33 @@ async def test_daily_loss_at_72_pct_of_the_limit_warns_once_per_hour(world: Worl
     assert client.queries == []  # warnings are code, not model runs
 
 
+def test_limit_usage_is_a_percentage_of_sizing_equity(world: World) -> None:
+    """Decision #250 (ATL-156 review): with a 10,000 cap and a 2 % daily limit, a 150 USD loss on a
+    1,000,000 account is 1.5 % of sizing equity = 75 % of the limit, so the 70 % warning fires."""
+    day_start = datetime(2098, 3, 3, 21, 0, tzinfo=UTC)  # 00:00 Baghdad on the 4th
+    world.equity(day_start + timedelta(minutes=1), "1000000")
+    world.equity(NOW - timedelta(minutes=2), "999850")
+    with world.engine.begin() as conn:
+        before = conn.execute(text("select data from settings where env = :e"), {"e": ENV}).scalar_one()
+        conn.execute(
+            text("update settings set data = data || cast(:d as jsonb) where env = :e"),
+            {"d": json.dumps({"bot_capital_cap_usdt": "10000", "max_daily_loss_pct": "2"}), "e": ENV},
+        )
+    try:
+        ctx = ToolContext(env=ENV, session_factory=sessionmaker(world.engine), agent=SLUG, clock=world.now)
+        with Session(world.engine) as s:
+            daily = {u.limit: u for u in limits.usage(s, ctx)}["max_daily_loss_pct"]
+            assert daily.used == Decimal("1.5") and daily.usage_pct == Decimal(75)
+            cfg = {"limit_warning_pct": 70, "limit_warning_interval_minutes": 60}
+            assert "max_daily_loss_pct" in {w.limit for w in limits.due_warnings(s, ctx, cfg)}
+    finally:
+        with world.engine.begin() as conn:
+            conn.execute(
+                text("update settings set data = cast(:d as jsonb) where env = :e"),
+                {"d": json.dumps(before), "e": ENV},
+            )
+
+
 async def test_a_risk_engine_refusal_rejects_the_proposal_with_the_reason(world: World) -> None:
     from atlas_agents.orchestrator.trading_core import TradingCoreError
 
