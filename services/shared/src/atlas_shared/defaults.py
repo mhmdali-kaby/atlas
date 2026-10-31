@@ -1384,6 +1384,8 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "\\bsystem\\s+prompt\\b",
                 "\\bnew\\s+instructions?\\b",
                 "\\boverride\\s+(?:your|the|all)\\s+(?:instructions|rules|limits|settings)\\b",
+                "\\bsystem\\s+override\\b",
+                "\\bignore\\s+(?:all\\s+|any\\s+)?(?:your|these|those|its)\\s+(?:rules|instructions|limits|guidelines|prompt)\\b",
                 "\\bdeveloper\\s+mode\\b",
                 "\\bjailbreak\\b",
                 "<\\s*/?\\s*(?:system|assistant|user|untrusted_source|function_calls|invoke|tool_use)\\b",
