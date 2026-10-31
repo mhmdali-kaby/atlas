@@ -1,0 +1,20 @@
+[
+ {
+  "id": "0d3d1635-181a-5934-b41c-cdb202bc434c",
+  "env": "demo",
+  "inst_id": "XRP-USDT-SWAP",
+  "inst_type": "SWAP",
+  "inst_family": "XRP-USDT",
+  "base_ccy": "XRP",
+  "quote_ccy": "USDT",
+  "settle_ccy": "USDT",
+  "ct_val": "1",
+  "lot_sz": "1",
+  "min_sz": "1",
+  "tick_sz": "0.0001",
+  "max_lever": "50",
+  "state": "live",
+  "asset_class": "crypto",
+  "list_time": "2025-08-08T09:00:00Z"
+ }
+]
