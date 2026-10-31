@@ -1166,6 +1166,8 @@ agents:
     # ATL-110: the daily agent_scores job (atlas_agents.scoring), run per agent (Market Scout,
     # News Intelligence) for the previous Baghdad days in agents.scoring.lookback_days.
     scoring: "00:15"
+    # ATL-170, brief §7.8: the Portfolio Manager's daily report.
+    pm_daily_report: "23:30"
     tick_seconds: 30
     # ATL-160, brief §8: Orchestrator analysis cycles start every analysis_interval_minutes from
     # analysis_first_slot while the slot is at or before analysis_last_slot (Asia/Baghdad), so the
@@ -1709,4 +1711,18 @@ agents:
       status_post_interval_minutes: 60
       limit_warning_pct: "70"
       limit_warning_interval_minutes: 60
+      output_retries: 1
+    # ATL-170, brief §7.8 DAILY REPORT (atlas_agents.pm.daily_report), run at agents.schedule.pm_daily_report.
+    #   event_lookahead_hours / event_min_importance / max_events: "tomorrow" lists economic events of at
+    #     least this importance in the next hours (at most max_events).
+    #   closing_rule_grace_minutes: a PM close or a triggered stop/target this long after the OKX close
+    #     time still names the trade's closing rule.
+    #   note_max_chars: the model's best/worst one-liners are cut to this length.
+    #   output_retries: follow-ups when the model's notes block is missing.
+    daily_report:
+      event_lookahead_hours: 24
+      event_min_importance: 4
+      max_events: 10
+      closing_rule_grace_minutes: 10
+      note_max_chars: 200
       output_retries: 1

@@ -6,7 +6,9 @@ turns it on in Settings → Agents. The work is :mod:`atlas_agents.pm.manage`.
 * ``news.alert`` (ingest, atlas.warroom) naming a held instrument: an immediate check of it;
 * ``warroom.message.fill`` (the Executor's fill card) on a held instrument: an immediate check. A stop
   or target that triggers on OKX fills an order too, so it arrives here as a fill;
-* ``warroom.message.system_alert`` from the circuit breakers: an immediate check of every position.
+* ``warroom.message.system_alert`` from the circuit breakers: an immediate check of every position;
+* schedule ``pm_daily_report`` (agents.schedule, 23:30 Baghdad): the daily report, figures computed in
+  code (:mod:`atlas_agents.pm.daily_report`), narrated by the model (ATL-170).
 
 Immediate checks run in the background, one position at a time (a per-position lock shared with the
 tick); :func:`settled` waits for them.
@@ -21,7 +23,7 @@ from typing import Any, Final
 from atlas_shared.defaults import DEFAULTS
 from atlas_shared.events import EventEnvelope
 
-from atlas_agents.pm import manage
+from atlas_agents.pm import daily_report, manage
 from atlas_agents.registry import HOOKS, AgentHost, ScheduleFire
 from atlas_agents.session import RunResult
 
@@ -33,6 +35,12 @@ CIRCUIT_BREAKER_AUTHOR: Final = "circuit_breaker"
 CHECK_SECONDS: Final = int(DEFAULTS["agents"]["portfolio_manager"]["check"]["every_seconds"])
 
 settled = manage.settled
+
+
+@HOOKS.schedule(SLUG, daily_report.JOB)
+async def post_daily_report(host: AgentHost, fire: ScheduleFire) -> RunResult | None:
+    result: RunResult | None = await daily_report.run(host, fire)
+    return result
 
 
 @HOOKS.schedule(SLUG, "pm_check", every_seconds=CHECK_SECONDS)
@@ -100,4 +108,11 @@ async def on_circuit_breaker(host: AgentHost, envelope: EventEnvelope) -> RunRes
     return None
 
 
-__all__ = ["check_positions", "on_circuit_breaker", "on_fill", "on_news_alert", "settled"]
+__all__ = [
+    "check_positions",
+    "on_circuit_breaker",
+    "on_fill",
+    "on_news_alert",
+    "post_daily_report",
+    "settled",
+]

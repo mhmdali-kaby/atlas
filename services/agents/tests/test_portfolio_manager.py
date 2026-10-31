@@ -97,7 +97,10 @@ def test_registered_off_by_default_on_the_strong_model_with_a_5_minute_check() -
 
     assert spec.model == DEFAULTS["agents"]["models"]["strong"]
     found = discover_hooks()[SLUG]
-    assert [(h.name, h.every_seconds) for h in found.schedule] == [("pm_check", 300)]
+    assert [(h.name, h.every_seconds) for h in found.schedule] == [
+        ("pm_daily_report", None),
+        ("pm_check", 300),
+    ]
     assert set(found.on_event) == {hooks.NEWS_ALERT, hooks.FILL, hooks.SYSTEM_ALERT}
 
 
