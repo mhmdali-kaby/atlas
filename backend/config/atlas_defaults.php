@@ -1173,7 +1173,9 @@ return [
             'max_turns_per_run' => 25,
         ],
         'roster' => [
-            'orchestrator' => [],
+            'orchestrator' => [
+                'enabled' => true,
+            ],
             'market_scout' => [
                 'model' => 'strong',
                 'enabled' => true,
@@ -1222,6 +1224,17 @@ return [
             'risk_timeout_seconds' => 30,
             'trading_core_url' => 'http://127.0.0.1:8100',
             'watchlist_max_instruments' => 10,
+            'ack_target_seconds' => 10,
+            'assign_deadline_minutes' => 30,
+            'routing_retries' => 1,
+            'why_max_words' => 150,
+            'why_max_messages' => 12,
+            'loop_max_replies' => 3,
+            'where_we_are' => [
+                'first' => '08:10',
+                'last' => '23:00',
+                'every_minutes' => 120,
+            ],
         ],
         'evals' => [
             'max_drop_points' => '5',

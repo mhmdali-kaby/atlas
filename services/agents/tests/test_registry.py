@@ -34,8 +34,14 @@ def test_nine_agents_in_brief_order() -> None:
 
 
 def test_news_intelligence_market_scout_and_the_historian_are_enabled_in_this_patch() -> None:
-    # ATL-107 enabled News Intelligence and ATL-108 Market Scout; the rest arrive with later tasks.
-    assert [s.slug for s in enabled_agents()] == ["market_scout", "news_intelligence", "historian"]
+    # ATL-107 enabled News Intelligence and ATL-108 Market Scout, ATL-161 the Orchestrator; the rest
+    # are turned on by the owner in Settings → Agents.
+    assert [s.slug for s in enabled_agents()] == [
+        "orchestrator",
+        "market_scout",
+        "news_intelligence",
+        "historian",
+    ]
 
 
 def test_research_and_decision_agents_get_the_strongest_model() -> None:

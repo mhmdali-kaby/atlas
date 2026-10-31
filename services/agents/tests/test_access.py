@@ -66,7 +66,8 @@ HISTORY_ALL = {
 }
 MEMORY_READ = {"read_journal", "read_notebook", "get_my_scores"}
 WARROOM_BASE = {"post_message", "reply", "mention"}
-ORCHESTRATION = {"start_cycle", "assign", "open_vote", "close_vote", "set_agent_state", "summarise_thread"}
+# ATL-161: the vote is opened and closed by code, so §7.9's open_vote/close_vote are not tools.
+ORCHESTRATION = {"start_cycle", "assign", "set_agent_state", "summarise_thread"}
 
 # agent -> {server: tool names}; "web" is the web-search column.
 EXPECTED: dict[str, dict[str, set[str]]] = {
@@ -393,6 +394,29 @@ def test_derivatives_sentiment_row_cell_by_cell() -> None:
 
 def test_orchestrator_cannot_vote() -> None:
     assert "mcp__warroom__cast_vote" not in access.allowed_tools("orchestrator")
+
+
+def test_orchestrator_row_cell_by_cell() -> None:
+    """ATL-161, brief §7.10 Orchestrator row: okx_market —, atlas_data read, news —, web search —,
+    history —, memory notebook, submit_proposal —, cast_vote — (it runs votes, in code)."""
+    allowed = access.allowed_tools("orchestrator")
+    by_server: dict[str, set[str]] = {}
+    for name in allowed:
+        assert name.startswith("mcp__"), name  # no built-in at all: no WebSearch, no WebFetch
+        _mcp, server, tool = name.split("__", 2)
+        by_server.setdefault(server, set()).add(tool)
+    assert "okx_market" not in by_server  # okx_market: —
+    assert by_server["atlas_data"] == ATLAS_DATA_ALL  # read
+    assert "news" not in by_server  # news: —
+    assert not any(t in allowed for t in ("WebSearch", "WebFetch", "mcp__news__web_search"))  # web: —
+    assert "history" not in by_server  # history: —
+    assert by_server["memory"] == {"read_notebook", "append_notebook", "get_my_scores"}  # notebook
+    assert by_server["warroom"] == {"post_message", "reply", "mention", "request_human_input"}
+    assert "mcp__warroom__submit_proposal" not in allowed  # submit_proposal: —
+    assert "mcp__warroom__cast_vote" not in allowed  # cast_vote: — (runs votes)
+    assert by_server["orchestration"] == {"start_cycle", "assign", "set_agent_state", "summarise_thread"}
+    assert set(by_server) == {"atlas_data", "memory", "warroom", "orchestration"}
+    assert access.builtin_tools("orchestrator") == []
 
 
 def test_no_registered_tool_can_trade_transfer_or_write_settings() -> None:

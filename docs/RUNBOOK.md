@@ -27,6 +27,44 @@ patch; it only documents what exists today.
   space, session/debug security, the Reverb secret, and the backup check. Any `✗` line fails the
   command (exit 1); `⚠` is a warning and still exits 0.
 
+## OKX demo integration tests (brief §19, ATL-152)
+
+These place real orders on the OKX **demo** account, so they are never part of `uv run pytest`
+(marker `okx_demo`, skipped unless `ATLAS_OKX_DEMO_IT=1`). Run them by hand:
+
+1. Save the demo key in Settings → Connections and press **Test connection** (the suite reads that
+   encrypted row; it never takes a key from .env, fixtures or the command line).
+2. `./atlas down` — trading_core's own 5-minute reconciliation must not act on the account at the
+   same time.
+3. Make sure this checkout's test database is migrated (`cd backend && php artisan test` once).
+4. Run, from the repository root:
+
+   ```
+   cd services && APP_KEY="$(security find-generic-password -s atlas -a APP_KEY -w)" \
+     ATLAS_OKX_DEMO_IT=1 uv run pytest -m okx_demo trading_core/tests/integration -v
+   ```
+
+   `APP_KEY` may be omitted: the suite reads the same Keychain entry itself. The app database is
+   `DB_DATABASE` (default `atlas`); `ATLAS_OKX_DEMO_SOURCE_DB` points it elsewhere.
+
+Cases: (1) a limit buy 30% below the market on BTC-USDT-SWAP is live on OKX, then cancelled;
+(2) a minimum-size market buy with attached TP/SL on BTC-USDT-SWAP and XAU-USDT-SWAP shows an SL algo
+on OKX, then is closed (XAU is skipped with its reason if the demo universe lacks it); (3) kill
+switch with flatten leaves no order, algo or position; (4) the stop is cancelled directly on OKX and
+one reconciliation run places a new one. Orders go through the real Risk Engine and Executor; the
+trade size is OKX's minimum, so no demo balance is assumed. The working rows live in the
+per-checkout test database, not the app database.
+
+Every case cleans up its instrument (cancel orders and algos, close the position) even when it fails.
+A case skips when its instrument already has a position or open orders on the demo account. The
+kill-switch case closes everything on the account, so it skips when anything else is open unless
+`ATLAS_OKX_DEMO_IT_FLATTEN_ALL=1`. If a run is interrupted, check the demo account's open
+orders and positions on BTC-USDT-SWAP and XAU-USDT-SWAP.
+
+Before touching any database the suite resolves and connects to the demo REST host. If that fails
+every case errors at once with `OKX unreachable: ...` (DNS or network); fix the Mac's network or DNS
+and run again. Nothing is placed and nothing needs cleaning up in that case.
+
 ## Backup / restore
 
 - `./atlas backup [dir]` — `pg_dump -Fc` of the `atlas` database into `dir` (default
