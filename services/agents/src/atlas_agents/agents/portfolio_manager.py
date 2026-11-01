@@ -8,7 +8,10 @@ turns it on in Settings → Agents. The work is :mod:`atlas_agents.pm.manage`.
   or target that triggers on OKX fills an order too, so it arrives here as a fill;
 * ``warroom.message.system_alert`` from the circuit breakers: an immediate check of every position;
 * schedule ``pm_daily_report`` (agents.schedule, 23:30 Baghdad): the daily report, figures computed in
-  code (:mod:`atlas_agents.pm.daily_report`), narrated by the model (ATL-170).
+  code (:mod:`atlas_agents.pm.daily_report`), narrated by the model (ATL-170);
+* schedule ``pm_postmortem`` every ``agents.portfolio_manager.postmortem.every_seconds`` (60): a journal
+  post-mortem and a War Room ``post_mortem`` card for every closed position, figures in code
+  (:mod:`atlas_agents.pm.postmortem`, ATL-194).
 
 Immediate checks run in the background, one position at a time (a per-position lock shared with the
 tick); :func:`settled` waits for them.
@@ -23,7 +26,7 @@ from typing import Any, Final
 from atlas_shared.defaults import DEFAULTS
 from atlas_shared.events import EventEnvelope
 
-from atlas_agents.pm import daily_report, manage
+from atlas_agents.pm import daily_report, manage, postmortem
 from atlas_agents.registry import HOOKS, AgentHost, ScheduleFire
 from atlas_agents.session import RunResult
 
@@ -41,6 +44,12 @@ settled = manage.settled
 async def post_daily_report(host: AgentHost, fire: ScheduleFire) -> RunResult | None:
     result: RunResult | None = await daily_report.run(host, fire)
     return result
+
+
+@HOOKS.schedule(SLUG, postmortem.JOB, every_seconds=postmortem.EVERY_SECONDS)
+async def write_post_mortems(host: AgentHost, fire: ScheduleFire) -> RunResult | None:
+    await postmortem.tick(host)
+    return None
 
 
 @HOOKS.schedule(SLUG, "pm_check", every_seconds=CHECK_SECONDS)
