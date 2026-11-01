@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Settings;
 
 use Brick\Math\BigDecimal;
+use Carbon\CarbonImmutable;
 
 /**
  * Every settings field, its type and its allowed range (brief §14). Defaults come from
@@ -102,6 +103,14 @@ final class SettingsSchema
     /** ATL-124: instId lists, stored upper-case and unique. The blocklist always wins. */
     public const INSTRUMENT_LIST_FIELDS = ['whitelist', 'blocklist'];
 
+    /**
+     * ATL-163: `{instId: UTC expiry}` for blocklist entries that lift themselves (the composer's
+     * `/block <instId> today`, which expires at 23:59:59 Baghdad). Stored with upper-case keys,
+     * sorted, values as `Y-m-d\TH:i:s\Z`. An entry whose instId is not on the blocklist is dropped
+     * on save; `atlas:expire-blocks` removes an expired instId from both fields.
+     */
+    public const BLOCKLIST_UNTIL_FIELD = 'blocklist_until';
+
     /** An OKX instId: upper-case letters/digits in dash-separated segments (BTC-USDT-SWAP). */
     public const INST_ID_PATTERN = '/^[A-Z0-9]+(-[A-Z0-9]+)*$/';
 
@@ -133,6 +142,7 @@ final class SettingsSchema
             ...array_keys(self::CHOICE_FIELDS),
             ...self::MARKET_LIST_FIELDS,
             ...self::INSTRUMENT_LIST_FIELDS,
+            self::BLOCKLIST_UNTIL_FIELD,
             ...array_keys(self::agentFields()),
             ...self::WEB_DOMAIN_FIELDS,
         ];
@@ -238,7 +248,7 @@ final class SettingsSchema
      * The agent settings a fresh env starts with: agents.defaults overridden by each roster entry,
      * and agents.web's lists.
      *
-     * @return array<string, bool|int|string|list<string>|null>
+     * @return array<string, bool|int|string|list<string>|array<string, string>|null>
      */
     public static function agentDefaults(): array
     {
@@ -297,7 +307,7 @@ final class SettingsSchema
      * The settings a fresh env starts with: the default risk profile, the default autonomy level
      * and the market defaults.
      *
-     * @return array<string, bool|int|string|list<string>|null>
+     * @return array<string, bool|int|string|list<string>|array<string, string>|null>
      */
     public static function defaults(): array
     {
@@ -330,6 +340,7 @@ final class SettingsSchema
             'enabled_markets' => config('atlas_defaults.markets.enabled_markets'),
             'whitelist' => config('atlas_defaults.markets.whitelist'),
             'blocklist' => config('atlas_defaults.markets.blocklist'),
+            self::BLOCKLIST_UNTIL_FIELD => [],
             'entry_timeout_minutes' => config('atlas_defaults.executor.entry_timeout_minutes'),
             'td_mode_perps' => config('atlas_defaults.executor.td_mode_perps'),
             'stop_verify_seconds' => config('atlas_defaults.executor.stop_verify_seconds'),
@@ -378,7 +389,7 @@ final class SettingsSchema
      * Unknown keys are dropped.
      *
      * @param  array<string, mixed>  $values
-     * @return array<string, bool|int|string|list<string>|null>
+     * @return array<string, bool|int|string|list<string>|array<string, string>|null>
      */
     public static function normalise(array $values): array
     {
@@ -432,6 +443,11 @@ final class SettingsSchema
 
                 continue;
             }
+            if ($field === self::BLOCKLIST_UNTIL_FIELD) {
+                $out[$field] = self::normaliseExpiries($value);
+
+                continue;
+            }
             if (isset($agentFields[$field])) {
                 $out[$field] = match ($agentFields[$field]) {
                     'boolean' => $value === true,
@@ -452,6 +468,40 @@ final class SettingsSchema
         return $out;
     }
 
+    /**
+     * ATL-163: blocklist_until in canonical form: upper-case instId keys in order, UTC
+     * `Y-m-d\TH:i:s\Z` values; entries that are not an instId and a parseable time are dropped.
+     *
+     * @return array<string, string>
+     */
+    public static function normaliseExpiries(mixed $value): array
+    {
+        $out = [];
+        foreach (is_array($value) ? $value : [] as $key => $at) {
+            $id = self::normaliseInstId($key);
+            $utc = self::parseExpiry($at);
+            if ($id !== null && $utc !== null) {
+                $out[$id] = $utc;
+            }
+        }
+        ksort($out, SORT_STRING);
+
+        return $out;
+    }
+
+    /** An ISO 8601 time with an offset (or Z) as UTC `Y-m-d\TH:i:s\Z`; null when it is not one. */
+    public static function parseExpiry(mixed $value): ?string
+    {
+        if (! is_string($value) || preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?(Z|[+-]\d{2}:\d{2})$/', $value) !== 1) {
+            return null;
+        }
+        try {
+            return CarbonImmutable::parse($value)->utc()->format('Y-m-d\TH:i:s\Z');
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
     /** A NUMERIC_FIELDS value in canonical form: decimals as plain decimal strings, integers as int. */
     private static function numeric(string $field, mixed $value): int|string
     {
@@ -464,8 +514,8 @@ final class SettingsSchema
      * Whether two values of a field are the same ("1" equals "1.0" for decimals; lists compare
      * in order; everything else strictly).
      *
-     * @param  bool|int|string|list<string>|null  $a
-     * @param  bool|int|string|list<string>|null  $b
+     * @param  bool|int|string|list<string>|array<string, string>|null  $a
+     * @param  bool|int|string|list<string>|array<string, string>|null  $b
      */
     public static function same(string $field, bool|int|string|array|null $a, bool|int|string|array|null $b): bool
     {

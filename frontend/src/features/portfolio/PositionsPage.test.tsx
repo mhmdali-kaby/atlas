@@ -282,6 +282,10 @@ describe('Portfolio Positions', () => {
     const dateEl = cell(btc!, 'time').querySelector('.pf-cell-sub')!
     expect(dateEl).toHaveTextContent('28 تشرين الأول')
     expect(dateEl).not.toHaveClass('fig')
+    // The duration itself is words too ("9 س و4 د"): RTL, not the LTR .fig isolate.
+    const durEl = within(cell(btc!, 'time')).getByTestId('duration')
+    expect(durEl).not.toHaveClass('fig')
+    expect(durEl).toHaveAttribute('dir', 'rtl')
   })
 
   describe('Close action (ATL-151)', () => {

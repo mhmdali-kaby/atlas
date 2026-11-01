@@ -614,6 +614,11 @@ data_api:
 watchlists_api:
   writes_per_minute: 30
 
+# ATL-163: POST /api/cycles (the composer's /cycle now). One manual cycle request per user per
+# minute; the Orchestrator also refuses a second one while a cycle runs.
+cycles_api:
+  start_per_minute: 1
+
 # ATL-162: /api/proposals (brief §12, §16). Approve, reject, edit and ask-team per user per minute;
 # list page size.
 proposals_api:

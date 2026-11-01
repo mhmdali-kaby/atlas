@@ -6,6 +6,7 @@ namespace App\Http\Requests\Settings;
 
 use App\Support\Settings\SettingsSchema;
 use Brick\Math\BigDecimal;
+use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -79,6 +80,9 @@ class UpdateSettingsRequest extends FormRequest
             $rules["changes.{$field}.*"] = ['required', 'string', 'max:64', self::instId()];
         }
 
+        // ATL-163: {instId: ISO 8601 time with an offset} for blocklist entries that lift themselves.
+        $rules['changes.'.SettingsSchema::BLOCKLIST_UNTIL_FIELD] = ['sometimes', 'present', 'array', 'max:'.SettingsSchema::marketListMax(), self::expiries()];
+
         foreach (SettingsSchema::WEB_DOMAIN_FIELDS as $field) {
             $key = 'changes.'.self::escape($field);
             $rules[$key] = ['sometimes', 'present', 'array', 'list', 'max:'.SettingsSchema::webDomainsMax()];
@@ -109,6 +113,39 @@ class UpdateSettingsRequest extends FormRequest
         return function (string $attribute, mixed $value, Closure $fail): void {
             if (SettingsSchema::normaliseHostname($value) === null) {
                 $fail(__('settings.hostname_format'));
+            }
+        };
+    }
+
+    /** Every key an instId, every value an ISO 8601 time with an offset that has not passed. */
+    private static function expiries(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail): void {
+            if (! is_array($value)) {
+                return;
+            }
+            if ($value !== [] && array_is_list($value)) {
+                $fail(__('settings.blocklist_until_format'));
+
+                return;
+            }
+            foreach ($value as $id => $at) {
+                if (SettingsSchema::normaliseInstId((string) $id) === null) {
+                    $fail(__('settings.inst_id_format'));
+
+                    return;
+                }
+                $utc = SettingsSchema::parseExpiry($at);
+                if ($utc === null) {
+                    $fail(__('settings.blocklist_until_format'));
+
+                    return;
+                }
+                if (CarbonImmutable::parse($utc)->isPast()) {
+                    $fail(__('settings.blocklist_until_past'));
+
+                    return;
+                }
             }
         };
     }
@@ -156,11 +193,11 @@ class UpdateSettingsRequest extends FormRequest
     }
 
     /**
-     * @return array<string, bool|int|string|list<string>|null>
+     * @return array<string, bool|int|string|list<string>|array<string, string>|null>
      */
     public function changes(): array
     {
-        /** @var array<string, bool|int|string|list<string>|null> $changes */
+        /** @var array<string, bool|int|string|list<string>|array<string, string>|null> $changes */
         $changes = $this->validated('changes');
 
         return $changes;

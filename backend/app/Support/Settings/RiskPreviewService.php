@@ -158,7 +158,7 @@ final class RiskPreviewService
     /**
      * A decimal-typed settings value (never bot_capital_cap_usdt, which is nullable) as a BigDecimal.
      *
-     * @param  array<string, bool|int|string|list<string>|null>  $values
+     * @param  array<string, bool|int|string|list<string>|array<string, string>|null>  $values
      */
     private function decimalField(array $values, string $field): BigDecimal
     {

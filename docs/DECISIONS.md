@@ -223,3 +223,17 @@ decisions where the brief was silent, as the brief asks.
   `system_alert`. The message is a `research_report` whose card `type` is `daily_report` (no new
   message kind); the model may only write `best_note`/`worst_note`, every other card field is code's.
   Stored as `research_reports` kind `daily_report`; an existing row for the day stops a second post.
+- **Composer slash commands (ATL-163).** A War Room message starting with `/` is a command, never
+  plain text (a `/` later in a message is text). Unknown commands, or known ones with the wrong
+  arguments, show the command list from the locale file and send nothing. `/resume` opens the
+  banner's Resume confirmation (decision 251) instead of resuming at once; `/kill` and
+  `/kill flatten` only open the Stop sheet, flatten preselected and still behind the 1.5 s hold.
+  `/why <id>` is posted verbatim (the Orchestrator answers it); `/research` and `/brief` post
+  owner messages mentioning @Technical @News or @Orchestrator. `POST /api/cycles` publishes
+  `cycle.start_requested` on atlas.system (the record) and `orchestrator.cycle_now` on
+  atlas.warroom with the same correlation id, because that is what ATL-160's hook consumes; one
+  request per user per minute (`cycles_api.start_per_minute`). `/block <instId> today` writes the
+  new settings field `blocklist_until` (`{instId: UTC expiry}`, 23:59:59 Baghdad); an expiry for
+  an instrument not on the blocklist is dropped on save, and `atlas:expire-blocks` (scheduled every
+  minute) removes expired instruments through SettingsService, so every blocklist reader (Risk
+  Engine, Market Scout, pin refusal) needs no change.

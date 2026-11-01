@@ -660,9 +660,58 @@
     "breakeven": "Breakeven",
     "locked": "{{r}} locked",
     "aria": "{{side}} plan. Stop {{stop}}, entry {{entry}}, {{targets}}.",
+    "liq": "Liquidation",
+    "ariaLiq": " Estimated liquidation {{liq}}.",
     "ariaNow": " Price now {{now}}, {{r}}.",
     "long": "Long",
     "short": "Short",
     "tgt": "target {{n}} {{price}} at {{r}}"
+  },
+  "slash": {
+    "pickerLabel": "Commands",
+    "cmd": {
+      "pause": "Pause trading. New orders stop; open positions keep their stops.",
+      "resume": "Resume trading, after a confirmation.",
+      "kill": "Open the Stop trading sheet.",
+      "killFlatten": "Open the Stop trading sheet with close all positions selected.",
+      "cycleNow": "Start an analysis cycle now.",
+      "why": "Ask the Orchestrator why a proposal or order happened.",
+      "research": "Ask the Technical Analyst and News Intelligence about an instrument.",
+      "brief": "Ask the Orchestrator for a summary of where we are.",
+      "pin": "Pin an instrument to today's watchlist.",
+      "block": "Block an instrument until the end of today, Baghdad time."
+    },
+    "help": {
+      "unknown": "<c>{{cmd}}</c> is not a command. Nothing was sent. These are the commands:",
+      "usage": "Type it as <c>{{usage}}</c>. Nothing was sent. These are the commands:"
+    },
+    "msg": {
+      "research": "@Technical @News Research {{inst}}: the technical setup and the news brief.",
+      "brief": "@Orchestrator Brief me: where are we now?"
+    },
+    "done": {
+      "pause": "Trading paused. Open positions keep their stops.",
+      "notPaused": "Trading is already running.",
+      "cycle": "Cycle requested. The Orchestrator will announce it.",
+      "pin": "{{inst}} is pinned to today's watchlist.",
+      "block": "{{inst}} is blocked until 23:59 Baghdad today.",
+      "alreadyBlocked": "{{inst}} is already on the blocklist with no end time. Change it in Settings → Markets."
+    },
+    "err": {
+      "network": "Atlas could not be reached. Nothing changed.",
+      "coreDown": "The trading service is not running. Nothing changed.",
+      "tooSoon": "Too many requests. Try again in a minute.",
+      "cycleTooSoon": "A cycle was requested less than a minute ago. Try again in a minute.",
+      "failed": "That did not work (error {{status}}). Nothing changed.",
+      "status": "Atlas could not read the trading status. Try again in a moment.",
+      "noWatchlist": "There is no watchlist for today yet, so nothing can be pinned.",
+      "windowClosed": "Today's watchlist edit window has closed, so nothing was pinned.",
+      "blockInvalid": "{{inst}} could not be blocked. Check the instrument ID.",
+      "pin": {
+        "blocked": "{{inst}} is on the blocklist, so it cannot be pinned.",
+        "notLive": "{{inst}} is not trading right now, so it cannot be pinned.",
+        "unknown": "{{inst}} is not an instrument in this account's universe."
+      }
+    }
   }
 }

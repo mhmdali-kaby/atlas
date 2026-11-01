@@ -87,7 +87,7 @@ class MarketsEligibilityRequest extends FormRequest
     /**
      * Draft values in canonical settings form (SettingsSchema::normalise).
      *
-     * @return array<string, bool|int|string|list<string>|null>
+     * @return array<string, bool|int|string|list<string>|array<string, string>|null>
      */
     public function draft(): array
     {

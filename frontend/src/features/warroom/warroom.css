@@ -479,6 +479,7 @@ bdi.fig, bdi.tok { white-space: nowrap; }
   display: flex; justify-content: space-between; gap: 12px;
   font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--label-secondary);
 }
+.composer-note.is-error { color: var(--loss-ink); }
 .composer-hint kbd { font-family: var(--font-sans); font-weight: 600; color: var(--label); }
 .composer-count.is-near { color: var(--warning-ink); font-weight: 600; }
 .composer-count.is-over { color: var(--loss-ink); font-weight: 600; }
@@ -492,6 +493,7 @@ bdi.fig, bdi.tok { white-space: nowrap; }
   box-shadow: var(--shadow-popover), 0 0 0 0.5px var(--hairline-color);
   animation: shell-pop-in var(--dur-base) var(--ease-settle);
 }
+.picker-label .slash-cmd { direction: ltr; unicode-bidi: isolate; }
 .picker-label { padding: 6px 10px 4px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); font-weight: 600; }
 .picker-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 5px 8px; border-radius: 8px; text-align: start; cursor: default; }
 .picker-item .pk-text { display: grid; min-width: 0; flex: 1; }
