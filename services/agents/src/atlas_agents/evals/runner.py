@@ -27,7 +27,9 @@ from claude_agent_sdk import ClaudeAgentOptions
 from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
 
+from atlas_agents.evals import drivers_pm as _drivers_pm  # noqa: F401  (registers the PM driver)
 from atlas_agents.evals import properties as props
+from atlas_agents.evals import properties_pm as _properties_pm  # noqa: F401  (registers PM properties)
 from atlas_agents.evals.case import EvalCase, discover, evals_root, load_case
 from atlas_agents.evals.drivers import driver_for
 from atlas_agents.evals.fake import EvalFakeClient
