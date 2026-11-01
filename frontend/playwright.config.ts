@@ -55,6 +55,13 @@ export default defineConfig<AppearanceOptions>({
       dependencies: ['onboarding'],
       use: { ...desktop, baseURL: SPA_URL, storageState: STORAGE_STATE },
     },
+    // ATL-192: the page frame (gutters, no max-width) on every page, in English and Arabic.
+    {
+      name: 'page-frame',
+      testMatch: /flows\/page-frame\.spec\.ts/,
+      dependencies: ['onboarding'],
+      use: { ...desktop, baseURL: SPA_URL, storageState: STORAGE_STATE },
+    },
     ...appearance.map((a) => ({
       name: a.name,
       testMatch: /flows\/.*\.appearance\.spec\.ts/,
@@ -66,7 +73,7 @@ export default defineConfig<AppearanceOptions>({
     ...warroomReply.map((v) => ({
       name: v.name,
       testMatch: /flows\/warroom-reply\.spec\.ts/,
-      dependencies: appearance.map((a) => a.name),
+      dependencies: [...appearance.map((a) => a.name), 'page-frame'],
       use: { ...desktop, baseURL: SPA_URL, storageState: STORAGE_STATE, lang: v.lang, theme: v.theme },
     })),
     // ATL-40: posts to Main and runs its own Reverb and atlas:bridge, so it waits for the
@@ -75,7 +82,7 @@ export default defineConfig<AppearanceOptions>({
     {
       name: 'warroom-live',
       testMatch: /flows\/warroom\.live\.spec\.ts/,
-      dependencies: [...appearance.map((a) => a.name), ...warroomReply.map((v) => v.name)],
+      dependencies: [...appearance.map((a) => a.name), 'page-frame', ...warroomReply.map((v) => v.name)],
       use: { ...desktop, baseURL: SPA_URL, storageState: STORAGE_STATE },
     },
   ],

@@ -37,6 +37,9 @@
 }
 .ladder.is-compact .ladder-mark { width: 10px; height: 10px; margin: -5px 0 0 -5px; }
 
+/* the price at analysis time: a hollow dot, the card's own colour ringed in label-secondary */
+.ladder-mark.is-then { background: var(--bg-tertiary); box-shadow: 0 0 0 2px var(--label-secondary); }
+
 /* labels: entry and the price now above, the stop and targets below */
 .ladder-label {
   position: absolute; left: calc(var(--x) * 1%); transform: translateX(-50%);

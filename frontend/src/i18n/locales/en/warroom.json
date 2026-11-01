@@ -663,6 +663,8 @@
     "liq": "Liquidation",
     "ariaLiq": " Estimated liquidation {{liq}}.",
     "ariaNow": " Price now {{now}}, {{r}}.",
+    "asOf": "At {{time}}",
+    "ariaAt": " Price at {{time}}: {{price}}, {{r}}.",
     "long": "Long",
     "short": "Short",
     "tgt": "target {{n}} {{price}} at {{r}}"

@@ -15,11 +15,13 @@ import { isVerified, useConnection } from './connections'
 import { AFTER_ONBOARDING_PATH, onboardingPath, parseStep, STEPS, type StepId } from './paths'
 import { DEFAULT_AUTONOMY, DEFAULT_PROFILE, enabledAutonomyLevels, isOnboarded, isPreset, usePatchSettings, useSettings, type RiskProfile } from './settings'
 import { AutonomyStep, ConnectStep, RiskStep, WelcomeStep } from './steps'
+import './onboarding.css'
 
 
 /**
  * /onboarding (design: js/pages/onboarding.js, css/auth.css "Onboarding frame"): a top bar,
- * the numbered four-step stepper, a centred 640px column and Back / Continue at the bottom.
+ * the numbered four-step stepper, the full-width step (title and lead on the start side, the
+ * form on the end side from 1024 px) and Back / Continue at the bottom.
  * The step is in the URL (?step=connect), so reload and the browser's Back keep it.
  */
 export function OnboardingPage() {
@@ -140,7 +142,7 @@ export function OnboardingPage() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0 }}
               transition={FADE}
-              className="mx-auto grid max-w-[680px] content-start gap-5.5 px-6 pt-7 pb-14 max-[760px]:pt-6"
+              className="ob-col"
             >
               {step === 'welcome' && <WelcomeStep autoFocus={moved} />}
               {step === 'connect' && <ConnectStep autoFocus={moved} onReplacingChange={setReplacing} />}
@@ -151,7 +153,7 @@ export function OnboardingPage() {
         </main>
 
         <div className="vibrancy-bar shadow-[0_-0.5px_0_var(--separator)]">
-          <div className="mx-auto flex max-w-[680px] items-center justify-between gap-3 px-6 py-3">
+          <div className="flex items-center justify-between gap-3 px-(--page-gutter) py-3">
             {index > 0 ? (
               <Button size="lg" onClick={() => go(STEPS[index - 1] as StepId)}>
                 {t('back')}
@@ -188,9 +190,9 @@ export function OnboardingPage() {
 function Stepper({ current, onGo }: { current: number; onGo: (step: StepId) => void }) {
   const { t } = useTranslation('onboarding')
   return (
-    <nav aria-label={t('progress')} className="px-6 pt-2 pb-1">
+    <nav aria-label={t('progress')} className="px-(--page-gutter) pt-2 pb-1">
       <p className="sr-only">{t('stepOf', { n: current + 1 })}</p>
-      <ol className="mx-auto flex max-w-[680px] items-center">
+      <ol className="flex items-center">
         {STEPS.map((id, n) => {
           const state = n < current ? 'done' : n === current ? 'current' : 'next'
           const isLast = n === STEPS.length - 1
@@ -225,6 +227,10 @@ function Stepper({ current, onGo }: { current: number; onGo: (step: StepId) => v
               className={cx(
                 'flex min-w-0 items-center',
                 isLast ? 'flex-none' : 'flex-1',
+                // Phones show only the current label: its step keeps its width and a 24 px line,
+                // the other steps share the rest, so the label never runs into the next circle.
+                state === 'current' && 'max-[760px]:flex-none',
+                state === 'current' && !isLast && 'max-[760px]:after:w-6 max-[760px]:after:flex-none',
                 !isLast &&
                   'after:mx-2.5 after:h-[1.5px] after:min-w-4 after:flex-1 after:rounded-[1px] after:content-[""] ' +
                     (state === 'done' ? 'after:bg-accent' : 'after:bg-separator'),

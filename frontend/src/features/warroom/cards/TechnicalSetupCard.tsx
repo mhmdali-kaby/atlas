@@ -187,7 +187,15 @@ export function TechnicalSetupCard({ setup, lang }: { setup: TechnicalSetup; lan
         </p>
       )}
       <div className="an-ladder">
-        <Ladder side={side} entry={setup.entryZone} stop={setup.stop} targets={ladderTargets} mark={setup.lastPrice} decimals={d} lang={lang} />
+        <Ladder
+          side={side}
+          entry={setup.entryZone}
+          stop={setup.stop}
+          targets={ladderTargets}
+          priceAt={setup.lastPrice ? { price: setup.lastPrice, at: setup.dataAsOf } : null}
+          decimals={d}
+          lang={lang}
+        />
         <Ladder side={side} entry={setup.entryZone} stop={setup.stop} targets={ladderTargets} decimals={d} lang={lang} compact />
       </div>
       <dl className="an-dl">

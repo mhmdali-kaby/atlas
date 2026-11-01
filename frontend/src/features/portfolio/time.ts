@@ -1,6 +1,9 @@
 import { DATE_LOCALE, type Lang } from '../../lib/format'
 import type { EquityRange } from './api'
 
+/** The Baghdad calendar day of an instant (Y-m-d); one rule shared with the War Room. */
+export { baghdadDay } from '../warroom/time'
+
 /*
  * Dates and times on the Overview: Asia/Baghdad, 24-hour clock, Western digits in
  * both languages (DATE_LOCALE: en-US / ar-IQ-u-nu-latn; never a bare "ar").

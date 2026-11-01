@@ -145,6 +145,31 @@ describe('TechnicalSetup card', () => {
     expect(within(card).getByTestId('ta-entry').querySelector('bdi')).toHaveAttribute('dir', 'ltr')
     expect(within(card).getByTestId('ladder')).toHaveAttribute('dir', 'ltr')
   })
+
+  // ATL-191: the card's own price is from analysis time, not now, so it is labelled with that time.
+  it('an hours-old card labels its price with the analysis time, never "Now"', () => {
+    draw(solSetupMessage({}, { last_price: '249.95', data_as_of: '2026-10-28T11:00:00Z' }))
+    const card = screen.getByTestId('ta-card')
+    const ladder = within(card).getByTestId('ladder')
+    const at = within(ladder).getByTestId('ld-at')
+    expect(at).toHaveTextContent('At 14:00249.95')
+    expect(ladder.getAttribute('aria-label')).toContain('Price at 14:00: 249.95')
+    expect(within(card).queryByTestId('ld-now')).toBeNull()
+    expect(within(card).queryByText('Now', { exact: false })).toBeNull()
+    expect(ladder.getAttribute('aria-label')).not.toContain('Price now')
+  })
+
+  it('labels the same price in Arabic with the time, no English text in the label', () => {
+    draw(solSetupMessage({}, { last_price: '249.95', data_as_of: '2026-10-28T11:00:00Z' }), 'ar')
+    const card = screen.getByTestId('ta-card')
+    const ladder = within(card).getByTestId('ladder')
+    const at = within(ladder).getByTestId('ld-at')
+    expect(at).toHaveTextContent('الساعة 14:00')
+    // The label (word + time), not the R note, carries no Latin letters.
+    expect(at.querySelector('.ladder-k')?.textContent).not.toMatch(/[A-Za-z]/)
+    expect(within(card).queryByTestId('ld-now')).toBeNull()
+    expect(within(card).queryByText('Now', { exact: false })).toBeNull()
+  })
 })
 
 describe('readTechnicalSetup', () => {

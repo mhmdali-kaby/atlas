@@ -145,10 +145,10 @@
   box-shadow: none;
   outline: none;
 }
+/* One frame for every page: the full width beside the sidebar, inset by the gutter.
+   Never add a max width or centre a page; long text keeps its own measure (ch). */
 .shell-page {
-  max-width: var(--content-max);
-  margin-inline: auto;
-  padding: 4px 32px 56px;
+  padding: 4px var(--page-gutter) 56px;
   animation: shell-page-in var(--dur-slow) var(--ease-out);
 }
 @keyframes shell-page-in {
@@ -186,12 +186,6 @@
   box-shadow: 0 -0.5px 0 var(--separator);
 }
 
-@media (max-width: 1100px) {
-  .shell-page {
-    padding-inline: 24px;
-  }
-}
-
 /* Narrow windows: the sidebar floats over the content and starts closed. */
 @media (max-width: 760px) {
   .shell-app,
@@ -217,9 +211,6 @@
     pointer-events: auto;
     visibility: visible;
     transform: none;
-  }
-  .shell-page {
-    padding-inline: 16px;
   }
   .shell-footer {
     font-size: 11px;
