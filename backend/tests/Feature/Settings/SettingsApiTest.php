@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Redis;
 function settingsChangedEvents(string $settingsId): array
 {
     /** @var list<array{0: string, 1: list<string>}> $entries */
-    $entries = Redis::connection('events')->command('executeRaw', [['XRANGE', 'atlas.system', '-', '+']]);
+    $entries = Redis::connection('events')->command('executeRaw', [['XRANGE', EventBus::streamKey('atlas.system'), '-', '+']]);
 
     $found = [];
     foreach ($entries as [, $fields]) {
