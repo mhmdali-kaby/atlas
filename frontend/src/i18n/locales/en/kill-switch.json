@@ -1,0 +1,119 @@
+{
+  "stop": "Stop trading",
+  "stopped": "Stopped",
+  "stopAria": "Stop trading: cancel orders and pause Atlas",
+  "stoppedAria": "Stopped. Trading is paused; open to cancel orders again or close positions",
+  "account": {
+    "demo": "the OKX demo account",
+    "live": "the OKX live account"
+  },
+  "title": "Stop all trading?",
+  "intro": "Atlas stops trading on {{account}} straight away. You can resume whenever you like.",
+  "what": "What happens",
+  "w": {
+    "cancelKeep": "Cancel <f>{{open}}</f> open orders and <f>{{tp}}</f> take-profit orders on {{account}}",
+    "cancelKeepAny": "Cancel open orders and take-profit orders on {{account}}",
+    "keep": "Keep the <f>{{n}}</f> stops on OKX, so every open position stays protected",
+    "keepAny": "Keep every stop on OKX, so every open position stays protected",
+    "cancelAll": "Cancel <f>{{open}}</f> open orders and all <f>{{algo}}</f> take-profit and stop orders",
+    "cancelAllAny": "Cancel open orders and all take-profit and stop orders",
+    "close": "Close all <f>{{n}}</f> positions with reduce-only market orders",
+    "closeAny": "Close all positions with reduce-only market orders",
+    "pause": "Pause new trades until you resume"
+  },
+  "flatten": "Also close all <f>{{n}}</f> positions now",
+  "flattenAny": "Also close all positions now",
+  "flattenSub": "Reduce-only market orders. Unrealised P&L of <f>{{upl}}</f> becomes realised at market prices.",
+  "flattenSubAny": "Reduce-only market orders. Unrealised P&L becomes realised at market prices.",
+  "long": "Long",
+  "short": "Short",
+  "cancel": "Cancel",
+  "close": "Close",
+  "go": "Stop trading",
+  "hold": "Hold to stop and close all",
+  "holdHint": "Press and hold for 1.5 seconds",
+  "holdKeep": "Keep holding…",
+  "holdEarly": "Released too early. Press and hold for 1.5 seconds.",
+  "working": "Stopping…",
+  "workingSub": "Cancelling orders on OKX.",
+  "workingSubAll": "Cancelling orders and closing positions on OKX.",
+  "done": {
+    "title": "Trading is paused",
+    "text": "Stopped at <f>{{time}}</f>. Atlas won’t open new trades until you resume."
+  },
+  "r": {
+    "cancelled": "Cancelled",
+    "kept": "Kept on OKX",
+    "closed": "Closed",
+    "failed": "Failed",
+    "retry": "Try again",
+    "retrying": "Trying again…",
+    "done": "Done",
+    "show": "Show all",
+    "hide": "Hide",
+    "keptNote": "Each open position keeps its stop on OKX.",
+    "alreadyDone": "<f>{{n}}</f> were already done on OKX.",
+    "noMessage": "OKX didn’t say why."
+  },
+  "kind": {
+    "order": "Order",
+    "sl": "Stop loss",
+    "tp": "Take profit",
+    "oco": "Stop and take profit",
+    "trigger": "Trigger order",
+    "position": "Position close",
+    "read": "Reading from OKX"
+  },
+  "n": {
+    "orders_one": "<f>{{count}}</f> order",
+    "orders_other": "<f>{{count}}</f> orders",
+    "positions_one": "<f>{{count}}</f> position",
+    "positions_other": "<f>{{count}}</f> positions",
+    "stops_one": "<f>{{count}}</f> stop",
+    "stops_other": "<f>{{count}}</f> stops",
+    "items_one": "<f>{{count}}</f> item",
+    "items_other": "<f>{{count}}</f> items"
+  },
+  "fail": {
+    "title": "Nothing was stopped",
+    "text": "Atlas couldn’t reach trading_core, so nothing was cancelled. Try again, or stop trading in the OKX app."
+  },
+  "b": {
+    "label": "Trading status",
+    "paused": {
+      "title": "Trading paused by you at <f>{{time}}</f>",
+      "titleNoTime": "Trading paused by you",
+      "body": "Open orders were cancelled; positions keep their stops on OKX."
+    },
+    "breaker": {
+      "daily_loss": "Circuit breaker: daily loss limit",
+      "weekly_loss": "Circuit breaker: weekly loss limit",
+      "consecutive_losses": "Circuit breaker: losses in a row",
+      "okx_errors": "Circuit breaker: OKX errors",
+      "data_stale": "Circuit breaker: market data stopped",
+      "volatility_halt": "Circuit breaker: sudden price move",
+      "reconciliation_mismatch": "Circuit breaker: reconciliation mismatch",
+      "agent_budget": "Circuit breaker: agent budget",
+      "other": "Circuit breaker: {{name}}"
+    },
+    "staleAfterResume": "New trades stay refused until market data is fresh again.",
+    "more_one": "and <f>{{count}}</f> more breaker",
+    "more_other": "and <f>{{count}}</f> more breakers",
+    "since": "Since <f>{{time}}</f>",
+    "resume": "Resume trading"
+  },
+  "res": {
+    "title": "Resume trading?",
+    "text": "Atlas will accept new trades again. Cancelled orders don’t come back, and each new trade still needs your approval at autonomy 2.",
+    "warn": {
+      "loss": "The loss limit is still exceeded, so the next trade will trip the breaker again.",
+      "okx_errors": "If OKX keeps answering with errors, the breaker will trip again.",
+      "data_stale": "Market data is still stale, so new trades wait until it’s fresh.",
+      "other": "The condition that tripped the breaker may still hold, so it can trip again."
+    },
+    "go": "Resume trading",
+    "toast": "Trading resumed",
+    "toastBody": "Atlas accepts new trades again.",
+    "failed": "Atlas couldn’t resume trading. Try again in a moment."
+  }
+}
