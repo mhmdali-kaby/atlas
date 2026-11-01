@@ -21,7 +21,8 @@ For ATL-164 (proposal card + Edit sheet) and ATL-178 (PM position_update), which
   stop="241.80"
   riskStop="241.80"                 // optional: the stop the trade opened with (defines 1R); default = stop
   targets={[{ price: '258.50', r: '1.20', pct: '50' }]}  // r optional (computed from geometry), pct optional
-  mark="249.95"                     // optional price now
+  mark="249.95"                     // optional price now; always labelled "Now" (ld.now)
+  priceAt={{ price: '249.95', at: '2026-10-28T11:00:00Z' }}  // optional: a price from some other instant, labelled with its time (ld.asOf), never "Now" (ATL-191)
   decimals={2}                      // tick precision; every price printed from its string at this precision
   compact                           // optional: 4 px rail, middle targets as ticks only, no notes
   lang={lang}
@@ -31,7 +32,7 @@ For ATL-164 (proposal card + Edit sheet) and ATL-178 (PM position_update), which
 - Always `dir="ltr"` (a number line), `role="img"` with the §4 sentence as aria-label. Labels: Entry/Now above, Stop/targets below.
 - The 10 px label spacing ("labels never touch") runs in a `useLayoutEffect` + ResizeObserver + `document.fonts.ready`.
 - Not built yet (no caller needed it): `wasStop` (dashed old stop) and the `liq` caption. The CSS for both is already in `ladder.css` (`.ladder-tick.is-was`, `.ladder-label.is-was`, `.ladder-liq`); add the props when ATL-164/178 need them.
-- Strings are under `ld.*` in `warroom.json` (en/ar). Test ids: `ladder` / `ladder-compact`, `ld-stop`, `ld-entry`, `ld-target`, `ld-now`.
+- Strings are under `ld.*` in `warroom.json` (en/ar). Test ids: `ladder` / `ladder-compact`, `ld-stop`, `ld-entry`, `ld-target`, `ld-now`, `ld-at` (ATL-191). `mark` and `priceAt` are mutually exclusive in every current caller; both are drawn independently if a caller ever passed both.
 - The TechnicalSetup card renders both a full and a compact ladder; a container query on `.hv-card` (≤ 520 px) shows the compact one. Do the same in other cards.
 
 ## Two-minute version
