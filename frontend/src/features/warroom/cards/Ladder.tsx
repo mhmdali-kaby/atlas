@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from 'react'
+import { ArrowLeft } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatFixed, type Lang } from '../../../lib/format'
 import { fillSlots, slot } from '../slots'
@@ -33,6 +34,8 @@ export interface LadderProps {
   targets: LadderTarget[]
   /** Price now. */
   mark?: string | null
+  /** Estimated liquidation price; shown as a caption under the rail when it lies beyond the stop. */
+  liq?: string | null
   decimals: number
   compact?: boolean
   lang: Lang
@@ -91,7 +94,7 @@ function fit(fig: HTMLElement) {
   }
 }
 
-export function Ladder({ side, entry, stop, riskStop, targets, mark, decimals, compact = false, lang }: LadderProps) {
+export function Ladder({ side, entry, stop, riskStop, targets, mark, liq, decimals, compact = false, lang }: LadderProps) {
   const { t } = useTranslation('warroom')
   const ref = useRef<HTMLElement>(null)
 
@@ -181,7 +184,9 @@ export function Ladder({ side, entry, stop, riskStop, targets, mark, decimals, c
       stop: P(stop),
       entry: entryText,
       targets: targets.map((x, i) => t('ld.tgt', { n: i + 1, price: P(x.price), r: targetR(x, i) })).join(', '),
-    }) + (mark ? t('ld.ariaNow', { now: P(mark), r: rText(R(mark)) }) : '')
+    }) +
+    (mark ? t('ld.ariaNow', { now: P(mark), r: rText(R(mark)) }) : '') +
+    (liq && R(liq) < lo ? t('ld.ariaLiq', { liq: P(liq) }) : '')
 
   return (
     <figure ref={ref} className={`ladder${compact ? ' is-compact' : ''}`} dir="ltr" role="img" aria-label={aria} data-testid={compact ? 'ladder-compact' : 'ladder'}>
@@ -217,6 +222,12 @@ export function Ladder({ side, entry, stop, riskStop, targets, mark, decimals, c
           {nowInline}
         </span>
       </div>
+      {liq && R(liq) < lo && (
+        <span className="ladder-liq" aria-hidden="true" data-testid="ld-liq">
+          <ArrowLeft className="icon" aria-hidden="true" />
+          <span>{t('ld.liq')}</span> <Isl>{P(liq)}</Isl>
+        </span>
+      )}
     </figure>
   )
 }
