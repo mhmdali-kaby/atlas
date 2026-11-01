@@ -104,7 +104,7 @@ def test_the_historian_registers_itself_through_discovery() -> None:
     hooks = discover_hooks()
     historian = hooks["historian"]
     assert historian.on_mention is not None
-    assert [hook.name for hook in historian.schedule] == ["historian_regime_table"]
+    assert [hook.name for hook in historian.schedule] == ["historian_regime_table", "historian_weekly_review"]
     assert historian.schedule[0].time_of_day().isoformat() == "07:30:00"
 
 

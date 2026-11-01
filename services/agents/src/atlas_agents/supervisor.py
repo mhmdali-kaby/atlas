@@ -60,6 +60,7 @@ from atlas_agents.registry import (
     ScheduleFire,
     ScheduleHook,
     discover_hooks,
+    parse_schedule,
 )
 from atlas_agents.session import AgentSession, ClientFactory, RunResult, Trigger, default_client_factory
 from atlas_agents.settings_applier import SettingsApplier
@@ -132,9 +133,8 @@ def schedule_config(defaults: Mapping[str, Any] = DEFAULTS) -> Mapping[str, Any]
 
 
 def job_time(job: str, defaults: Mapping[str, Any] = DEFAULTS) -> time:
-    """``agents.schedule.<job>`` ("HH:MM", Asia/Baghdad) as a time."""
-    hours, minutes = str(schedule_config(defaults)[job]).split(":")
-    return time(int(hours), int(minutes))
+    """``agents.schedule.<job>`` ("HH:MM" or "Sun HH:MM", Asia/Baghdad) as a time."""
+    return parse_schedule(str(schedule_config(defaults)[job]))[1]
 
 
 def job_correlation_id(job: str, day: date) -> str:
@@ -436,10 +436,13 @@ class Supervisor:
             ).first()
         return found is not None
 
-    def due(self, job: str, now: datetime, at: time | None = None) -> date | None:
+    def due(self, job: str, now: datetime, at: time | None = None, weekday: int | None = None) -> date | None:
         """The Baghdad day daily ``job`` is due for at ``now``, or None (not yet time today). ``at``
-        defaults to ``agents.schedule.<job>``."""
+        defaults to ``agents.schedule.<job>``. With ``weekday`` (0 = Monday) the job is weekly: due
+        only on that Baghdad weekday, from ``at`` to midnight."""
         local = now.astimezone(owner_zone())
+        if weekday is not None and local.weekday() != weekday:
+            return None
         if local.time() < (at if at is not None else job_time(job)):
             return None
         return local.date()
@@ -469,7 +472,7 @@ class Supervisor:
 
     async def _fire_if_due(self, slug: str, hook: ScheduleHook, at: datetime) -> ScheduleFire | None:
         if hook.every_seconds is None:
-            day = self.due(hook.name, at, hook.time_of_day())
+            day = self.due(hook.name, at, hook.time_of_day(), hook.weekday())
             if day is None or await asyncio.to_thread(self._job_done, slug, hook.name, day):
                 return None
             correlation_id = job_correlation_id(hook.name, day)

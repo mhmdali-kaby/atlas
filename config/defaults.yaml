@@ -1085,6 +1085,16 @@ agents:
       taker_fee_rate: "0.0005"
     verdict:
       min_n: 20
+    # ATL-199, brief §7.3 weekly review (atlas_agents.historian_weekly), run at
+    # agents.schedule.historian_weekly_review.
+    #   lookback_days: Baghdad days aggregated, ending with the review's day.
+    #   output_retries: follow-ups when the reply is not one verdict + exactly one suggested change.
+    #   verdict_max_chars / change_max_chars: the model's verdict line and suggestion are cut to these.
+    weekly_review:
+      lookback_days: 7
+      output_retries: 1
+      verdict_max_chars: 240
+      change_max_chars: 400
   # ATL-84, brief §6.2/§7.11 and rule 7: the agents' tool layer (atlas_agents.tools).
   #   max_result_tokens: a tool result whose JSON is estimated (chars / chars_per_token) above this
   #     is trimmed by code: every list is cut to trim_rows rows, then the longest list is halved
@@ -1210,6 +1220,8 @@ agents:
     scoring: "00:15"
     # ATL-170, brief §7.8: the Portfolio Manager's daily report.
     pm_daily_report: "23:30"
+    # ATL-199, brief §7.3: the Historian's weekly review ("<Day> HH:MM" = weekly, Baghdad).
+    historian_weekly_review: "Sun 18:00"
     tick_seconds: 30
     # ATL-160, brief §8: Orchestrator analysis cycles start every analysis_interval_minutes from
     # analysis_first_slot while the slot is at or before analysis_last_slot (Asia/Baghdad), so the
