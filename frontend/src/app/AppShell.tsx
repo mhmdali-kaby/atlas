@@ -6,6 +6,8 @@ import { Navigate, Outlet, useLocation } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { SIGNED_OUT_KEY, useLogout, useSession } from '../features/auth/session'
 import { toast } from '../ui'
+import { KillSwitchButton } from '../features/kill-switch/KillSwitch'
+import { TradingBanner } from '../features/kill-switch/TradingBanner'
 import { activeArea, activeNavEntry, areaHome, type AreaId, type ShellRegistry } from './feature'
 import { shellRegistry as registeredShell } from './registry'
 import { EnvBadge } from './shell/EnvBadge'
@@ -94,8 +96,10 @@ export function AppShell({ shell = registeredShell }: { shell?: ShellRegistry })
             </button>
             <h1 className="ms-1 truncate text-headline font-semibold">{title}</h1>
             <div className="flex-1" />
-            {/* ⌘K palette and kill switch slot (later patches). */}
-            <div data-slot="toolbar-actions" className="contents" />
+            {/* ⌘K palette and the approval pill join this slot in later tasks. */}
+            <div data-slot="toolbar-actions" className="contents">
+              <KillSwitchButton />
+            </div>
             <EnvBadge />
             <ToolbarGroup>
               <LanguageButton />
@@ -103,6 +107,7 @@ export function AppShell({ shell = registeredShell }: { shell?: ShellRegistry })
               {user && <AccountMenu name={user.name} email={user.email} onSignOut={signOut} />}
             </ToolbarGroup>
           </header>
+          <TradingBanner />
           <main
             id="content"
             ref={contentRef}

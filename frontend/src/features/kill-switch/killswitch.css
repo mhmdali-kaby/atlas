@@ -1,0 +1,144 @@
+/* Kill switch, its sheet and the trading banner (ATL-149). Built from design v11
+   css/killswitch.css with the system's tokens: the destructive solid for Stop, the
+   warning and loss washes for the banner. No new colours. */
+
+/* ---- toolbar: Stop ---------------------------------------------------------- */
+.ks-stop {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex: none;
+  height: 28px; padding-inline: 10px 12px; border-radius: var(--radius-full);
+  background: var(--destructive-solid); color: var(--on-solid);
+  font-size: var(--text-footnote); line-height: 1; font-weight: 600; white-space: nowrap;
+  box-shadow: var(--shadow-1);
+  transition: filter var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+.ks-stop svg { width: 15px; height: 15px; stroke-width: 2; }
+.ks-stop:hover { filter: brightness(1.07); }
+.ks-stop:active { transform: scale(0.97); }
+.ks-stop:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+/* already stopped: still usable (a second stop can close all), but it reads as a state */
+.ks-stop.is-stopped {
+  background: var(--loss-wash); color: var(--loss-ink);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--loss) 45%, transparent);
+}
+@media (max-width: 760px) {
+  .ks-stop { width: 28px; padding: 0; }
+  .ks-stop-label { display: none; }
+}
+/* phones: Stop takes the room the language label used (design v11 killswitch.css) */
+@media (max-width: 480px) {
+  .shell-toolbar [data-testid='language-switch'] > span { display: none; }
+  .shell-toolbar [data-testid='language-switch'] { width: 32px; padding: 0; justify-content: center; }
+}
+@media (pointer: coarse) {
+  .ks-stop { position: relative; }
+  .ks-stop::after { content: ''; position: absolute; inset: -8px 0; }
+}
+
+/* ---- the banner under the toolbar ------------------------------------------ */
+.shell-main:has(> .ks-banner) { grid-template-rows: var(--toolbar-height) auto minmax(0, 1fr); }
+.ks-banner {
+  position: relative; z-index: 19; display: flex; align-items: center; gap: 12px;
+  margin: 2px 16px 10px; padding-block: 10px; padding-inline: 12px 10px;
+  border-radius: var(--radius-card); background: var(--warning-wash);
+  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--warning) 40%, transparent);
+}
+.ks-banner.is-loss { background: var(--loss-wash); box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--loss) 32%, transparent); }
+.ks-banner-ic { flex: none; display: grid; place-items: center; width: 28px; height: 28px; color: var(--warning-ink); }
+.ks-banner.is-loss .ks-banner-ic { color: var(--loss-ink); }
+.ks-banner-ic svg { width: 20px; height: 20px; stroke-width: 1.85; }
+.ks-banner-text { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.ks-banner-title { margin: 0; font-size: var(--text-subheadline); line-height: var(--lh-subheadline); font-weight: 600; color: var(--label); }
+.ks-banner-body { margin: 0; font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); text-wrap: pretty; }
+.ks-banner-time { flex: none; font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); white-space: nowrap; }
+.ks-resume.ks-resume {
+  flex: none; background: var(--bg-elevated); color: var(--label);
+  box-shadow: var(--shadow-1), 0 0 0 0.5px var(--separator);
+}
+.ks-resume.ks-resume:hover { background: var(--bg-elevated); filter: brightness(0.97); }
+:root.dark .ks-resume.ks-resume:hover { filter: brightness(1.15); }
+@media (max-width: 760px) {
+  .ks-banner { flex-wrap: wrap; align-items: flex-start; margin-inline: 12px; row-gap: 8px; }
+  .ks-banner-text { flex-basis: calc(100% - 44px); }
+  .ks-banner-time { align-self: center; margin-inline-start: 40px; }
+  .ks-resume.ks-resume { margin-inline-start: auto; }
+}
+
+/* ---- the Stop sheet --------------------------------------------------------- */
+.ks-h { margin: 0 0 8px; font-size: var(--text-footnote); line-height: var(--lh-footnote); font-weight: 600; color: var(--label-secondary); }
+.ks-list { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; }
+.ks-list li { display: flex; align-items: flex-start; gap: 10px; font-size: var(--text-subheadline); line-height: var(--lh-subheadline); color: var(--label); text-wrap: pretty; }
+.ks-li-ic { flex: none; display: grid; place-items: center; width: 20px; height: 20px; color: var(--label-secondary); }
+.ks-li-ic svg { width: 17px; height: 17px; stroke-width: 1.5; }
+
+.ks-group { border-radius: var(--radius-card); background: var(--fill-4); overflow: hidden; }
+.ks-flatten { transition: background-color var(--dur-base) var(--ease-out); }
+.ks-flatten.is-on { background: var(--loss-wash); }
+.ks-row { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 10px 16px; }
+.ks-row-main { flex: 1; min-width: 0; display: grid; gap: 2px; }
+.ks-row-label { font-size: var(--text-subheadline); line-height: var(--lh-subheadline); color: var(--label); }
+.ks-row-sub { font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); text-wrap: pretty; }
+.ks-pos, .ks-closed { display: grid; gap: 7px; margin: 0; padding-block: 0 12px; padding-inline: 16px; list-style: none; }
+.ks-pos li, .ks-closed li {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: baseline; gap: 12px;
+  font-size: var(--text-footnote); line-height: var(--lh-footnote);
+}
+.ks-closed { padding-inline-start: 50px; }
+.ks-closed li { grid-template-columns: minmax(0, 1fr) auto; }
+.ks-inst { font-weight: 600; color: var(--label); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ks-side { color: var(--label-secondary); }
+.ks-upl { min-width: 6.5em; text-align: end; font-weight: 600; font-variant-numeric: tabular-nums; }
+.ks-sheet .is-gain { color: var(--profit-ink); }
+.ks-sheet .is-loss { color: var(--loss-ink); }
+.ks-sheet .fig { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+/* actions: the hold hint sits on its own line above the buttons it explains */
+.ks-hold-hint { flex: 1 0 100%; margin: 0 0 2px; text-align: end; font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.ks-hold-hint.is-early { color: var(--warning-ink); }
+
+/* press and hold: a deeper red sweeps across the button over 1.5 s */
+.ks-hold {
+  position: relative; overflow: hidden; isolation: isolate; touch-action: none; user-select: none; -webkit-user-select: none;
+  display: inline-flex; align-items: center; justify-content: center; height: 32px; padding-inline: 14px;
+  border-radius: var(--radius-control); background: var(--destructive-solid); color: var(--on-solid);
+  font-size: var(--text-subheadline); font-weight: 600; line-height: 1; white-space: nowrap; box-shadow: var(--shadow-1);
+}
+.ks-hold-fill {
+  position: absolute; inset: 0; z-index: -1;
+  background: color-mix(in srgb, var(--destructive-solid) 70%, var(--label));
+  transform: scaleX(0); transform-origin: left center; transition: transform 180ms var(--ease-out);
+}
+[dir='rtl'] .ks-hold-fill { transform-origin: right center; }
+.ks-hold.is-holding .ks-hold-fill, .ks-hold.is-done .ks-hold-fill { transform: scaleX(1); transition: transform 1500ms linear; }
+.ks-hold-label { display: inline-flex; align-items: center; gap: 6px; }
+.ks-hold-label svg { width: 16px; height: 16px; }
+.ks-hold:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+@media (prefers-reduced-motion: reduce) {
+  /* a steady fill, no sweep: the deeper red fades in over the same 1.5 s */
+  .ks-hold-fill { transform: none; opacity: 0; transition: opacity 120ms linear; }
+  .ks-hold.is-holding .ks-hold-fill, .ks-hold.is-done .ks-hold-fill { transform: none; opacity: 1; transition: opacity 1500ms linear; }
+  .ks-flatten { transition: none; }
+}
+
+/* ---- the report ------------------------------------------------------------- */
+.ks-res-row:not(:first-child) { box-shadow: inset 0 0.5px 0 var(--separator); }
+.ks-res-ic { flex: none; display: grid; place-items: center; width: 22px; }
+.ks-res-ic svg { width: 18px; height: 18px; stroke-width: 2; }
+.ks-res-ic.is-ok { color: var(--profit-ink); }
+.ks-res-ic.is-kept { color: var(--accent-ink); }
+.ks-res-ic.is-fail { color: var(--loss-ink); }
+.ks-res-row.is-failed .ks-row-label { color: var(--loss-ink); }
+.ks-ords, .ks-fails { display: grid; gap: 7px; margin: 0; padding-block: 0 12px; padding-inline: 50px 16px; list-style: none; }
+.ks-ord { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; row-gap: 2px; font-size: var(--text-footnote); line-height: var(--lh-footnote); }
+.ks-ord-what { color: var(--label-secondary); }
+.ks-fail-msg { display: grid; gap: 2px; margin: 0; font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label); text-wrap: pretty; }
+.ks-fail-what { color: var(--label-secondary); }
+.ks-retry { padding-block: 0 12px; padding-inline: 50px 16px; }
+
+/* ---- notices in the Resume sheet -------------------------------------------- */
+.ks-notice { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border-radius: var(--radius-card); font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label); }
+.ks-notice p { margin: 0; text-wrap: pretty; }
+.ks-notice svg { flex: none; width: 17px; height: 17px; margin-top: 1px; }
+.ks-notice.is-warning { background: var(--warning-wash); }
+.ks-notice.is-warning svg { color: var(--warning-ink); }
+.ks-notice.is-error { background: var(--loss-wash); }
+.ks-notice.is-error svg { color: var(--loss-ink); }
