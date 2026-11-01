@@ -10,9 +10,11 @@ use App\Models\RiskCheck;
 use App\Models\Setting;
 use App\Models\Vote;
 use App\Models\WarroomMessage;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * The JSON shape of a proposal for /api/proposals (ATL-162). `summary()` is a list row;
@@ -101,6 +103,7 @@ final class ProposalView
 
         return [
             ...self::summary($p),
+            'evidence' => self::evidence($p),
             'versions' => $chain->map(static fn (Proposal $v): array => [
                 'id' => $v->id,
                 'version' => $v->version,
@@ -234,6 +237,125 @@ final class ProposalView
         }
 
         return collect([...$before, $p, ...$after]);
+    }
+
+    /**
+     * The proposal's evidence refs, each resolved to the War Room message that posted it (ATL-190),
+     * in one query. A ref's id is matched as the message id itself (the Strategist cites the research
+     * message it read), and by type: a news item or cluster → the `news_alert` that announced it, a
+     * research report → a card naming it as `report_id`, a proposal → its `proposal` card. The oldest
+     * match is the message that posted it. `label` names the poster for the chip; `message_id` is null
+     * when no message in this env posted it.
+     *
+     * @return list<array{type: string, id: string, label: string|null, message_id: string|null}>
+     */
+    public static function evidence(Proposal $p): array
+    {
+        $refs = [];
+        foreach ($p->evidence as $ref) {
+            if (is_string($ref['type'] ?? null) && is_string($ref['id'] ?? null)) {
+                $refs[] = ['type' => $ref['type'], 'id' => $ref['id']];
+            }
+        }
+        if ($refs === []) {
+            return [];
+        }
+
+        $ids = array_values(array_unique(array_column($refs, 'id')));
+        $uuids = array_values(array_filter($ids, static fn (string $id): bool => Str::isUuid($id)));
+        $news = self::idsOfType($refs, self::NEWS_REF_TYPES);
+        $reports = self::idsOfType($refs, ['research_report']);
+        $proposals = self::idsOfType($refs, ['proposal']);
+
+        $messages = WarroomMessage::query()
+            ->select(['id', 'author', 'kind', 'card', 'created_at'])
+            ->where('env', $p->env)
+            ->where(static function (Builder $q) use ($uuids, $news, $reports, $proposals): void {
+                $q->whereRaw('false');
+                if ($uuids !== []) {
+                    $q->orWhereIn('id', $uuids);
+                }
+                if ($news !== []) {
+                    $q->orWhere(static fn (Builder $w) => $w->where('kind', 'news_alert')->where(
+                        static fn (Builder $x) => $x->whereIn(DB::raw("card->>'news_item_id'"), $news)->orWhereIn(DB::raw("card->>'cluster_id'"), $news),
+                    ));
+                }
+                if ($reports !== []) {
+                    $q->orWhereIn(DB::raw("card->>'report_id'"), $reports);
+                }
+                if ($proposals !== []) {
+                    $q->orWhere(static fn (Builder $w) => $w->where('kind', 'proposal')->whereIn(DB::raw("card->>'proposal_id'"), $proposals));
+                }
+            })
+            ->orderBy('created_at')
+            ->orderBy('id')
+            ->get();
+
+        $out = [];
+        foreach ($refs as $ref) {
+            $found = $messages->first(static function (WarroomMessage $m) use ($ref): bool {
+                if ($m->id === $ref['id']) {
+                    return true;
+                }
+                $card = is_array($m->card) ? $m->card : [];
+                $is = static fn (string $key): bool => ($card[$key] ?? null) === $ref['id'];
+
+                return match (true) {
+                    in_array($ref['type'], self::NEWS_REF_TYPES, true) => $m->kind === 'news_alert' && ($is('news_item_id') || $is('cluster_id')),
+                    $ref['type'] === 'research_report' => $is('report_id'),
+                    $ref['type'] === 'proposal' => $m->kind === 'proposal' && $is('proposal_id'),
+                    default => false,
+                };
+            });
+            $out[] = [
+                'type' => $ref['type'],
+                'id' => $ref['id'],
+                'label' => $found === null ? null : self::evidenceLabel($found),
+                'message_id' => $found?->id,
+            ];
+        }
+
+        return $out;
+    }
+
+    /** Evidence ref types that point at a news item or a news cluster. */
+    private const NEWS_REF_TYPES = ['news', 'news_item', 'news_cluster', 'news_alert'];
+
+    /** Who posted the evidence, as the chip's label key (design v14 `pr.ev.*`). */
+    private static function evidenceLabel(WarroomMessage $m): string
+    {
+        if ($m->kind === 'news_alert') {
+            return 'news';
+        }
+
+        return match ($m->author) {
+            'technical_analyst' => 'technical',
+            'derivatives_sentiment' => 'positioning',
+            'historian' => 'historian',
+            'news_intelligence', 'system:news' => 'news',
+            'market_scout' => 'scout',
+            'strategist' => 'strategist',
+            'devils_advocate' => 'devils_advocate',
+            'portfolio_manager' => 'portfolio_manager',
+            default => 'other',
+        };
+    }
+
+    /**
+     * @param  list<array{type: string, id: string}>  $refs
+     * @param  list<string>  $types
+     * @return list<string>
+     */
+    private static function idsOfType(array $refs, array $types): array
+    {
+        $ids = [];
+        foreach ($refs as $ref) {
+            if (in_array($ref['type'], $types, true)) {
+                $ids[] = $ref['id'];
+            }
+        }
+
+        return array_values(array_unique($ids));
     }
 
     /**
