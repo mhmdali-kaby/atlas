@@ -1,0 +1,231 @@
+/* The War Room debate cards (cards/DevilsReviewCard.tsx, VoteSummaryCard.tsx, RiskCheckCard.tsx;
+   design v11 Phase 2 §6, ported from the approved prototype's debate.css). Built on the Historian
+   card (.hv-card, .hv-head) with no new colours: profit, warning and loss mean clean, one problem
+   and stop, and every state also carries an icon and a word. */
+.db-card { gap: 12px; }
+.db-card.is-low { --sev: var(--profit); --sev-ink: var(--profit-ink); }
+.db-card.is-mid { --sev: var(--warning); --sev-ink: var(--warning-ink); }
+.db-card.is-high { --sev: var(--loss); --sev-ink: var(--loss-ink); }
+
+/* head: kind, the proposal it answers, the time */
+.db-head { flex-wrap: wrap; row-gap: 4px; }
+.db-ref {
+  display: inline-flex; align-items: center; gap: 1px; padding: 1px 4px; margin-inline-start: 2px;
+  border-radius: 6px; color: var(--accent-ink); white-space: nowrap;
+}
+.db-ref .icon { width: 12px; height: 12px; stroke-width: 2; }
+.db-ref.is-plain { color: var(--label-secondary); }
+.db-ref:not(.is-plain):hover { text-decoration: underline; text-underline-offset: 2px; }
+.db-ref:focus-visible, .db-tipped:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* result pills: the one strong colour on a card, always icon + words */
+.db-pill {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding-block: 3px; padding-inline: 9px 12px;
+  border-radius: var(--radius-full); font-size: var(--fs-subheadline); line-height: var(--lh-subheadline);
+  letter-spacing: var(--tr-subheadline); font-weight: 600; white-space: nowrap;
+}
+.db-pill .icon { width: 17px; height: 17px; flex: none; }
+.db-pill.is-pass { background: var(--profit-wash); color: var(--profit-ink); }
+.db-pill.is-resize { background: var(--accent-wash); color: var(--accent-ink); }
+.db-pill.is-fail { background: var(--loss-wash); color: var(--loss-ink); }
+
+/* ---- Devil's Advocate review --------------------------------------------- */
+.db-rate-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.db-rating { display: inline-flex; align-items: center; gap: 10px; min-width: 0; }
+.db-pips { display: inline-flex; gap: 3px; flex: none; }
+.db-pip { width: 16px; height: 8px; border-radius: 3px; background: var(--fill-2); }
+.db-pips.is-low .db-pip.is-on { background: var(--profit); }
+.db-pips.is-mid .db-pip.is-on { background: var(--warning); }
+.db-pips.is-high .db-pip.is-on { background: var(--loss); }
+.db-rating-text { font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); letter-spacing: var(--tr-subheadline); font-weight: 600; color: var(--label); }
+
+.db-vote {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding-block: 3px; padding-inline: 9px 12px;
+  border-radius: var(--radius-full); box-shadow: inset 0 0 0 1px var(--separator-strong);
+  font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); color: var(--label-secondary); white-space: nowrap;
+}
+.db-vote b { font-weight: 600; color: var(--label); }
+.db-vote .icon { width: 16px; height: 16px; flex: none; stroke-width: 2.25; }
+.db-vote.is-take .icon { color: var(--profit-ink); }
+.db-vote.is-change .icon { color: var(--warning-ink); }
+.db-vote.is-skip .icon { color: var(--label-secondary); }
+
+/* the strongest objection, first, as a quote with the rating's tone on its edge */
+.db-quote { position: relative; margin: 0; padding-block: 10px 12px; padding-inline: 16px 14px; border-radius: 10px; background: var(--fill-4); }
+.db-quote::before { content: ""; position: absolute; inset-block: 10px; inset-inline-start: 0; width: 3px; border-radius: 2px; background: var(--sev, var(--quote-rule)); }
+.db-quote-k { display: flex; align-items: center; gap: 6px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 600; color: var(--sev-ink, var(--label-secondary)); }
+.db-quote-k .icon { width: 14px; height: 14px; flex: none; }
+.db-quote-t { margin-top: 4px; max-width: 60ch; font-size: var(--fs-callout); line-height: var(--lh-callout); letter-spacing: var(--tr-callout); color: var(--label); text-wrap: pretty; }
+:root:lang(ar) .db-quote-t { line-height: 1.55; letter-spacing: 0; }
+
+/* the fixed 10-item checklist: OK rows stay quiet, problems take a wash */
+.db-sub { margin: 0 0 4px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 600; color: var(--label-secondary); }
+.db-ci-list { display: grid; margin: 0; padding: 0; list-style: none; }
+.db-ci {
+  display: grid; grid-template-columns: 16px minmax(6.5rem, 8.5rem) minmax(0, 1fr); column-gap: 10px; align-items: baseline;
+  padding: 5px 8px; margin-inline: -8px; border-radius: 8px;
+  font-size: var(--fs-footnote); line-height: var(--lh-footnote);
+}
+.db-ci-ic { display: grid; align-self: center; }
+.db-ci-ic .icon { width: 14px; height: 14px; stroke-width: 2.25; }
+.db-ci-name { font-weight: 600; color: var(--label); }
+.db-ci-text { color: var(--label-secondary); text-wrap: pretty; min-width: 0; }
+.db-ci-st { font-weight: 600; color: var(--label-secondary); }
+.db-ci.is-ok .db-ci-ic { color: var(--profit-ink); }
+.db-ci.is-serious { background: var(--warning-wash); }
+.db-ci.is-serious .db-ci-ic, .db-ci.is-serious .db-ci-st { color: var(--warning-ink); }
+.db-ci.is-serious .db-ci-text { color: var(--label); }
+.db-ci.is-minor { background: var(--fill-4); }
+.db-ci.is-minor .db-ci-ic, .db-ci.is-minor .db-ci-st { color: var(--accent-ink); }
+:root:lang(ar) .db-ci { line-height: 1.45; }
+
+.db-fix { display: flex; align-items: flex-start; gap: 8px; margin: 0; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label); text-wrap: pretty; }
+.db-fix .icon { width: 15px; height: 15px; flex: none; margin-top: 1.5px; color: var(--label-secondary); }
+.db-fix b { font-weight: 600; }
+
+/* the re-rate: the same component, one block */
+.db-review.is-compact { gap: 8px; padding-block: 10px 12px; }
+.db-compact-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.db-resolved { display: inline-flex; align-items: center; gap: 5px; color: var(--label); font-weight: 500; }
+.db-resolved .icon { width: 14px; height: 14px; flex: none; stroke-width: 2.25; color: var(--profit-ink); }
+.db-was {
+  display: inline-flex; align-items: center; height: 20px; padding-inline: 7px;
+  border-radius: var(--radius-full); background: var(--fill-3); color: var(--label-secondary);
+  font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 500;
+}
+
+@container (max-width: 480px) {
+  .db-ci { grid-template-columns: 16px minmax(0, 1fr); row-gap: 1px; }
+  .db-ci-text { grid-column: 2; }
+}
+
+/* ---- Vote summary: one 0–1 scale, one threshold line through every vote --- */
+.db-vt-result { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.db-vt-score { font-size: var(--fs-title-2); line-height: var(--lh-title-2); letter-spacing: var(--tr-title-2); font-weight: 600; font-variant-numeric: tabular-nums; }
+.db-vt-needs { font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+
+.db-vt {
+  display: grid; grid-template-columns: minmax(8rem, 1.15fr) max-content minmax(96px, 1fr) max-content max-content;
+  column-gap: 14px; font-size: var(--fs-footnote); line-height: var(--lh-footnote);
+}
+.db-vt-row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; padding-block: 6px; }
+.db-vt-row + .db-vt-row { border-top: 0.5px solid var(--separator); }
+.db-vt-row.is-head { padding-block: 0 6px; font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 500; color: var(--label-secondary); }
+.db-vt-row.is-head > :nth-child(n + 4) { text-align: end; }
+.db-vt-row.is-total { padding-top: 8px; border-top: 1px solid var(--separator-strong); }
+.db-vt-who { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.db-vt-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; color: var(--label); }
+.db-vt-row.is-total .db-vt-name { font-weight: 600; }
+.db-vt-vote { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; color: var(--label); }
+.db-vt-vote .icon { width: 14px; height: 14px; flex: none; stroke-width: 2.25; }
+.db-vt-vote.is-take .icon { color: var(--profit-ink); }
+.db-vt-vote.is-change .icon { color: var(--warning-ink); }
+.db-vt-vote.is-skip .icon, .db-vt-vote.is-missing .icon { color: var(--label-secondary); }
+.db-vt-row.is-missing .db-vt-name, .db-vt-row.is-missing .db-vt-vote { color: var(--label-secondary); }
+
+.db-vt-bar { position: relative; height: 8px; border-radius: 4px; background: var(--fill-3); }
+.db-vt-fill {
+  position: absolute; inset-block: 0; inset-inline-start: 0; width: calc(var(--v) * 100%);
+  border-radius: 4px; background: color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.dark .db-vt-fill { background: color-mix(in srgb, var(--accent) 62%, transparent); }
+.db-vt-bar.is-total { height: 12px; border-radius: 6px; }
+.db-vt-bar.is-total .db-vt-fill { border-radius: 6px; background: var(--accent); }
+/* the threshold: each bar carries its piece, and the pieces meet into one line */
+.db-vt-th {
+  position: absolute; inset-block: -14px; inset-inline-start: calc(var(--th) * 1%); width: 2px; margin-inline-start: -1px;
+  border-radius: 1px; background: var(--label); opacity: 0.8;
+}
+.db-vt-bar.is-total .db-vt-th { inset-block: -10px -6px; }
+.db-vt-scale { position: relative; display: flex; justify-content: space-between; }
+.db-vt-thlabel {
+  position: absolute; top: 0; inset-inline-start: calc(var(--th) * 1%); transform: translateX(-50%);
+  font-weight: 600; color: var(--label);
+}
+[dir="rtl"] .db-vt-thlabel { transform: translateX(50%); }
+.db-vt-w { display: grid; justify-items: end; gap: 0; }
+.db-vt-math { font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--label-secondary); }
+.db-vt-eq { order: -1; color: var(--label); font-weight: 500; }
+.db-vt-c { text-align: end; font-weight: 600; color: var(--label); font-variant-numeric: tabular-nums; }
+.db-vt-row.is-missing .db-vt-c { color: var(--label-secondary); }
+.db-vt-row.is-total .db-vt-w { font-weight: 600; }
+.db-tipped { border-bottom: 1px dotted var(--separator-strong); border-radius: 2px; cursor: help; }
+.db-vt-mathline { margin: -4px 0 0; text-align: end; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+
+.db-gate { display: flex; align-items: flex-start; gap: 8px; margin: 0; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label); }
+.db-gate .icon { width: 15px; height: 15px; flex: none; margin-top: 1.5px; }
+.db-gate.is-ok .icon { color: var(--profit-ink); }
+.db-gate.is-fail .icon, .db-gate.is-missing .icon { color: var(--loss-ink); }
+.db-foot { margin: 0; max-width: 72ch; font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--label-secondary); text-wrap: pretty; }
+
+/* phones: the name gets the whole first line; the vote word leads the bar on the second */
+@container (max-width: 520px) {
+  .db-vt { grid-template-columns: max-content minmax(0, 1fr) max-content; }
+  .db-vt-row { row-gap: 6px; }
+  .db-vt-row > :nth-child(1) { grid-column: 1 / 3; grid-row: 1; }
+  .db-vt-row > :nth-child(5) { grid-column: 3; grid-row: 1; }
+  .db-vt-row > :nth-child(2) { grid-column: 1; grid-row: 2; }
+  .db-vt-row > :nth-child(3) { grid-column: 2 / 4; grid-row: 2; align-self: center; }
+  .db-vt-row > :nth-child(4) { display: none; }
+  .db-vt-th { inset-block: -4px; }
+  .db-vt-bar.is-total .db-vt-th { inset-block: -4px; }
+}
+
+/* ---- Risk check: the nine checks as one pipeline, in the order they ran --- */
+.db-rk-result { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.db-rk-from { font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.db-stopped {
+  display: flex; align-items: flex-start; gap: 8px; margin: 0; padding: 8px 10px; border-radius: 8px;
+  background: var(--loss-wash); color: var(--label); font-size: var(--fs-footnote); line-height: var(--lh-footnote); text-wrap: pretty;
+}
+.db-stopped .icon { width: 15px; height: 15px; flex: none; margin-top: 1.5px; color: var(--loss-ink); }
+.db-stopped b { color: var(--loss-ink); font-weight: 600; }
+
+.db-figs { display: grid; grid-template-columns: repeat(4, max-content); gap: 4px 28px; margin: 0; }
+.db-figs div { display: grid; gap: 1px; }
+.db-figs dt { font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--label-secondary); }
+.db-figs dd { margin: 0; font-size: var(--fs-callout); line-height: var(--lh-callout); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--label); }
+.db-binding { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 0; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label); }
+.db-binding > .icon { width: 14px; height: 14px; flex: none; color: var(--accent-ink); }
+.db-binding b { font-weight: 600; }
+.db-binding-src {
+  display: inline-flex; align-items: center; height: 20px; padding-inline: 7px; border-radius: var(--radius-full);
+  background: var(--accent-wash); color: var(--accent-ink); font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 600;
+}
+
+.db-steps { display: grid; margin: 0; padding: 10px 0 0; list-style: none; border-top: 0.5px solid var(--separator); }
+.db-step { position: relative; display: grid; grid-template-columns: 22px minmax(0, 1fr); column-gap: 10px; padding-bottom: 8px; }
+.db-step:last-child { padding-bottom: 0; }
+/* the connector to the next check; dotted where nothing ran */
+.db-step::before { content: ""; position: absolute; top: 25px; bottom: 3px; inset-inline-start: 10px; width: 2px; border-radius: 1px; background: var(--separator); }
+.db-step:last-child::before { display: none; }
+.db-step.is-fail::before, .db-step.is-not_run::before { width: 0; background: none; border-inline-start: 2px dotted var(--separator-strong); }
+.db-step-n {
+  width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%;
+  background: var(--fill-3); color: var(--label-secondary); font-size: var(--fs-caption); line-height: 1; font-weight: 600;
+}
+.db-step.is-pass .db-step-n { background: var(--profit-wash); color: var(--profit-ink); }
+.db-step.is-resize .db-step-n, .db-step.is-awaiting_owner .db-step-n { background: var(--accent-wash); color: var(--accent-ink); }
+.db-step.is-fail .db-step-n { background: var(--loss-wash); color: var(--loss-ink); }
+.db-step.is-not_run .db-step-n { background: transparent; border: 1.5px dashed var(--separator-strong); }
+.db-step-body { display: grid; gap: 1px; min-width: 0; padding-top: 2px; }
+.db-step-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; }
+.db-step-name { font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 600; color: var(--label); }
+.db-step-st { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 600; white-space: nowrap; }
+.db-step-st .icon { width: 12px; height: 12px; flex: none; stroke-width: 2.25; }
+.db-step.is-pass .db-step-st { color: var(--profit-ink); }
+.db-step.is-resize .db-step-st, .db-step.is-awaiting_owner .db-step-st { color: var(--accent-ink); }
+.db-step.is-fail .db-step-st { color: var(--loss-ink); }
+.db-step.is-not_run .db-step-st, .db-step.is-not_run .db-step-name { color: var(--label-secondary); }
+.db-step-why { font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); text-wrap: pretty; }
+.db-step.is-fail .db-step-why { color: var(--label); }
+:root:lang(ar) .db-step-why, :root:lang(ar) .db-step-name { line-height: 1.45; }
+.db-rk-foot { display: flex; align-items: center; gap: 6px; }
+.db-rk-foot .icon { width: 12px; height: 12px; flex: none; }
+
+@container (max-width: 480px) {
+  .db-figs { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 16px; }
+}
+
+[dir='rtl'] .db-card .icon-dir { transform: scaleX(-1); }
+.db-card .hv-kind { white-space: nowrap; }

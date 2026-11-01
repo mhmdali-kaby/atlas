@@ -1,0 +1,116 @@
+{
+  "ref": "Proposal, version {{v}}",
+  "refAria": "Open the proposal, version {{v}}",
+  "refPlain": "Proposal",
+  "refPlainAria": "Open the proposal",
+  "daKind": "Devil’s Advocate review",
+  "rerateKind": "Re-rated",
+  "rating": "{{n}} of 5: {{what}}",
+  "r": {
+    "1": "clean",
+    "2": "minor problems only",
+    "3": "one serious problem",
+    "4": "two or more serious problems",
+    "5": "should not trade"
+  },
+  "ratingWas": "Was {{n}} of 5",
+  "nowOk": "{{item}} now OK",
+  "ratingAria": "Risk rating {{n}} of 5: {{what}}",
+  "strongest": "Strongest objection",
+  "checklist": "Checklist",
+  "st": {
+    "ok": "OK",
+    "serious": "Serious",
+    "minor": "Minor"
+  },
+  "ci": {
+    "event_risk": "Event risk",
+    "crowding": "Crowding",
+    "history": "History",
+    "stop_quality": "Stop quality",
+    "chasing": "Chasing",
+    "correlation": "Correlation",
+    "liquidity": "Liquidity",
+    "priced_in": "Priced in",
+    "data_quality": "Data quality",
+    "overconfidence": "Overconfidence"
+  },
+  "fix": "What would change my view:",
+  "v": {
+    "take": "Take",
+    "change": "Change",
+    "skip": "Skip",
+    "changeApplied": "Change, fix applied",
+    "missing": "Skip (no vote)"
+  },
+  "conf": "{{p}} confident",
+  "voteAria": "Vote: {{vote}}, {{p}} confident",
+  "vt": {
+    "kind": "Vote summary",
+    "passed": "Passed",
+    "failed": "Didn’t pass",
+    "needs": "Needs {{th}}",
+    "voter": "Voter",
+    "vote": "Vote",
+    "counts": "Counts as, on a scale of 0 to 1",
+    "weight": "Weight",
+    "weightTip": "Confidence × 30-day reliability",
+    "adds": "Adds",
+    "total": "Score",
+    "gateOk": "Devil’s Advocate rated it {{r}} of 5, within the limit of {{max}}",
+    "gateFail": "Devil’s Advocate rated it {{r}} of 5, over the limit of {{max}}",
+    "gateMissing": "The Devil’s Advocate didn’t rate it, so it can’t pass",
+    "foot": "Take counts 1, a change with its fix applied 0.5, and a skip 0. Each vote is weighted by confidence × 30-day reliability, and a missing vote is a skip at confidence 0.5. A proposal passes at {{th}} or more, if the Devil’s Advocate rates it {{max}} or lower.",
+    "rowAria": "{{name}}: {{vote}}, weight {{w}}, adds {{c}}"
+  },
+  "rk": {
+    "kind": "Risk check",
+    "approved": "Approved",
+    "resized": "Resized",
+    "rejected": "Rejected",
+    "from": "from {{asked}}",
+    "binding": "{{cap}} set the size",
+    "capValue": "{{cap}} {{v}}",
+    "cap": {
+      "notional_by_risk": "Max loss per trade",
+      "max_position_pct": "Max position",
+      "max_usdt_per_trade": "Max per trade",
+      "max_new_exposure_per_day": "Max new exposure per day",
+      "max_share_per_instrument": "Max share in one instrument",
+      "strategist_suggestion": "The Strategist’s suggested size"
+    },
+    "src": {
+      "money": "Money limit",
+      "profile": "Risk profile",
+      "strategist": "Proposal"
+    },
+    "stopped": "Stopped at check {{n}}",
+    "noOrder": "No order goes to OKX.",
+    "size": "Size",
+    "contracts": "{{n}} contracts",
+    "notional": "Notional",
+    "leverage": "Leverage",
+    "margin": "Margin",
+    "checks": "The nine checks, in the order they ran",
+    "settings": "Settings version {{v}}",
+    "st": {
+      "pass": "Pass",
+      "resize": "Resized",
+      "fail": "Failed",
+      "not_run": "Not run",
+      "awaiting_owner": "Awaiting you"
+    },
+    "c": {
+      "1": "Environment and kill switch",
+      "2": "Instrument allowed",
+      "3": "Proposal valid",
+      "4": "Position size",
+      "5": "Portfolio",
+      "6": "Loss limits",
+      "7": "Liquidation safety",
+      "8": "Event blackout",
+      "9": "Autonomy"
+    },
+    "notRunWhy": "Not run: the checks stopped at {{n}}."
+  }
+}
