@@ -24,6 +24,8 @@ import type { WarroomMessage } from './api'
 import { discardMessage, isLocal, retryMessage, type LocalMessage } from './live'
 import { MessageActions, MessageMenu } from './MessageActions'
 import { Medallion, SystemMedallion } from './Medallion'
+import { readTechnicalSetup } from './cards/technicalSetup'
+import { TechnicalSetupCard } from './cards/TechnicalSetupCard'
 import { HistoryVerdictCard } from './HistoryVerdictCard'
 import { readHistoryVerdict, readRegimeTable, unmatchedOf } from './historian'
 import { NewsAlertCard } from './NewsAlertCard'
@@ -85,6 +87,16 @@ const CARDS: Partial<Record<string, (m: WarroomMessage, lang: Lang, ctx: CardCtx
         <>
           <AgentBody message={m} />
           <NewsBriefCard brief={brief} unmatched={unmatchedOf(m)} lang={lang} />
+        </>
+      )
+    }
+    // The Technical Analyst's setup (design v11 Phase 2 §7, ATL-135 card): its words above the card.
+    const setup = readTechnicalSetup(m.card)
+    if (setup) {
+      return (
+        <>
+          <AgentBody message={m} />
+          <TechnicalSetupCard setup={setup} lang={lang} />
         </>
       )
     }
