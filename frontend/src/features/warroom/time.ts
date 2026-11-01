@@ -98,3 +98,9 @@ export function formatDayShort(ts: string | number, lang: Lang): string {
 export function formatDateTime(ts: string | number, lang: Lang): string {
   return `${formatDate(ts, lang)}${lang === 'ar' ? '، ' : ', '}${formatTime(ts, lang)}`
 }
+
+/** "5:54": a countdown's minutes and seconds left, rounded up so 0:00 never shows while time remains. */
+export function mmss(ms: number): string {
+  const s = Math.max(0, Math.ceil(ms / 1000))
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+}
