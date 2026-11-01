@@ -493,6 +493,7 @@ bdi.fig, bdi.tok { white-space: nowrap; }
   box-shadow: var(--shadow-popover), 0 0 0 0.5px var(--hairline-color);
   animation: shell-pop-in var(--dur-base) var(--ease-settle);
 }
+.picker-label .slash-cmd { direction: ltr; unicode-bidi: isolate; }
 .picker-label { padding: 6px 10px 4px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); font-weight: 600; }
 .picker-item { display: flex; align-items: center; gap: 10px; width: 100%; padding: 5px 8px; border-radius: 8px; text-align: start; cursor: default; }
 .picker-item .pk-text { display: grid; min-width: 0; flex: 1; }

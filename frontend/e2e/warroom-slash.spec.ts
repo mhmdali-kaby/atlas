@@ -82,7 +82,24 @@ for (const lang of ['en', 'ar'] as const) {
       await input.fill('/foo')
       await input.press('Escape')
       await input.press('Enter')
-      await expect(page.getByTestId('wr-slash-help')).toContainText(t.slash.help.unknown.replace('<c>{{cmd}}</c>', '/foo'))
+      await expect(page.getByTestId('wr-slash-help')).toContainText(t.slash.help.unknown.replace('<c>{{cmd}}</c>', '\u2066/foo\u2069'))
+      // The typed command is an LTR-isolated run, so RTL never shows it as "foo/".
+      const cmd = page.getByTestId('wr-slash-help').locator('.picker-label bdi[dir="ltr"]')
+      await expect(cmd).toHaveCSS('direction', 'ltr')
+      await expect(cmd).toHaveCSS('unicode-bidi', 'isolate')
+      // Measure the glyphs: "/" must sit left of "f" in both directions (RTL once showed "foo/").
+      const xs = await cmd.evaluate((b) => {
+        const node = b.firstChild!
+        const text = node.textContent ?? ''
+        const at = (ch: string) => {
+          const r = document.createRange()
+          r.setStart(node, text.indexOf(ch))
+          r.setEnd(node, text.indexOf(ch) + 1)
+          return r.getBoundingClientRect().x
+        }
+        return { slash: at('/'), f: at('f') }
+      })
+      expect(xs.slash).toBeLessThan(xs.f)
       await page.screenshot({ path: `${SHOTS}/help-${dir}-${theme}.png`, animations: 'disabled' })
       expect(writes).toEqual([])
 

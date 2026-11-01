@@ -65,13 +65,17 @@ type SlashHelp = { kind: 'unknown'; typed: string } | { kind: 'usage'; name: Sla
 function SlashHelpPanel({ help }: { help: SlashHelp }) {
   const { t } = useTranslation('warroom')
   const usage = help.kind === 'usage' ? SLASH_COMMANDS.find((c) => c.name === help.name) : undefined
+  // The command is Latin inside an Arabic sentence: isolate it as LTR twice over, with the
+  // bdi element and with LRI…PDI marks in the text, so "/foo" never reads "foo/" in RTL.
+  const ltr = (s: string) => `\u2066${s}\u2069`
+  const run = <bdi dir="ltr" className="slash-cmd" />
   return (
     <div className="picker" role="status" data-testid="wr-slash-help">
       <p className="picker-label">
         {help.kind === 'unknown' ? (
-          <Trans t={t} i18nKey="slash.help.unknown" values={{ cmd: help.typed }} components={{ c: <bdi dir="ltr" /> }} />
+          <Trans t={t} i18nKey="slash.help.unknown" values={{ cmd: ltr(help.typed) }} components={{ c: run }} />
         ) : (
-          <Trans t={t} i18nKey="slash.help.usage" values={{ usage: usage?.label ?? '' }} components={{ c: <bdi dir="ltr" /> }} />
+          <Trans t={t} i18nKey="slash.help.usage" values={{ usage: ltr(usage?.label ?? '') }} components={{ c: run }} />
         )}
       </p>
       {SLASH_COMMANDS.map((c) => (

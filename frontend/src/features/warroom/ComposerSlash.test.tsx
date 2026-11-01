@@ -318,7 +318,7 @@ describe('Composer slash commands', () => {
     await typeAndSend('/foo')
 
     const help = await screen.findByTestId('wr-slash-help')
-    expect(help).toHaveTextContent(i18n.t('warroom:slash.help.unknown', { cmd: '/foo' }).replace(/<\/?c>/g, ''))
+    expect(help).toHaveTextContent(i18n.t('warroom:slash.help.unknown', { cmd: '\u2066/foo\u2069' }).replace(/<\/?c>/g, ''))
     expect(help).toHaveTextContent(i18n.t('warroom:slash.cmd.block'))
     expect(input().value).toBe('/foo')
     await new Promise((r) => setTimeout(r, 50))
@@ -330,7 +330,7 @@ describe('Composer slash commands', () => {
     renderWarRoom()
     await typeAndSend('/block XAU-USDT-SWAP')
 
-    expect(await screen.findByTestId('wr-slash-help')).toHaveTextContent('Type it as /block <instId> today.')
+    expect(await screen.findByTestId('wr-slash-help')).toHaveTextContent('Type it as \u2066/block <instId> today\u2069.')
     expect(writes(calls)).toEqual([])
   })
 
@@ -356,6 +356,19 @@ describe('Composer slash commands', () => {
     fakeBackend()
     renderWarRoom()
     await typeAndSend('/foo')
-    expect(await screen.findByTestId('wr-slash-help')).toHaveTextContent('ليس أمرًا')
+    const help = await screen.findByTestId('wr-slash-help')
+    expect(help).toHaveTextContent('ليس أمرًا')
+    const run = help.querySelector('.picker-label bdi[dir="ltr"]')
+    expect(run?.textContent).toBe('\u2066/foo\u2069')
+  })
+
+  it('isolates the usage line as LTR in Arabic', async () => {
+    await i18n.changeLanguage('ar')
+    fakeBackend()
+    renderWarRoom()
+    await typeAndSend('/block XAU-USDT-SWAP')
+    const help = await screen.findByTestId('wr-slash-help')
+    const run = help.querySelector('.picker-label bdi[dir="ltr"]')
+    expect(run?.textContent).toBe('\u2066/block <instId> today\u2069')
   })
 })
