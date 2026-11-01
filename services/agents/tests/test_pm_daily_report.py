@@ -20,7 +20,7 @@ import pytest
 from atlas_agents import testing as fake
 from atlas_agents.agents import portfolio_manager as hooks
 from atlas_agents.pm import daily_report as dr
-from atlas_agents.pm import manage
+from atlas_agents.pm import manage, postmortem
 from atlas_agents.registry import REGISTRY, discover_hooks
 from atlas_agents.supervisor import Supervisor
 from atlas_agents.tools.framework import ToolContext
@@ -169,7 +169,12 @@ def _wipe_runs(engine: Engine) -> None:
 
 
 @pytest.fixture
-def world(engine: Engine) -> Iterator[World]:
+def world(engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[World]:
+    # This world's closed trades would also get post-mortems (ATL-194, tested on their own).
+    async def no_post_mortems(host: Any) -> list[Any]:
+        return []
+
+    monkeypatch.setattr(postmortem, "tick", no_post_mortems)
     _wipe_runs(engine)
     manage.reset()
     tag = uuid.uuid4().hex[:6].upper()

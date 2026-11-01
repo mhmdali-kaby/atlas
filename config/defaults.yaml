@@ -265,6 +265,19 @@ portfolio_history:
   # Decimal places of R in the API and CSV.
   r_scale: 2
 
+# ATL-200, brief §16: GET /api/journal, /api/agents/scores and /api/agents/notebook (read-only).
+#   score_days: the windows ?days= accepts (Baghdad days ending today); score_days_default when absent.
+#   hit_rate_scale / brier_scale: decimal places of the window summary figures.
+journal_api:
+  per_page_default: 50
+  per_page_max: 200
+  max_tags: 20
+  score_days: [7, 30, 90]
+  score_days_default: 30
+  hit_rate_scale: 4
+  brier_scale: 6
+  notebook_max_notes: 500
+
 # ATL-174, brief §13 Performance: GET /api/portfolio/performance.
 portfolio_performance:
   ranges: ["1M", "3M", "YTD", "ALL"]
@@ -1225,6 +1238,35 @@ agents:
       atr_bars: 100
     news:
       latency_target_seconds: 90
+    # ATL-195, brief §7.4 Scoring: the Technical Analyst's TechnicalSetup cards of the day
+    # (atlas_agents.scorecards.technical). Each card is scored from its created_at (t0).
+    #   walk_bar: candles walked for trigger, stop and target (ambiguous bar = stop first).
+    #   atr_bar/atr_bars: tolerance unit, Wilder ATR(quant.atr_window) of these bars closed by t0.
+    #   level_tolerance_atr: a level is held while no walk_bar close crosses it by more than this.
+    #   outcome_hours: level-hold and "no setup" range window; trade_hours: trigger + resolution.
+    technical:
+      walk_bar: 15m
+      atr_bar: 1H
+      atr_bars: 100
+      level_tolerance_atr: "0.25"
+      outcome_hours: 24
+      trade_hours: 24
+    # ATL-195, brief §7.5 Scoring: the Derivatives & Sentiment Analyst's PositioningReport cards
+    # (atlas_agents.scorecards.derivatives), each from its created_at (t0).
+    #   supports_hours: supports_direction is checked against the sign of the price_bar
+    #     close-to-close move over this many hours (zero move = miss).
+    #   squeeze_call_min: a squeeze call is squeeze_risk >= this; it hits when price moves
+    #     squeeze_move_atr x ATR(atr_bar) in the squeeze direction (high/low of price_bar bars)
+    #     within squeeze_hours. The Brier score covers every stated squeeze probability.
+    derivatives:
+      price_bar: 1H
+      max_price_lag_minutes: 120
+      atr_bar: 1D
+      atr_bars: 100
+      supports_hours: 24
+      squeeze_call_min: "0.6"
+      squeeze_move_atr: 2
+      squeeze_hours: 48
     # ATL-196, brief §7.6/§7.7 Scoring (atlas_agents.scorecards.paper/strategist/devils_advocate).
     #   paper.statuses: an entry proposal's latest version in one of these, never filled by the
     #     Executor, is simulated as a paper trade from that version's created_at.
@@ -1780,3 +1822,32 @@ agents:
       closing_rule_grace_minutes: 10
       note_max_chars: 200
       output_retries: 1
+    # ATL-194, brief §7.8 POST-MORTEM (atlas_agents.pm.postmortem): one journal entry and one War Room
+    # post_mortem card per closed Atlas position.
+    #   every_seconds: how often the hook looks for closes with no entry yet.
+    #   deadline_minutes: the brief's "within 15 min of close"; data.on_time records whether it was met.
+    #   lookback_hours: closes older than this are never post-mortemed (a first run does not backfill).
+    #   fill_grace_minutes: fills this long before the open / after the close still belong to the trade.
+    #   candle_bars: MFE/MAE come from the first of these bars with candles over the holding window.
+    #   scratch_r: |realised R| below this is a scratch, not a win or a loss.
+    #   lesson_max_chars / prose_max_chars: the model's lesson and its right/wrong paragraphs are cut here.
+    #   lesson_prefixes: a lesson is "rule-style" when it starts with one of these words (case-insensitive).
+    #   lesson_attempts: model runs per entry (the first plus retries on later ticks) before the
+    #     lesson is left pending for good.
+    #   output_retries: follow-ups in one run when the answer block is missing or invalid.
+    #   setup_types / regimes / catalyst_types: the tag vocabularies the model must pick from.
+    postmortem:
+      every_seconds: 60
+      deadline_minutes: 15
+      lookback_hours: 48
+      fill_grace_minutes: 5
+      candle_bars: ["1m", "1H"]
+      scratch_r: "0.1"
+      lesson_max_chars: 300
+      prose_max_chars: 800
+      lesson_prefixes: [when, if, never, always, only, do, don't, avoid, before, after, prefer, require, wait, size, cut, keep, move, close, skip, unless]
+      lesson_attempts: 3
+      output_retries: 1
+      setup_types: [breakout, pullback_to_support, breakdown, rally_to_resistance, range_fade, squeeze_expansion, reversal_divergence, other, unknown]
+      regimes: [trend, range, high_vol, low_vol, unknown]
+      catalyst_types: [none, earnings, guidance, macro_release, central_bank, regulation, hack_exploit, listing, delisting, etf_flow, m_and_a, lawsuit, product, partnership, token_unlock, geopolitics, supply_shock, funding, other, unknown]

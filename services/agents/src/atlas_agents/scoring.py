@@ -36,7 +36,7 @@ from __future__ import annotations
 
 import logging
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from decimal import Decimal
@@ -119,24 +119,26 @@ def latency_stats(latencies: Sequence[float], target_seconds: float) -> dict[str
 # -- reads ------------------------------------------------------------------------------------------
 
 
-def _close_at(session: Session, env: str, inst_id: str, at: datetime) -> tuple[float | None, str | None]:
-    cfg = scoring_config()["scout"]
-    bar = str(cfg["price_bar"])
-    lag = timedelta(minutes=int(cfg["max_price_lag_minutes"]))
-    candles = load_candles(session, inst_id, bar, at - lag - timedelta(days=1), at, as_of=at, env=env)
+def close_at(
+    session: Session, env: str, inst_id: str, at: datetime, bar: str, max_lag: timedelta
+) -> tuple[float | None, str | None]:
+    """Close of the last ``bar`` candle closed by ``at``, refused when it closed more than
+    ``max_lag`` earlier."""
+    candles = load_candles(session, inst_id, bar, at - max_lag - timedelta(days=1), at, as_of=at, env=env)
     df = candles.df
     if df.empty:
         return None, f"no {bar} candle closed by {at.isoformat()}"
     last_ts = pd.Timestamp(df.index[-1]).to_pydatetime()
-    if last_ts + bar_delta(bar) < at - lag:
-        return None, f"last {bar} candle before {at.isoformat()} closed more than {lag} earlier"
+    if last_ts + bar_delta(bar) < at - max_lag:
+        return None, f"last {bar} candle before {at.isoformat()} closed more than {max_lag} earlier"
     return float(df["c"].iloc[-1]), None
 
 
-def _atr_at(session: Session, env: str, inst_id: str, at: datetime) -> tuple[float | None, str | None]:
-    cfg = scoring_config()["scout"]
-    bar = str(cfg["atr_bar"])
-    start = at - bar_delta(bar) * int(cfg["atr_bars"])
+def atr_at(
+    session: Session, env: str, inst_id: str, at: datetime, bar: str, bars: int
+) -> tuple[float | None, str | None]:
+    """Wilder ATR(quant.atr_window) of the last ``bars`` ``bar`` candles closed by ``at``."""
+    start = at - bar_delta(bar) * bars
     df = load_candles(session, inst_id, bar, start, at, as_of=at, env=env).df
     if df.empty:
         return None, f"no {bar} candles closed by {at.isoformat()}"
@@ -144,6 +146,17 @@ def _atr_at(session: Session, env: str, inst_id: str, at: datetime) -> tuple[flo
     if atr is None or not atr > 0:
         return None, f"no ATR on {len(df)} {bar} candles"
     return float(atr), None
+
+
+def _close_at(session: Session, env: str, inst_id: str, at: datetime) -> tuple[float | None, str | None]:
+    cfg = scoring_config()["scout"]
+    lag = timedelta(minutes=int(cfg["max_price_lag_minutes"]))
+    return close_at(session, env, inst_id, at, str(cfg["price_bar"]), lag)
+
+
+def _atr_at(session: Session, env: str, inst_id: str, at: datetime) -> tuple[float | None, str | None]:
+    cfg = scoring_config()["scout"]
+    return atr_at(session, env, inst_id, at, str(cfg["atr_bar"]), int(cfg["atr_bars"]))
 
 
 def instrument_move(
@@ -306,6 +319,11 @@ _ALERT_REPLIES = text(
 )
 
 
+def day_bounds(day: date) -> tuple[datetime, datetime]:
+    """[start, end) of Baghdad ``day`` as aware datetimes."""
+    return _day_bounds(day)
+
+
 def _day_bounds(day: date) -> tuple[datetime, datetime]:
     zone = ZoneInfo(str(DEFAULTS["timezone"]["display"]))
     start = datetime(day.year, day.month, day.day, tzinfo=zone)
@@ -374,7 +392,18 @@ def score_news_day(ctx: ToolContext, day: date) -> dict[str, Any] | None:
     return data
 
 
-SCORERS: Final = {SCOUT: score_scout_day, NEWS: score_news_day}
+Scorer = Callable[[ToolContext, date], dict[str, Any] | None]
+
+SCORERS: Final[dict[str, Scorer]] = {SCOUT: score_scout_day, NEWS: score_news_day}
+"""Scorer per agent slug. Later agents' scorers live in ``atlas_agents.scorecards.<agent>`` and are
+added with :func:`register_scorer` from ``atlas_agents.agents.scores``."""
+
+
+def register_scorer(agent: str, scorer: Scorer) -> None:
+    existing = SCORERS.get(agent)
+    if existing is not None and existing is not scorer:
+        raise ValueError(f"agent {agent} already has a scorer")
+    SCORERS[agent] = scorer
 
 
 def score_days(ctx: ToolContext, agent: str, today: date | None = None) -> dict[date, dict[str, Any] | None]:
@@ -399,8 +428,13 @@ __all__ = [
     "SCORERS",
     "SCOUT",
     "PickMove",
+    "Scorer",
+    "atr_at",
+    "close_at",
+    "day_bounds",
     "instrument_move",
     "latency_stats",
+    "register_scorer",
     "score_days",
     "score_news_day",
     "score_scout_day",
