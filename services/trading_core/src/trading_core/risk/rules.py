@@ -115,6 +115,7 @@ class EngineSettings:
     event_blackout_minutes: int
     autonomy_level: int
     bot_capital_cap_usdt: Decimal | None = None  # None = no cap (decision #250)
+    autonomy_ask_above_usd: Decimal = Decimal(1000)  # level 3 asks the owner above this (#254)
 
     @classmethod
     def from_settings_data(cls, data: Mapping[str, Any]) -> EngineSettings:
@@ -159,7 +160,17 @@ class EngineSettings:
                 get("autonomy_level", DEFAULTS["autonomy"], "default_level"), "autonomy_level"
             ),
             bot_capital_cap_usdt=_cap(get("bot_capital_cap_usdt", DEFAULTS["money_limits"])),
+            autonomy_ask_above_usd=_ask_above(
+                get("autonomy_ask_above_usd", DEFAULTS["autonomy"], "ask_above_usd")
+            ),
         )
+
+
+def _ask_above(raw: Any) -> Decimal:
+    """autonomy_ask_above_usd: a decimal >= 0. A negative value never fails open: it is read as 0,
+    so level 3 asks the owner for every trade with a positive notional."""
+    value = _dec(raw, "autonomy_ask_above_usd")
+    return value if value > 0 else Decimal(0)
 
 
 def _cap(raw: Any) -> Decimal | None:
@@ -633,25 +644,90 @@ def check_event_blackout(
 # --- Check 9: autonomy -------------------------------------------------------------------------
 
 
-def decide_autonomy(level: int, max_enabled_level: int) -> tuple[CheckResult, Decision]:
-    """1 advise_only, 2 awaiting_owner, 3-4 send_now only when enabled (Phase 3); a level above
-    max_enabled_level falls back to awaiting_owner so nothing is sent without the owner."""
+def decide_autonomy(
+    level: int,
+    max_enabled_level: int,
+    *,
+    notional_usd: Decimal | None,
+    ask_above_usd: Decimal,
+    risk_reducing: bool = False,
+    halted: bool = False,
+) -> tuple[CheckResult, Decision]:
+    """Check 9 (brief §14.6, decision #254).
+
+    1 advise_only; 2 awaiting_owner; 3 send_now when ``notional_usd`` <= ``ask_above_usd`` (or the
+    action is risk-reducing: a close or partial close), else awaiting_owner with note
+    ``above_ask_threshold``; 4 send_now. A level above ``max_enabled_level`` falls back to
+    awaiting_owner. ``halted`` (paused trading or an active breaker) never yields send_now: entries
+    already reject at check 1, and a risk-reducing position action that passed check 1 while halted
+    still waits for the owner, so autonomy never acts on its own past a pause or a breaker."""
     name = "autonomy"
-    values: dict[str, Any] = {"autonomy_level": level, "max_enabled_level": max_enabled_level}
+    values: dict[str, Any] = {
+        "autonomy_level": level,
+        "max_enabled_level": max_enabled_level,
+        "notional_usd": notional_usd,
+        "ask_above_usd": ask_above_usd,
+    }
     if level <= 1:
         return CheckResult(name, True, None, "Advise only: the proposal is not sent.", values), "advise_only"
-    if level >= 3 and level <= max_enabled_level:
-        return CheckResult(name, True, None, f"Autonomy {level}: sent within limits.", values), "send_now"
-    if level >= 3:
+    if level == 2:
+        return CheckResult(name, True, None, "The owner approves each trade.", values), "awaiting_owner"
+    if level > max_enabled_level:
         values["note"] = "level_not_enabled"
         return (
             CheckResult(
                 name,
                 True,
                 None,
-                f"Autonomy {level} is not enabled yet (max {max_enabled_level}); the owner approves.",
+                f"Autonomy {level} is not enabled (max {max_enabled_level}); the owner approves.",
                 values,
             ),
             "awaiting_owner",
         )
-    return CheckResult(name, True, None, "The owner approves each trade.", values), "awaiting_owner"
+    if halted:
+        values["note"] = "halted"
+        return (
+            CheckResult(
+                name, True, None, "Trading is halted, so autonomy does not act; the owner approves.", values
+            ),
+            "awaiting_owner",
+        )
+    if level >= 4:
+        return CheckResult(name, True, None, "Autonomy 4: sent within limits.", values), "send_now"
+    if risk_reducing:
+        values["note"] = "risk_reducing"
+        return (
+            CheckResult(name, True, None, "Autonomy 3: a close reduces risk, so it is sent.", values),
+            "send_now",
+        )
+    if notional_usd is None:
+        values["note"] = "notional_unknown"
+        return (
+            CheckResult(
+                name, True, None, "Autonomy 3: the notional is unknown, so the owner approves.", values
+            ),
+            "awaiting_owner",
+        )
+    if notional_usd <= ask_above_usd:
+        return (
+            CheckResult(
+                name,
+                True,
+                None,
+                f"Autonomy 3: {notional_usd} USD is within the {ask_above_usd} USD ask-above amount; sent.",
+                values,
+            ),
+            "send_now",
+        )
+    values["note"] = "above_ask_threshold"
+    return (
+        CheckResult(
+            name,
+            True,
+            None,
+            f"Autonomy 3: {notional_usd} USD is above the {ask_above_usd} USD ask-above amount; "
+            "the owner approves.",
+            values,
+        ),
+        "awaiting_owner",
+    )

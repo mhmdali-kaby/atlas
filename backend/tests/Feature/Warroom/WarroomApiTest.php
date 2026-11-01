@@ -40,7 +40,7 @@ function atl38Message(WarroomThread $thread, CarbonImmutable $at, string $conten
 function atl38Envelopes(): array
 {
     /** @var list<array{0: string, 1: list<string>}> $entries */
-    $entries = Redis::connection('events')->command('executeRaw', [['XRANGE', 'atlas.warroom', '-', '+']]);
+    $entries = Redis::connection('events')->command('executeRaw', [['XRANGE', EventBus::streamKey('atlas.warroom'), '-', '+']]);
 
     return array_map(
         fn (array $entry): array => json_decode($entry[1][1], true, flags: JSON_THROW_ON_ERROR),
@@ -49,7 +49,7 @@ function atl38Envelopes(): array
 }
 
 beforeEach(function (): void {
-    Redis::connection('events')->command('executeRaw', [['DEL', 'atlas.warroom']]);
+    Redis::connection('events')->command('executeRaw', [['DEL', EventBus::streamKey('atlas.warroom')]]);
     $this->user = User::factory()->create(['name' => 'Mhmd']);
     $this->actingAs($this->user, 'web');
     $this->thread = atl38Thread();

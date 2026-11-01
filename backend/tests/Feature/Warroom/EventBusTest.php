@@ -4,14 +4,16 @@ declare(strict_types=1);
 
 use App\Support\Events\EventBus;
 use Illuminate\Support\Facades\Redis;
+use Tests\Support\TestRedis;
 
 /**
+ * @param  string  $key  the stream's physical key (EventBus::streamKey()), not the logical name
  * @return list<array{id: string, fields: array<string, string>}>
  */
-function streamEntries(string $stream): array
+function streamEntries(string $key): array
 {
     /** @var list<array{0: string, 1: list<string>}> $entries */
-    $entries = Redis::connection('events')->command('executeRaw', [['XRANGE', $stream, '-', '+']]);
+    $entries = Redis::connection('events')->command('executeRaw', [['XRANGE', $key, '-', '+']]);
 
     $out = [];
     foreach ($entries as [$id, $fields]) {
@@ -26,7 +28,7 @@ function streamEntries(string $stream): array
 }
 
 beforeEach(function (): void {
-    Redis::connection('events')->command('executeRaw', [['DEL', 'atlas.warroom']]);
+    Redis::connection('events')->command('executeRaw', [['DEL', EventBus::streamKey('atlas.warroom')]]);
 });
 
 it('publishes one envelope entry on atlas.warroom', function (): void {
@@ -34,7 +36,7 @@ it('publishes one envelope entry on atlas.warroom', function (): void {
         'atlas.warroom', 'warroom.message', 'demo', 'human:owner', ['content_md' => 'hello', 'n' => 1.0], 'cycle-2026-10-29',
     );
 
-    $entries = streamEntries('atlas.warroom');
+    $entries = streamEntries(EventBus::streamKey('atlas.warroom'));
     expect($entries)->toHaveCount(1)
         ->and(array_keys($entries[0]['fields']))->toBe([EventBus::FIELD]);
 
@@ -57,7 +59,7 @@ it('trims the stream to about the configured maximum length', function (): void 
         $bus->publish('atlas.warroom', 'warroom.message', 'demo', 'test', ['i' => $i]);
     }
 
-    $length = Redis::connection('events')->command('executeRaw', [['XLEN', 'atlas.warroom']]);
+    $length = Redis::connection('events')->command('executeRaw', [['XLEN', EventBus::streamKey('atlas.warroom')]]);
     // MAXLEN ~ trims whole macro-nodes (100 entries by default), so the stream stays well under 400.
     expect($length)->toBeLessThan(400)->toBeGreaterThanOrEqual(10);
 });
@@ -65,3 +67,26 @@ it('trims the stream to about the configured maximum length', function (): void 
 it('refuses a stream outside the seven in the brief', function (): void {
     app(EventBus::class)->publish('atlas.nope', 'warroom.message', 'demo', 'test', []);
 })->throws(InvalidArgumentException::class, 'Unknown event stream [atlas.nope].');
+
+/**
+ * ATL-211: under the test bootstrap, every checkout gets its own Redis key prefix
+ * (`test_<8 hex>:`), the same 8 hex as its Postgres test database (#252). EventBus must write
+ * to that prefixed key, not the plain `atlas.warroom` every other checkout also shares.
+ */
+it('publishes to this checkout\'s prefixed stream key, not the plain atlas.warroom', function (): void {
+    Redis::connection('events')->command('executeRaw', [['DEL', EventBus::streamKey('atlas.warroom')]]);
+
+    app(EventBus::class)->publish('atlas.warroom', 'warroom.message', 'demo', 'test', []);
+
+    $prefix = TestRedis::prefix();
+    expect(EventBus::streamKey('atlas.warroom'))->toBe($prefix.'atlas.warroom')
+        ->and(Redis::connection('events')->command('executeRaw', [['XLEN', EventBus::streamKey('atlas.warroom')]]))->toBe(1);
+
+    // The `test_<8hex>:` shape only holds for the derived prefix. REDIS_TEST_PREFIX (a documented
+    // override, decision #252 criterion 2) replaces it with whatever value was exported, so that
+    // shape is only asserted when no override is in effect.
+    $override = $_SERVER[TestRedis::OVERRIDE_VAR] ?? $_ENV[TestRedis::OVERRIDE_VAR] ?? getenv(TestRedis::OVERRIDE_VAR);
+    if (! is_string($override) || $override === '') {
+        expect($prefix)->toMatch('/^test_[0-9a-f]{8}:$/');
+    }
+});

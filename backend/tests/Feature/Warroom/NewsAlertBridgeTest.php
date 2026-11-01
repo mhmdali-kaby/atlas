@@ -34,7 +34,7 @@ function atl65Envelope(array $payload = [], array $overrides = []): array
 function atl65Publish(array $envelope): void
 {
     Redis::connection('events')->command('executeRaw', [[
-        'XADD', 'atlas.warroom', '*', EventBus::FIELD, json_encode($envelope, JSON_THROW_ON_ERROR),
+        'XADD', EventBus::streamKey('atlas.warroom'), '*', EventBus::FIELD, json_encode($envelope, JSON_THROW_ON_ERROR),
     ]]);
 }
 
@@ -47,8 +47,8 @@ function atl65Bridge(): Bridge
 }
 
 beforeEach(function (): void {
-    foreach (EventBus::STREAMS as $stream) {
-        Redis::connection('events')->command('executeRaw', [['DEL', $stream]]);
+    foreach (EventBus::streamKeys() as $key) {
+        Redis::connection('events')->command('executeRaw', [['DEL', $key]]);
     }
     $this->seed(WarroomThreadSeeder::class);
     $this->broadcasts = RecordingBroadcaster::install();

@@ -50,6 +50,8 @@ final class SettingsSchema
         'min_expected_r' => ['decimal', '0', '20', true],
         'max_consecutive_losses' => ['integer', 1, 50, false],
         'autonomy_level' => ['integer', 1, 4, false],
+        // ATL-212, decision #254: autonomy 3 sends up to this notional (USD) and asks above it.
+        'autonomy_ask_above_usd' => ['decimal', '0', '1000000000000', false],
         'max_instruments_per_day' => ['integer', 1, 10, false],
         'max_spread_bps' => ['decimal', '0', '10000', true],
         'min_24h_volume_usd_crypto_perp' => ['decimal', '0', '1000000000000', false],
@@ -372,6 +374,7 @@ final class SettingsSchema
             'risk_profile' => $profile,
             ...self::preset($profile),
             'autonomy_level' => config('atlas_defaults.autonomy.default_level'),
+            'autonomy_ask_above_usd' => config('atlas_defaults.autonomy.ask_above_usd'),
             'max_instruments_per_day' => config('atlas_defaults.markets.max_instruments_per_day'),
             'max_spread_bps' => config('atlas_defaults.markets.max_spread_bps'),
             'min_24h_volume_usd_crypto_perp' => config('atlas_defaults.markets.min_24h_volume_usd.crypto_perp'),

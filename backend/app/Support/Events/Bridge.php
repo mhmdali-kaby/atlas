@@ -34,13 +34,14 @@ final class Bridge
 
     /**
      * Groups start at `0` on atlas.warroom (anything published before the first bridge run is still
-     * persisted) and at `$` elsewhere (stale account/system broadcasts are worthless).
+     * persisted) and at `$` elsewhere (stale account/system broadcasts are worthless). Groups are
+     * created on the physical (ATL-211 prefixed-under-tests) key of each stream.
      */
     public function ensureGroups(): void
     {
         $starts = [];
         foreach (EventBus::STREAMS as $stream) {
-            $starts[$stream] = $stream === 'atlas.warroom' ? '0' : '$';
+            $starts[EventBus::streamKey($stream)] = $stream === 'atlas.warroom' ? '0' : '$';
         }
         $this->reader->ensureGroup(self::GROUP, $starts);
     }
@@ -82,6 +83,8 @@ final class Bridge
 
     /**
      * Process every pending entry of the group on every stream (claimed for `$consumer`).
+     * Reads and acks on each stream's physical (ATL-211 prefixed-under-tests) key; `process()`
+     * always sees the logical stream name, which is what BridgeEventHandler expects.
      *
      * @return int entries handled
      */
@@ -89,12 +92,13 @@ final class Bridge
     {
         $handled = 0;
         foreach (EventBus::STREAMS as $stream) {
+            $key = EventBus::streamKey($stream);
             $cursor = '0-0';
             do {
-                $page = $this->reader->claimPending($stream, self::GROUP, $consumer, 0, $cursor, self::BATCH);
+                $page = $this->reader->claimPending($key, self::GROUP, $consumer, 0, $cursor, self::BATCH);
                 foreach ($page['deleted'] as $id) {
                     // Trimmed from the stream while pending: nothing left to process.
-                    $this->reader->ack($stream, self::GROUP, $id);
+                    $this->reader->ack($key, self::GROUP, $id);
                 }
                 foreach ($page['entries'] as $entry) {
                     if ($this->stopping) {
@@ -112,20 +116,21 @@ final class Bridge
     }
 
     /**
-     * One XREADGROUP of new entries across all streams.
+     * One XREADGROUP of new entries across all streams (their physical, ATL-211 prefixed-under-
+     * tests keys). Each entry's stream is translated back to its logical name before processing.
      *
      * @return int entries handled
      */
     public function readOnce(string $consumer, int $blockMs): int
     {
-        $entries = $this->reader->readNew(self::GROUP, $consumer, EventBus::STREAMS, self::BATCH, $blockMs);
+        $entries = $this->reader->readNew(self::GROUP, $consumer, EventBus::streamKeys(), self::BATCH, $blockMs);
         $handled = 0;
         foreach ($entries as $entry) {
             // Entries read but not handled stay pending and are drained on the next start.
             if ($this->stopping) {
                 break;
             }
-            $this->process($entry['stream'], $entry['id'], $entry['envelope']);
+            $this->process(EventBus::logicalStream($entry['stream']), $entry['id'], $entry['envelope']);
             $handled++;
         }
 
@@ -144,6 +149,6 @@ final class Bridge
             ]);
         }
 
-        $this->reader->ack($stream, self::GROUP, $id);
+        $this->reader->ack(EventBus::streamKey($stream), self::GROUP, $id);
     }
 }

@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Redis;
 function settingsChangedEvents(string $settingsId): array
 {
     /** @var list<array{0: string, 1: list<string>}> $entries */
-    $entries = Redis::connection('events')->command('executeRaw', [['XRANGE', 'atlas.system', '-', '+']]);
+    $entries = Redis::connection('events')->command('executeRaw', [['XRANGE', EventBus::streamKey('atlas.system'), '-', '+']]);
 
     $found = [];
     foreach ($entries as [, $fields]) {
@@ -192,26 +192,21 @@ it('accepts the range boundaries', function (): void {
     ]])->assertOk()->assertJsonPath('data.version', 3);
 });
 
-it('exposes the autonomy phase gate and refuses autonomy 3-4 above it, for demo and live', function (string $env): void {
+it('exposes the autonomy gate at 4 and accepts every level 1-4, for demo and live', function (string $env): void {
     $this->getJson("/api/settings?env={$env}")
         ->assertOk()
-        ->assertJsonPath('data.max_enabled_autonomy_level', 2);
+        ->assertJsonPath('data.max_enabled_autonomy_level', 4);
 
-    $this->patchJson('/api/settings', ['env' => $env, 'version' => 1, 'changes' => ['autonomy_level' => 3]])
+    foreach ([3, 4, 1, 2] as $i => $level) {
+        $this->patchJson('/api/settings', ['env' => $env, 'version' => $i + 1, 'changes' => ['autonomy_level' => $level]])
+            ->assertOk()
+            ->assertJsonPath('data.settings.autonomy_level', $level);
+    }
+    $this->patchJson('/api/settings', ['env' => $env, 'version' => 5, 'changes' => ['autonomy_level' => 5]])
         ->assertUnprocessable()
         ->assertJsonValidationErrors('changes.autonomy_level');
-    $this->patchJson('/api/settings', ['env' => $env, 'version' => 1, 'changes' => ['autonomy_level' => 4]])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors('changes.autonomy_level');
 
-    $this->patchJson('/api/settings', ['env' => $env, 'version' => 1, 'changes' => ['autonomy_level' => 1]])
-        ->assertOk()
-        ->assertJsonPath('data.settings.autonomy_level', 1);
-    $this->patchJson('/api/settings', ['env' => $env, 'version' => 2, 'changes' => ['autonomy_level' => 2]])
-        ->assertOk()
-        ->assertJsonPath('data.settings.autonomy_level', 2);
-
-    expect(Setting::query()->where('env', $env)->value('version'))->toBe(3);
+    expect(Setting::query()->where('env', $env)->value('version'))->toBe(5);
 })->with(['demo', 'live']);
 
 it('refuses unknown fields, an empty change set and a missing version', function (): void {
