@@ -3,6 +3,7 @@ import { ArrowLeft } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatFixed, type Lang } from '../../../lib/format'
 import { fillSlots, slot } from '../slots'
+import { formatTime } from '../time'
 import { rText } from './rText'
 import './ladder.css'
 
@@ -25,6 +26,12 @@ export interface LadderTarget {
   pct?: string | null
 }
 
+/** A price that is not "now": the price as of some earlier instant, labelled with that time. */
+export interface LadderPriceAt {
+  price: string
+  at: string
+}
+
 export interface LadderProps {
   side: 'long' | 'short'
   entry: [string, string]
@@ -32,8 +39,10 @@ export interface LadderProps {
   /** The stop the trade opened with, which defines 1R (defaults to `stop`). */
   riskStop?: string
   targets: LadderTarget[]
-  /** Price now. */
+  /** Price now; always labelled "Now" (ld.now). Never the analysis-time price. */
   mark?: string | null
+  /** The price as of analysis time (e.g. the card's data_as_of), labelled with that time, never "Now". */
+  priceAt?: LadderPriceAt | null
   /** Estimated liquidation price; shown as a caption under the rail when it lies beyond the stop. */
   liq?: string | null
   decimals: number
@@ -94,7 +103,7 @@ function fit(fig: HTMLElement) {
   }
 }
 
-export function Ladder({ side, entry, stop, riskStop, targets, mark, liq, decimals, compact = false, lang }: LadderProps) {
+export function Ladder({ side, entry, stop, riskStop, targets, mark, priceAt, liq, decimals, compact = false, lang }: LadderProps) {
   const { t } = useTranslation('warroom')
   const ref = useRef<HTMLElement>(null)
 
@@ -124,7 +133,7 @@ export function Ladder({ side, entry, stop, riskStop, targets, mark, liq, decima
   const R = (p: string) => ((side === 'short' ? refPx - Number(p) : Number(p) - refPx) / unit)
   const rs = R(stop)
   const tR = targets.map((x) => R(x.price))
-  const pts = [rs, -1, ...tR, ...(mark ? [R(mark)] : [])]
+  const pts = [rs, -1, ...tR, ...(mark ? [R(mark)] : []), ...(priceAt ? [R(priceAt.price)] : [])]
   const lo = Math.min(...pts) - 0.3
   const hi = Math.max(...pts) + 0.3
   const X = (r: number) => ((r - lo) / (hi - lo)) * 100
@@ -178,6 +187,43 @@ export function Ladder({ side, entry, stop, riskStop, targets, mark, liq, decima
     }
   }
 
+  // The price at analysis time: same placement rule as the price now, but a hollow dot and its
+  // own time label (ld.asOf), never ld.now. Mutually exclusive with `mark` in every known caller.
+  let then: ReactNode = null
+  let thenInline: ReactNode = null
+  if (priceAt) {
+    const rt = R(priceAt.price)
+    const xt = X(rt)
+    const gap = compact ? 22 : 17
+    const nearEntry = Math.abs(xt - xe) < gap
+    const belowFree = [xs, ...tR.map(X)].every((x) => Math.abs(x - xt) >= gap)
+    const where = !nearEntry ? 'is-above' : belowFree ? 'is-below' : ''
+    const atLabel = fillSlots(t('ld.asOf', { time: slot('time') }), { time: <Isl>{formatTime(priceAt.at, lang)}</Isl> })
+    then = <i className="ladder-mark is-then" style={pos(xt)} />
+    if (where) {
+      then = (
+        <>
+          {then}
+          <span className={`ladder-label ${where} is-then ${edge(xt)}`} style={pos(xt)} data-testid="ld-at">
+            <span className="ladder-k">{atLabel}</span>
+            <Isl className="num ladder-v">{P(priceAt.price)}</Isl>
+            {where === 'is-below' && !compact && (
+              <span className="ladder-s">
+                <Isl>{rText(rt)}</Isl>
+              </span>
+            )}
+          </span>
+        </>
+      )
+    } else {
+      thenInline = (
+        <span className="ladder-nowline" data-testid="ld-at">
+          <span>{atLabel}</span> <Isl className="num ladder-v">{P(priceAt.price)}</Isl> <Isl>{rText(rt)}</Isl>
+        </span>
+      )
+    }
+  }
+
   const aria =
     t('ld.aria', {
       side: t(side === 'short' ? 'ld.short' : 'ld.long'),
@@ -186,6 +232,7 @@ export function Ladder({ side, entry, stop, riskStop, targets, mark, liq, decima
       targets: targets.map((x, i) => t('ld.tgt', { n: i + 1, price: P(x.price), r: targetR(x, i) })).join(', '),
     }) +
     (mark ? t('ld.ariaNow', { now: P(mark), r: rText(R(mark)) }) : '') +
+    (priceAt ? t('ld.ariaAt', { time: formatTime(priceAt.at, lang), price: P(priceAt.price), r: rText(R(priceAt.price)) }) : '') +
     (liq && R(liq) < lo ? t('ld.ariaLiq', { liq: P(liq) }) : '')
 
   return (
@@ -216,10 +263,12 @@ export function Ladder({ side, entry, stop, riskStop, targets, mark, liq, decima
           ]
         })}
         {now}
+        {then}
         <span className={`ladder-label is-above is-entry ${edge(xe)}`} style={pos(xe)} data-testid="ld-entry">
           <span className="ladder-k">{t('ld.entry')}</span>
           <Isl className="num ladder-v">{entryText}</Isl>
           {nowInline}
+          {thenInline}
         </span>
       </div>
       {liq && R(liq) < lo && (
