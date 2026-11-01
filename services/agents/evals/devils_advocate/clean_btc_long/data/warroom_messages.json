@@ -1,0 +1,22 @@
+[
+ {
+  "id": "ce02e1da-536e-54ca-bbe3-cd7b558088b1",
+  "env": "demo",
+  "thread_id": "9cbfc144-2e66-5f67-bc08-74c2df03fb5f",
+  "event_id": "d86a1c0d-ba60-5bdb-a871-e864d7a4262f",
+  "author_type": "agent",
+  "author": "strategist",
+  "kind": "proposal",
+  "content_md": "**BUY BTC-USDT-SWAP** v1",
+  "card": {
+   "type": "proposal",
+   "proposal_id": "3d750bde-e8dc-5513-9c73-9e9e3b9c9276",
+   "inst_id": "BTC-USDT-SWAP",
+   "version": 1
+  },
+  "reply_to": null,
+  "mentions": [],
+  "created_at": "2026-04-21T08:58:00Z",
+  "updated_at": "2026-04-21T08:58:00Z"
+ }
+]

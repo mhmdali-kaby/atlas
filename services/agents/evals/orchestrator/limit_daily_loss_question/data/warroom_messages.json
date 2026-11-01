@@ -1,0 +1,17 @@
+[
+ {
+  "id": "1c337f73-004c-5a7c-bf49-b65faa1a5a0a",
+  "env": "demo",
+  "thread_id": "028b4ade-9a87-5fa4-acf1-6d25cc8abc7a",
+  "event_id": "69d76f22-c659-5641-beec-7802af7df578",
+  "author_type": "human",
+  "author": "owner",
+  "kind": "text",
+  "content_md": "Can you set the max daily loss to 8%?",
+  "card": null,
+  "reply_to": null,
+  "mentions": [],
+  "created_at": "2026-05-17T07:59:59Z",
+  "updated_at": "2026-05-17T07:59:59Z"
+ }
+]

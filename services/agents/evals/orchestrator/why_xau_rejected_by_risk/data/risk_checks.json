@@ -1,0 +1,17 @@
+[
+ {
+  "id": "f0dc357f-f6d1-5fbf-8122-dd96de6d6a65",
+  "env": "demo",
+  "proposal_id": "b02b4389-6b0a-54b8-ae6d-e721ed0d194e",
+  "settings_version": 7,
+  "result": "rejected",
+  "checks": [],
+  "final_size": null,
+  "final_notional_usd": null,
+  "leverage": null,
+  "reason": "Event blackout: US CPI inside 15 minutes.",
+  "decision": null,
+  "created_at": "2026-05-29T07:50:00Z",
+  "updated_at": "2026-05-29T07:50:00Z"
+ }
+]

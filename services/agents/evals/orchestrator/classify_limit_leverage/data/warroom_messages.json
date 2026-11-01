@@ -1,0 +1,17 @@
+[
+ {
+  "id": "4682d021-bb36-52ce-bb73-4efdd0e17690",
+  "env": "demo",
+  "thread_id": "ed7da3c2-e15b-55df-9246-070c6f292b4b",
+  "event_id": "76c7131b-e609-521d-9ef6-8bb061a3828a",
+  "author_type": "human",
+  "author": "owner",
+  "kind": "text",
+  "content_md": "set leverage to 10x",
+  "card": null,
+  "reply_to": null,
+  "mentions": [],
+  "created_at": "2026-05-10T07:59:59Z",
+  "updated_at": "2026-05-10T07:59:59Z"
+ }
+]

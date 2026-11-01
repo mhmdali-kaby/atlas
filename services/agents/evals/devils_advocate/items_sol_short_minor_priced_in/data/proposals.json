@@ -1,0 +1,38 @@
+[
+ {
+  "id": "abf02752-8102-5b91-9af3-f378a9135e0a",
+  "env": "demo",
+  "version": 1,
+  "kind": "entry",
+  "author": "strategist",
+  "inst_id": "SOL-USDT-SWAP",
+  "side": "sell",
+  "order_type": "limit",
+  "entry_zone": [
+   "152.25",
+   "152.55"
+  ],
+  "stop": "155.45",
+  "take_profits": [
+   {
+    "price": "146.3",
+    "pct": "50"
+   },
+   {
+    "price": "143.26",
+    "pct": "50"
+   }
+  ],
+  "time_stop_minutes": 1440,
+  "size_suggestion_pct": "2.5",
+  "leverage_suggestion": 2,
+  "expected_r": "2.4",
+  "probability": "0.55",
+  "rationale_md": "Short SOL-USDT-SWAP from the setup.",
+  "invalidation": "1H close beyond 155.45",
+  "evidence": [],
+  "status": "under_review",
+  "created_at": "2026-04-04T08:58:00Z",
+  "updated_at": "2026-04-04T08:58:00Z"
+ }
+]

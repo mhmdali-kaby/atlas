@@ -1,0 +1,14 @@
+[
+ {
+  "settings_id": "04f5fce0-23e8-58c8-bbe2-ea1bbada5853",
+  "version": 7,
+  "data": {
+   "risk_profile": "balanced",
+   "max_leverage": 5,
+   "autonomy_level": 2
+  },
+  "diff": {},
+  "changed_by": null,
+  "created_at": "2026-05-15T08:00:00Z"
+ }
+]

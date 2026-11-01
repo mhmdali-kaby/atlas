@@ -1,0 +1,41 @@
+[
+ {
+  "id": "305b6842-57f3-552a-afe4-b7b7e6f43f7e",
+  "env": "demo",
+  "version": 1,
+  "kind": "entry",
+  "author": "strategist",
+  "inst_id": "TSLA-USDT-SWAP",
+  "side": "buy",
+  "order_type": "limit",
+  "entry_zone": [
+   "250.8",
+   "251.6"
+  ],
+  "stop": "246.9",
+  "take_profits": [
+   {
+    "price": "259.5",
+    "pct": "50"
+   },
+   {
+    "price": "263",
+    "pct": "50"
+   }
+  ],
+  "time_stop_minutes": 1440,
+  "size_suggestion_pct": "2.5",
+  "leverage_suggestion": 2,
+  "expected_r": "2.1",
+  "probability": "0.54",
+  "rationale_md": "Pullback to support on TSLA-USDT-SWAP.",
+  "invalidation": "1H close beyond the stop",
+  "evidence": [],
+  "status": "sent",
+  "status_reason": null,
+  "approval_expires_at": null,
+  "parent_id": null,
+  "created_at": "2026-05-31T15:20:00Z",
+  "updated_at": "2026-05-31T15:55:00Z"
+ }
+]
