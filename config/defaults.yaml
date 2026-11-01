@@ -1280,6 +1280,31 @@ agents:
       squeeze_call_min: "0.6"
       squeeze_move_atr: 2
       squeeze_hours: 48
+    # ATL-196, brief §7.6/§7.7 Scoring (atlas_agents.scorecards.paper/strategist/devils_advocate).
+    #   paper.statuses: an entry proposal's latest version in one of these, never filled by the
+    #     Executor, is simulated as a paper trade from that version's created_at.
+    #   paper.bars: candles walked, first that has bars in the window wins (1m, then 15m). In a bar
+    #     that touches both the stop and a target the stop is taken first. A limit/post_only entry
+    #     fills only when price trades through its limit (the entry, else the zone edge the Executor
+    #     uses) within executor.entry_timeout_minutes; a market entry fills at the next bar's open.
+    #     Exits: the stop (the bar's open when it gaps past), each TP at its price for its pct, the
+    #     rest at the close of the last bar ending by the time stop, else by max_hold_hours.
+    #   paper.fee_rate: taker fee per side from backtest.taker_fee_rates by instType (no trade-fee
+    #     rate is stored yet), backtest.fallback_taker_fee_rate otherwise.
+    #   lookback_days: these days are re-scored each run (a trade must close inside it to count).
+    #   devils_advocate.high_rating / low_rating: rated >= high is a "do not trade" call, <= low a
+    #     "clean" call; scratch_r: |R| below it is neither a win nor a loss.
+    paper:
+      statuses: ["rejected", "expired", "advise_only"]
+      bars: ["1m", "15m"]
+      max_hold_hours: 72
+    strategist:
+      lookback_days: 7
+    devils_advocate:
+      lookback_days: 7
+      high_rating: 4
+      low_rating: 2
+      scratch_r: "0.1"
   # ATL-132, brief §7.4: the Technical Analyst's deterministic precompute (atlas_agents.ta), per
   # timeframe. EMA/RSI/ATR/ADX are atlas_quant.indicators (the backtester's definitions).
   #   slope_bars: EMA slope = (EMA_t / EMA_{t-k} - 1) x 100 / k, in % per bar.

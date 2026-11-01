@@ -926,6 +926,41 @@ class PositionClosed(_Row, Base):
     raw: Mapped[Any] = _jsonb_obj()
 
 
+class PaperTrade(_Row, Base):
+    """A never-executed entry proposal simulated on stored candles (ATL-196, brief §7.6/§7.7
+    Scoring). proposal_id = the simulated (latest) version, unique. status filled|not_filled;
+    exit_reason stop|take_profit|time_stop|horizon|not_filled. realised_r = r_gross - fees_r, in R of
+    |entry - stop|; null when not filled (CHECKed). legs = [{reason, price, ts, pct, r}]."""
+
+    __tablename__ = "paper_trades"
+
+    proposal_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("proposals.id", ondelete="CASCADE"), unique=True
+    )
+    version: Mapped[int] = mapped_column(Integer, server_default=text("1"))
+    inst_id: Mapped[str] = mapped_column(String(64))
+    side: Mapped[str] = mapped_column(String(8))
+    order_type: Mapped[str] = mapped_column(String(16))
+    proposal_status: Mapped[str] = mapped_column(String(32))
+    proposal_status_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    status: Mapped[str] = mapped_column(String(255))
+    decided_at: Mapped[datetime] = mapped_column(_tz())
+    entry_px: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    entry_ts: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
+    stop: Mapped[Decimal] = mapped_column(_num())
+    exit_px: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
+    exit_ts: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
+    exit_reason: Mapped[str] = mapped_column(String(255))
+    realised_r: Mapped[Decimal | None] = mapped_column(Numeric(20, 8, asdecimal=True), nullable=True)
+    r_gross: Mapped[Decimal | None] = mapped_column(Numeric(20, 8, asdecimal=True), nullable=True)
+    fees_r: Mapped[Decimal | None] = mapped_column(Numeric(20, 8, asdecimal=True), nullable=True)
+    fee_rate: Mapped[Decimal | None] = mapped_column(Numeric(12, 8, asdecimal=True), nullable=True)
+    tp1_hit: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    bar: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    legs: Mapped[Any] = _jsonb_list()
+    simulated_at: Mapped[datetime] = mapped_column(_tz())
+
+
 class TradingState(_Row, Base):
     """Whether new orders are paused in an env, and why (ATL-141; circuit breakers are ATL-127's).
     One row per env. breakers maps a breaker name to {"active", "since", "detail"}."""
