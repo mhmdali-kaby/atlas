@@ -1,0 +1,123 @@
+[
+ {
+  "id": "ee844073-2dce-573a-bb82-b34bfef6c579",
+  "env": "demo",
+  "thread_id": "b1c5b88e-80e5-5942-bce0-9bcff95149ab",
+  "event_id": "a2b2a716-3d51-5d73-83f0-886310ea4e4f",
+  "author_type": "agent",
+  "author": "strategist",
+  "kind": "proposal",
+  "content_md": "**BUY ETH-USDT-SWAP** v1",
+  "card": {
+   "type": "proposal",
+   "proposal_id": "f33cd503-2770-597e-80f8-0e98a9f80eba",
+   "inst_id": "ETH-USDT-SWAP",
+   "version": 1
+  },
+  "reply_to": null,
+  "mentions": [],
+  "created_at": "2026-04-29T08:58:00Z",
+  "updated_at": "2026-04-29T08:58:00Z"
+ },
+ {
+  "id": "90b11643-36f9-54b1-8020-0422320f05b0",
+  "env": "demo",
+  "thread_id": "b1c5b88e-80e5-5942-bce0-9bcff95149ab",
+  "event_id": "85b324a4-d87e-5901-8199-c384a2e33d64",
+  "author_type": "agent",
+  "author": "devils_advocate",
+  "kind": "research_report",
+  "content_md": "probability 0.7 with expected R 2.4 is ambitious for this setup",
+  "card": {
+   "type": "da_review",
+   "items": [
+    {
+     "item": 1,
+     "name": "event_risk",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 2,
+     "name": "crowding",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 3,
+     "name": "history",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 4,
+     "name": "stop_quality",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 5,
+     "name": "chasing",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 6,
+     "name": "correlation",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 7,
+     "name": "liquidity",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 8,
+     "name": "priced_in",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 9,
+     "name": "data_quality",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 10,
+     "name": "overconfidence",
+     "status": "problem",
+     "severity": "serious",
+     "detail": "probability 0.7 with expected R 2.4 is ambitious for this setup"
+    }
+   ],
+   "strongest_objection": "probability 0.7 with expected R 2.4 is ambitious for this setup",
+   "risk_rating": 3,
+   "fix": "Cut the probability to the analog base rate",
+   "fix_applied": false,
+   "vote": "change",
+   "confidence": 0.75,
+   "reason": "probability 0.7 with expected R 2.4 is ambitious for this setup",
+   "proposal_id": "f33cd503-2770-597e-80f8-0e98a9f80eba",
+   "version": 1,
+   "inst_id": "ETH-USDT-SWAP",
+   "round": 1,
+   "rerate_of": null
+  },
+  "reply_to": "ee844073-2dce-573a-bb82-b34bfef6c579",
+  "mentions": [],
+  "created_at": "2026-04-29T08:59:00Z",
+  "updated_at": "2026-04-29T08:59:00Z"
+ }
+]

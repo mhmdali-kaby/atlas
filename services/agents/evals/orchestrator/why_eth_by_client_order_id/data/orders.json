@@ -1,0 +1,31 @@
+[
+ {
+  "id": "dadb0b34-6aed-572c-bf59-c8ad9293a990",
+  "env": "demo",
+  "proposal_id": "ed523e10-7a45-5c7f-ac82-a92d18d68d12",
+  "risk_check_id": "56a8e4d7-eee9-5912-9540-c796a12fec24",
+  "cl_ord_id": "atlasE7Q2K9",
+  "ord_id": "1990001",
+  "inst_id": "ETH-USDT-SWAP",
+  "side": "sell",
+  "pos_side": null,
+  "ord_type": "limit",
+  "td_mode": "isolated",
+  "px": "2480",
+  "sz": "30",
+  "filled_sz": "30",
+  "avg_px": "2480",
+  "lever": 2,
+  "fee": null,
+  "fee_ccy": null,
+  "state": "filled",
+  "reduce_only": false,
+  "origin": "atlas",
+  "purpose": "entry",
+  "last_error_code": null,
+  "last_error_msg": null,
+  "raw": {},
+  "created_at": "2026-05-31T08:52:00Z",
+  "updated_at": "2026-05-31T08:52:00Z"
+ }
+]

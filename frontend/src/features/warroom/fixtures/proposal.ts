@@ -68,6 +68,9 @@ export function proposalMessage(over: Partial<WarroomMessage> = {}): WarroomMess
   }
 }
 
+/** ATL-189: the Strategist's odds basis (design v11: "Historian analogs 48%, +4 for the ETF catalyst"). */
+export const BASIS = { analog_hit_rate: '0.48', n: 31, adjustment_pts: '4', reason: 'for the ETF catalyst' } as const
+
 export function proposalDetail(over: Partial<ProposalDetail> = {}): ProposalDetail {
   return {
     id: PROPOSAL_ID,

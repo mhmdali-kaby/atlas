@@ -373,6 +373,25 @@ it('lists with filters and shows votes, the DA review and the risk check', funct
         ->assertJsonCount(1, 'data.versions');
 });
 
+it('returns the Strategist probability basis, and null when there is none (ATL-189)', function (): void {
+    $p = atl162Proposal(['probability' => '0.52', 'probability_basis' => [
+        'analog_hit_rate' => '0.48', 'n' => 31, 'adjustment_pts' => '4', 'reason' => 'for the ETF catalyst',
+    ]]);
+    $bare = atl162Proposal(['inst_id' => 'ETH-USDT-SWAP']);
+
+    $this->actingAs($this->user, 'web')
+        ->getJson("/api/proposals/{$p->id}")
+        ->assertOk()
+        ->assertJsonPath('data.probability', '0.52')
+        ->assertJsonPath('data.probability_basis', [
+            'analog_hit_rate' => '0.48', 'n' => 31, 'adjustment_pts' => '4', 'reason' => 'for the ETF catalyst',
+        ]);
+    $this->actingAs($this->user, 'web')
+        ->getJson("/api/proposals/{$bare->id}")
+        ->assertOk()
+        ->assertJsonPath('data.probability_basis', null);
+});
+
 it('asks the team with an owner message that mentions the Orchestrator', function (): void {
     Http::fake();
     $p = atl162Proposal();

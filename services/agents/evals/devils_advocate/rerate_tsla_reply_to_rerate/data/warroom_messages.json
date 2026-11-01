@@ -1,0 +1,224 @@
+[
+ {
+  "id": "57f5b5c5-97a2-55c5-92a9-bd8237b971dc",
+  "env": "demo",
+  "thread_id": "c8fa6635-568f-5327-96ed-90fe84056d17",
+  "event_id": "3ffc0160-8b51-598c-8ef6-5206d0fc5f84",
+  "author_type": "agent",
+  "author": "strategist",
+  "kind": "proposal",
+  "content_md": "**BUY TSLA-USDT-SWAP** v1",
+  "card": {
+   "type": "proposal",
+   "proposal_id": "ea85d499-ad5e-5d49-88f1-884292719134",
+   "inst_id": "TSLA-USDT-SWAP",
+   "version": 1
+  },
+  "reply_to": null,
+  "mentions": [],
+  "created_at": "2026-04-30T14:58:00Z",
+  "updated_at": "2026-04-30T14:58:00Z"
+ },
+ {
+  "id": "34d2a84a-ea97-56f0-886f-0728fa03e2ce",
+  "env": "demo",
+  "thread_id": "c8fa6635-568f-5327-96ed-90fe84056d17",
+  "event_id": "e7f6aea7-09b2-5762-8b10-6806b55e6a93",
+  "author_type": "agent",
+  "author": "devils_advocate",
+  "kind": "research_report",
+  "content_md": "size suggestion 2.5 of equity on a stock perp outside US cash hours",
+  "card": {
+   "type": "da_review",
+   "items": [
+    {
+     "item": 1,
+     "name": "event_risk",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 2,
+     "name": "crowding",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 3,
+     "name": "history",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 4,
+     "name": "stop_quality",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 5,
+     "name": "chasing",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 6,
+     "name": "correlation",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 7,
+     "name": "liquidity",
+     "status": "problem",
+     "severity": "minor",
+     "detail": "size suggestion 2.5 of equity on a stock perp outside US cash hours"
+    },
+    {
+     "item": 8,
+     "name": "priced_in",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 9,
+     "name": "data_quality",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 10,
+     "name": "overconfidence",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    }
+   ],
+   "strongest_objection": "size suggestion 2.5 of equity on a stock perp outside US cash hours",
+   "risk_rating": 2,
+   "fix": null,
+   "fix_applied": false,
+   "vote": "take",
+   "confidence": 0.75,
+   "reason": "size suggestion 2.5 of equity on a stock perp outside US cash hours",
+   "proposal_id": "ea85d499-ad5e-5d49-88f1-884292719134",
+   "version": 1,
+   "inst_id": "TSLA-USDT-SWAP",
+   "round": 1,
+   "rerate_of": null
+  },
+  "reply_to": "57f5b5c5-97a2-55c5-92a9-bd8237b971dc",
+  "mentions": [],
+  "created_at": "2026-04-30T14:59:00Z",
+  "updated_at": "2026-04-30T14:59:00Z"
+ },
+ {
+  "id": "2dbf67e3-65ba-5115-be4e-06964b65aafd",
+  "env": "demo",
+  "thread_id": "c8fa6635-568f-5327-96ed-90fe84056d17",
+  "event_id": "a28e495f-bd47-5e8f-86d9-915e90b16ab6",
+  "author_type": "agent",
+  "author": "devils_advocate",
+  "kind": "research_report",
+  "content_md": "Re-rate.",
+  "card": {
+   "type": "da_review",
+   "items": [
+    {
+     "item": 1,
+     "name": "event_risk",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 2,
+     "name": "crowding",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 3,
+     "name": "history",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 4,
+     "name": "stop_quality",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 5,
+     "name": "chasing",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 6,
+     "name": "correlation",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 7,
+     "name": "liquidity",
+     "status": "problem",
+     "severity": "minor",
+     "detail": "size suggestion 2.5 of equity on a stock perp outside US cash hours"
+    },
+    {
+     "item": 8,
+     "name": "priced_in",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 9,
+     "name": "data_quality",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 10,
+     "name": "overconfidence",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    }
+   ],
+   "strongest_objection": "size suggestion 2.5 of equity on a stock perp outside US cash hours",
+   "risk_rating": 2,
+   "fix": null,
+   "fix_applied": false,
+   "vote": "take",
+   "confidence": 0.75,
+   "reason": "size suggestion 2.5 of equity on a stock perp outside US cash hours",
+   "proposal_id": "ea85d499-ad5e-5d49-88f1-884292719134",
+   "version": 1,
+   "inst_id": "TSLA-USDT-SWAP",
+   "round": 2,
+   "rerate_of": "34d2a84a-ea97-56f0-886f-0728fa03e2ce"
+  },
+  "reply_to": "34d2a84a-ea97-56f0-886f-0728fa03e2ce",
+  "mentions": [],
+  "created_at": "2026-04-30T14:59:30Z",
+  "updated_at": "2026-04-30T14:59:30Z"
+ }
+]

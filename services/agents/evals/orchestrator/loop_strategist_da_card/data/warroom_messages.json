@@ -1,0 +1,35 @@
+[
+ {
+  "id": "03ece56a-f57e-5c95-bb4d-e9ff0bb4730c",
+  "env": "demo",
+  "thread_id": "790e73ab-3e16-5a06-914e-d41011d98a4f",
+  "event_id": "d7f65b62-3429-5ce6-80e4-2bd9614e97ac",
+  "author_type": "agent",
+  "author": "strategist",
+  "kind": "proposal",
+  "content_md": "SELL ETH-USDT-SWAP v1",
+  "card": {
+   "type": "proposal",
+   "proposal_id": "097a47ed-b0df-5f2d-8fb6-e90ce4e78ee2"
+  },
+  "reply_to": null,
+  "mentions": [],
+  "created_at": "2026-05-23T07:51:00Z",
+  "updated_at": "2026-05-23T07:51:00Z"
+ },
+ {
+  "id": "7605bf9c-b6be-5f07-8411-0b5f1c7936de",
+  "env": "demo",
+  "thread_id": "790e73ab-3e16-5a06-914e-d41011d98a4f",
+  "event_id": "374f9c53-1d11-5892-85a9-917c8d7d42fa",
+  "author_type": "agent",
+  "author": "devils_advocate",
+  "kind": "text",
+  "content_md": "The stop sits inside 4H noise.",
+  "card": null,
+  "reply_to": "03ece56a-f57e-5c95-bb4d-e9ff0bb4730c",
+  "mentions": [],
+  "created_at": "2026-05-23T07:52:00Z",
+  "updated_at": "2026-05-23T07:52:00Z"
+ }
+]

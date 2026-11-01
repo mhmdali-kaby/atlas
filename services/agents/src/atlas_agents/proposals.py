@@ -527,6 +527,19 @@ def _decimal_str(value: Decimal | None) -> str | None:
     return None if value is None else format(value, "f")
 
 
+def basis_json(model: TradeProposal) -> dict[str, Any] | None:
+    """The proposal's probability_basis as stored (decimals as strings), or None (ATL-189)."""
+    basis = model.probability_basis
+    if basis is None:
+        return None
+    return {
+        "analog_hit_rate": format(basis.analog_hit_rate.normalize(), "f"),
+        "n": basis.n,
+        "adjustment_pts": format(basis.adjustment_pts.normalize(), "f"),
+        "reason": basis.reason,
+    }
+
+
 def new_row(
     ctx: ToolContext,
     kind: str,
@@ -567,6 +580,7 @@ def new_row(
             leverage_suggestion=model.leverage_suggestion,
             expected_r=model.expected_r_multiple,
             probability=model.probability_estimate,
+            probability_basis=basis_json(model),
             invalidation=model.invalidation,
         )
     else:
@@ -668,6 +682,7 @@ def proposal_card(row: Proposal, checklist: Sequence[ChecklistItem], summary_md:
         "leverage_suggestion": row.leverage_suggestion,
         "expected_r_multiple": _decimal_str(row.expected_r),
         "probability_estimate": _decimal_str(row.probability),
+        "probability_basis": row.probability_basis,
         "expectancy_r": _decimal_str(edge.normalize()) if edge is not None else None,
         "rationale_md": row.rationale_md,
         "invalidation": row.invalidation,
@@ -734,6 +749,7 @@ def upsert_vote(
 __all__ = [
     "ChecklistItem",
     "SettingsData",
+    "basis_json",
     "check_author",
     "checklist_config",
     "checklist_error",

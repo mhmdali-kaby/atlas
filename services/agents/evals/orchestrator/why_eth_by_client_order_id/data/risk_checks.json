@@ -1,0 +1,17 @@
+[
+ {
+  "id": "56a8e4d7-eee9-5912-9540-c796a12fec24",
+  "env": "demo",
+  "proposal_id": "ed523e10-7a45-5c7f-ac82-a92d18d68d12",
+  "settings_version": 7,
+  "result": "resized",
+  "checks": [],
+  "final_size": "30",
+  "final_notional_usd": "74400",
+  "leverage": 3,
+  "reason": "Resized to the per-trade loss limit.",
+  "decision": "send_now",
+  "created_at": "2026-05-31T08:50:00Z",
+  "updated_at": "2026-05-31T08:50:00Z"
+ }
+]

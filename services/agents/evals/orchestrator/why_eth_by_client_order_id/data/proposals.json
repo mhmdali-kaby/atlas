@@ -1,0 +1,41 @@
+[
+ {
+  "id": "ed523e10-7a45-5c7f-ac82-a92d18d68d12",
+  "env": "demo",
+  "version": 1,
+  "kind": "entry",
+  "author": "strategist",
+  "inst_id": "ETH-USDT-SWAP",
+  "side": "sell",
+  "order_type": "limit",
+  "entry_zone": [
+   "2478",
+   "2482"
+  ],
+  "stop": "2520",
+  "take_profits": [
+   {
+    "price": "2420",
+    "pct": "50"
+   },
+   {
+    "price": "2390",
+    "pct": "50"
+   }
+  ],
+  "time_stop_minutes": 1440,
+  "size_suggestion_pct": "2.5",
+  "leverage_suggestion": 2,
+  "expected_r": "2.0",
+  "probability": "0.56",
+  "rationale_md": "Pullback to support on ETH-USDT-SWAP.",
+  "invalidation": "1H close beyond the stop",
+  "evidence": [],
+  "status": "filled",
+  "status_reason": null,
+  "approval_expires_at": null,
+  "parent_id": null,
+  "created_at": "2026-05-31T08:20:00Z",
+  "updated_at": "2026-05-31T08:55:00Z"
+ }
+]

@@ -581,7 +581,10 @@ async def submit_proposal(ctx: ToolContext, args: SubmitProposalInput) -> ToolRe
     {inst_id, side buy|sell, order_type market|limit|post_only, entry?, entry_zone? [low, high],
     stop (REQUIRED), take_profits [{price, pct}] (1-3), time_stop_minutes?, size_suggestion_pct_equity,
     leverage_suggestion, expected_r_multiple, probability_estimate 0-1, rationale_md, invalidation,
-    evidence [{type, id}]}. Code checks all six §7.6 items (on today's watchlist or pinned; a
+    evidence [{type, id}], probability_basis? {analog_hit_rate 0-1 (Historian's analogs), n,
+    adjustment_pts (|x| <= 15), reason (one line)}: analog_hit_rate x 100 + adjustment_pts must equal
+    probability_estimate x 100 within 1 pt, else the proposal is refused.
+    Code checks all six §7.6 items (on today's watchlist or pinned; a
     TechnicalSetup that is not "none" and < 60 min old; no contradicting CONFIRMED news and no
     importance-5 event in the blackout window; Historian not "contradicts"; R >= min R and
     p x R - (1 - p) > 0.2; no open position or pending proposal on the same side) and returns every
