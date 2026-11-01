@@ -288,6 +288,49 @@ describe('proposal card', () => {
     await waitFor(() => expect(within(card()).queryByTestId('pr-actions')).toBeNull())
   })
 
+  it('evidence: one chip per ref that resolved to a message, and a chip jumps to it (ATL-190)', async () => {
+    backend({
+      detail: proposalDetail({
+        evidence: [
+          { type: 'research_report', id: 'm-ta-sol', label: 'technical', message_id: 'm-ta-sol' },
+          { type: 'research_report', id: 'r-hist-1', label: null, message_id: null },
+          { type: 'news', id: 'n-sol-etf', label: 'news', message_id: 'm-sol-alert' },
+        ],
+      }),
+    })
+    const { onJump } = draw()
+    await waitFor(() => expect(within(card()).getByTestId('pr-evidence')).toBeInTheDocument())
+    const chips = within(card()).getAllByTestId('pr-chip')
+    expect(chips.map((x) => x.textContent)).toEqual(['Technical', 'News'])
+    expect(chips[1]).toHaveAccessibleName('Go to the News message')
+    await user().click(chips[1]!)
+    expect(onJump).toHaveBeenCalledTimes(1)
+    expect(onJump).toHaveBeenCalledWith('m-sol-alert')
+  })
+
+  it('evidence in Arabic: the chip names are translated', async () => {
+    backend({ detail: proposalDetail({ evidence: [{ type: 'research_report', id: 'x', label: 'positioning', message_id: 'm-pos' }] }) })
+    draw('ar')
+    await waitFor(() => expect(within(card()).getByTestId('pr-chip')).toHaveTextContent('التمركز'))
+    expect(within(card()).getByTestId('pr-evidence')).toHaveTextContent('الأدلة')
+  })
+
+  it('evidence: no chip row when no ref resolves (ATL-190)', async () => {
+    backend({
+      detail: proposalDetail({
+        evidence: [
+          { type: 'research_report', id: 'r-1', label: null, message_id: null },
+          { type: 'stat', id: 'atr-14', label: null, message_id: null },
+        ],
+      }),
+    })
+    draw()
+    await waitFor(() => expect(card()).toHaveAttribute('data-status', 'awaiting_owner'))
+    expect(within(card()).queryByTestId('pr-evidence')).toBeNull()
+    expect(within(card()).queryByTestId('pr-chip')).toBeNull()
+    expect(within(card()).queryByText('Evidence')).toBeNull()
+  })
+
   it('the odds basis: the Historian hit rate and the adjustment under the probability (ATL-189)', async () => {
     backend({ detail: proposalDetail({ probability_basis: { ...BASIS } }) })
     draw()
