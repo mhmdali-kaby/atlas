@@ -84,6 +84,32 @@ export interface PositionsPayload {
   items: Position[]
 }
 
+/** One failed item inside a close/cancel report (ATL-148's `Report.payload()`). */
+export interface TradeActionFailure {
+  kind: 'order' | 'algo' | 'position' | 'read'
+  inst_id: string | null
+  ref: string | null
+  action: string
+  attempts: number
+  code: string | null
+  message: string | null
+}
+
+/**
+ * `POST /api/portfolio/positions/{id}/close` 200 (ATL-148): the market close succeeded and that
+ * side's algo orders (stop, take profit) were cancelled. A close that failed answers non-2xx with
+ * the same shape (`status: 'failed'`, `failed` non-empty) — see `closeFailureMessage`.
+ */
+export interface ClosePositionReport {
+  ok: boolean
+  env: TradingEnv
+  inst_id: string
+  status: 'closed' | 'failed'
+  closed: number
+  cancelled_algos: number
+  failed: TradeActionFailure[]
+}
+
 /** One balance of one account (ATL-12 /api/portfolio/holdings). */
 export interface Holding {
   ccy: string
