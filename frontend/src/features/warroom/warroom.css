@@ -7,7 +7,7 @@
 
 /* ---- The page fills the shell's content area (no page padding, no page scroll) ---- */
 .shell-content:has(> .shell-page > .wr) { overflow: hidden; }
-.shell-page:has(> .wr) { max-width: none; height: 100%; padding: 0; }
+.shell-page:has(> .wr) { height: 100%; padding: 0; }
 
 /* ---- Agent medallion ---------------------------------------------------- */
 .medal {
@@ -106,7 +106,8 @@
   scroll-padding-block: 24px 140px;
 }
 .wr-scroller:focus-visible { outline: none; box-shadow: inset 0 0 0 3px var(--accent-wash); }
-.wr-column { max-width: calc(var(--feed-max) + 64px); margin: 0 auto; padding-inline: 32px; }
+/* The feed fills its pane like every page: full width, the shared gutter, no centred column. */
+.wr-column { padding-inline: var(--page-gutter); }
 .wr-pane > .wr-column { padding-block: 18px 148px; overflow-y: auto; flex: 1; width: 100%; }
 .wr-sizer { position: relative; width: 100%; }
 .wr-row { position: absolute; top: 0; inset-inline: 0; }
@@ -416,12 +417,12 @@ bdi.fig, bdi.tok { white-space: nowrap; }
 /* ---- Composer ------------------------------------------------------------ */
 .composer-wrap {
   position: absolute; z-index: 5; inset-inline: 0; bottom: 0;
-  padding: 26px 32px 10px; pointer-events: none;
+  padding: 26px var(--page-gutter) 10px; pointer-events: none;
   background: linear-gradient(to bottom, transparent, var(--bg) 42%);
 }
 .composer-wrap > * { pointer-events: auto; }
 .composer {
-  position: relative; max-width: var(--feed-max); margin: 0 auto;
+  position: relative;
   border-radius: var(--radius-composer);
   background: var(--material-popover); -webkit-backdrop-filter: var(--material-filter); backdrop-filter: var(--material-filter);
   box-shadow: var(--composer-shadow), 0 0 0 0.5px var(--field-border);
@@ -475,7 +476,7 @@ bdi.fig, bdi.tok { white-space: nowrap; }
 .composer-send:disabled { background: var(--fill-2); color: var(--label-tertiary); pointer-events: none; }
 .composer-btn:focus-visible, .composer-send:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .composer-hint {
-  max-width: var(--feed-max); margin: 6px auto 0; padding-inline: 16px; min-height: 16px;
+  margin-top: 6px; padding-inline: 16px; min-height: 16px;
   display: flex; justify-content: space-between; gap: 12px;
   font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--label-secondary);
 }
@@ -513,10 +514,6 @@ bdi.fig, bdi.tok { white-space: nowrap; }
     background: var(--material-popover); box-shadow: var(--shadow-sheet), var(--glass-edge), 0 0 0 0.5px var(--hairline-color);
     animation: shell-pop-in var(--dur-base) var(--ease-settle);
   }
-}
-@media (max-width: 1100px) {
-  .wr-column { padding-inline: 24px; }
-  .composer-wrap { padding-inline: 24px; }
 }
 
 /* ===== Historian cards (ATL-96, design v7 "Historian cards and live reasoning" §5-§7) ===== */

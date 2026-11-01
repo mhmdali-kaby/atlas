@@ -41,13 +41,13 @@ function Fig({ children }: { children: string }) {
 }
 
 /** "Data as of 14:00 (11:00 UTC)", both full dates in the tooltip. */
-export function AsOf({ ts, lang }: { ts: string; lang: Lang }) {
+export function AsOf({ ts, lang, testId = 'ta-asof' }: { ts: string; lang: Lang; testId?: string }) {
   const { t } = useTranslation('warroom')
   const now = useNow(60_000)
   const today = baghdadDay(ts) === baghdadDay(now)
   const when = today ? formatTime(ts, lang) : `${formatDate(ts, lang)}${lang === 'ar' ? '، ' : ', '}${formatTime(ts, lang)}`
   return (
-    <time className="hv-asof" dateTime={ts} tabIndex={0} title={t('ta.dual', { baghdad: formatFullTime(ts, lang), utc: formatUtcFull(ts) })} data-testid="ta-asof">
+    <time className="hv-asof" dateTime={ts} tabIndex={0} title={t('ta.dual', { baghdad: formatFullTime(ts, lang), utc: formatUtcFull(ts) })} data-testid={testId}>
       {fillSlots(t('ta.asOf', { time: slot('time'), utc: slot('utc') }), {
         time: <span className="num">{when}</span>,
         utc: <bdi dir="ltr" className="num">{`${formatUtcTime(ts)} UTC`}</bdi>,
@@ -57,21 +57,21 @@ export function AsOf({ ts, lang }: { ts: string; lang: Lang }) {
 }
 
 /** The instrument: opens its own thread, where the Inspector shows it. Plain text when it has no thread. */
-export function InstrumentButton({ instId }: { instId: string }) {
+export function InstrumentButton({ instId, testId = 'ta-inst' }: { instId: string; testId?: string }) {
   const { t } = useTranslation('warroom')
   const navigate = useNavigate()
   const { list } = useSelectedThread()
   const thread = list.find((x) => x.kind === 'instrument' && x.key === instId)
   if (!thread) {
     return (
-      <span className="an-inst" data-testid="ta-inst">
+      <span className="an-inst" data-testid={testId}>
         <InstrumentId id={instId} />
       </span>
     )
   }
   const label = t('ta.inspect', { inst: instId })
   return (
-    <button type="button" className="an-inst" aria-label={label} title={label} onClick={() => navigate(threadPath(thread))} data-testid="ta-inst">
+    <button type="button" className="an-inst" aria-label={label} title={label} onClick={() => navigate(threadPath(thread))} data-testid={testId}>
       <InstrumentId id={instId} />
     </button>
   )
@@ -187,7 +187,15 @@ export function TechnicalSetupCard({ setup, lang }: { setup: TechnicalSetup; lan
         </p>
       )}
       <div className="an-ladder">
-        <Ladder side={side} entry={setup.entryZone} stop={setup.stop} targets={ladderTargets} mark={setup.lastPrice} decimals={d} lang={lang} />
+        <Ladder
+          side={side}
+          entry={setup.entryZone}
+          stop={setup.stop}
+          targets={ladderTargets}
+          priceAt={setup.lastPrice ? { price: setup.lastPrice, at: setup.dataAsOf } : null}
+          decimals={d}
+          lang={lang}
+        />
         <Ladder side={side} entry={setup.entryZone} stop={setup.stop} targets={ladderTargets} decimals={d} lang={lang} compact />
       </div>
       <dl className="an-dl">

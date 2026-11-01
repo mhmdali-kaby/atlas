@@ -1,0 +1,59 @@
+/* The PositioningReport card (cards/PositioningCard.tsx, design v11 Phase 2 §7): the shared
+   analyst-card rhythm from technicalSetup.css, plus the OI-price quadrant, stance pills, squeeze
+   meters and the evidence list. */
+
+/* stances: an icon and a word on a wash, so colour is never the only signal */
+.an-stances { display: flex; flex-wrap: wrap; gap: 6px 8px; }
+.an-st {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding-block: 3px; padding-inline: 9px 12px;
+  border-radius: var(--radius-full); font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); letter-spacing: var(--tr-subheadline); font-weight: 600;
+}
+.an-st .icon { width: 17px; height: 17px; flex: none; }
+.an-st.is-supports { background: var(--profit-wash); color: var(--profit-ink); }
+.an-st.is-opposes { background: var(--loss-wash); color: var(--loss-ink); }
+.an-st.is-neutral { background: var(--fill-3); color: var(--label); }
+.an-st.is-neutral .icon { color: var(--label-secondary); }
+.an-unrel { margin: 0; font-weight: 500; }
+.an-unrel b { font-weight: 600; }
+
+/* the OI-price quadrant: four self-labelled cells, the current one filled */
+.an-regime { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 12px 18px; align-items: center; }
+.an-quad { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.an-qc {
+  display: grid; gap: 2px; align-content: start; min-height: 56px; padding: 7px 9px; border-radius: 8px;
+  background: var(--fill-4); color: var(--label-secondary);
+}
+.an-qc-name { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 600; }
+.an-qc-name .icon { width: 13px; height: 13px; flex: none; stroke-width: 2.25; }
+.an-qc-sub { font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--label-secondary); }
+.an-qc.is-on { background: var(--accent-wash); box-shadow: inset 0 0 0 1.5px var(--accent); color: var(--label); }
+.an-qc.is-on .an-qc-name .icon { color: var(--accent); }
+.an-regime-text { display: grid; gap: 3px; min-width: 0; }
+.an-regime-name { font-size: var(--fs-headline); line-height: var(--lh-headline); letter-spacing: var(--tr-headline); font-weight: 600; }
+.an-regime-mean { font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); color: var(--label-secondary); text-wrap: pretty; }
+
+.an-sq { display: grid; gap: 4px; }
+.an-sq-row { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; min-width: 0; }
+.an-sq-k { min-width: 7.5rem; color: var(--label); }
+
+/* signed figures: colour, a sign and an icon */
+.an-sig { display: inline-flex; align-items: center; gap: 3px; font-weight: 600; white-space: nowrap; }
+.an-sig .icon { width: 14px; height: 14px; flex: none; stroke-width: 2.25; }
+.an-sig.is-pos { color: var(--profit-ink); }
+.an-sig.is-neg { color: var(--loss-ink); }
+.an-sig.is-zero { color: var(--label-secondary); }
+
+/* sections and the evidence list */
+.an-sec { display: grid; gap: 8px; padding-top: 12px; border-top: 0.5px solid var(--separator); min-width: 0; }
+.an-sec-h { display: flex; align-items: baseline; gap: 8px; margin: 0; font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); letter-spacing: var(--tr-subheadline); font-weight: 600; }
+.an-ev { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: var(--fs-footnote); line-height: var(--lh-footnote); }
+.an-ev li { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding-block: 2px; }
+.an-ev li + li { border-top: 0.5px solid var(--separator); padding-top: 6px; }
+.an-stamp { color: var(--label-secondary); font-variant-numeric: tabular-nums; border-radius: 4px; cursor: default; white-space: nowrap; }
+.an-stamp:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+@container (max-width: 520px) {
+  .an-regime { grid-template-columns: minmax(0, 1fr); }
+  /* the squeeze name takes its own line above its meter and figure */
+  .an-sq-k { min-width: 0; flex-basis: 100%; }
+}

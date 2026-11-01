@@ -8,8 +8,6 @@
 .st-page {
   display: grid;
   gap: 28px;
-  max-width: var(--form-max);
-  margin-inline: auto;
   padding-block: 12px 24px;
 }
 

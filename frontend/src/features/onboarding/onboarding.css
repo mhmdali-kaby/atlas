@@ -1,0 +1,26 @@
+/* Onboarding step column (design v14 css/auth.css .ob-col). Full width like every page:
+   the shared gutter, no centred column. From 1024 px the step's title and lead hold the
+   start column and stay in view while its controls fill the end column. */
+.ob-col {
+  display: grid;
+  gap: 22px;
+  align-content: start;
+  padding: 28px var(--page-gutter) 56px;
+}
+@media (min-width: 1024px) {
+  .ob-col {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    column-gap: clamp(48px, 6vw, 112px);
+    padding-top: 44px;
+  }
+  .ob-col > .ob-head {
+    position: sticky;
+    top: 44px;
+    align-self: start;
+  }
+}
+@media (max-width: 760px) {
+  .ob-col {
+    padding-top: 24px;
+  }
+}

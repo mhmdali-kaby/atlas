@@ -24,6 +24,7 @@ import type { WarroomMessage } from './api'
 import { discardMessage, isLocal, retryMessage, type LocalMessage } from './live'
 import { MessageActions, MessageMenu } from './MessageActions'
 import { Medallion, SystemMedallion } from './Medallion'
+import { readPositioningReport } from './cards/positioning'
 import { readTechnicalSetup } from './cards/technicalSetup'
 import { readProposalCard } from './cards/proposal'
 import { ProposalCard } from './cards/ProposalCard'
@@ -31,6 +32,7 @@ import { TechnicalSetupCard } from './cards/TechnicalSetupCard'
 import { DailyReportCard } from './cards/DailyReportCard'
 import { PositionUpdateCard } from './cards/PositionUpdateCard'
 import { readDailyReport, readPositionUpdate } from './cards/pm'
+import { PositioningCard } from './cards/PositioningCard'
 import { readDevilsReview, readRiskCheck, readVoteSummary } from './cards/debate'
 import { DevilsReviewCard } from './cards/DevilsReviewCard'
 import { RiskCheckCard } from './cards/RiskCheckCard'
@@ -117,6 +119,16 @@ const CARDS: Partial<Record<string, (m: WarroomMessage, lang: Lang, ctx: CardCtx
         <>
           <AgentBody message={m} />
           <TechnicalSetupCard setup={setup} lang={lang} />
+        </>
+      )
+    }
+    // The Derivatives & Sentiment Analyst's positioning (design v11 Phase 2 §7, ATL-136 card).
+    const positioning = readPositioningReport(m.card)
+    if (positioning) {
+      return (
+        <>
+          <AgentBody message={m} />
+          <PositioningCard report={positioning} lang={lang} />
         </>
       )
     }
