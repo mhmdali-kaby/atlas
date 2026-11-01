@@ -602,6 +602,28 @@ risk_api:
   # POST /api/risk/check (ATL-128): owner manual risk checks per minute.
   checks_per_minute: 20
 
+# ATL-205: trading_core's signed POST /internal/backtest (decision #253 L, brief §7.3 backtest_rule).
+#   max_bars: (period end - start) / bar per instrument; a longer request is refused with 422.
+#   timeout_seconds: wall-clock limit of one run; over it the call answers 422 reason "timeout".
+#   max_inst_ids: instruments per request. warmup_bars: bars loaded before the period to warm the
+#     indicators (the same role as agents.history.backtest.warmup_bars).
+#   equity_curve_max_points / trades_max_rows: the response's equity curve is downsampled to at most
+#     this many points (first and last kept) and the trade list cut to the first this many rows.
+#   taker_fee_rates: fraction per OKX instType. No trade-fee rate is stored in Postgres yet, so these
+#     are what a run uses (fee_source "config"); an instType not listed uses fallback_taker_fee_rate.
+backtest:
+  max_bars: 50000
+  timeout_seconds: 60
+  max_inst_ids: 5
+  warmup_bars: 250
+  equity_curve_max_points: 1000
+  trades_max_rows: 1000
+  fallback_taker_fee_rate: "0.0005"
+  taker_fee_rates:
+    SPOT: "0.001"
+    SWAP: "0.0005"
+    FUTURES: "0.0005"
+
 data_api:
   resync_per_minute: 1
   pause_per_minute: 5

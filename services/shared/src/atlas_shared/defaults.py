@@ -752,6 +752,20 @@ DEFAULTS: Final[dict[str, Any]] = {
     "risk_api": {
         "checks_per_minute": 20,
     },
+    "backtest": {
+        "max_bars": 50000,
+        "timeout_seconds": 60,
+        "max_inst_ids": 5,
+        "warmup_bars": 250,
+        "equity_curve_max_points": 1000,
+        "trades_max_rows": 1000,
+        "fallback_taker_fee_rate": "0.0005",
+        "taker_fee_rates": {
+            "SPOT": "0.001",
+            "SWAP": "0.0005",
+            "FUTURES": "0.0005",
+        },
+    },
     "data_api": {
         "resync_per_minute": 1,
         "pause_per_minute": 5,
