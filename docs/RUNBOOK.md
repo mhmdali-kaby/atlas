@@ -27,6 +27,24 @@ patch; it only documents what exists today.
   space, session/debug security, the Reverb secret, and the backup check. Any `✗` line fails the
   command (exit 1); `⚠` is a warning and still exits 0.
 
+## Playwright e2e (frontend, ATL-187)
+
+`cd frontend && npx playwright test` runs its own Laravel, trading_core and two Vite servers —
+never the owner's `atlas` database, Redis DB 0, or ports 3000/8000/8080/8100/5433/6380
+(`frontend/e2e/support/stack.ts`). Two checkouts can run it at the same time because the database
+name and every port are derived from the checkout path, the same way the Pest/pytest test database
+is (docs/DECISIONS.md #252):
+
+- **Database** — `atlas_e2e_<first 8 hex of sha1(REPO_ROOT)>`. `DB_E2E_DATABASE` forces one name.
+- **Ports** — `mocked` (3140), `spa` (3141), `api` (8140), `core` (8141) and `reverb` (8142) each
+  get the same deterministic offset (0-2990, from the checkout's sha1 hash) added to their base, so
+  two worktrees land on different ports and neither can reach a real port. `stack.ts` prints the
+  chosen ports once at startup, the way `bootstrap.php` prints the Pest test database name — once
+  per run, not once per worker, because the print is guarded on `TEST_WORKER_INDEX` (unset in the
+  main process that loads `playwright.config.ts`, set in every worker). `E2E_PORT`,
+  `E2E_FLOW_PORT`, `E2E_API_PORT`, `E2E_CORE_PORT` and `E2E_REVERB_PORT` each override one port and
+  win over the derived value. Set `E2E_QUIET_STARTUP_LOG=1` to silence the ports line entirely.
+
 ## OKX demo integration tests (brief §19, ATL-152)
 
 These place real orders on the OKX **demo** account, so they are never part of `uv run pytest`

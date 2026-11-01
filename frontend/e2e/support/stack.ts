@@ -19,17 +19,60 @@ export const SERVICES_DIR = path.join(REPO_ROOT, 'services')
 export const EVIDENCE_DIR = path.resolve(REPO_ROOT, '..', 'evidence')
 
 const digest = (label: string) => createHash('sha256').update(`${label}:${REPO_ROOT}`).digest()
-const num = (name: string, fallback: number) => Number(process.env[name] ?? fallback)
 
-export const PORTS = {
-  /** The mocked specs' Vite (their page.route fakes answer http://localhost:8000). */
-  mocked: num('E2E_PORT', 3140),
-  /** The flows' Vite, talking to the real Laravel below. */
-  spa: num('E2E_FLOW_PORT', 3141),
-  api: num('E2E_API_PORT', 8140),
-  core: num('E2E_CORE_PORT', 8141),
-  /** Reverb for the live War Room flow (ATL-40); the spec starts and stops it itself. */
-  reverb: num('E2E_REVERB_PORT', 8142),
+/** The app's real ports; a derived port must never land on one of these (ATL-187). */
+export const RESERVED_PORTS = [3000, 8000, 8080, 8100, 5433, 6380]
+
+/** Base ports a checkout's derived ports are offset from. Every derived value stays within
+ * [base, base + 2990], which (see stack.test.ts) never reaches a RESERVED_PORTS value. */
+export const PORT_BASES = {
+  mocked: 3140,
+  spa: 3141,
+  api: 8140,
+  core: 8141,
+  reverb: 8142,
+}
+
+/**
+ * A deterministic, repo-root-specific offset, so two worktrees running Playwright at once land on
+ * different ports instead of colliding on the same trading_core/Laravel/Vite process (ATL-187).
+ * 300 buckets of stride 10 keep every base + offset inside [base, base + 2990], short of the next
+ * reserved port above any base (see stack.test.ts for the proof).
+ */
+export function portOffset(repoRoot: string): number {
+  const hash = createHash('sha1').update(repoRoot).digest('hex')
+  const bucket = Number.parseInt(hash.slice(0, 8), 16) % 300
+  return bucket * 10
+}
+
+/** PORTS for an arbitrary repo root; env vars still win over the derived value. Exported for tests. */
+export function derivePorts(repoRoot: string, env: Record<string, string | undefined> = process.env) {
+  const offset = portOffset(repoRoot)
+  const num = (name: string, base: number) => Number(env[name] ?? base + offset)
+  return {
+    /** The mocked specs' Vite (their page.route fakes answer http://localhost:8000). */
+    mocked: num('E2E_PORT', PORT_BASES.mocked),
+    /** The flows' Vite, talking to the real Laravel below. */
+    spa: num('E2E_FLOW_PORT', PORT_BASES.spa),
+    api: num('E2E_API_PORT', PORT_BASES.api),
+    core: num('E2E_CORE_PORT', PORT_BASES.core),
+    /** Reverb for the live War Room flow (ATL-40); the spec starts and stops it itself. */
+    reverb: num('E2E_REVERB_PORT', PORT_BASES.reverb),
+  }
+}
+
+export const PORTS = derivePorts(REPO_ROOT)
+
+// Every Playwright worker process re-imports this module, so without the TEST_WORKER_INDEX guard
+// the line below printed once per worker (36 times in a run with that many workers) instead of
+// once per run. TEST_WORKER_INDEX is unset in the main process that loads playwright.config.ts and
+// set in every worker, so this prints exactly once. E2E_QUIET_STARTUP_LOG silences it entirely
+// (see docs/RUNBOOK.md).
+if (!process.env.TEST_WORKER_INDEX && !process.env.E2E_QUIET_STARTUP_LOG) {
+  // eslint-disable-next-line no-console
+  console.error(
+    `[atlas e2e] ports for ${REPO_ROOT}: mocked=${PORTS.mocked} spa=${PORTS.spa} api=${PORTS.api} core=${PORTS.core} reverb=${PORTS.reverb}`,
+  )
 }
 
 export const SPA_URL = `http://127.0.0.1:${PORTS.spa}`

@@ -1,0 +1,22 @@
+[
+ {
+  "id": "1c1179bf-706e-5f48-986d-33f23a123358",
+  "env": "demo",
+  "thread_id": "506d5285-ace3-5e14-9ad0-a94c1d9eb3b6",
+  "event_id": "a63963f8-b18b-5247-a372-03082826c057",
+  "author_type": "agent",
+  "author": "strategist",
+  "kind": "proposal",
+  "content_md": "**SELL ETH-USDT-SWAP** v1",
+  "card": {
+   "type": "proposal",
+   "proposal_id": "c11fbd61-6d34-5b25-8fbb-2158b6f991cf",
+   "inst_id": "ETH-USDT-SWAP",
+   "version": 1
+  },
+  "reply_to": null,
+  "mentions": [],
+  "created_at": "2026-04-14T08:58:00Z",
+  "updated_at": "2026-04-14T08:58:00Z"
+ }
+]

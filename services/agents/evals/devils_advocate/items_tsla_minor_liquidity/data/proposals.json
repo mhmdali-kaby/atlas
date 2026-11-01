@@ -1,0 +1,38 @@
+[
+ {
+  "id": "cca7e5db-436e-5536-b6db-3e52678f51da",
+  "env": "demo",
+  "version": 1,
+  "kind": "entry",
+  "author": "strategist",
+  "inst_id": "TSLA-USDT-SWAP",
+  "side": "buy",
+  "order_type": "limit",
+  "entry_zone": [
+   "251.05",
+   "251.55"
+  ],
+  "stop": "246.27",
+  "take_profits": [
+   {
+    "price": "261.35",
+    "pct": "50"
+   },
+   {
+    "price": "266.38",
+    "pct": "50"
+   }
+  ],
+  "time_stop_minutes": 1440,
+  "size_suggestion_pct": "2.5",
+  "leverage_suggestion": 2,
+  "expected_r": "2.4",
+  "probability": "0.55",
+  "rationale_md": "Long TSLA-USDT-SWAP from the setup.",
+  "invalidation": "1H close beyond 246.27",
+  "evidence": [],
+  "status": "under_review",
+  "created_at": "2026-04-03T08:58:00Z",
+  "updated_at": "2026-04-03T08:58:00Z"
+ }
+]

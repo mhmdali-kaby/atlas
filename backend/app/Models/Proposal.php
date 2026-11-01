@@ -39,6 +39,7 @@ use Illuminate\Support\Carbon;
  * @property int|null $leverage_suggestion
  * @property string|null $expected_r
  * @property string|null $probability
+ * @property array<string, mixed>|null $probability_basis {analog_hit_rate, n, adjustment_pts, reason} (ATL-189)
  * @property string $rationale_md
  * @property string $invalidation
  * @property list<array<string, mixed>> $evidence
@@ -56,7 +57,7 @@ use Illuminate\Support\Carbon;
 #[Fillable([
     'env', 'cycle_id', 'version', 'parent_id', 'kind', 'author', 'inst_id', 'side', 'order_type',
     'entry', 'entry_zone', 'stop', 'take_profits', 'time_stop_minutes', 'size_suggestion_pct',
-    'close_pct', 'leverage_suggestion', 'expected_r', 'probability', 'rationale_md', 'invalidation',
+    'close_pct', 'leverage_suggestion', 'expected_r', 'probability', 'probability_basis', 'rationale_md', 'invalidation',
     'evidence', 'status', 'approval_expires_at', 'status_reason', 'owner_note', 'decided_by',
     'decided_at', 'approval_reminded_at',
 ])]
@@ -131,6 +132,7 @@ class Proposal extends Model
             'entry_zone' => 'array',
             'take_profits' => 'array',
             'evidence' => 'array',
+            'probability_basis' => 'array',
             'time_stop_minutes' => 'integer',
             'leverage_suggestion' => 'integer',
             'approval_expires_at' => 'datetime',

@@ -1,0 +1,47 @@
+[
+ {
+  "id": "7ef80f1d-4f73-5f64-8f5c-a659eb5a89a2",
+  "env": "demo",
+  "kind": "entry",
+  "author": "strategist",
+  "inst_id": "ETH-USDT-SWAP",
+  "side": "sell",
+  "order_type": "limit",
+  "entry": "3000",
+  "stop": "3050",
+  "take_profits": [
+   {
+    "price": "2925",
+    "pct": "50"
+   },
+   {
+    "price": "2850",
+    "pct": "50"
+   }
+  ],
+  "time_stop_minutes": 1440,
+  "status": "filled",
+  "created_at": "2087-05-13T05:50:00Z",
+  "updated_at": "2087-05-13T06:00:00Z",
+  "close_pct": null,
+  "invalidation": ""
+ },
+ {
+  "id": "67ab93c3-14e5-5d6d-b396-6cee92f3a5e3",
+  "env": "demo",
+  "kind": "partial_close",
+  "author": "portfolio_manager",
+  "inst_id": "ETH-USDT-SWAP",
+  "side": null,
+  "order_type": null,
+  "entry": null,
+  "stop": null,
+  "take_profits": [],
+  "time_stop_minutes": null,
+  "status": "filled",
+  "created_at": "2087-05-13T08:30:00Z",
+  "updated_at": "2087-05-13T08:30:00Z",
+  "close_pct": "50",
+  "invalidation": "tp1_partial"
+ }
+]

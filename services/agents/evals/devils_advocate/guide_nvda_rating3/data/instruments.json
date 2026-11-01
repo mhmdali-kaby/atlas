@@ -1,0 +1,20 @@
+[
+ {
+  "id": "73c24ba3-1568-54f0-8a9b-ff4bb9149363",
+  "env": "demo",
+  "inst_id": "NVDA-USDT-SWAP",
+  "inst_type": "SWAP",
+  "inst_family": "NVDA-USDT",
+  "base_ccy": "NVDA",
+  "quote_ccy": "USDT",
+  "settle_ccy": "USDT",
+  "ct_val": "1",
+  "lot_sz": "1",
+  "min_sz": "1",
+  "tick_sz": "0.01",
+  "max_lever": "20",
+  "state": "live",
+  "asset_class": "stock",
+  "list_time": "2025-03-04T09:00:00Z"
+ }
+]

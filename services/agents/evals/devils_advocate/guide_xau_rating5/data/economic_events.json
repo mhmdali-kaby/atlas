@@ -1,0 +1,13 @@
+[
+ {
+  "id": "a9be9b02-545c-5fb1-abd9-ffeaf2d4d6e1",
+  "source": "forexfactory",
+  "external_id": "eval-guide_xau_rating5-US CPI",
+  "country": "US",
+  "name": "US CPI",
+  "importance": 5,
+  "scheduled_at": "2026-04-10T12:00:00Z",
+  "created_at": "2026-04-08T09:00:00Z",
+  "updated_at": "2026-04-08T09:00:00Z"
+ }
+]

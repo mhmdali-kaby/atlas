@@ -1,0 +1,25 @@
+[
+ {
+  "id": "5527a43d-86cd-5aaa-b0f9-98815d71eba6",
+  "source": "evalpm.wire_a",
+  "url": "https://news.example/news-eth-reported-short-hold/0",
+  "canonical_url": "https://news.example/news-eth-reported-short-hold/0",
+  "title": "Report says a major ETH staking provider faces a regulatory probe",
+  "summary": "Report says a major ETH staking provider faces a regulatory probe",
+  "published_at": "2087-05-13T08:40:00Z",
+  "fetched_at": "2087-05-13T08:41:00Z",
+  "language": "en",
+  "instruments": [
+   "ETH-USDT-SWAP"
+  ],
+  "asset_classes": [
+   "crypto"
+  ],
+  "event_type": "other",
+  "sentiment": "-0.4",
+  "importance": 4,
+  "novelty": "0.8",
+  "cluster_id": "661fb31a-981c-527e-b8f6-41cbecbeb6b1",
+  "created_at": "2087-05-13T08:41:00Z"
+ }
+]

@@ -1,0 +1,19 @@
+[
+ {
+  "id": "11c1caf1-8253-5d86-92c7-b4c6f66a8c31",
+  "env": "demo",
+  "version": 7,
+  "data": {
+   "risk_profile": "balanced",
+   "max_leverage": 5,
+   "autonomy_level": 2
+  },
+  "risk_profile": "balanced",
+  "autonomy_level": 2,
+  "max_loss_per_trade_pct": "1.0",
+  "max_position_pct": "5.0",
+  "max_leverage": 5,
+  "created_at": "2026-05-02T08:00:00Z",
+  "updated_at": "2026-05-02T08:00:00Z"
+ }
+]

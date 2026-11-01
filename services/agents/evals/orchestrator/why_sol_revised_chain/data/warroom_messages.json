@@ -1,0 +1,89 @@
+[
+ {
+  "id": "f47542f8-222b-557f-9066-94e4f0e98ad1",
+  "env": "demo",
+  "thread_id": "d2e12b12-158a-59ad-9d7e-eb52d066b2d0",
+  "event_id": "02478b81-03d9-5c8d-a46b-3935c5d77341",
+  "author_type": "human",
+  "author": "owner",
+  "kind": "text",
+  "content_md": "/why {v1}",
+  "card": null,
+  "reply_to": null,
+  "mentions": [],
+  "created_at": "2026-05-31T11:59:59Z",
+  "updated_at": "2026-05-31T11:59:59Z"
+ },
+ {
+  "id": "e0d46594-4a0c-597c-9e96-781a4d24876d",
+  "env": "demo",
+  "thread_id": "d2e12b12-158a-59ad-9d7e-eb52d066b2d0",
+  "event_id": "260cea20-7939-5ae2-bea6-38166998dbf3",
+  "author_type": "agent",
+  "author": "strategist",
+  "kind": "proposal",
+  "content_md": "Proposal card",
+  "card": {
+   "type": "proposal",
+   "proposal_id": "b8983df3-e39e-53d6-b424-9e06e1ae0fc4"
+  },
+  "reply_to": null,
+  "mentions": [],
+  "created_at": "2026-05-31T11:30:00Z",
+  "updated_at": "2026-05-31T11:30:00Z"
+ },
+ {
+  "id": "41c17276-d6f6-549e-a757-1700be0c3cba",
+  "env": "demo",
+  "thread_id": "d2e12b12-158a-59ad-9d7e-eb52d066b2d0",
+  "event_id": "ae8869a8-6c41-58d5-9401-289d7fc4291f",
+  "author_type": "agent",
+  "author": "devils_advocate",
+  "kind": "research_report",
+  "content_md": "Devil's Advocate review",
+  "card": {
+   "type": "da_review",
+   "proposal_id": "b8983df3-e39e-53d6-b424-9e06e1ae0fc4"
+  },
+  "reply_to": null,
+  "mentions": [],
+  "created_at": "2026-05-31T11:34:00Z",
+  "updated_at": "2026-05-31T11:34:00Z"
+ },
+ {
+  "id": "a3b244f6-5b3b-55f0-9407-b5f1049a1cf8",
+  "env": "demo",
+  "thread_id": "d2e12b12-158a-59ad-9d7e-eb52d066b2d0",
+  "event_id": "224f0f6a-9831-5324-84b4-4a8efc443c4b",
+  "author_type": "agent",
+  "author": "orchestrator",
+  "kind": "vote_summary",
+  "content_md": "Vote summary",
+  "card": {
+   "type": "vote_summary",
+   "proposal_id": "014892a8-3b81-5de5-bc76-08241853015e"
+  },
+  "reply_to": null,
+  "mentions": [],
+  "created_at": "2026-05-31T11:38:00Z",
+  "updated_at": "2026-05-31T11:38:00Z"
+ },
+ {
+  "id": "0a1f50e9-9bd6-5660-92f6-7a3cdb55301c",
+  "env": "demo",
+  "thread_id": "d2e12b12-158a-59ad-9d7e-eb52d066b2d0",
+  "event_id": "207a81df-59b5-502a-989c-a6260576991b",
+  "author_type": "agent",
+  "author": "system",
+  "kind": "risk_check",
+  "content_md": "Risk Engine result",
+  "card": {
+   "type": "risk_check",
+   "proposal_id": "014892a8-3b81-5de5-bc76-08241853015e"
+  },
+  "reply_to": null,
+  "mentions": [],
+  "created_at": "2026-05-31T11:42:00Z",
+  "updated_at": "2026-05-31T11:42:00Z"
+ }
+]

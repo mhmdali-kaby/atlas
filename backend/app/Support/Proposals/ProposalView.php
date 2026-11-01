@@ -54,6 +54,7 @@ final class ProposalView
             'leverage_suggestion' => $p->leverage_suggestion,
             'expected_r' => Dec::out($p->expected_r),
             'probability' => Dec::out($p->probability),
+            'probability_basis' => self::probabilityBasis($p->probability_basis),
             'rationale_md' => $p->rationale_md,
             'invalidation' => $p->invalidation,
             'evidence' => $p->evidence,
@@ -232,6 +233,34 @@ final class ProposalView
         }
 
         return collect([...$before, $p, ...$after]);
+    }
+
+    /**
+     * The Strategist's odds basis (ATL-189), or null when absent or malformed. `reason` is model
+     * text: the client renders it as text.
+     *
+     * @param  array<string, mixed>|null  $basis
+     * @return array{analog_hit_rate: string|null, n: int|null, adjustment_pts: string|null, reason: string}|null
+     */
+    private static function probabilityBasis(?array $basis): ?array
+    {
+        if ($basis === null) {
+            return null;
+        }
+        $rate = $basis['analog_hit_rate'] ?? null;
+        $adjust = $basis['adjustment_pts'] ?? null;
+        $n = $basis['n'] ?? null;
+        $reason = $basis['reason'] ?? null;
+        if (! is_numeric($rate) || ! is_numeric($adjust) || ! is_string($reason)) {
+            return null;
+        }
+
+        return [
+            'analog_hit_rate' => Dec::out((string) $rate),
+            'n' => is_int($n) ? $n : null,
+            'adjustment_pts' => Dec::out((string) $adjust),
+            'reason' => $reason,
+        ];
     }
 
     private static function iso(?Carbon $at): ?string

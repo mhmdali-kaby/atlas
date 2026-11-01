@@ -1,0 +1,17 @@
+[
+ {
+  "id": "97b5cd7a-674c-52c5-a0cd-6dd02855a3a3",
+  "env": "demo",
+  "thread_id": "9b3cbc17-146a-5f78-9d21-31eecc37eb05",
+  "event_id": "9bd9f082-b4e3-52a9-aac5-211da044bbef",
+  "author_type": "human",
+  "author": "owner",
+  "kind": "text",
+  "content_md": "Have the Historian run an event study on XAU around US CPI",
+  "card": null,
+  "reply_to": null,
+  "mentions": [],
+  "created_at": "2026-05-01T07:59:59Z",
+  "updated_at": "2026-05-01T07:59:59Z"
+ }
+]

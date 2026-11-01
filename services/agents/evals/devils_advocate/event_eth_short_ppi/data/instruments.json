@@ -1,0 +1,20 @@
+[
+ {
+  "id": "4233a172-1165-567a-827b-9b5b7f72ba5a",
+  "env": "demo",
+  "inst_id": "ETH-USDT-SWAP",
+  "inst_type": "SWAP",
+  "inst_family": "ETH-USDT",
+  "base_ccy": "ETH",
+  "quote_ccy": "USDT",
+  "settle_ccy": "USDT",
+  "ct_val": "1",
+  "lot_sz": "1",
+  "min_sz": "1",
+  "tick_sz": "0.01",
+  "max_lever": "20",
+  "state": "live",
+  "asset_class": "crypto",
+  "list_time": "2025-03-10T09:00:00Z"
+ }
+]

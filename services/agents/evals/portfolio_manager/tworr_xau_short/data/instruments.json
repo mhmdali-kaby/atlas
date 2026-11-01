@@ -1,0 +1,16 @@
+[
+ {
+  "env": "demo",
+  "inst_id": "XAU-USDT-SWAP",
+  "inst_type": "SWAP",
+  "base_ccy": "XAU",
+  "quote_ccy": "USDT",
+  "settle_ccy": "USDT",
+  "lot_sz": "1",
+  "min_sz": "1",
+  "tick_sz": "0.01",
+  "state": "live",
+  "asset_class": "commodity",
+  "created_at": "2087-02-12T09:00:00Z"
+ }
+]

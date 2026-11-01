@@ -78,6 +78,18 @@ export interface ProposalOrder {
   created_at: string | null
 }
 
+/**
+ * How the Strategist reached its probability (ATL-189, brief §7.6 step 3): the Historian's analog
+ * hit rate (0-1), the number of analogs and its adjustment in percentage points. `reason` is model
+ * text: render it as text, never as markup.
+ */
+export interface ProbabilityBasis {
+  analog_hit_rate: string
+  n: number | null
+  adjustment_pts: string
+  reason: string
+}
+
 export interface ProposalSummary {
   id: string
   env: string
@@ -97,6 +109,8 @@ export interface ProposalSummary {
   leverage_suggestion: number | null
   expected_r: string | null
   probability: string | null
+  /** Absent on older payloads; null when the Strategist gave none. */
+  probability_basis?: ProbabilityBasis | null
   rationale_md: string | null
   invalidation: string | null
   status: string
@@ -140,6 +154,17 @@ function readZone(v: unknown): [string, string] | null {
   return a && b ? [a, b] : null
 }
 
+/** A probability_basis from the API or a card, or null when absent or malformed. */
+export function readBasis(v: unknown): ProbabilityBasis | null {
+  if (typeof v !== 'object' || v === null) return null
+  const b = v as Record<string, unknown>
+  const rate = str(b.analog_hit_rate)
+  const adjust = str(b.adjustment_pts)
+  const reason = typeof b.reason === 'string' ? b.reason.trim() : ''
+  if (rate === null || adjust === null || !/^-?\d+(\.\d+)?$/.test(rate) || !/^[+-]?\d+(\.\d+)?$/.test(adjust)) return null
+  return { analog_hit_rate: rate, n: int(b.n), adjustment_pts: adjust, reason }
+}
+
 /** A War Room `proposal` card → its proposal id and a snapshot; null when it is not one. */
 export function readProposalCard(card: Record<string, unknown> | null | undefined): ProposalCardRef | null {
   if (!card || card.type !== 'proposal') return null
@@ -170,6 +195,7 @@ export function readProposalCard(card: Record<string, unknown> | null | undefine
       leverage_suggestion: int(card.leverage_suggestion),
       expected_r: str(card.expected_r_multiple ?? card.expected_r),
       probability: str(card.probability_estimate ?? card.probability),
+      probability_basis: readBasis(card.probability_basis),
       rationale_md: str(card.rationale_md),
       invalidation: str(card.invalidation),
       status: str(card.status) ?? 'under_review',

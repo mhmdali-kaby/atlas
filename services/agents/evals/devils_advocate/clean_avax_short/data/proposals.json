@@ -1,0 +1,38 @@
+[
+ {
+  "id": "5f8cf5f7-19c6-5b25-bc2c-b3a9d3f2e924",
+  "env": "demo",
+  "version": 1,
+  "kind": "entry",
+  "author": "strategist",
+  "inst_id": "AVAX-USDT-SWAP",
+  "side": "sell",
+  "order_type": "limit",
+  "entry_zone": [
+   "27.073",
+   "27.127"
+  ],
+  "stop": "27.642",
+  "take_profits": [
+   {
+    "price": "26.016",
+    "pct": "50"
+   },
+   {
+    "price": "25.474",
+    "pct": "50"
+   }
+  ],
+  "time_stop_minutes": 1440,
+  "size_suggestion_pct": "2.5",
+  "leverage_suggestion": 2,
+  "expected_r": "2.4",
+  "probability": "0.55",
+  "rationale_md": "Short AVAX-USDT-SWAP from the setup.",
+  "invalidation": "1H close beyond 27.642",
+  "evidence": [],
+  "status": "under_review",
+  "created_at": "2026-04-25T08:58:00Z",
+  "updated_at": "2026-04-25T08:58:00Z"
+ }
+]

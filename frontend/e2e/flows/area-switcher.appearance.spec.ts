@@ -2,12 +2,18 @@ import path from 'node:path'
 import type { Page } from '@playwright/test'
 import arPortfolio from '../../src/i18n/locales/ar/portfolio.json' with { type: 'json' }
 import enPortfolio from '../../src/i18n/locales/en/portfolio.json' with { type: 'json' }
+import arPortfolioOrders from '../../src/i18n/locales/ar/portfolio-orders.json' with { type: 'json' }
+import enPortfolioOrders from '../../src/i18n/locales/en/portfolio-orders.json' with { type: 'json' }
 import arSettings from '../../src/i18n/locales/ar/settings.json' with { type: 'json' }
 import enSettings from '../../src/i18n/locales/en/settings.json' with { type: 'json' }
+import arAgents from '../../src/i18n/locales/ar/settings-agents.json' with { type: 'json' }
+import enAgents from '../../src/i18n/locales/en/settings-agents.json' with { type: 'json' }
 import arData from '../../src/i18n/locales/ar/settings-data.json' with { type: 'json' }
 import enData from '../../src/i18n/locales/en/settings-data.json' with { type: 'json' }
 import arSources from '../../src/i18n/locales/ar/settings-data-sources.json' with { type: 'json' }
 import enSources from '../../src/i18n/locales/en/settings-data-sources.json' with { type: 'json' }
+import arMoney from '../../src/i18n/locales/ar/settings-money.json' with { type: 'json' }
+import enMoney from '../../src/i18n/locales/en/settings-money.json' with { type: 'json' }
 import arShell from '../../src/i18n/locales/ar/shell.json' with { type: 'json' }
 import enShell from '../../src/i18n/locales/en/shell.json' with { type: 'json' }
 import { EVIDENCE_DIR } from '../support/stack'
@@ -19,8 +25,8 @@ import { expect, test } from './appearance'
  */
 const SHOTS = path.join(EVIDENCE_DIR, 'ATL-41')
 const T = {
-  en: { shell: enShell, portfolio: enPortfolio, settings: enSettings, data: enData, sources: enSources },
-  ar: { shell: arShell, portfolio: arPortfolio, settings: arSettings, data: arData, sources: arSources },
+  en: { shell: enShell, portfolio: enPortfolio, portfolioOrders: enPortfolioOrders, settings: enSettings, money: enMoney, agents: enAgents, data: enData, sources: enSources },
+  ar: { shell: arShell, portfolio: arPortfolio, portfolioOrders: arPortfolioOrders, settings: arSettings, money: arMoney, agents: arAgents, data: arData, sources: arSources },
 }
 
 test.use({ viewport: { width: 1440, height: 900 } })
@@ -38,7 +44,13 @@ test('on /portfolio the switcher selects Portfolio and lists only its pages; Set
   await expect(switcher.getByRole('link', { name: t.shell.area.portfolio })).toHaveAttribute('aria-current', 'true')
   await expect(switcher.getByRole('link', { name: t.shell.area.settings })).not.toHaveAttribute('aria-current', 'true')
   const portfolioList = sidebar.getByRole('navigation', { name: t.shell.area.portfolio })
-  await expect(portfolioList.getByRole('link')).toHaveText([t.portfolio.nav.overview, t.portfolio.nav.positions, t.portfolio.nav.holdings, t.portfolio.nav.cashflows])
+  await expect(portfolioList.getByRole('link')).toHaveText([
+    t.portfolio.nav.overview,
+    t.portfolio.nav.positions,
+    t.portfolioOrders.nav,
+    t.portfolio.nav.holdings,
+    t.portfolio.nav.cashflows,
+  ])
   await expect(sidebar.getByRole('link', { name: t.settings.nav.risk })).toHaveCount(0)
 
   // Mirrored in Arabic: the sidebar hugs the right edge, and each area's icon sits at its start (right).
@@ -56,7 +68,14 @@ test('on /portfolio the switcher selects Portfolio and lists only its pages; Set
   await expect(page).toHaveURL(/\/settings\/connections$/)
   await expect(switcher.getByRole('link', { name: t.shell.area.settings })).toHaveAttribute('aria-current', 'true')
   const settingsList = sidebar.getByRole('navigation', { name: t.shell.area.settings })
-  await expect(settingsList.getByRole('link')).toHaveText([t.settings.nav.connections, t.settings.nav.risk, t.data.nav.data, t.sources.nav])
+  await expect(settingsList.getByRole('link')).toHaveText([
+    t.settings.nav.connections,
+    t.settings.nav.risk,
+    t.money.nav,
+    t.agents.nav,
+    t.data.nav.data,
+    t.sources.nav,
+  ])
   await expect(sidebar.getByRole('link', { name: t.portfolio.nav.overview })).toHaveCount(0)
   expect(await page.evaluate(() => (window as unknown as { atlasNoReload?: boolean }).atlasNoReload)).toBe(true)
   await page.screenshot({ path: `${SHOTS}/${info.project.name}-settings.png` })

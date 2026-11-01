@@ -1,0 +1,13 @@
+[
+ {
+  "id": "ba17d454-6638-5143-8c2c-aa66c9c52452",
+  "source": "forexfactory",
+  "external_id": "eval-rerate_xau_once_fix_applied-US CPI",
+  "country": "US",
+  "name": "US CPI",
+  "importance": 5,
+  "scheduled_at": "2026-04-27T12:00:00Z",
+  "created_at": "2026-04-25T09:00:00Z",
+  "updated_at": "2026-04-25T09:00:00Z"
+ }
+]

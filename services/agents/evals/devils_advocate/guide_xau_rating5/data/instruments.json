@@ -1,0 +1,20 @@
+[
+ {
+  "id": "94646b92-df7c-5651-b986-7d2f8b22b3f2",
+  "env": "demo",
+  "inst_id": "XAU-USDT-SWAP",
+  "inst_type": "SWAP",
+  "inst_family": "XAU-USDT",
+  "base_ccy": "XAU",
+  "quote_ccy": "USDT",
+  "settle_ccy": "USDT",
+  "ct_val": "1",
+  "lot_sz": "1",
+  "min_sz": "1",
+  "tick_sz": "0.01",
+  "max_lever": "20",
+  "state": "live",
+  "asset_class": "commodity",
+  "list_time": "2025-03-06T09:00:00Z"
+ }
+]
