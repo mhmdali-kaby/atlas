@@ -61,6 +61,15 @@ class AppServiceProvider extends ServiceProvider
                 ->by('risk-check|'.($user !== null ? (string) $user->getAuthIdentifier() : $request->ip()));
         });
 
+        // ATL-208: owner backtest starts, per user. Each run holds a worker for up to a minute.
+        RateLimiter::for('backtests-start', function (Request $request): Limit {
+            $perMinute = config('atlas_defaults.backtests_api.starts_per_minute');
+            $user = $request->user();
+
+            return Limit::perMinute(is_int($perMinute) ? $perMinute : 6)
+                ->by('backtests-start|'.($user !== null ? (string) $user->getAuthIdentifier() : $request->ip()));
+        });
+
         // ATL-103: owner watchlist pin/remove/restore, per user.
         RateLimiter::for('watchlists-write', function (Request $request): Limit {
             $perMinute = config('atlas_defaults.watchlists_api.writes_per_minute');

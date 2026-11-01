@@ -210,6 +210,21 @@ return [
             'timeout' => 60,
             'nice' => 0,
         ],
+        // ATL-208: owner backtests on their own queue, one at a time, so a run (≤ 60 s in
+        // trading_core) never delays the default queue. Timeout matches RunBacktest::$timeout and
+        // stays below the redis connection's retry_after (90 s); tries 1, never retried silently.
+        'supervisor-backtests' => [
+            'connection' => 'redis',
+            'queue' => ['backtests'],
+            'balance' => 'simple',
+            'maxProcesses' => 1,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 128,
+            'tries' => 1,
+            'timeout' => 80,
+            'nice' => 0,
+        ],
     ],
 
     'environments' => [
