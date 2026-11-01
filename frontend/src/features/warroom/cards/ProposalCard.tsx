@@ -26,7 +26,7 @@ import { useEffect, useRef, useState, type CSSProperties, type MouseEvent, type 
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { ApiError } from '../../../lib/api'
-import { formatFixed, formatMoney, type Lang } from '../../../lib/format'
+import { formatDecimal, formatFixed, formatMoney, type Lang } from '../../../lib/format'
 import { Button, toast } from '../../../ui'
 import { useNow } from '../../portfolio/hooks'
 import { Medallion } from '../Medallion'
@@ -43,6 +43,7 @@ import {
   followOwnerEdits,
   proposalApi,
   proposalKey,
+  readBasis,
   refusalOf,
   replacedBy,
   shownStatus,
@@ -194,6 +195,7 @@ export function ProposalCard({ cardRef, lang, onJump }: { cardRef: ProposalCardR
   const money = (v: string | null) => formatMoney(v, 'USD', lang)
   const pct = (v: string | null, digits = 2) => (v === null ? '—' : `${formatFixed(v, digits, lang)}%`)
   const stake = stakeOf(p)
+  const basis = readBasis(p.probability_basis)
   const da = live ? daOf(p) : null
   const statusWord = t(`st.${shown}`)
   const awaiting = live && shown === 'awaiting_owner'
@@ -310,6 +312,16 @@ export function ProposalCard({ cardRef, lang, onJump }: { cardRef: ProposalCardR
               <span className="pr-fact-v" data-testid="pr-odds">
                 {fillSlots(t('oddsV', { p: slot('p') }), { p: <Fig>{`${formatFixed(decStr(dec(p.probability)! * 100n, 0), 0, lang)}%`}</Fig> })}
               </span>
+              {basis && (
+                <span className="pr-fact-note" data-testid="pr-odds-basis">
+                  {fillSlots(t('oddsBasis', { rate: slot('rate'), adj: slot('adj'), reason: slot('reason') }), {
+                    rate: <Fig>{`${formatFixed(decStr(dec(basis.analog_hit_rate)! * 100n, 0), 0, lang)}%`}</Fig>,
+                    adj: <Fig>{formatDecimal(basis.adjustment_pts, lang, 0, 'exceptZero')}</Fig>,
+                    // Model text: a text node, isolated so its direction cannot reorder the line.
+                    reason: <bdi dir="auto">{basis.reason}</bdi>,
+                  })}
+                </span>
+              )}
             </dd>
           </div>
         )}
