@@ -1,0 +1,210 @@
+/*
+ * Settings → Money limits (ATL-130; design css/settings-money.css). Built from the Settings
+ * system: pane header, grouped inset lists, steppers, the save bar. No new colours.
+ * The cut line: each limit on the next trade's size is a bar, one accent line cuts them all
+ * where the smallest ends, and everything past it is hatched headroom.
+ */
+.ml-page { gap: 22px; }
+.ml-group-title { padding: 0 16px 8px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 600; color: var(--label-secondary); }
+.ml-group-note { padding: 8px 16px 0; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+
+/* ---- the preview -------------------------------------------------------- */
+.ml-prev-sec { display: grid; }
+.ml-prev-title { display: flex; align-items: center; gap: 8px; }
+.ml-spin { display: inline-flex; opacity: 0; transition: opacity 120ms var(--ease-out); }
+.ml-spin svg, .ml-spin > * { width: 12px; height: 12px; }
+.ml-prev-sec.is-pending .ml-spin { opacity: 1; transition-delay: 150ms; }
+
+.ml-preview { display: grid; gap: 14px; padding: 16px 20px 4px; overflow: visible; }
+.ml-preview:focus { outline: none; }
+.ml-sk { min-height: 160px; }
+
+.ml-equity {
+  display: flex; align-items: flex-start; gap: 8px;
+  font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); text-wrap: balance;
+}
+.ml-eq-seal { flex: none; margin-top: -1px; }
+.ml-equity .fig { color: var(--label); font-weight: 500; }
+.ml-eq-stale { color: var(--warning-ink); font-weight: 500; }
+.ml-eq-warn { width: 16px; height: 16px; flex: none; margin-top: 1px; stroke-width: 2; color: var(--warning-ink); }
+
+.ml-body { display: grid; gap: 16px; transition: opacity 160ms var(--ease-out); }
+.ml-prev-sec.is-pending .ml-body { opacity: 0.6; transition-delay: 150ms; }
+.ml-prev-sec.is-invalid .ml-body { opacity: 0.45; }
+
+/* the brief's own sentence as the hero: words quiet, figures in full ink */
+.ml-sentence {
+  max-width: 32em;
+  font-family: var(--font-display); font-size: var(--fs-title-2); line-height: var(--lh-title-2);
+  letter-spacing: -0.006em; font-weight: 400; color: var(--label-secondary); text-wrap: balance;
+}
+.ml-sentence:lang(ar) { line-height: 1.9rem; letter-spacing: 0; }
+.ml-sentence .fig { color: var(--label); font-weight: 600; }
+
+/* ---- the receipt -------------------------------------------------------- */
+.ml-receipt { display: grid; border-top: 0.5px solid var(--separator); }
+.ml-line {
+  display: grid; grid-template-columns: 4.25rem 9rem minmax(0, 1fr) auto;
+  column-gap: 16px; row-gap: 12px; align-items: baseline; padding-block: 13px;
+}
+.ml-line + .ml-line { border-top: 0.5px solid var(--separator); }
+.ml-line-k { font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); color: var(--label-secondary); }
+.ml-line-v { display: grid; justify-items: start; gap: 1px; font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); font-weight: 600; }
+.ml-was { font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 400; color: var(--label-secondary); }
+.ml-line-x { font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); color: var(--label-secondary); text-wrap: pretty; }
+.ml-line-x .fig { color: var(--label); }
+.ml-line-link {
+  display: inline-flex; align-items: center; gap: 1px; padding: 2px; margin: -2px;
+  font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--accent-ink); white-space: nowrap; border-radius: 6px;
+}
+.ml-line-link svg { width: 13px; height: 13px; stroke-width: 2; }
+.ml-line-link:hover { text-decoration: underline; text-underline-offset: 2px; }
+.ml-line-link:focus-visible { outline: none; box-shadow: var(--ui-focus-ring); }
+.ml-v-main { display: inline-flex; align-items: center; gap: 6px; }
+.ml-line.is-warn .ml-line-v, .ml-line.is-warn .ml-line-v .fig { color: var(--warning-ink); }
+.ml-warn-ic { width: 16px; height: 16px; flex: none; stroke-width: 2; }
+
+/* ---- the cut line ------------------------------------------------------- */
+.ml-chart { grid-column: 2 / -1; display: grid; gap: 10px; padding-top: 2px; container-type: inline-size; }
+.ml-cut {
+  position: relative; margin: 0; padding: 0; list-style: none;
+  display: grid; grid-template-columns: minmax(0, 14rem) minmax(0, 1fr) minmax(5.5rem, max-content);
+  grid-template-rows: repeat(var(--n), 52px); column-gap: 16px; row-gap: 4px;
+}
+.ml-cut-row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; }
+.ml-cut-name { display: grid; min-width: 0; }
+.ml-cut-label { font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 500; color: var(--label); }
+.ml-cut-src {
+  font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--label-secondary);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-wrap: pretty;
+}
+.ml-cut-val { display: grid; justify-items: end; gap: 3px; }
+.ml-cut-val > .fig { font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 500; color: var(--label-secondary); }
+.ml-cut-row.is-binding .ml-cut-val > .fig { font-weight: 600; color: var(--label); }
+
+.ml-bar { position: relative; height: 8px; }
+.ml-bar-a, .ml-bar-b { position: absolute; inset-block: 0; transition: width var(--dur-base) var(--ease-settle), inset-inline-start var(--dur-base) var(--ease-settle); }
+.ml-bar-a {
+  inset-inline-start: 0; width: calc(var(--cut) * 100%); min-width: 3px;
+  border-start-start-radius: 4px; border-end-start-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+:root.dark .ml-bar-a { background: color-mix(in srgb, var(--accent) 44%, transparent); }
+.ml-cut-row.is-binding .ml-bar-a { background: var(--accent); border-radius: 4px; }
+.ml-bar-b {
+  inset-inline-start: calc(var(--cut) * 100%); width: calc((var(--v) - var(--cut)) * 100%);
+  border-start-end-radius: 4px; border-end-end-radius: 4px;
+  background: repeating-linear-gradient(135deg, var(--fill-1) 0 1.5px, transparent 1.5px 5px), var(--fill-4);
+  box-shadow: inset 0 0 0 0.5px var(--fill-2);
+}
+.ml-cut-row.is-binding .ml-bar-b, .ml-bar.is-empty .ml-bar-b { display: none; }
+.ml-bar.is-zero .ml-bar-a { display: none; }
+.ml-bar.is-zero .ml-bar-b { border-radius: 4px; }
+.ml-bar::after {
+  content: ""; display: none; position: absolute; inset-block: -4px; width: 2px; border-radius: 1px;
+  inset-inline-start: calc(var(--cut) * 100% - 1px); background: var(--accent); box-shadow: 0 0 0 2px var(--bg-grouped-row);
+}
+
+.ml-cutline { grid-column: 2; position: relative; z-index: 1; pointer-events: none; }
+.ml-cut-track {
+  position: absolute; inset-block: 16px; inset-inline-start: 0; width: 100%;
+  transform: translateX(calc(var(--cut) * 100%)); transition: transform var(--dur-base) var(--ease-settle);
+}
+[dir="rtl"] .ml-cut-track { transform: translateX(calc(var(--cut) * -100%)); }
+.ml-cut-track i {
+  position: absolute; inset-block: 0; inset-inline-start: -1px; width: 2px; border-radius: 1px;
+  background: var(--accent); box-shadow: 0 0 0 2px var(--bg-grouped-row);
+}
+
+/* "Sets the limit": badge-accent with arrow-right-to-line */
+.ml-binds {
+  display: inline-flex; align-items: center; gap: 4px; height: 20px; padding-inline: 6px 8px; border-radius: 999px;
+  background: var(--accent-wash); color: var(--accent-ink); font-size: var(--fs-caption); font-weight: 600; white-space: nowrap;
+}
+.ml-binds svg { width: 12px; height: 12px; }
+.ml-binds.is-sm { height: 18px; gap: 3px; padding-inline: 5px 7px; }
+.ml-binds.is-sm svg { width: 11px; height: 11px; }
+.ml-bar > .ml-binds { position: absolute; top: 50%; inset-inline-start: calc(var(--cut) * 100% + 10px); transform: translateY(-50%); }
+@container (max-width: 560px) {
+  .ml-bar > .ml-binds { display: none; }
+}
+
+.ml-invalid {
+  display: flex; align-items: flex-start; gap: 6px; padding-bottom: 14px; margin-top: -4px;
+  font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--loss-ink);
+}
+.ml-invalid svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
+
+/* no equity yet, and the preview failing: a compact empty state inside the group */
+.ml-empty { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; padding: 4px 0 16px; }
+.ml-empty-tile {
+  width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center;
+  background: var(--fill-4); color: var(--label-secondary); box-shadow: inset 0 0 0 0.5px var(--hairline-color);
+}
+.ml-empty-tile.is-error { background: var(--loss-wash); color: var(--loss-ink); }
+.ml-empty-tile svg { width: 22px; height: 22px; }
+.ml-empty-text { display: grid; gap: 2px; }
+.ml-empty-title { font-size: var(--fs-headline); line-height: var(--lh-headline); font-weight: 600; }
+.ml-empty-body { max-width: 52ch; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); text-wrap: pretty; }
+.ml-empty-btn {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 28px; padding-inline: 12px; border-radius: var(--radius-control);
+  background: var(--fill-3); color: var(--label); font-size: var(--fs-subheadline); font-weight: 500; white-space: nowrap;
+}
+.ml-empty-btn svg { width: 15px; height: 15px; }
+.ml-empty-btn:hover { background: var(--fill-2); }
+.ml-empty-btn:focus-visible { outline: none; box-shadow: var(--ui-focus-ring); }
+
+/* ---- the form ------------------------------------------------------------ */
+.ml-row {
+  position: relative; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+  min-height: 48px; padding: 11px 16px;
+}
+.ml-row + .ml-row { box-shadow: inset 0 0.5px 0 var(--separator); }
+.ml-row.is-changed::after {
+  content: ""; position: absolute; inset-inline-start: 5px; top: 22px; width: 3px; height: 20px; border-radius: 2px; background: var(--accent);
+}
+.ml-row-main { display: grid; gap: 2px; min-width: 0; padding-top: 5px; }
+.ml-row-head { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.ml-sub { display: inline-flex; align-items: flex-start; gap: 5px; color: var(--label-secondary); text-wrap: pretty; }
+.ml-sub svg { width: 13px; height: 13px; flex: none; margin-top: 2.5px; stroke-width: 2; }
+.ml-sub.is-warn { color: var(--warning-ink); }
+.ml-stepper.is-usdt .st-stepper-input { width: 172px; padding-inline: 10px 52px; }
+.ml-stepper.is-int .st-stepper-input { width: 72px; }
+.ml-stepper .st-stepper-input:placeholder-shown + .st-stepper-unit { display: none; }
+.ml-stepper .st-stepper-input::placeholder { color: var(--label-secondary); }
+.ml-cap-act { display: inline; padding: 0 2px; margin-inline-start: 2px; border-radius: 4px; color: var(--accent-ink); font: inherit; }
+.ml-cap-act:hover { text-decoration: underline; text-underline-offset: 2px; }
+.ml-cap-act:focus-visible { outline: none; box-shadow: var(--ui-focus-ring); }
+.ml-note-profile { display: flex; align-items: flex-start; gap: 6px; }
+.ml-note-profile svg { width: 14px; height: 14px; flex: none; margin-top: 2px; color: var(--accent); }
+.ml-note-profile a { color: var(--accent-ink); border-radius: 4px; }
+.ml-note-profile a:hover { text-decoration: underline; text-underline-offset: 2px; }
+.ml-note-profile a:focus-visible { outline: none; box-shadow: var(--ui-focus-ring); }
+
+/* ---- narrow windows and phones ------------------------------------------- */
+@media (max-width: 640px) {
+  .ml-preview { padding: 14px 16px 2px; gap: 12px; }
+  .ml-sentence { font-size: var(--fs-title-3); line-height: var(--lh-title-3); }
+  .ml-line { grid-template-columns: auto minmax(0, 1fr); row-gap: 4px; padding-block: 12px; }
+  .ml-line-k { grid-column: 1; }
+  .ml-line-v { grid-column: 2; justify-self: end; justify-items: end; }
+  .ml-line-x, .ml-line-link { grid-column: 1 / -1; }
+  .ml-line-link { justify-self: start; margin-top: 2px; }
+  .ml-chart { grid-column: 1 / -1; padding-top: 10px; }
+  .ml-cut { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: none; row-gap: 14px; }
+  .ml-cut-row { grid-row: auto !important; grid-template-areas: "name val" "bar bar"; row-gap: 7px; align-items: end; }
+  .ml-cut-name { grid-area: name; }
+  .ml-cut-val { grid-area: val; grid-auto-flow: column; align-items: center; gap: 6px; }
+  .ml-bar { grid-area: bar; }
+  .ml-bar::after { display: block; }
+  .ml-cutline { display: none; }
+  .ml-empty { grid-template-columns: auto minmax(0, 1fr); }
+  .ml-empty > :last-child { grid-column: 1 / -1; justify-self: start; }
+  .ml-row { flex-wrap: wrap; row-gap: 10px; }
+  .ml-row-main { flex-basis: 100%; }
+  .ml-row .st-stepper { margin-inline-start: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ml-cut-track, .ml-bar-a, .ml-bar-b, .ml-spin, .ml-body { transition: none; }
+}
