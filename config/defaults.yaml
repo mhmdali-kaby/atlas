@@ -63,10 +63,12 @@ autonomy:
   # ATL-160: how long an awaiting_owner proposal stays approvable (proposals.approval_expires_at).
   # A settings-table value `approval_timeout_minutes` overrides it. ATL-162 expires it.
   approval_timeout_minutes: 15
-  # ATL-33 AC2: autonomy 3 (auto within limits) and 4 (full auto) place orders without the owner's
-  # per-trade approval; neither the Risk Engine nor the Executor exist before Phase 2, so Settings
-  # must refuse them until then. Raise this when the build phase that implements them ships.
-  max_enabled_level: 2
+  # ATL-33 gated autonomy 3-4 until the Risk Engine and Executor existed; ATL-212 (decision #254)
+  # enables both. Settings refuse any level above this.
+  max_enabled_level: 4
+  # ATL-212: at autonomy 3 an entry (or a stop/target amend) whose notional is above this many USD
+  # waits for the owner; at or below it is sent. Settings key `autonomy_ask_above_usd` overrides it.
+  ask_above_usd: "1000"
 
 # Brief §7.1 / §14.5. Volumes are USD notional over 24h.
 markets:

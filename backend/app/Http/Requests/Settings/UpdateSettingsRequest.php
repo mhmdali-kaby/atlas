@@ -47,9 +47,8 @@ class UpdateSettingsRequest extends FormRequest
             }
         }
 
-        // ATL-33 AC2: the schema's 1-4 range is every level the brief defines; this build phase
-        // (Phase 0-2) has no Risk Engine or Executor to run autonomy 3-4 safely, so refuse them
-        // on top of the schema range rather than widening/narrowing NUMERIC_FIELDS per phase.
+        // ATL-33 AC2: the schema's 1-4 range is every level the brief defines; levels above
+        // autonomy.max_enabled_level are refused on top of it (4 since ATL-212, decision #254).
         $rules['changes.autonomy_level'][] = self::maxEnabledAutonomyLevel();
 
         // ATL-113: agent settings. Their keys hold literal dots (`agents.historian.enabled`), so

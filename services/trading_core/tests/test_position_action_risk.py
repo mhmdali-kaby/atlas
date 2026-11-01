@@ -235,6 +235,62 @@ def test_autonomy_1_is_advise_only() -> None:
     assert out.result == "approved" and out.decision == "advise_only"
 
 
+@pytest.mark.parametrize("kind", ["close", "partial_close"])
+def test_autonomy_3_sends_a_close_above_the_ask_threshold(kind: str) -> None:
+    # LONG: 10 contracts x 0.01 x mark 4000 = 400 USD, far above an ask-above of 100.
+    out = run_position_checks(
+        actx(
+            action(kind, close_pct=D(50) if kind == "partial_close" else None),
+            settings_data={"risk_profile": "balanced", "autonomy_level": 3, "autonomy_ask_above_usd": "100"},
+        )
+    )
+    assert out.result == "approved" and out.decision == "send_now"
+    assert by_name(out.checks)["autonomy"]["values"]["note"] == "risk_reducing"
+
+
+def test_autonomy_3_amend_stop_follows_the_ask_threshold() -> None:
+    def run(ask: str, level: int = 3) -> Any:
+        return run_position_checks(
+            actx(
+                action("amend_stop", stop=D(3950)),
+                settings_data={
+                    "risk_profile": "balanced",
+                    "autonomy_level": level,
+                    "autonomy_ask_above_usd": ask,
+                },
+            )
+        )
+
+    above = run("399.99")  # position notional is 400 USD
+    assert above.result == "approved" and above.decision == "awaiting_owner"
+    values = by_name(above.checks)["autonomy"]["values"]
+    assert values["note"] == "above_ask_threshold" and values["notional_usd"] == "400.00"
+    assert run("400").decision == "send_now"
+    assert run("1", level=4).decision == "send_now"
+    assert run("100000", level=2).decision == "awaiting_owner"
+
+
+def test_autonomy_3_amend_targets_follows_the_ask_threshold() -> None:
+    a = action("amend_targets", targets=(D(4100),))
+    data = {"risk_profile": "balanced", "autonomy_level": 3}
+    above = run_position_checks(actx(a, settings_data={**data, "autonomy_ask_above_usd": "100"}))
+    within = run_position_checks(actx(a, settings_data={**data, "autonomy_ask_above_usd": "1000"}))
+    assert above.decision == "awaiting_owner" and within.decision == "send_now"
+
+
+@pytest.mark.parametrize("level", [3, 4])
+def test_while_halted_no_position_action_is_sent_on_autonomy(level: int) -> None:
+    data = {"risk_profile": "balanced", "autonomy_level": level, "autonomy_ask_above_usd": "1000000"}
+    for kw in ({"paused": True, "pause_reason": "kill"}, {"active_breakers": ("daily_loss",)}):
+        close = run_position_checks(actx(action("close"), settings_data=data, **kw))
+        assert close.result == "approved" and close.decision == "awaiting_owner"
+        assert by_name(close.checks)["autonomy"]["values"]["note"] == "halted"
+        amend = action("amend_targets", targets=(D(4100),))
+        targets = run_position_checks(actx(amend, settings_data=data, **kw))
+        assert targets.result == "rejected" and targets.decision is None
+        assert targets.failed_check == "env_state"
+
+
 # --- Signed POST /internal/risk/evaluate/{id} against Postgres + Redis -----------------------
 
 SECRET = "atlas-test-only-internal-secret"  # noqa: S105

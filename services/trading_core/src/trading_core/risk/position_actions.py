@@ -14,7 +14,10 @@ seven checks, run in order and stored in ``risk_checks.checks`` exactly like the
 5 ``targets_vs_mark``  amend_targets: every target is on the profit side of mark.
 6 ``close_size``       partial_close: close_pct in (0, 100]; close = 100. Contracts to close, rounded
                        down to lotSz, must reach minSz.
-7 ``autonomy``         advise_only at level 1, awaiting_owner at level 2 (as for entries).
+7 ``autonomy``         as for entries (decision #254): 1 advise_only, 2 awaiting_owner, 4 send_now;
+                       3 sends a close/partial_close at any size and an amend_stop/amend_targets
+                       only when the position's notional <= autonomy_ask_above_usd. While trading
+                       is halted no level gives send_now.
 
 A check that does not apply to the kind is recorded as ``not_applicable``. After the first failure
 the rest are ``not_run``. :func:`run_position_checks` is pure; :func:`load_action_context` does the
@@ -65,6 +68,8 @@ _APPLIES: dict[str, frozenset[str]] = {
     "close": frozenset({"close_size"}),
 }
 _ALWAYS = frozenset({"env_state", "position_open", "autonomy"})
+# Kinds autonomy 3 sends whatever their size (decision #254): they only shrink the position.
+_RISK_REDUCING = frozenset({"partial_close", "close"})
 _HUNDRED = Decimal(100)
 
 Result = Literal["approved", "rejected"]
@@ -370,6 +375,18 @@ def _targets_vs_mark(ctx: ActionContext, pos: HeldPosition) -> CheckResult:
     return CheckResult(name, True, None, f"Every target is on the profit side of mark {ctx.mark}.", values)
 
 
+def _position_notional(ctx: ActionContext, pos: HeldPosition | None) -> Decimal | None:
+    """USD notional of the whole position (amend kinds at autonomy 3); None when it cannot be priced."""
+    spec = ctx.spec
+    if pos is None or spec is None:
+        return None
+    size = pos.contracts * spec.ct_val * spec.ct_mult
+    if spec.ct_type == "inverse":
+        return size
+    px = ctx.mark or pos.mark_px or pos.avg_px
+    return None if px is None else size * px
+
+
 def _close_size(ctx: ActionContext, pos: HeldPosition) -> tuple[CheckResult, Decimal | None, Decimal | None]:
     name = "close_size"
     kind = ctx.action.kind
@@ -457,7 +474,12 @@ def run_position_checks(ctx: ActionContext, config: Mapping[str, Any] | None = N
             res, pos = _position_open(ctx, cfg)
         elif name == "autonomy":
             res, decision = decide_autonomy(
-                eng.autonomy_level, int(DEFAULTS["autonomy"]["max_enabled_level"])
+                eng.autonomy_level,
+                int(DEFAULTS["autonomy"]["max_enabled_level"]),
+                notional_usd=notional if kind in _RISK_REDUCING else _position_notional(ctx, pos),
+                ask_above_usd=eng.autonomy_ask_above_usd,
+                risk_reducing=kind in _RISK_REDUCING,
+                halted=ctx.paused or bool(ctx.active_breakers),
             )
         else:
             assert pos is not None
