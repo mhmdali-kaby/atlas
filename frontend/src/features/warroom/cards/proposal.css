@@ -90,7 +90,10 @@
 .pr-ladder { margin-inline: 2px; }
 /* narrow cards: the rail as a picture, every value as a row beneath it */
 .pr-ladder-compact .ladder.is-compact { padding-block: 12px 14px; }
-.pr-ladder-compact .ladder-label, .pr-ladder-compact .ladder-liq { display: none; }
+.pr-ladder-compact .ladder.is-compact.has-now-room { padding-top: 34px; }
+.pr-ladder-compact .ladder-label:not(.is-now), .pr-ladder-compact .ladder-liq { display: none; }
+.pr-ladder-compact .ladder-label.is-now { font-size: var(--fs-footnote); line-height: var(--lh-footnote); }
+.pr-ladder-compact .ladder-label.is-now .ladder-v { font-size: var(--fs-footnote); line-height: var(--lh-footnote); }
 .pr-ladder-compact { display: none; }
 .pr-ed-ladder .pr-ladder-compact { display: none; }
 .pr-tps { display: grid; gap: 3px; margin: 0 0 2px; padding: 0; list-style: none; }

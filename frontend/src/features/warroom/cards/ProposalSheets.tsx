@@ -283,6 +283,8 @@ export function EditSheet({
   proposal: p,
   zone,
   stake,
+  mark = null,
+  live = false,
   decimals,
   lang,
   onClose,
@@ -292,6 +294,9 @@ export function EditSheet({
   proposal: ProposalDetail
   zone: [string, string]
   stake: Stake
+  /** The card's fresh mark (null when stale or absent), so the preview shows the same "Now". */
+  mark?: string | null
+  live?: boolean
   decimals: number
   lang: Lang
   onClose: () => void
@@ -394,7 +399,7 @@ export function EditSheet({
           <span className="pr-k">{t('ed.preview')}</span>
           {drawable && (
             <div className="pr-ed-ladder">
-              <Ladder side={dir} entry={zone} stop={clean(f.stop)} targets={f.tps.map((x) => ({ price: clean(x.price), pct: clean(x.pct) || null }))} decimals={decimals} lang={lang} compact />
+              <Ladder side={dir} entry={zone} stop={clean(f.stop)} targets={f.tps.map((x) => ({ price: clean(x.price), pct: clean(x.pct) || null }))} live={live} mark={mark} decimals={decimals} lang={lang} compact />
             </div>
           )}
           <p className="pr-ed-exp">{exp ? fillSlots(t('ed.exp', { r: slot('r') }), { r: <Fig>{rText(exp, 2).replace(/^\+/, '')}</Fig> }) : ''}</p>

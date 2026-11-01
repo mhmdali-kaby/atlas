@@ -41,6 +41,8 @@ import {
   directionOf,
   entryOrderOf,
   followOwnerEdits,
+  freshMark,
+  MARK_LIVE,
   proposalApi,
   proposalKey,
   readBasis,
@@ -50,6 +52,7 @@ import {
   liqOf,
   stakeOf,
   useProposal,
+  useProposalMark,
   zoneOf,
   type ProposalCardRef,
   type ProposalDetail,
@@ -128,6 +131,11 @@ export function ProposalCard({ cardRef, lang, onJump }: { cardRef: ProposalCardR
   const live = Boolean(loaded)
   const now = useNow(1000)
   const shown = shownStatus(p, now)
+  // The price now (ATL-188): polled every 10 s while the card is on screen and the trade is still
+  // ahead or under way; shown only while at most 30 s old, judged on this clock tick.
+  const markLive = live && MARK_LIVE.has(shown)
+  const markQ = useProposalMark(p.id, markLive)
+  const mark = markLive ? freshMark([p, markQ.data], now) : null
   const [busy, setBusy] = useState(false)
   const [conflict, setConflict] = useState<Conflict | null>(null)
   const [sheet, setSheet] = useState<Sheet>(null)
@@ -246,10 +254,10 @@ export function ProposalCard({ cardRef, lang, onJump }: { cardRef: ProposalCardR
       {zone && p.stop && (
         <div className="pr-ladder">
           <div className="pr-ladder-full">
-            <Ladder side={dir} entry={zone} stop={p.stop} targets={targets.map((x) => ({ price: x.price, pct: x.pct }))} liq={liqOf(p)} decimals={d} lang={lang} />
+            <Ladder side={dir} entry={zone} stop={p.stop} targets={targets.map((x) => ({ price: x.price, pct: x.pct }))} live={markLive} mark={mark} liq={liqOf(p)} decimals={d} lang={lang} />
           </div>
           <div className="pr-ladder-compact">
-            <Ladder side={dir} entry={zone} stop={p.stop} targets={targets.map((x) => ({ price: x.price, pct: x.pct }))} decimals={d} lang={lang} compact />
+            <Ladder side={dir} entry={zone} stop={p.stop} targets={targets.map((x) => ({ price: x.price, pct: x.pct }))} live={markLive} mark={mark} decimals={d} lang={lang} compact nowOnly />
             <ul className="pr-tps" aria-label={t('tpsSr')}>
               {targets.map((x, i) => {
                 const r = targetR(x.price, zone, p.stop!)
@@ -428,6 +436,8 @@ export function ProposalCard({ cardRef, lang, onJump }: { cardRef: ProposalCardR
               proposal={p}
               zone={zone}
               stake={stake}
+              mark={mark}
+              live={markLive}
               decimals={d}
               lang={lang}
               onClose={() => setSheet(null)}
