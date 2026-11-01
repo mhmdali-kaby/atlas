@@ -10,4 +10,6 @@ return [
     'autonomy_level_locked' => 'Autonomy level :max is the highest this build phase supports.',
     'hostname_format' => 'Each entry must be a bare hostname such as "coindesk.com", with no scheme, port or path.',
     'inst_id_format' => 'Each entry must be an OKX instrument ID such as "BTC-USDT-SWAP".',
+    'blocklist_until_format' => 'Each blocklist expiry must map an instrument ID to an ISO 8601 time with a time zone, such as "2026-11-01T20:59:59Z".',
+    'blocklist_until_past' => 'A blocklist expiry must be in the future.',
 ];

@@ -761,6 +761,9 @@ DEFAULTS: Final[dict[str, Any]] = {
     "watchlists_api": {
         "writes_per_minute": 30,
     },
+    "cycles_api": {
+        "start_per_minute": 1,
+    },
     "proposals_api": {
         "writes_per_minute": 30,
         "list_limit": 50,

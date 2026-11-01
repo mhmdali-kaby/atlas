@@ -138,7 +138,8 @@ export function TradingBanner() {
   )
 }
 
-function ResumeSheet({
+/** The Resume confirmation (decision 251). Also opened by the composer's `/resume` (ATL-163). */
+export function ResumeSheet({
   open,
   onOpenChange,
   health,
@@ -147,7 +148,7 @@ function ResumeSheet({
   open: boolean
   onOpenChange: (open: boolean) => void
   health: SystemHealth
-  trigger: ReactNode
+  trigger?: ReactNode
 }) {
   const { t } = useTranslation(NS)
   const qc = useQueryClient()

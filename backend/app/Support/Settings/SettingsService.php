@@ -62,7 +62,7 @@ final class SettingsService
     /**
      * Current values with any field added since the row was saved filled from the defaults.
      *
-     * @return array<string, bool|int|string|list<string>|null>
+     * @return array<string, bool|int|string|list<string>|array<string, string>|null>
      */
     public function values(Setting $setting): array
     {
@@ -79,7 +79,7 @@ final class SettingsService
     /**
      * Applies validated changes on top of $version.
      *
-     * @param  array<string, bool|int|string|list<string>|null>  $changes  validated by UpdateSettingsRequest
+     * @param  array<string, bool|int|string|list<string>|array<string, string>|null>  $changes  validated by UpdateSettingsRequest
      *
      * @throws StaleSettingsVersion
      */
@@ -87,7 +87,7 @@ final class SettingsService
     {
         $this->current($env, $user);
 
-        /** @var array{0: Setting, 1: array<string, array{from: bool|int|string|list<string>|null, to: bool|int|string|list<string>|null}>} $result */
+        /** @var array{0: Setting, 1: array<string, array{from: bool|int|string|list<string>|array<string, string>|null, to: bool|int|string|list<string>|array<string, string>|null}>} $result */
         $result = DB::transaction(function () use ($env, $version, $changes, $user): array {
             $setting = Setting::query()->where('env', $env)->lockForUpdate()->firstOrFail();
 
@@ -133,9 +133,9 @@ final class SettingsService
      * Profile rules (brief §14.3): choosing a preset replaces the ten risk fields with it;
      * editing any of them away from the preset makes the profile "custom".
      *
-     * @param  array<string, bool|int|string|list<string>|null>  $current
-     * @param  array<string, bool|int|string|list<string>|null>  $changes
-     * @return array<string, bool|int|string|list<string>|null>
+     * @param  array<string, bool|int|string|list<string>|array<string, string>|null>  $current
+     * @param  array<string, bool|int|string|list<string>|array<string, string>|null>  $changes
+     * @return array<string, bool|int|string|list<string>|array<string, string>|null>
      */
     public function apply(array $current, array $changes): array
     {
@@ -163,13 +163,25 @@ final class SettingsService
         }
         $next['risk_profile'] = $profile;
 
+        // ATL-163: an expiry only means something for an instId that is on the blocklist, so
+        // unblocking an instrument (or never blocking it) drops its expiry.
+        $until = $next[SettingsSchema::BLOCKLIST_UNTIL_FIELD] ?? [];
+        $blocked = $next['blocklist'] ?? [];
+        if (is_array($until)) {
+            $next[SettingsSchema::BLOCKLIST_UNTIL_FIELD] = array_filter(
+                $until,
+                fn (int|string $id): bool => is_array($blocked) && in_array((string) $id, $blocked, true),
+                ARRAY_FILTER_USE_KEY,
+            );
+        }
+
         return $next;
     }
 
     /**
-     * @param  array<string, bool|int|string|list<string>|null>  $before
-     * @param  array<string, bool|int|string|list<string>|null>  $after
-     * @return array<string, array{from: bool|int|string|list<string>|null, to: bool|int|string|list<string>|null}>
+     * @param  array<string, bool|int|string|list<string>|array<string, string>|null>  $before
+     * @param  array<string, bool|int|string|list<string>|array<string, string>|null>  $after
+     * @return array<string, array{from: bool|int|string|list<string>|array<string, string>|null, to: bool|int|string|list<string>|array<string, string>|null}>
      */
     private function diff(array $before, array $after): array
     {
@@ -186,7 +198,7 @@ final class SettingsService
     }
 
     /**
-     * @param  array<string, bool|int|string|list<string>|null>  $data
+     * @param  array<string, bool|int|string|list<string>|array<string, string>|null>  $data
      */
     private function fill(Setting $setting, array $data): void
     {
@@ -201,7 +213,7 @@ final class SettingsService
     /**
      * A typed-column mirror of a scalar field (the mirrored fields are never bool or list).
      *
-     * @param  bool|int|string|list<string>|null  $value
+     * @param  bool|int|string|list<string>|array<string, string>|null  $value
      */
     private static function text(bool|int|string|array|null $value): string
     {
@@ -209,7 +221,7 @@ final class SettingsService
     }
 
     /**
-     * @param  array<string, array{from: bool|int|string|list<string>|null, to: bool|int|string|list<string>|null}>  $diff
+     * @param  array<string, array{from: bool|int|string|list<string>|array<string, string>|null, to: bool|int|string|list<string>|array<string, string>|null}>  $diff
      */
     private function writeHistory(Setting $setting, array $diff, ?User $user): void
     {
