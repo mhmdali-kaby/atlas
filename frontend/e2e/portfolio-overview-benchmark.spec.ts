@@ -177,6 +177,37 @@ for (const c of CASES) {
     await expect(chart.locator('.pf-bench-line')).toHaveCount(0)
   })
 
+  test(`Overview benchmark legend wraps under the controls at phone width, ${c.dir}-${c.theme}`, async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await fakeApi(page)
+    await open(page, '/portfolio', c.lang, c.theme)
+    await expect(page.locator('[data-testid=equity-chart] .recharts-area-curve')).toBeVisible()
+    await page.getByRole('radiogroup', { name: c.compare }).getByRole('radio', { name: c.btc }).click()
+    const legend = page.getByTestId('legend-bench')
+    await expect(legend).toBeVisible()
+    const width = page.viewportSize()!.width
+    for (const el of [legend, page.getByTestId('legend-equity'), page.getByTestId('chart-legend')]) {
+      const box = (await el.boundingBox())!
+      expect(box.x).toBeGreaterThanOrEqual(0)
+      expect(box.x + box.width).toBeLessThanOrEqual(width)
+    }
+    // The legend sits on its own line below the controls, starting at the reading start.
+    const controls = (await page.getByTestId('benchmark-control').boundingBox())!
+    const legendBox = (await page.getByTestId('chart-legend').boundingBox())!
+    expect(legendBox.y).toBeGreaterThanOrEqual(controls.y + controls.height)
+    const first = (await page.getByTestId('legend-equity').boundingBox())!
+    const pageBox = (await page.getByTestId('chart-head').boundingBox())!
+    if (c.dir === 'ltr') expect(first.x - pageBox.x).toBeLessThan(2)
+    else expect(pageBox.x + pageBox.width - (first.x + first.width)).toBeLessThan(2)
+    // No segment of either control is squeezed below its content width.
+    const squeezed = await page.locator('[role=radiogroup] [role=radio]').evaluateAll((els) =>
+      els.filter((e) => e.scrollWidth > e.clientWidth + 1).map((e) => e.textContent),
+    )
+    expect(squeezed).toEqual([])
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
+    await page.screenshot({ path: `${SHOTS}/overview-bench-390-${c.dir}-${c.theme}.png`, fullPage: true })
+  })
+
   test(`Holdings cost columns render ${c.dir}-${c.theme} with no axe violations`, async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     await fakeApi(page)
