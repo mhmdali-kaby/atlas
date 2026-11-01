@@ -21,6 +21,7 @@ const PAGES = [
   '/settings/connections',
   '/settings/risk',
   '/settings/money',
+  '/settings/markets',
   '/settings/agents',
   '/settings/data',
   '/settings/sources',
@@ -66,10 +67,12 @@ for (const lang of LANGS) {
   test.describe(`${lang}`, () => {
     test.use({ lang })
 
+    // One test per page and width: a 12-page loop in one test outruns the 30 s timeout when
+    // several workers share the machine (QA round 1).
     for (const width of [1440, 1920]) {
-      test(`every Agents, Portfolio and Settings page sits 32px from the sidebar and the window edge at ${width}`, async ({ page }) => {
-        await page.setViewportSize({ width, height: 900 })
-        for (const url of PAGES) {
+      for (const url of PAGES) {
+        test(`${url} sits 32px from the sidebar and the window edge at ${width}`, async ({ page }) => {
+          await page.setViewportSize({ width, height: 900 })
           await settle(page, url)
           const f = await frame(page)
           expect(f.kids, url).toBeGreaterThan(0)
@@ -80,13 +83,13 @@ for (const lang of LANGS) {
           expect(Math.abs(f.column.right - f.right - 32), `${url} end gap ${f.column.right - f.right}`).toBeLessThanOrEqual(1)
           if (lang === 'ar') expect(Math.abs(f.left - 32), `${url} window-edge gap (RTL)`).toBeLessThanOrEqual(1)
           else expect(Math.abs(width - f.right - 32), `${url} window-edge gap`).toBeLessThanOrEqual(1)
-        }
-      })
+        })
+      }
     }
 
-    test('every Agents, Portfolio and Settings page has a 16px gutter at 390 and never scrolls sideways', async ({ page }) => {
-      await page.setViewportSize({ width: 390, height: 844 })
-      for (const url of PAGES) {
+    for (const url of PAGES) {
+      test(`${url} has a 16px gutter at 390 and never scrolls sideways`, async ({ page }) => {
+        await page.setViewportSize({ width: 390, height: 844 })
         await settle(page, url)
         const f = await frame(page)
         expect(Math.abs(f.left - 16), `${url} start gap ${f.left}`).toBeLessThanOrEqual(1)
@@ -94,11 +97,12 @@ for (const lang of LANGS) {
         expect(f.docScroll, `${url} document.scrollWidth`).toBeLessThanOrEqual(f.viewport)
         const inner = await page.locator('.shell-content').evaluate((el) => el.scrollWidth - el.clientWidth)
         expect(inner, `${url} content scrolls sideways`).toBeLessThanOrEqual(0)
-      }
-    })
+      })
+    }
 
     for (const width of [1440, 1920]) {
       test(`the War Room feed sits 32px from the sidebar and the docked inspector at ${width}; the composer fills it`, async ({ page }) => {
+        test.slow() // seeds and loads the War Room feed
         await page.setViewportSize({ width, height: 900 })
         await page.goto('/warroom')
         const feed = page.getByTestId('wr-feed')
@@ -150,6 +154,7 @@ for (const lang of LANGS) {
     }
 
     test('onboarding spans the window at 1440 (title beside the form) and stacks at 390 with no label over a circle', async ({ page }) => {
+      test.slow() // loads onboarding at four widths in two layouts
       // The e2e owner is onboarded by now; pretend the setup is unfinished so /onboarding stays open.
       await page.route('**/api/settings?env=demo', async (route) => {
         if (route.request().method() !== 'GET') return route.fallback()
