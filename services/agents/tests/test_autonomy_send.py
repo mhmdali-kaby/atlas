@@ -337,6 +337,53 @@ async def test_trading_core_unreachable_closes_the_unsent_proposal(world: World)
     assert "could not send" in world.lines()[0].payload["content_md"]
 
 
+async def test_a_timeout_after_trading_core_sent_leaves_the_proposal_sent(world: World) -> None:
+    """The route re-checked and the Executor placed the order (status ``sent`` again), but the answer
+    came back after the client timeout: the proposal must stay sent, never rejected."""
+    pid, body = world.proposal()
+    tc = FakeTradingCore(world.engine)
+
+    def sent_then_timeout(request: httpx.Request) -> httpx.Response:
+        tc.handler(request)  # re-check + the Executor's proposal_sent()
+        raise httpx.ReadTimeout("no answer in time", request=request)
+
+    client = TradingCoreClient(
+        base_url="http://trading-core.test", secret=SECRET, transport=httpx.MockTransport(sent_then_timeout)
+    )
+    status, _e, _r = await approval.apply_risk_result(
+        world.ctx(), pid, body, cycle_id=None, source="s", client=client, autonomy=3
+    )
+    assert len(tc.requests) == 1
+    stored = world.row(pid)
+    assert stored.status == "sent" and stored.status_reason is None
+    assert status == "sent"
+    lines = world.lines()
+    assert len(lines) == 1
+    assert "outcome is unknown" in lines[0].payload["content_md"]
+    assert "reconciliation" in lines[0].payload["content_md"]
+    assert lines[0].payload["card"]["status"] == "unknown"
+
+
+async def test_a_timeout_after_a_rejecting_recheck_keeps_trading_cores_close(world: World) -> None:
+    pid, body = world.proposal()
+    tc = FakeTradingCore(world.engine, outcome="risk_rejected")
+
+    def rejected_then_timeout(request: httpx.Request) -> httpx.Response:
+        tc.handler(request)
+        raise httpx.ReadTimeout("no answer in time", request=request)
+
+    client = TradingCoreClient(
+        base_url="http://trading-core.test",
+        secret=SECRET,
+        transport=httpx.MockTransport(rejected_then_timeout),
+    )
+    status, _e, _r = await approval.apply_risk_result(
+        world.ctx(), pid, body, cycle_id=None, source="s", client=client, autonomy=3
+    )
+    stored = world.row(pid)
+    assert (status, stored.status, stored.status_reason) == ("rejected", "rejected", "risk_rejected")
+
+
 # -- AC3: idempotent ------------------------------------------------------------------------------------
 
 

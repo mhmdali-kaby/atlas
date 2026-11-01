@@ -197,20 +197,30 @@ def _what(row: Any) -> str:
     return f"{kind.replace('_', ' ')} on {row.inst_id}"
 
 
-def _close_unsent(ctx: ToolContext, proposal_id: uuid.UUID, reason: str, at: datetime) -> str | None:
-    """A proposal trading_core never re-checked (still ``sent``) is closed ``rejected`` here.
-    Returns the proposal's status afterwards (trading_core's own close when it did act)."""
+def _close_unsent(
+    ctx: ToolContext, proposal_id: uuid.UUID, risk_check_id: Any, reason: str, at: datetime
+) -> tuple[bool, str | None]:
+    """Close the proposal ``rejected`` / ``reason`` only if trading_core never touched it: it is
+    still ``sent`` **and** ``risk_check_id`` (the check this call sent on) is still its newest risk
+    check. The Executor also writes ``sent`` once it has placed the order, after the route's fresh
+    re-check, so ``sent`` alone cannot tell "never reached trading_core" from "actually sent".
+
+    Returns ``(closed, status afterwards)``. Under the row lock, so trading_core's re-check (which
+    writes the new risk check and moves the row in one transaction) is either fully seen or not."""
     with ctx.session_factory() as session:
-        session.execute(
-            update(Proposal)
-            .where(Proposal.id == proposal_id, Proposal.status == "sent")
-            .values(status="rejected", status_reason=reason[:64], updated_at=at)
-        )
-        session.commit()
         current: str | None = session.execute(
-            text("SELECT status FROM proposals WHERE id = :p"), {"p": proposal_id}
+            select(Proposal.status).where(Proposal.id == proposal_id).with_for_update()
         ).scalar()
-    return current
+        untouched = current == "sent" and _check_standing(session, proposal_id, risk_check_id) == "newest"
+        if untouched:
+            session.execute(
+                update(Proposal)
+                .where(Proposal.id == proposal_id, Proposal.status == "sent")
+                .values(status="rejected", status_reason=reason[:64], updated_at=at)
+            )
+            current = "rejected"
+        session.commit()
+    return untouched, current
 
 
 async def apply_risk_result(
@@ -232,7 +242,8 @@ async def apply_risk_result(
     Returns ``(status, approval_expires_at, row)``; ``row`` (id, version, inst_id, side, kind) is
     None when the proposal was no longer ``risk_checked`` (nothing is then published on
     atlas.proposals and nothing is sent). After an autonomy send, ``status`` is ``sent`` when the
-    route sent it, else the status the proposal ended in. ``autonomy`` is read from the settings when
+    route sent it, else the status the proposal ended in (``error`` when a ``needs_owner`` answer
+    found the row no longer ``risk_checked``). ``autonomy`` is read from the settings when
     not given; ``now`` defaults to ``ctx.now()``; ``client`` defaults to a :class:`TradingCoreClient`.
     """
     at = now or ctx.now()
@@ -282,17 +293,31 @@ async def _send(
         http, resp = await client.execute_proposal(str(proposal_id), approved_by)
     except TradingCoreError as exc:
         log.warning("autonomy: execute on %s failed: %s", proposal_id, exc.code)
-        final = await asyncio.to_thread(_close_unsent, ctx, proposal_id, f"execution_{exc.code}", ctx.now())
+        closed, final = await asyncio.to_thread(
+            _close_unsent, ctx, proposal_id, body.get("risk_check_id"), f"execution_{exc.code}", ctx.now()
+        )
+        if closed:
+            text_md = (
+                f"Autonomy {level} could not send {what}: trading_core did not answer ({exc.code}) "
+                "and never re-checked it, so nothing was sent. The proposal is rejected."
+            )
+        else:
+            # trading_core re-checked it (and may have placed the order) before the answer was
+            # lost: leave the row to trading_core; reconciliation with OKX settles it.
+            text_md = (
+                f"Autonomy {level} sent {what} to trading_core but got no answer ({exc.code}). "
+                f"The outcome is unknown: the proposal is {final or 'unknown'} and reconciliation "
+                "with OKX will settle it."
+            )
         _line(
             ctx,
-            f"Autonomy {level} could not send {what}: trading_core did not answer ({exc.code}). "
-            f"The proposal is {final or 'rejected'}.",
+            text_md,
             {
                 "type": "autonomy_execution",
                 "proposal_id": str(proposal_id),
                 "approved_by": approved_by,
                 "autonomy_level": level,
-                "status": "failed",
+                "status": "failed" if closed else "unknown",
                 "reason": exc.code,
             },
         )
@@ -341,11 +366,21 @@ async def _send(
         )
         return (status if again is not None else "error"), expires, row
 
-    final = await asyncio.to_thread(_close_unsent, ctx, proposal_id, f"execution_{reason}", ctx.now())
+    # trading_core answered: it has already closed anything it re-checked. Only a row it never
+    # re-checked (e.g. refused before the re-check) is closed here.
+    _closed, final = await asyncio.to_thread(
+        _close_unsent, ctx, proposal_id, body.get("risk_check_id"), f"execution_{reason}", ctx.now()
+    )
     because = f": {detail}" if detail else ""
     _line(
         ctx,
-        f"Autonomy {level} did not send {what} ({reason}){because}. The proposal is {final or 'rejected'}.",
+        (
+            f"Autonomy {level} sent {what}, but trading_core reported {reason}{because}. "
+            "The proposal stays sent; reconciliation with OKX will settle it."
+            if final == "sent"  # the Executor placed the order before failing (e.g. unprotected_closed)
+            else f"Autonomy {level} did not send {what} ({reason}){because}. "
+            f"The proposal is {final or 'rejected'}."
+        ),
         card,
     )
     return final or "rejected", None, row
