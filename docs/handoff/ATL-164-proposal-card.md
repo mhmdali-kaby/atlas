@@ -45,3 +45,13 @@ Test ids: `pr-card` (`data-status`, `data-proposal-id`), `pr-status`, `pr-countd
   composer, which would not link the question to the proposal).
 - The Edit sheet's size is in USDT as designed and is converted to % of sizing equity for PATCH.
 - `wasStop` on the ladder is still not built; the edit preview shows the new stop only.
+- The liquidation line ("← Liquidation 166.80") is built: `Ladder` takes `liq`, and the card passes
+  check 7's `liquidation_buffer.values.estimated_liq_price` (`liqOf` in `cards/proposal.ts`). It shows
+  only when the price lies beyond the rail's stop end, as in the design, and only on the full ladder.
+- No "Now" marker on the proposal's ladder: the resource carries no mark price (the risk check does
+  not store the mark it used, and the browser has no live price feed yet). Nothing is shown in its
+  place. It needs a `mark` on ProposalView (e.g. read from the md Redis hash) — follow-up.
+- No Odds sub-line ("Historian analogs 48%, +4 for the ETF catalyst"): the proposal stores only
+  `probability_estimate`, not the analog base rate or the adjustment. Nothing is shown in its place;
+  it needs the Strategist to record both as structured fields — follow-up.
+  Deferral of these two asked of UX in the room (QA round 1).
