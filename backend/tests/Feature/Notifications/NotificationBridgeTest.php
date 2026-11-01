@@ -179,20 +179,20 @@ it('stores exactly one notification with the right event and link, and a replay 
 
 it('stores one notification for an envelope read from the stream by atlas:bridge, and none when it is redelivered', function (): void {
     $redis = fn (array $args) => Redis::connection('events')->command('executeRaw', [$args]);
-    $redis(['DEL', 'atlas.system']);
+    $redis(['DEL', EventBus::streamKey('atlas.system')]);
     $bridge = app(Bridge::class);
     $bridge->ensureGroups();
     [$stream, $envelope] = notifCases()['kill_switch'];
     $json = json_encode($envelope, JSON_THROW_ON_ERROR);
 
-    $redis(['XADD', $stream, '*', EventBus::FIELD, $json]);
+    $redis(['XADD', EventBus::streamKey($stream), '*', EventBus::FIELD, $json]);
     $bridge->readOnce('notif-test', 10);
-    $redis(['XADD', $stream, '*', EventBus::FIELD, $json]);
+    $redis(['XADD', EventBus::streamKey($stream), '*', EventBus::FIELD, $json]);
     $bridge->readOnce('notif-test', 10);
 
     expect(Notification::query()->where('source_event_id', $envelope['id'])->count())->toBe(1)
         ->and(notifBroadcasts($this->broadcasts))->toHaveCount(1);
-    $redis(['DEL', 'atlas.system']);
+    $redis(['DEL', EventBus::streamKey('atlas.system')]);
 });
 
 it('stores and broadcasts nothing for order_filled with in_app and browser off', function (): void {
