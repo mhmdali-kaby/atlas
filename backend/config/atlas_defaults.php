@@ -1398,6 +1398,12 @@ return [
             'verdict' => [
                 'min_n' => 20,
             ],
+            'weekly_review' => [
+                'lookback_days' => 7,
+                'output_retries' => 1,
+                'verdict_max_chars' => 240,
+                'change_max_chars' => 400,
+            ],
         ],
         'market_tools' => [
             'ticker_bar' => '1H',
@@ -1471,6 +1477,7 @@ return [
             'scout_watchlist' => '08:00',
             'scoring' => '00:15',
             'pm_daily_report' => '23:30',
+            'historian_weekly_review' => 'Sun 18:00',
             'tick_seconds' => 30,
             'analysis_interval_minutes' => 30,
             'analysis_first_slot' => '08:10',

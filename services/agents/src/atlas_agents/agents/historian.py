@@ -3,6 +3,8 @@
 * @Historian: one ``research_report`` reply whose card validates as HistoryVerdict.
 * ``historian_regime_table`` (agents.schedule, 07:30 Baghdad): the regime table, computed in code,
   commented by the Historian; posted without commentary when the run fails.
+* ``historian_weekly_review`` (agents.schedule, Sunday 18:00 Baghdad, ATL-199): the weekly review,
+  see :mod:`atlas_agents.historian_weekly`.
 """
 
 from __future__ import annotations
@@ -10,7 +12,7 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from atlas_agents import events, historian
+from atlas_agents import events, historian, historian_weekly
 from atlas_agents.mentions import MentionRequest, resolve_parent
 from atlas_agents.registry import HOOKS, AgentHost, ScheduleFire
 from atlas_agents.session import RunResult
@@ -67,4 +69,11 @@ async def post_regime_table(host: AgentHost, fire: ScheduleFire) -> RunResult | 
             host.publish(WARROOM_STREAM, envelope)
         except Exception:
             log.warning("historian: could not publish the fallback regime table", exc_info=True)
+    return result
+
+
+@HOOKS.schedule(historian.SLUG, historian_weekly.JOB)
+async def post_weekly_review(host: AgentHost, fire: ScheduleFire) -> RunResult | None:
+    """agents.schedule.historian_weekly_review ("Sun 18:00" Baghdad, ATL-199)."""
+    result: RunResult | None = await historian_weekly.run(host, fire)
     return result

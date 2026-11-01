@@ -141,6 +141,27 @@ ScheduleRun = Callable[["AgentHost", "ScheduleFire"], Awaitable["RunResult | Non
 ran (a daily job is then tried again at the next tick)."""
 
 
+WEEKDAYS: Final = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+
+
+def parse_schedule(text: str) -> tuple[int | None, time]:
+    """``"HH:MM"`` (daily) or ``"Sun HH:MM"`` (weekly; any day name's first three letters, any case)
+    as ``(weekday or None, time)``. Monday is 0, as ``date.weekday()``."""
+    parts = text.split()
+    if len(parts) == 2:
+        day = parts[0][:3].lower()
+        if day not in WEEKDAYS:
+            raise ValueError(f"schedule {text!r}: unknown weekday {parts[0]!r}")
+        weekday: int | None = WEEKDAYS.index(day)
+        clock = parts[1]
+    elif len(parts) == 1:
+        weekday, clock = None, parts[0]
+    else:
+        raise ValueError(f"schedule {text!r}: expected 'HH:MM' or 'Sun HH:MM'")
+    hours, minutes = clock.split(":")
+    return weekday, time(int(hours), int(minutes))
+
+
 @dataclass(frozen=True)
 class ScheduleFire:
     """One firing of a schedule hook. ``correlation_id`` must be passed to ``host.run`` with
@@ -155,7 +176,8 @@ class ScheduleFire:
 @dataclass(frozen=True)
 class ScheduleHook:
     """A daily job at ``at`` ("HH:MM", Asia/Baghdad; when both ``at`` and ``every_seconds`` are None
-    it is read from ``agents.schedule.<name>``) or an interval job every ``every_seconds``."""
+    it is read from ``agents.schedule.<name>``), a weekly one ("Sun 18:00", ATL-199; still
+    ``daily`` here: it runs once on that Baghdad day) or an interval job every ``every_seconds``."""
 
     name: str
     run: ScheduleRun
@@ -172,10 +194,15 @@ class ScheduleHook:
     def daily(self) -> bool:
         return self.every_seconds is None
 
+    def _text(self, defaults: Mapping[str, Any]) -> str:
+        return self.at if self.at is not None else str(defaults["agents"]["schedule"][self.name])
+
     def time_of_day(self, defaults: Mapping[str, Any] = DEFAULTS) -> time:
-        text = self.at if self.at is not None else str(defaults["agents"]["schedule"][self.name])
-        hours, minutes = text.split(":")
-        return time(int(hours), int(minutes))
+        return parse_schedule(self._text(defaults))[1]
+
+    def weekday(self, defaults: Mapping[str, Any] = DEFAULTS) -> int | None:
+        """0 = Monday ... 6 = Sunday for a weekly job ("Sun 18:00"), None for a daily one."""
+        return parse_schedule(self._text(defaults))[0]
 
 
 @dataclass(frozen=True)
