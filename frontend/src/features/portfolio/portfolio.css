@@ -134,15 +134,17 @@ a.pf-ledger-item:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 
 /*
  * Narrow windows: the table scrolls sideways inside its panel; the first column stays pinned.
- * ATL-187 round 2: the threshold was raised from 1279px to 1280px (inclusive) because Positions'
- * eleventh column, Close (ATL-151), overflows <main> by ~20px at exactly the 1280px desktop test
- * viewport, which used to fall just outside this query. Kept as a media query rather than made
- * unconditional: an unconditional `overflow-x: auto` makes the default `overflow-y: visible`
- * compute to `auto` too (a CSS overflow-x/overflow-y interaction), turning .pf-panel into its own
- * vertical scroll container and detaching the sticky header from <main>'s own scroll
- * (portfolio-positions.spec.ts "the header stays visible while the table scrolls").
+ * ATL-187 round 3: round 2 moved the threshold from 1279px to 1280px, which only avoided the
+ * 1280px test viewport — Positions' eleventh column, Close (ATL-151), still overflowed <main>
+ * between 1281px (~19px) and 1299px (down to ~10px); it only fits unassisted from ~1300px.
+ * The threshold now covers that whole gap with margin rather than tracking the table's exact
+ * content width, which shifts with locale, numeric formatting and font metrics. Kept as a media
+ * query rather than made unconditional: an unconditional `overflow-x: auto` makes the default
+ * `overflow-y: visible` compute to `auto` too (a CSS overflow-x/overflow-y interaction), turning
+ * .pf-panel into its own vertical scroll container and detaching the sticky header from <main>'s
+ * own scroll (portfolio-positions.spec.ts "the header stays visible while the table scrolls").
  */
-@media (max-width: 1280px) {
+@media (max-width: 1359px) {
   .pf-panel { overflow-x: auto; overscroll-behavior-x: contain; }
   .pf-table th:first-child, .pf-table td:first-child {
     position: sticky;
