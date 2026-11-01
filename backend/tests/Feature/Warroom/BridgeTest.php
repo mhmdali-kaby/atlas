@@ -323,16 +323,19 @@ it('broadcasts other events on their stream channel without persisting', functio
     app(EventBus::class)->publish('atlas.account', 'account.balance', 'demo', 'system:trading_core', ['total_equity_usd' => '1.00']);
     app(EventBus::class)->publish('atlas.warroom', 'warroom.thinking', 'demo', 'agent:historian', ['delta' => 'n=14']);
     app(EventBus::class)->publish('atlas.market', 'market.candle_closed', 'demo', 'system:trading_core', ['inst_id' => 'BTC-USDT-SWAP']);
+    $approved = app(EventBus::class)->publish('atlas.proposals', 'proposal.approved', 'demo', 'human:owner', ['proposal_id' => 'p-1', 'status' => 'sent']);
 
     while ($bridge->readOnce(CONSUMER, 10) > 0) {
     }
 
     $sent = collect($this->broadcasts->sent)->keyBy('event');
-    expect($sent)->toHaveCount(3)
+    expect($sent)->toHaveCount(4)
         ->and($sent['system.settings_changed']['channels'])->toBe(['private-system'])
         ->and($sent['system.settings_changed']['payload'])->toBe($settings)
         ->and($sent['account.balance']['channels'])->toBe(['private-account'])
         ->and($sent['warroom.thinking']['channels'])->toBe(['private-warroom'])
+        ->and($sent['proposal.approved']['channels'])->toBe(['private-warroom'])
+        ->and($sent['proposal.approved']['payload'])->toBe($approved)
         ->and(WarroomMessage::query()->count())->toBe(0);
     foreach (EventBus::STREAMS as $stream) {
         expect(app(StreamReader::class)->pendingIds($stream, Bridge::GROUP))->toBe([]);
