@@ -17,7 +17,13 @@ const MAIN = { id: 'thread-main', kind: 'main', key: 'main', title: 'Main', last
 const T = { en: enProposal, ar: arProposal }
 
 async function fakeApi(page: Page, lang: 'en' | 'ar') {
-  const state: { detail: ProposalDetail; approves: number } = { detail: proposalDetail(), approves: 0 }
+  // ATL-190: two refs resolved to War Room messages and one that no message posted.
+  const evidence = [
+    { type: 'research_report', id: 'm-ta-sol', label: 'technical', message_id: 'm-ta-sol' },
+    { type: 'research_report', id: 'r-none', label: null, message_id: null },
+    { type: 'news', id: 'n-sol-etf', label: 'news', message_id: 'm-sol-alert' },
+  ]
+  const state: { detail: ProposalDetail; approves: number } = { detail: proposalDetail({ evidence }), approves: 0 }
   if (lang === 'ar') {
     state.detail.rationale_md = 'الموافقة على صناديق SOL الفورية، مع اختراق على إطار الساعة بمراكز شراء جديدة لم تزدحم بعد.'
     state.detail.da_review!.card = { ...state.detail.da_review!.card, strongest_objection: 'مركز BTC مترابط بنسبة 0.82، وخفض الحجم إلى 3% يعالج ذلك.' }
@@ -57,7 +63,7 @@ async function fakeApi(page: Page, lang: 'en' | 'ar') {
     if (p === `/api/proposals/${PROPOSAL_ID}/mark` && req.method() === 'GET') return json(200, { data: { inst_id: state.detail.inst_id, mark: '249.95', mark_at: new Date().toISOString() } })
     if (p === `/api/proposals/${PROPOSAL_ID}/approve` && req.method() === 'POST') {
       state.approves += 1
-      state.detail = { ...sentDetail(), rationale_md: state.detail.rationale_md, da_review: state.detail.da_review }
+      state.detail = { ...sentDetail(), rationale_md: state.detail.rationale_md, da_review: state.detail.da_review, evidence }
       return json(200, { ok: true, error: null, message: null, execution: { ok: true, status: 'sent', reason: 'sent', detail: 'Order sent; stop confirmed on OKX.' }, proposal: state.detail })
     }
     if (p === '/api/portfolio/positions') return json(200, { data: [] })
@@ -104,8 +110,11 @@ for (const [lang, theme] of [['en', 'light'], ['en', 'dark'], ['ar', 'dark']] as
     await expect(card.getByTestId('pr-countdown')).toContainText('6:00')
     await expect(card.getByTestId('ladder')).toHaveAttribute('dir', 'ltr')
     await expect(card.getByTestId('pr-approve')).toBeVisible()
+    await expect(card.getByTestId('pr-chip')).toHaveText([t.ev.technical, t.ev.news])
     await page.waitForTimeout(200)
     expect(await axeViolations(page)).toEqual([])
+    await card.getByTestId('pr-evidence').screenshot({ path: `../../evidence/ATL-190/evidence-${lang}-${theme}.png` })
+    await card.screenshot({ path: `../../evidence/ATL-190/card-${lang}-${theme}.png` })
     await card.screenshot({ path: `${SHOTS}/awaiting-${lang}-${theme}.png` })
 
     await card.getByTestId('pr-approve').click()
