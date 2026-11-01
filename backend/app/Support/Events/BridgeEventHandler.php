@@ -22,7 +22,7 @@ use Illuminate\Validation\Rule;
  * `private-warroom` as `warroom.message` with the WarroomMessageResource JSON. Any other event on
  * atlas.warroom, atlas.account or atlas.system is broadcast as-is on `private-warroom`,
  * `private-account` or `private-system`, named by its envelope `type`, with the envelope as the
- * payload. Other streams have no browser channel yet and are only acknowledged.
+ * payload; atlas.proposals events (`proposal.*`) go to `private-warroom` the same way. Other streams have no browser channel yet and are only acknowledged.
  *
  * Throws MalformedEvent for entries that can never succeed (the bridge acks and logs them); any
  * other exception is transient (the bridge leaves the entry pending and retries it).
@@ -34,6 +34,8 @@ final class BridgeEventHandler
         'atlas.warroom' => 'warroom',
         'atlas.account' => 'account',
         'atlas.system' => 'system',
+        // ATL-164: proposal status changes reach the War Room's proposal cards live.
+        'atlas.proposals' => 'warroom',
     ];
 
     public const MESSAGE_EVENT = 'warroom.message';
