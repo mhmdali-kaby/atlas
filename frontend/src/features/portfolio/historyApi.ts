@@ -1,6 +1,7 @@
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/react-query'
 import { api, API_URL, ApiError } from '../../lib/api'
 import type { TradingEnv } from '../../app/shell/tradingEnv'
+import { baghdadDay } from './time'
 
 /*
  * Portfolio → History (ATL-173) over ATL-172's API (docs/handoff/ATL-172-portfolio-history-api.md):
@@ -109,19 +110,25 @@ export const BLANK_FILTERS: HistoryFilters = {
   result: 'all',
 }
 
+/** True when any filter that applies to this tab is set (the page then shows "no match", not "none yet"). */
+export function isFiltered(type: HistoryType, f: HistoryFilters): boolean {
+  return (
+    f.range !== 'all' ||
+    f.inst !== '' ||
+    f.assetClass !== 'all' ||
+    f.agent !== 'all' ||
+    (type === 'closed' && f.tag !== 'all') ||
+    f.side !== 'all' ||
+    f.result !== 'all'
+  )
+}
+
 /** ATL-172 timestamps keep microseconds ("…:00.123456Z"); trim to milliseconds before Date reads them. */
 export function isoMs(ts: string): number {
   return Date.parse(ts.replace(/(\.\d{3})\d+/, '$1'))
 }
 
 const DAY = 86_400_000
-/** Baghdad is UTC+3 all year (no DST since 2008), the same rule as time.ts. */
-const BAGHDAD_OFFSET = 3 * 3_600_000
-
-/** The Baghdad calendar day of an instant, as Y-m-d. */
-export function baghdadDay(ms: number): string {
-  return new Date(ms + BAGHDAD_OFFSET).toISOString().slice(0, 10)
-}
 
 /** The inclusive Baghdad days a range covers, or null for all time. */
 export function rangeDays(f: Pick<HistoryFilters, 'range' | 'from' | 'to'>, now: number): { from: string; to: string } | null {
