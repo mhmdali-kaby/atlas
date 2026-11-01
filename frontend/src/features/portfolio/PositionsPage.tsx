@@ -9,8 +9,8 @@ import { Button, SignedValue, toast } from '../../ui'
 import { ClosePositionSheet } from './ClosePositionSheet'
 import { POLL_MS, usePositions, useSummary, type Position } from './api'
 import { useLang, useNow } from './hooks'
-import { InstId, ReconciledIndicator, SideBadge, Skeleton, StateBlock } from './parts'
-import { formatDay, formatDayTime, formatDuration } from './time'
+import { Duration, InstId, ReconciledIndicator, SideBadge, Skeleton, StateBlock } from './parts'
+import { formatDay, formatDayTime } from './time'
 import './portfolio.css'
 
 /*
@@ -79,9 +79,11 @@ function PositionRow({
       <td data-col="time" className="is-num">
         {p.opened_at ? (
           <>
-            <span className="fig" tabIndex={0} title={t('positions.opened', { date: formatDayTime(p.opened_at, lang) })}>
-              {formatDuration(now - Date.parse(p.opened_at), lang)}
-            </span>
+            <Duration
+              ms={now - Date.parse(p.opened_at)}
+              lang={lang}
+              title={t('positions.opened', { date: formatDayTime(p.opened_at, lang) })}
+            />
             <span className="pf-cell-sub">{formatDay(p.opened_at, lang)}</span>
           </>
         ) : (

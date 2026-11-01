@@ -325,5 +325,12 @@ describe('Portfolio Orders', () => {
     expect(screen.getByTestId('orders-summary')).toHaveTextContent('أمران مفتوحان وأمران مشروطان')
     expect(screen.getAllByTestId('external-badge')[0]).toHaveTextContent('خارجي')
     expect(document.querySelector('main, body')!.textContent).not.toMatch(/[٠-٩]/)
+
+    // The age is words and digits: in Arabic it keeps the RTL order, so it must not be
+    // the LTR-isolated .fig used for figures, or "1 س و9 د" renders as "1 د 9و س".
+    const [first] = screen.getAllByTestId('open-order-row')
+    const age = within(first!).getByTestId('duration')
+    expect(age).not.toHaveClass('fig')
+    expect(age).toHaveAttribute('dir', 'rtl')
   })
 })
