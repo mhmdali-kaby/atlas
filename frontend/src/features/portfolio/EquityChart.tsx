@@ -195,51 +195,58 @@ export function EquityChart({ series, lang, head, benchmark }: EquityChartProps)
 
   return (
     <div>
-      <div className="mb-2.5 flex items-center justify-between gap-4">
-        {head}
-        <div className="flex flex-wrap items-center justify-end gap-x-3.5 gap-y-1.5 text-footnote text-label-secondary max-[760px]:justify-start">
-          {benchmark && (
-            <span data-testid="legend-equity" className="inline-flex items-center gap-1.5">
-              <i aria-hidden="true" className="pf-legend-line is-equity" />
-              <span>{t('benchmark.you')}</span>
-              <span className="font-semibold [&_svg]:size-3">
-                <SignedValue value={equityPct} unit="percent" />
+      {/* Under 760px the head wraps: the controls take their own line(s) and the legend starts
+          below them at the reading start (design: .ov-chart-head / .chart-legend). */}
+      <div data-testid="chart-head" className="mb-2.5 flex items-center justify-between gap-4 max-[760px]:flex-wrap max-[760px]:gap-y-3">
+        {head && <div className="min-w-0 max-[760px]:basis-full">{head}</div>}
+        {(benchmark || kinds.length > 0) && (
+          <div
+            data-testid="chart-legend"
+            className="flex flex-wrap items-center justify-end gap-x-3.5 gap-y-1.5 text-footnote text-label-secondary max-[760px]:basis-full max-[760px]:justify-start"
+          >
+            {benchmark && (
+              <span data-testid="legend-equity" className="inline-flex items-center gap-1.5">
+                <i aria-hidden="true" className="pf-legend-line is-equity" />
+                <span>{t('benchmark.you')}</span>
+                <span className="font-semibold [&_svg]:size-3">
+                  <SignedValue value={equityPct} unit="percent" />
+                </span>
               </span>
-            </span>
-          )}
-          {benchmark && !benchmark.series && (
-            <span role="status" data-testid="legend-bench-loading" className="inline-flex items-center gap-1.5">
-              <Spinner />
-              <span>{t('benchmark.loading', { name: benchmark.name })}</span>
-            </span>
-          )}
-          {benchmark && hasBench && (
-            <span
-              data-testid="legend-bench"
-              tabIndex={0}
-              title={t('benchmark.rebased')}
-              aria-describedby={`${gradientId}-rebased`}
-              className="pf-legend-tip inline-flex items-center gap-1.5"
-            >
-              <i aria-hidden="true" className="pf-legend-line is-bench" />
-              <span>{benchmark.name}</span>
-              <span className="font-semibold [&_svg]:size-3">
-                <SignedValue value={lastBench?.bPct ?? null} unit="percent" />
+            )}
+            {benchmark && !benchmark.series && (
+              <span role="status" data-testid="legend-bench-loading" className="inline-flex items-center gap-1.5">
+                <Spinner />
+                <span>{t('benchmark.loading', { name: benchmark.name })}</span>
               </span>
-              <span id={`${gradientId}-rebased`} className="sr-only">
-                {t('benchmark.rebased')}
+            )}
+            {benchmark && hasBench && (
+              <span
+                data-testid="legend-bench"
+                tabIndex={0}
+                title={t('benchmark.rebased')}
+                aria-describedby={`${gradientId}-rebased`}
+                className="pf-legend-tip inline-flex items-center gap-1.5"
+              >
+                <i aria-hidden="true" className="pf-legend-line is-bench" />
+                <span>{benchmark.name}</span>
+                <span className="font-semibold [&_svg]:size-3">
+                  <SignedValue value={lastBench?.bPct ?? null} unit="percent" />
+                </span>
+                <span id={`${gradientId}-rebased`} className="sr-only">
+                  {t('benchmark.rebased')}
+                </span>
               </span>
-            </span>
-          )}
-          {kinds.map((k) => (
-            <span key={k} className="inline-flex items-center gap-1.5" aria-hidden="true">
-              <svg width="16" height="16" viewBox="0 0 18 18">
-                <MarkerShape cx={9} cy={9} kind={k} title="" />
-              </svg>
-              {t(k)}
-            </span>
-          ))}
-        </div>
+            )}
+            {kinds.map((k) => (
+              <span key={k} className="inline-flex items-center gap-1.5" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 18 18">
+                  <MarkerShape cx={9} cy={9} kind={k} title="" />
+                </svg>
+                {t(k)}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
       <div
         dir="ltr"
