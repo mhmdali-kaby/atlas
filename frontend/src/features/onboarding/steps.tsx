@@ -22,7 +22,7 @@ export function StepHead({ title, lead, icon, autoFocus }: { title: string; lead
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, when the step opens
   }, [])
   return (
-    <header className="grid justify-items-start gap-2.5">
+    <header className="ob-head grid justify-items-start gap-2.5">
       {icon}
       <h1 ref={titleRef} id="ob-step-title" tabIndex={-1} className="text-large-title text-label focus:outline-none">
         {title}
@@ -30,6 +30,11 @@ export function StepHead({ title, lead, icon, autoFocus }: { title: string; lead
       <p className="max-w-[60ch] text-body text-label-secondary">{lead}</p>
     </header>
   )
+}
+
+/** The step's controls (design .ob-main): the end column from 1024 px, under the head below it. */
+export function StepMain({ children }: { children: ReactNode }) {
+  return <div className="ob-main grid min-w-0 content-start gap-5.5">{children}</div>
 }
 
 /** Step 1 (design onboarding.js welcome()): what Atlas does, demo first, the risk statement. */
@@ -48,30 +53,32 @@ export function WelcomeStep({ autoFocus }: StepProps) {
         title={t('welcome.title')}
         lead={t('welcome.lead')}
       />
-      <ul className="mt-1 grid gap-5.5">
-        {facts.map(({ icon: Icon, key }) => (
-          <li key={key} className="grid grid-cols-[44px_minmax(0,1fr)] items-start gap-4">
-            <span className="grid size-11 place-items-center rounded-card bg-accent-wash text-accent">
-              <Icon aria-hidden="true" strokeWidth={1.5} className="size-6" />
-            </span>
-            <div>
-              <p className="text-headline font-semibold text-label">{t(`welcome.${key}.title`)}</p>
-              <p className="mt-0.5 max-w-[56ch] text-subheadline text-label-secondary">{t(`welcome.${key}.body`)}</p>
-            </div>
-          </li>
-        ))}
-      </ul>
-      <p className="flex items-center gap-2 text-footnote text-label-secondary">
-        <Clock aria-hidden="true" strokeWidth={1.5} className="size-3.5" />
-        <span>{t('welcome.time')}</span>
-      </p>
-      <div
-        data-testid="welcome-risk"
-        className="mt-0.5 flex items-center gap-3 rounded-card bg-fill-4 px-4 py-3.5 shadow-[inset_0_0_0_0.5px_var(--hairline-color)]"
-      >
-        <TriangleAlert aria-hidden="true" strokeWidth={1.5} className="size-5 shrink-0 text-warning-ink" />
-        <p className="text-subheadline font-medium text-label">{t('welcome.risk')}</p>
-      </div>
+      <StepMain>
+        <ul className="mt-1 grid gap-5.5">
+          {facts.map(({ icon: Icon, key }) => (
+            <li key={key} className="grid grid-cols-[44px_minmax(0,1fr)] items-start gap-4">
+              <span className="grid size-11 place-items-center rounded-card bg-accent-wash text-accent">
+                <Icon aria-hidden="true" strokeWidth={1.5} className="size-6" />
+              </span>
+              <div>
+                <p className="text-headline font-semibold text-label">{t(`welcome.${key}.title`)}</p>
+                <p className="mt-0.5 max-w-[56ch] text-subheadline text-label-secondary">{t(`welcome.${key}.body`)}</p>
+              </div>
+            </li>
+          ))}
+        </ul>
+        <p className="flex items-center gap-2 text-footnote text-label-secondary">
+          <Clock aria-hidden="true" strokeWidth={1.5} className="size-3.5" />
+          <span>{t('welcome.time')}</span>
+        </p>
+        <div
+          data-testid="welcome-risk"
+          className="mt-0.5 flex items-center gap-3 rounded-card bg-fill-4 px-4 py-3.5 shadow-[inset_0_0_0_0.5px_var(--hairline-color)]"
+        >
+          <TriangleAlert aria-hidden="true" strokeWidth={1.5} className="size-5 shrink-0 text-warning-ink" />
+          <p className="text-subheadline font-medium text-label">{t('welcome.risk')}</p>
+        </div>
+      </StepMain>
     </>
   )
 }
@@ -112,14 +119,16 @@ export function ConnectStep({
     return (
       <>
         {head}
-        <div aria-busy="true" aria-label={t('checking')} className="grid gap-4">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="grid gap-1.5">
-              <span className="h-4 w-28 animate-pulse rounded-[6px] bg-fill-3" />
-              <span className="h-10 w-full animate-pulse rounded-control bg-fill-4" />
-            </div>
-          ))}
-        </div>
+        <StepMain>
+          <div aria-busy="true" aria-label={t('checking')} className="grid gap-4">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="grid gap-1.5">
+                <span className="h-4 w-28 animate-pulse rounded-[6px] bg-fill-3" />
+                <span className="h-10 w-full animate-pulse rounded-control bg-fill-4" />
+              </div>
+            ))}
+          </div>
+        </StepMain>
       </>
     )
   }
@@ -128,19 +137,21 @@ export function ConnectStep({
     return (
       <>
         {head}
-        <Notice
-          tone="error"
-          role="alert"
-          icon={CloudOff}
-          title={t('connect.loadError.title')}
-          actions={
-            <Button size="sm" icon={<RefreshCw />} onClick={() => void query.refetch()}>
-              {t('retry')}
-            </Button>
-          }
-        >
-          {t('connect.loadError.body')}
-        </Notice>
+        <StepMain>
+          <Notice
+            tone="error"
+            role="alert"
+            icon={CloudOff}
+            title={t('connect.loadError.title')}
+            actions={
+              <Button size="sm" icon={<RefreshCw />} onClick={() => void query.refetch()}>
+                {t('retry')}
+              </Button>
+            }
+          >
+            {t('connect.loadError.body')}
+          </Notice>
+        </StepMain>
       </>
     )
   }
@@ -150,19 +161,21 @@ export function ConnectStep({
     return (
       <>
         {head}
-        <SavedKey
-          connection={connection}
-          onReplace={() => {
-            setOutcome(null)
-            setReplacing(true)
-          }}
-        />
-        <TestSuccess
-          connection={connection}
-          acctLv={okOutcome?.acctLv}
-          warnings={okOutcome?.warnings}
-          titleRef={resultTitleRef}
-        />
+        <StepMain>
+          <SavedKey
+            connection={connection}
+            onReplace={() => {
+              setOutcome(null)
+              setReplacing(true)
+            }}
+          />
+          <TestSuccess
+            connection={connection}
+            acctLv={okOutcome?.acctLv}
+            warnings={okOutcome?.warnings}
+            titleRef={resultTitleRef}
+          />
+        </StepMain>
       </>
     )
   }
@@ -179,17 +192,19 @@ export function ConnectStep({
   return (
     <>
       {head}
-      {failure ? <TestFailure ref={errorRef} error={failure.error} okxCode={failure.okxCode} /> : <KeyHelp />}
-      <ConnectionForm
-        connection={connection}
-        idPrefix="ob"
-        hint={t('connect.continueHint')}
-        onTestStart={() => setOutcome(null)}
-        onResult={(result) => {
-          if (result.status === 'ok') setReplacing(false)
-          setOutcome(result)
-        }}
-      />
+      <StepMain>
+        {failure ? <TestFailure ref={errorRef} error={failure.error} okxCode={failure.okxCode} /> : <KeyHelp />}
+        <ConnectionForm
+          connection={connection}
+          idPrefix="ob"
+          hint={t('connect.continueHint')}
+          onTestStart={() => setOutcome(null)}
+          onResult={(result) => {
+            if (result.status === 'ok') setReplacing(false)
+            setOutcome(result)
+          }}
+        />
+      </StepMain>
     </>
   )
 }
@@ -211,15 +226,17 @@ export function RiskStep({
     return (
       <>
         {head}
-        <div aria-busy="true" aria-label={t('risk.loading')} className="ob-profile-cards" data-testid="risk-loading">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="ob-choice grid gap-2" aria-hidden="true">
-              <span className="ob-skeleton h-5 w-3/5 animate-pulse" />
-              <span className="ob-skeleton h-3.5 w-[90%] animate-pulse" />
-              <span className="ob-skeleton mt-2 h-24 w-full animate-pulse" />
-            </div>
-          ))}
-        </div>
+        <StepMain>
+          <div aria-busy="true" aria-label={t('risk.loading')} className="ob-profile-cards" data-testid="risk-loading">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="ob-choice grid gap-2" aria-hidden="true">
+                <span className="ob-skeleton h-5 w-3/5 animate-pulse" />
+                <span className="ob-skeleton h-3.5 w-[90%] animate-pulse" />
+                <span className="ob-skeleton mt-2 h-24 w-full animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </StepMain>
       </>
     )
   }
@@ -228,19 +245,21 @@ export function RiskStep({
     return (
       <>
         {head}
-        <Notice
-          tone="error"
-          role="alert"
-          icon={CloudOff}
-          title={t('risk.error.title')}
-          actions={
-            <Button size="sm" icon={<RefreshCw />} onClick={() => void query.refetch()}>
-              {t('retry')}
-            </Button>
-          }
-        >
-          {t('risk.error.body')}
-        </Notice>
+        <StepMain>
+          <Notice
+            tone="error"
+            role="alert"
+            icon={CloudOff}
+            title={t('risk.error.title')}
+            actions={
+              <Button size="sm" icon={<RefreshCw />} onClick={() => void query.refetch()}>
+                {t('retry')}
+              </Button>
+            }
+          >
+            {t('risk.error.body')}
+          </Notice>
+        </StepMain>
       </>
     )
   }
@@ -249,10 +268,12 @@ export function RiskStep({
   return (
     <>
       {head}
-      <RiskProfilePicker value={value} onChange={onChange} presets={presets} />
-      <CompareDisclosure>
-        <LimitsCompare presets={presets} selected={value} />
-      </CompareDisclosure>
+      <StepMain>
+        <RiskProfilePicker value={value} onChange={onChange} presets={presets} />
+        <CompareDisclosure>
+          <LimitsCompare presets={presets} selected={value} />
+        </CompareDisclosure>
+      </StepMain>
     </>
   )
 }
@@ -268,11 +289,13 @@ export function AutonomyStep({
   return (
     <>
       <StepHead autoFocus={autoFocus} title={t('autonomy.title')} lead={t('autonomy.lead')} />
-      <AutonomyPicker value={value} onChange={onChange} enabled={enabled} />
-      <p className="flex items-center gap-2 text-footnote text-label-secondary">
-        <SlidersHorizontal aria-hidden="true" strokeWidth={1.5} className="size-3.5" />
-        <span>{t('autonomy.note')}</span>
-      </p>
+      <StepMain>
+        <AutonomyPicker value={value} onChange={onChange} enabled={enabled} />
+        <p className="flex items-center gap-2 text-footnote text-label-secondary">
+          <SlidersHorizontal aria-hidden="true" strokeWidth={1.5} className="size-3.5" />
+          <span>{t('autonomy.note')}</span>
+        </p>
+      </StepMain>
     </>
   )
 }
