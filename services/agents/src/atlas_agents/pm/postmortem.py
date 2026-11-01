@@ -293,6 +293,8 @@ def close_reason(session: Session, ctx: ToolContext, row: PositionClosed, opened
         .limit(1)
     ).first()
     if pm is not None:
+        # A PM close proposal has no rule column: proposals.submit stores the PM's structured
+        # rule label (guard.rule_label, e.g. "time_stop") in `invalidation` (proposals.py).
         return pm.invalidation or "pm_close"
     algo = session.scalars(
         select(AlgoOrder)
@@ -368,6 +370,15 @@ def _votes(session: Session, proposal_id: uuid.UUID) -> list[dict[str, Any]]:
     ]
 
 
+def agents_of(author: str | None, votes: list[dict[str, Any]]) -> list[str]:
+    """Every agent slug that authored or voted on the proposal, sorted and de-duplicated
+    (the Journal's agent filter reads ``data.agents``)."""
+    slugs = {str(v["agent"]) for v in votes if v.get("agent")}
+    if author:
+        slugs.add(author)
+    return sorted(slugs)
+
+
 def outcome_of(r: Decimal | None, pnl: Decimal) -> str:
     scratch = Decimal(str(config()["scratch_r"]))
     if r is not None:
@@ -432,6 +443,7 @@ def facts(session: Session, ctx: ToolContext, row: PositionClosed) -> Facts:
     reason = close_reason(session, ctx, row, opened_at)
     outcome = outcome_of(realised_r, realised)
     deadline = row.closed_at + timedelta(minutes=int(config()["deadline_minutes"]))
+    votes = _votes(session, row.proposal_id)
 
     expected = {
         "entry": _plain(proposal.entry) if proposal is not None else None,
@@ -480,7 +492,8 @@ def facts(session: Session, ctx: ToolContext, row: PositionClosed) -> Facts:
         "outcome": outcome,
         "expected": expected,
         "actual": actual,
-        "votes": _votes(session, row.proposal_id),
+        "votes": votes,
+        "agents": agents_of(proposal.author if proposal is not None else None, votes),
         "deadline_at": _iso(deadline),
         "notes": notes,
     }
@@ -639,7 +652,12 @@ def tags_of(facts_card: Mapping[str, Any], answer: Mapping[str, Any] | None) -> 
 
 
 def tag_list(tags: Mapping[str, str]) -> list[str]:
-    return sorted(f"{k}:{v}" for k, v in tags.items())
+    """The prefixed tags plus the bare outcome (``win``/``loss``/``scratch``), which the Journal's
+    ``?outcome=`` filter matches."""
+    out = {f"{k}:{v}" for k, v in tags.items()}
+    if tags.get("outcome"):
+        out.add(tags["outcome"])
+    return sorted(out)
 
 
 def build_card(
@@ -899,6 +917,7 @@ async def retry_lesson(host: AgentHost, entry: JournalEntry) -> bool:
             "expected",
             "actual",
             "votes",
+            "agents",
             "deadline_at",
             "notes",
         )

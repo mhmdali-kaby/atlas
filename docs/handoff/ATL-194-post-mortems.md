@@ -26,7 +26,7 @@ unique index `journal_entries_postmortem_unique` (migration `2026_11_02_100000_�
 | `expected_md` | code text: entry/stop, take-profits, expected R + probability, invalidation |
 | `actual_md` | code text: avg entry → exit, realised (gross, fees, funding) = R, MFE/MAE, held, closed by |
 | `lessons_md` | the one rule-style lesson (one line), **null while `data.lesson_pending`** |
-| `tags` (text[]) | exactly five: `setup:<..>`, `asset:<..>`, `regime:<..>`, `catalyst:<..>`, `outcome:win\|loss\|scratch` |
+| `tags` (text[]) | exactly six: `setup:<..>`, `asset:<..>`, `regime:<..>`, `catalyst:<..>`, `outcome:win\|loss\|scratch`, and the bare outcome `win\|loss\|scratch` (ATL-200's `?outcome=` matches it) |
 
 `data` (jsonb) — every number is a string (Decimal), computed by code, never by the model:
 
@@ -59,6 +59,7 @@ unique index `journal_entries_postmortem_unique` (migration `2026_11_02_100000_�
     "holding_minutes": 270, "close_reason": "take_profit", "close_type": "2", "fill_count": 3
   },
   "votes": [{"agent": "devils_advocate", "vote": "skip", "confidence": "0.7", "reason": "…"}],
+  "agents": ["devils_advocate", "strategist", "technical_analyst"],
   "deadline_at": "2099-07-01T11:45:00Z",
   "notes": [],
   "review": {"right_md": "…names agents…", "wrong_md": "…names agents…"},
@@ -66,7 +67,7 @@ unique index `journal_entries_postmortem_unique` (migration `2026_11_02_100000_�
   "lesson_pending": false,
   "lesson_attempts": 1,
   "tags": {"setup": "pullback_to_support", "asset": "crypto", "regime": "trend", "catalyst": "none", "outcome": "win"},
-  "tag_list": ["asset:crypto", "catalyst:none", "outcome:win", "regime:trend", "setup:pullback_to_support"],
+  "tag_list": ["asset:crypto", "catalyst:none", "outcome:win", "regime:trend", "setup:pullback_to_support", "win"],
   "on_time": true,
   "numguard": {"unmatched_numbers": [], "checked": 4},
   "card_event_id": "…only when code posted the card (lesson pending)…"
@@ -84,6 +85,8 @@ Definitions, for the scorecard jobs:
   is the first of `candle_bars` (`1m`, then `1H`) that had candles; all three null when none.
 - `close_reason`: `liquidation`, `adl`, `kill`, the PM rule that closed it (e.g. `time_stop`,
   `invalidation`, or `pm_close`), `stop_loss`, `take_profit`, `manual` (owner Close in Atlas), `external`.
+- `agents`: sorted, de-duplicated slugs of the proposal's author plus every voter on it. The Journal's
+  agent filter (ATL-200) reads it; the entry's `agent` column is always `portfolio_manager`.
 - `outcome`: win if R ≥ `scratch_r` (0.1), loss if R ≤ −0.1, else scratch (PnL sign when R is null).
 - Tags: outcome and asset are code's. `setup` is `positions_closed.setup_tag` when set, else the model's
   pick. `regime` and `catalyst` are the model's, from the vocabularies in config; `unknown` while pending.

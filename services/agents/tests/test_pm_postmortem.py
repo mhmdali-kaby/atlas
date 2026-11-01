@@ -343,7 +343,13 @@ async def test_a_closed_position_gets_one_entry_and_one_card_with_hand_computed_
         "regime:trend",
         "catalyst:none",
         "outcome:win",
+        "win",
     }
+    assert entry.data["outcome"] == "win"
+    # Every agent that authored or voted on the proposal: the proposer plus the seeded voters.
+    agents = ["devils_advocate", "strategist", "technical_analyst"]
+    assert entry.data["agents"] == agents
+    assert set(entry.data["agents"]) == {"strategist", "technical_analyst", "devils_advocate"}
     assert entry.lessons_md == GOOD["lesson"]
     assert "\n" not in entry.lessons_md and entry.lessons_md.startswith("When ")
 
@@ -351,6 +357,7 @@ async def test_a_closed_position_gets_one_entry_and_one_card_with_hand_computed_
     assert card["type"] == "post_mortem" and card["journal_id"] == str(entry.id)
     assert card["actual"] == actual and card["lesson"] == GOOD["lesson"]
     assert card["lesson_pending"] is False and card["tags"]["outcome"] == "win"
+    assert card["agents"] == agents and "win" in card["tag_list"]
 
     # A second run adds nothing.
     rec2 = await _tick(world, fake.FakeClaudeClient(), NOW + timedelta(minutes=2))
@@ -413,6 +420,7 @@ async def test_a_failed_run_writes_the_facts_with_lesson_pending_then_fills_it_n
     assert filled.data["lesson_pending"] is False
     assert filled.lessons_md == GOOD["lesson"]
     assert "regime:trend" in filled.tags and "setup:pullback_to_support" in filled.tags
+    assert "win" in filled.tags and filled.data["agents"] == entry.data["agents"]
     assert filled.data["actual"] == entry.data["actual"]
     update = _cards(rec2)
     assert len(update) == 1 and update[0].payload["card"]["lesson_update"] is True
