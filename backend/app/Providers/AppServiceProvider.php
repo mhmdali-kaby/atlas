@@ -70,6 +70,15 @@ class AppServiceProvider extends ServiceProvider
                 ->by('watchlists-write|'.($user !== null ? (string) $user->getAuthIdentifier() : $request->ip()));
         });
 
+        // ATL-163: /cycle now, per user. One manual cycle request a minute.
+        RateLimiter::for('cycles-start', function (Request $request): Limit {
+            $perMinute = config('atlas_defaults.cycles_api.start_per_minute');
+            $user = $request->user();
+
+            return Limit::perMinute(is_int($perMinute) ? $perMinute : 1)
+                ->by('cycles-start|'.($user !== null ? (string) $user->getAuthIdentifier() : $request->ip()));
+        });
+
         // ATL-162: owner approve / reject / edit / ask-team on proposals, per user.
         RateLimiter::for('proposals-write', function (Request $request): Limit {
             $perMinute = config('atlas_defaults.proposals_api.writes_per_minute');
