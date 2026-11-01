@@ -25,6 +25,7 @@ from trading_core.approvals.sweeper import approvals_job
 from trading_core.backfill.api import router as backfill_router
 from trading_core.backfill.runner import STREAM as BACKFILL_JOB
 from trading_core.backfill.runner import backfill_job
+from trading_core.backtest.api import router as backtest_router
 from trading_core.config import Settings
 from trading_core.connection_test import router as connection_test_router
 from trading_core.execution.api import router as execution_router
@@ -347,6 +348,7 @@ def create_app(
     application.include_router(connection_test_router)
     application.include_router(backfill_router)
     application.include_router(quality_router)
+    application.include_router(backtest_router)
     application.include_router(risk_router)
     application.include_router(execution_router)
     application.include_router(control_router)

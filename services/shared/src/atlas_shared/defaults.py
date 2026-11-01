@@ -247,6 +247,20 @@ DEFAULTS: Final[dict[str, Any]] = {
         "per_page_max": 200,
         "r_scale": 2,
     },
+    "journal_api": {
+        "per_page_default": 50,
+        "per_page_max": 200,
+        "max_tags": 20,
+        "score_days": [
+            7,
+            30,
+            90,
+        ],
+        "score_days_default": 30,
+        "hit_rate_scale": 4,
+        "brier_scale": 6,
+        "notebook_max_notes": 500,
+    },
     "portfolio_performance": {
         "ranges": [
             "1M",
@@ -751,6 +765,20 @@ DEFAULTS: Final[dict[str, Any]] = {
     },
     "risk_api": {
         "checks_per_minute": 20,
+    },
+    "backtest": {
+        "max_bars": 50000,
+        "timeout_seconds": 60,
+        "max_inst_ids": 5,
+        "warmup_bars": 250,
+        "equity_curve_max_points": 1000,
+        "trades_max_rows": 1000,
+        "fallback_taker_fee_rate": "0.0005",
+        "taker_fee_rates": {
+            "SPOT": "0.001",
+            "SWAP": "0.0005",
+            "FUTURES": "0.0005",
+        },
     },
     "data_api": {
         "resync_per_minute": 1,
