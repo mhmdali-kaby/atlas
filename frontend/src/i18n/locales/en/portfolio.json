@@ -28,6 +28,7 @@
   "chartTableTime": "Time",
   "chartTableValue": "Equity",
   "chartMarkers": "Deposits and withdrawals",
+  "chartSection": "Equity chart",
   "netDeposits": "Net deposits",
   "netDepositsSub": "All time",
   "totalPnl": "Total PnL",
@@ -99,7 +100,6 @@
       "connect": "Open Connections"
     }
   },
-  "laterPhase": "Available in a later phase",
   "holdings": {
     "summary_one": "{{count}} balance across trading and funding",
     "summary_other": "{{count}} balances across trading and funding",
@@ -118,6 +118,15 @@
     "empty": {
       "title": "No balances",
       "body": "OKX reports no balances on the demo account yet."
+    },
+    "noCost": {
+      "cash": "Cash is counted at $1.00, so it has no average cost",
+      "noFills": "No spot buys of {{ccy}} are recorded, so it has no average cost"
+    },
+    "noChange": {
+      "cash": "Cash is counted at $1.00, so it has no 24h change",
+      "noInstrument": "OKX has no {{ccy}} market against USDT or USDC on this account, so it has no 24h change",
+      "noCandles": "No {{ccy}} price history for the last 24 hours yet"
     }
   },
   "cashflows": {
@@ -145,5 +154,20 @@
       "title": "No deposits or withdrawals",
       "body": "The demo account’s balance is paper money from OKX, so nothing has been deposited or withdrawn."
     }
+  },
+  "benchmark": {
+    "label": "Compare with",
+    "none": "None",
+    "BTC": "BTC",
+    "SPY": "SPY",
+    "XAU": "Gold",
+    "unavailable": {
+      "demo": "No {{name}} history for this range on the demo account yet",
+      "live": "No {{name}} history for this range on the live account yet"
+    },
+    "you": "Your equity",
+    "loading": "Loading {{name}}…",
+    "rebased": "Rebased to your equity at the start of the range, so both lines start together",
+    "chartLabel": " Compared with {{name}}, rebased to your equity at the start of the range."
   }
 }

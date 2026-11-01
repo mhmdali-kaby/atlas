@@ -2,6 +2,7 @@ import { Wallet } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTradingEnv } from '../../app/shell/tradingEnv'
 import { formatDecimal, formatMoney, formatPercent, NO_VALUE, type Lang } from '../../lib/format'
+import { SignedValue } from '../../ui'
 import { POLL_MS, useHoldings, useSummary, type Holding } from './api'
 import { byValueDesc } from './ledger'
 import { useLang, useNow } from './hooks'
@@ -11,20 +12,38 @@ import './portfolio.css'
 /*
  * Portfolio → Holdings (brief §13, design: Holdings). Every balance of the newest synced
  * trading and funding ticks, from /api/portfolio/holdings (polled every 30 s), largest value
- * first. Average cost and 24h change arrive with the Executor (decision 236).
+ * first. Average cost and the signed 24h change come from ATL-176; a null one is a "—" whose
+ * tooltip says why (cash is counted at $1.00, no spot buys, no market, no recent prices).
  */
 
 const COLUMNS = ['currency', 'account', 'quantity', 'value', 'share', 'avgCost', 'change'] as const
 type Column = (typeof COLUMNS)[number]
 const NUMERIC = new Set<Column>(['quantity', 'value', 'avgCost', 'change'])
 
-function LaterPhase() {
-  const { t } = useTranslation('portfolio')
+/** Counted at $1.00 by OKX's own USD valuation: no cost basis and no 24h move to show. */
+const USD_CASH = new Set(['USD', 'USDT', 'USDC'])
+
+/** A "—" that says why it is empty, on hover and to a screen reader. */
+function NoFigure({ why, testId }: { why: string; testId: string }) {
   return (
-    <span className="text-label-secondary" tabIndex={0} title={t('laterPhase')} aria-label={t('laterPhase')} data-testid="later-phase">
-      {NO_VALUE}
+    <span className="cursor-help text-label-secondary" tabIndex={0} title={why} data-testid={testId}>
+      <span aria-hidden="true">{NO_VALUE}</span>
+      <span className="sr-only">{why}</span>
     </span>
   )
+}
+
+/**
+ * "$60,000.50", "$0.00012345": every decimal the API sent (it fixes them to the spot tick
+ * size), which formatMoney would round to cents. Figures always use en-US digits and symbol.
+ */
+function formatCost(value: string, lang: Lang): string {
+  return `$${formatDecimal(value, lang, 2)}`
+}
+
+function noChangeWhy(h: Holding): 'cash' | 'noInstrument' | 'noCandles' {
+  if (USD_CASH.has(h.ccy)) return 'cash'
+  return h.change_24h_reason === 'no_candles' ? 'noCandles' : 'noInstrument'
 }
 
 function HoldingRow({ h, lang }: { h: Holding; lang: Lang }) {
@@ -65,10 +84,25 @@ function HoldingRow({ h, lang }: { h: Holding; lang: Lang }) {
         )}
       </td>
       <td data-col="avgCost" className="is-num">
-        <LaterPhase />
+        {h.avg_cost_usd === null ? (
+          <NoFigure
+            testId="no-avg-cost"
+            why={t(`holdings.noCost.${USD_CASH.has(h.ccy) ? 'cash' : 'noFills'}`, { ccy: h.ccy })}
+          />
+        ) : (
+          <span className="fig" data-testid="avg-cost" title={`${h.avg_cost_usd} USD`}>
+            {formatCost(h.avg_cost_usd, lang)}
+          </span>
+        )}
       </td>
       <td data-col="change" className="is-num">
-        <LaterPhase />
+        {h.change_24h_pct === null ? (
+          <NoFigure testId="no-change" why={t(`holdings.noChange.${noChangeWhy(h)}`, { ccy: h.ccy })} />
+        ) : (
+          <span className="inline-flex justify-end font-medium" data-testid="change-24h">
+            <SignedValue value={h.change_24h_pct} unit="percent" />
+          </span>
+        )}
       </td>
     </tr>
   )

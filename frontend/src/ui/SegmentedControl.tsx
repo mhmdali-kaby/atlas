@@ -9,6 +9,8 @@ export interface SegmentOption<V extends string> {
   value: V
   label: ReactNode
   disabled?: boolean
+  /** Why a segment is disabled: a hover tooltip, and its accessible description. */
+  tip?: string
 }
 
 export interface SegmentedControlProps<V extends string> {
@@ -57,31 +59,47 @@ export function SegmentedControl<V extends string>({
           className,
         )}
       >
-        {options.map((option) => (
-          <RadioGroup.Item
-            key={option.value}
-            value={option.value}
-            disabled={option.disabled}
-            className={cx(
-              'group relative h-7 min-w-11 whitespace-nowrap rounded-[7px] px-3 text-footnote font-medium text-label',
-              'data-[state=checked]:font-semibold data-[state=unchecked]:hover:bg-fill-4',
-              'disabled:pointer-events-none disabled:text-label-tertiary',
-            )}
-          >
-            <RadioGroup.Indicator asChild>
-              <motion.span
-                layoutId={`segment-thumb-${thumbId}`}
-                // Measure only when the choice changes: a control that merely moved on the page
-                // (content above it grew) must not slide its thumb in from the old position.
-                layoutDependency={value}
-                aria-hidden="true"
-                data-segment-thumb=""
-                className="absolute inset-0 -z-10 rounded-[7px] bg-segment-thumb shadow-segment-thumb"
-              />
-            </RadioGroup.Indicator>
-            <span className="relative">{option.label}</span>
-          </RadioGroup.Item>
-        ))}
+        {options.map((option) => {
+          const tipId = option.tip ? `${thumbId}-tip-${option.value}` : undefined
+          const item = (
+              <RadioGroup.Item
+                key={option.value}
+                value={option.value}
+                disabled={option.disabled}
+                aria-describedby={tipId}
+                data-value={option.value}
+                className={cx(
+                  'group relative h-7 min-w-11 whitespace-nowrap rounded-[7px] px-3 text-footnote font-medium text-label',
+                  'data-[state=checked]:font-semibold data-[state=unchecked]:hover:bg-fill-4',
+                  'disabled:pointer-events-none disabled:text-label-tertiary',
+                )}
+              >
+                <RadioGroup.Indicator asChild>
+                  <motion.span
+                    layoutId={`segment-thumb-${thumbId}`}
+                    // Measure only when the choice changes: a control that merely moved on the page
+                    // (content above it grew) must not slide its thumb in from the old position.
+                    layoutDependency={value}
+                    aria-hidden="true"
+                    data-segment-thumb=""
+                    className="absolute inset-0 -z-10 rounded-[7px] bg-segment-thumb shadow-segment-thumb"
+                  />
+                </RadioGroup.Indicator>
+                <span className="relative">{option.label}</span>
+              </RadioGroup.Item>
+          )
+          if (!option.tip) return item
+          // A disabled button takes no pointer events, so the tooltip sits on a wrapper the
+          // pointer reaches through; the same text is the segment's accessible description.
+          return (
+            <span key={option.value} title={option.tip} data-segment-tip="" className="inline-grid">
+              {item}
+              <span id={tipId} className="sr-only">
+                {option.tip}
+              </span>
+            </span>
+          )
+        })}
       </RadioGroup.Root>
     </MotionConfig>
   )

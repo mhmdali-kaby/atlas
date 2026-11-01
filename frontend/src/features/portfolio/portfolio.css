@@ -374,3 +374,19 @@ a.pf-ledger-item:focus-visible { outline: none; box-shadow: var(--focus-ring); }
   .pp-bars { --nw: 110px; }
   .pp-chart-inst .pp-bars { --nw: 110px; }
 }
+
+/* ==========================================================================
+   Overview benchmark (ATL-177, design: Overview benchmark). The comparison is a
+   quiet dashed line in the secondary label colour, so the equity line stays the
+   only accent-coloured thing on the chart.
+   ========================================================================== */
+.pf-legend-line { display: inline-block; width: 16px; height: 0; flex: none; }
+.pf-legend-line.is-equity { border-top: 2px solid var(--chart-line); border-radius: 1px; }
+.pf-legend-line.is-bench { border-top: 1.5px dashed var(--label-secondary); }
+.pf-legend-tip { border-radius: 6px; cursor: help; }
+.pf-legend-tip:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.pf-bench-line path { stroke-linejoin: round; stroke-linecap: round; }
+@media (prefers-reduced-motion: no-preference) {
+  .pf-bench-line { animation: pf-bench-in 400ms var(--ease-out, ease-out); }
+}
+@keyframes pf-bench-in { from { opacity: 0; } to { opacity: 1; } }
