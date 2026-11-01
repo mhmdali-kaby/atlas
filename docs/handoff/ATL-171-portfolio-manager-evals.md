@@ -21,7 +21,10 @@ and ATL-170's daily report. Cases: `services/agents/evals/portfolio_manager/`. T
 - Check cases assert `rules_fired` (pins what the rules must compute), `rule_compliance`,
   `never_widens_stop`, `never_adds`; silent ones add `silent`, news ones `news_labelled {expect}`,
   report ones `report_figures_untouched` + `no_invented_numbers`. All properties are documented
-  at the top of `atlas_agents/evals/properties.py`.
+  at the top of `atlas_agents/evals/properties_pm.py`.
+- **PM code has its own modules**: `evals/properties_pm.py` and `evals/drivers_pm.py`. On import they
+  add themselves to `properties.PROPERTIES` and `drivers.DRIVERS`; `runner.py` imports both. Another
+  agent's evals should follow the same pattern rather than append to the shared files.
 - **Everything is generated** by `evals/portfolio_manager/build_cases.py`. Rebuild with
   `cd services && uv run --package atlas-agents python agents/evals/portfolio_manager/build_cases.py`
   (no DB needed). The builder computes the expected actions with the production
@@ -33,7 +36,7 @@ and ATL-170's daily report. Cases: `services/agents/evals/portfolio_manager/`. T
 - `uv run --package atlas-agents python -m atlas_agents.evals run --agent portfolio_manager --dry-run`
   lists all 35 cases without the DB or the CLI.
 
-## The driver (`drivers.py` → `portfolio_manager_driver`)
+## The driver (`drivers_pm.py` → `portfolio_manager_driver`)
 
 `inputs.mode`:
 
