@@ -48,9 +48,15 @@ Test ids: `pr-card` (`data-status`, `data-proposal-id`), `pr-status`, `pr-countd
 - The liquidation line ("← Liquidation 166.80") is built: `Ladder` takes `liq`, and the card passes
   check 7's `liquidation_buffer.values.estimated_liq_price` (`liqOf` in `cards/proposal.ts`). It shows
   only when the price lies beyond the rail's stop end, as in the design, and only on the full ladder.
-- No "Now" marker on the proposal's ladder: the resource carries no mark price (the risk check does
-  not store the mark it used, and the browser has no live price feed yet). Nothing is shown in its
-  place. It needs a `mark` on ProposalView (e.g. read from the md Redis hash) — follow-up.
+- "Now" marker (ATL-188): `/api/proposals` list and show carry `mark` and `mark_at`, read by
+  `App\Support\Proposals\MarkPrice` from the md hash `<market_ws.key_prefix>:<env>:<instId>`
+  (field `mark` = the OKX mark-price push JSON, `mark-price_ms` = when trading_core received it).
+  `GET /api/proposals/{id}/mark` returns `{data: {inst_id, mark, mark_at}}` for polling. While the
+  card's status is awaiting_owner / advice / sent / partially_filled, `useProposalMark` refetches
+  it every 10 s and on focus; `freshMark` takes the newer mark and shows it only while ≤ 30 s old,
+  judged on the card's 1 s `useNow` tick. `Ladder` gained `live` (keeps the Now room:
+  `has-now-room`) and `nowOnly` (compact rail: the Now line is its only label). The Edit sheet
+  preview gets the same mark.
 - Odds sub-line ("Historian analogs 48%, +4 for the ETF catalyst", `pr-odds-basis`): built by ATL-189
   from the optional `probability_basis` {analog_hit_rate 0-1, n, adjustment_pts, reason} that
   submit_proposal validates (|adjustment| <= 15 pts; hit rate + adjustment = probability within 1 pt)

@@ -39,6 +39,7 @@ final class ProposalView
             'kind' => $p->kind,
             'author' => $p->author,
             'inst_id' => $p->inst_id,
+            ...MarkPrice::of($p->env, $p->inst_id),
             'side' => $p->side,
             'order_type' => $p->order_type,
             'entry' => Dec::out($p->entry),
