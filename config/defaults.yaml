@@ -1295,6 +1295,34 @@ agents:
       squeeze_call_min: "0.6"
       squeeze_move_atr: 2
       squeeze_hours: 48
+    # ATL-197, brief §7.8 Scoring: the Portfolio Manager (atlas_agents.scorecards.portfolio_manager).
+    # Closed trades = the PM's post-mortem journal entries (ATL-194) whose data.actual.closed_at is on
+    # the day. r_captured = sum(realised_r) / sum(mfe_r) over trades with mfe_r > 0; a loser
+    # (data.outcome loss) is "within" when realised_r >= -loser_limit_r. Rule compliance covers the
+    # PM's proposals created that day: the rule name must be one code emits for that kind, and an
+    # amend_stop must be strictly tighter than the stop before it (the position's previous live
+    # amend_stop, else its entry proposal's stop). Below 100 % posts one War Room system_alert per
+    # new set of violations.
+    portfolio_manager:
+      loser_limit_r: "1.1"
+    # ATL-197, brief §7.9 Scoring: the Orchestrator (atlas_agents.scorecards.orchestrator). Cycles
+    # started on the day are on time when closed_at <= max(started_at + the cycle budget, the latest
+    # stored step deadline) + grace_seconds; the budget is research + strategist + review + vote +
+    # risk timeouts from agents.orchestrator. A cycle still open before that instant is pending (not
+    # counted). Ack latency = owner message -> first Orchestrator reply (reply_to); loops stopped =
+    # the Orchestrator's loop_summary cards.
+    orchestrator:
+      grace_seconds: 120
+    # ATL-197, brief §7.3 / §9.3: the Historian's calibration (atlas_agents.scorecards.historian).
+    # Every history_verdict card's distribution[h].pct_positive / 100 for each horizon in horizons
+    # is a probability that the close-to-close move over h from the card's created_at is positive
+    # (closes of price_bar candles, refused when older than max_price_lag_minutes). The day is
+    # skipped until the longest horizon has closed, so lookback_days must exceed it.
+    historian:
+      horizons: ["1h", "4h", "24h", "72h"]
+      price_bar: 5m
+      max_price_lag_minutes: 30
+      lookback_days: 5
     # ATL-196, brief §7.6/§7.7 Scoring (atlas_agents.scorecards.paper/strategist/devils_advocate).
     #   paper.statuses: an entry proposal's latest version in one of these, never filled by the
     #     Executor, is simulated as a paper trade from that version's created_at.
