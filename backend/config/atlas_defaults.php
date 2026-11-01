@@ -1467,6 +1467,27 @@ return [
             'news' => [
                 'latency_target_seconds' => 90,
             ],
+            'paper' => [
+                'statuses' => [
+                    'rejected',
+                    'expired',
+                    'advise_only',
+                ],
+                'bars' => [
+                    '1m',
+                    '15m',
+                ],
+                'max_hold_hours' => 72,
+            ],
+            'strategist' => [
+                'lookback_days' => 7,
+            ],
+            'devils_advocate' => [
+                'lookback_days' => 7,
+                'high_rating' => 4,
+                'low_rating' => 2,
+                'scratch_r' => '0.1',
+            ],
         ],
         'ta' => [
             'timeframes' => [

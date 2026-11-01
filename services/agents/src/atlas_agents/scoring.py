@@ -188,8 +188,10 @@ def upsert_score(
     hit_rate: float | None,
     data: Mapping[str, Any],
     now: datetime,
+    brier_score: float | None = None,
 ) -> None:
-    """One row per (agent, env, day): insert, or overwrite n/hit_rate/data on a re-score."""
+    """One row per (agent, env, day): insert, or overwrite n/hit_rate/brier_score/data on a
+    re-score."""
     stmt = insert(AgentScore).values(
         id=uuid.uuid4(),
         agent=agent,
@@ -197,6 +199,7 @@ def upsert_score(
         day=day,
         n=n,
         hit_rate=_dec(hit_rate, 4),
+        brier_score=_dec(brier_score, 6),
         data=dict(data),
         created_at=now,
         updated_at=now,
@@ -206,6 +209,7 @@ def upsert_score(
         set_={
             "n": stmt.excluded.n,
             "hit_rate": stmt.excluded.hit_rate,
+            "brier_score": stmt.excluded.brier_score,
             "data": stmt.excluded.data,
             "updated_at": stmt.excluded.updated_at,
         },
