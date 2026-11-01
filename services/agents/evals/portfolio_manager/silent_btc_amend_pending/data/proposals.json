@@ -1,0 +1,47 @@
+[
+ {
+  "id": "3be4eaae-448a-5817-94a5-687ae0af9fdb",
+  "env": "demo",
+  "kind": "entry",
+  "author": "strategist",
+  "inst_id": "BTC-USDT-SWAP",
+  "side": "buy",
+  "order_type": "limit",
+  "entry": "60000",
+  "stop": "59000",
+  "take_profits": [
+   {
+    "price": "63000",
+    "pct": "50"
+   },
+   {
+    "price": "65000",
+    "pct": "50"
+   }
+  ],
+  "time_stop_minutes": 1440,
+  "status": "filled",
+  "created_at": "2087-05-13T05:50:00Z",
+  "updated_at": "2087-05-13T06:00:00Z",
+  "close_pct": null,
+  "invalidation": ""
+ },
+ {
+  "id": "a1aaddc2-b390-5674-8d62-f8d5d598deb5",
+  "env": "demo",
+  "kind": "amend_stop",
+  "author": "portfolio_manager",
+  "inst_id": "BTC-USDT-SWAP",
+  "side": null,
+  "order_type": null,
+  "entry": null,
+  "stop": "60060",
+  "take_profits": [],
+  "time_stop_minutes": null,
+  "status": "awaiting_owner",
+  "created_at": "2087-05-13T08:30:00Z",
+  "updated_at": "2087-05-13T08:30:00Z",
+  "close_pct": null,
+  "invalidation": "breakeven"
+ }
+]

@@ -165,9 +165,10 @@ def _client_factory(case: EvalCase, conn: Any, recorder: Recorder) -> ClientFact
         publish=recorder,
     )
     steps = case.fake.steps
+    follow_ups = case.fake.follow_ups
 
     def make(options: ClaudeAgentOptions) -> ClaudeClient:
-        return EvalFakeClient(steps, ctx, options)
+        return EvalFakeClient(steps, ctx, options, follow_ups)
 
     return make
 

@@ -1,0 +1,16 @@
+[
+ {
+  "id": "8f8e5c68-1c1f-5a02-9794-ba48bbe435bd",
+  "source": "forexfactory",
+  "external_id": "ff-evalpm-event_btc_short_fomc-0",
+  "country": "US",
+  "name": "FOMC Statement",
+  "importance": 5,
+  "scheduled_at": "2087-05-13T09:12:00Z",
+  "actual": null,
+  "forecast": null,
+  "previous": null,
+  "surprise": null,
+  "created_at": "2087-05-11T09:00:00Z"
+ }
+]

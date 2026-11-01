@@ -1,0 +1,1255 @@
+{
+  "agent": "portfolio_manager",
+  "mode": "fake",
+  "label": "atl-171",
+  "started_at": "2026-11-01T17:24:36.675317+00:00",
+  "finished_at": "2026-11-01T17:24:38.710279+00:00",
+  "cases": [
+    {
+      "case_id": "breakeven_btc_long",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: breakeven"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "returned and saved exactly the computed actions (1)"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "2 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 900,
+      "tokens_out": 160,
+      "turns": 1
+    },
+    {
+      "case_id": "breakeven_eth_short",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: breakeven"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "returned and saved exactly the computed actions (1)"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "2 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 900,
+      "tokens_out": 160,
+      "turns": 1
+    },
+    {
+      "case_id": "breakeven_xau_long",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: breakeven"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "returned and saved exactly the computed actions (1)"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "2 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 900,
+      "tokens_out": 160,
+      "turns": 1
+    },
+    {
+      "case_id": "event_btc_short_fomc",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: event_reduce"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "returned and saved exactly the computed actions (1)"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "0 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 900,
+      "tokens_out": 160,
+      "turns": 1
+    },
+    {
+      "case_id": "event_xau_long_cpi",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: event_reduce"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "returned and saved exactly the computed actions (1)"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "0 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 900,
+      "tokens_out": 160,
+      "turns": 1
+    },
+    {
+      "case_id": "funding_eth_short_flag",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: funding_cost"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "returned and saved exactly the computed actions (0)"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "0 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 900,
+      "tokens_out": 160,
+      "turns": 1
+    },
+    {
+      "case_id": "funding_sol_long_flag",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: funding_cost"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "returned and saved exactly the computed actions (0)"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "0 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 900,
+      "tokens_out": 160,
+      "turns": 1
+    },
+    {
+      "case_id": "invalid_btc_long_broken",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: invalidation"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "returned and saved exactly the computed actions (1)"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "0 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 900,
+      "tokens_out": 160,
+      "turns": 1
+    },
+    {
+      "case_id": "invalid_sol_short_broken",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: invalidation"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "returned and saved exactly the computed actions (1)"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "0 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 900,
+      "tokens_out": 160,
+      "turns": 1
+    },
+    {
+      "case_id": "news_btc_reported_with_breakeven",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: breakeven"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "returned and saved exactly the computed actions (1)"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "2 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        },
+        {
+          "name": "news_labelled",
+          "passed": true,
+          "detail": "labelled REPORTED as the news tools computed"
+        }
+      ],
+      "tool_calls": 1,
+      "tokens_in": 900,
+      "tokens_out": 160,
+      "turns": 2
+    },
+    {
+      "case_id": "news_btc_rumour_hold",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: none"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "returned and saved exactly the computed actions (0)"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "0 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        },
+        {
+          "name": "news_labelled",
+          "passed": true,
+          "detail": "labelled RUMOUR as the news tools computed"
+        }
+      ],
+      "tool_calls": 1,
+      "tokens_in": 900,
+      "tokens_out": 160,
+      "turns": 2
+    },
+    {
+      "case_id": "news_eth_reported_short_hold",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: none"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "returned and saved exactly the computed actions (0)"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "0 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        },
+        {
+          "name": "news_labelled",
+          "passed": true,
+          "detail": "labelled REPORTED as the news tools computed"
+        }
+      ],
+      "tool_calls": 1,
+      "tokens_in": 900,
+      "tokens_out": 160,
+      "turns": 2
+    },
+    {
+      "case_id": "news_xau_confirmed_hold",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: none"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "returned and saved exactly the computed actions (0)"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "0 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        },
+        {
+          "name": "news_labelled",
+          "passed": true,
+          "detail": "labelled CONFIRMED as the news tools computed"
+        }
+      ],
+      "tool_calls": 1,
+      "tokens_in": 900,
+      "tokens_out": 160,
+      "turns": 2
+    },
+    {
+      "case_id": "noadd_btc_long_loser_pre_event",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: none"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "returned and saved exactly the computed actions (0)"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "0 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 900,
+      "tokens_out": 160,
+      "turns": 1
+    },
+    {
+      "case_id": "noadd_eth_long_loser_event_reduce",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: event_reduce"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "returned and saved exactly the computed actions (1)"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "0 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 900,
+      "tokens_out": 160,
+      "turns": 1
+    },
+    {
+      "case_id": "noadd_tsla_short_loser_pre_event",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: none"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "returned and saved exactly the computed actions (0)"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "0 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 900,
+      "tokens_out": 160,
+      "turns": 1
+    },
+    {
+      "case_id": "nowiden_btc_long_stop_above_breakeven",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: none"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "no rule fired and nothing was submitted"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "0 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        },
+        {
+          "name": "silent",
+          "passed": true,
+          "detail": "no model call, no message, nothing submitted"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "turns": 0
+    },
+    {
+      "case_id": "nowiden_sol_long_tp1_trail_dropped",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: tp1_partial"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "returned and saved exactly the computed actions (1)"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "0 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 900,
+      "tokens_out": 160,
+      "turns": 1
+    },
+    {
+      "case_id": "nowiden_xau_short_tight_stop",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: none"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "no rule fired and nothing was submitted"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "0 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        },
+        {
+          "name": "silent",
+          "passed": true,
+          "detail": "no model call, no message, nothing submitted"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "turns": 0
+    },
+    {
+      "case_id": "report_funding_only",
+      "status": "ok",
+      "error": null,
+      "passed": 3,
+      "total": 3,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "report_figures_untouched",
+          "passed": true,
+          "detail": "the card is code's figures plus the model's two notes"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 20 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 1500,
+      "tokens_out": 220,
+      "turns": 1
+    },
+    {
+      "case_id": "report_quiet_day",
+      "status": "ok",
+      "error": null,
+      "passed": 3,
+      "total": 3,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "report_figures_untouched",
+          "passed": true,
+          "detail": "the card is code's figures plus the model's two notes"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 20 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 1500,
+      "tokens_out": 220,
+      "turns": 1
+    },
+    {
+      "case_id": "report_two_trades",
+      "status": "ok",
+      "error": null,
+      "passed": 3,
+      "total": 3,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "report_figures_untouched",
+          "passed": true,
+          "detail": "the card is code's figures plus the model's two notes"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 34 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 1500,
+      "tokens_out": 220,
+      "turns": 1
+    },
+    {
+      "case_id": "silent_btc_amend_pending",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: none"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "no rule fired and nothing was submitted"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "0 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        },
+        {
+          "name": "silent",
+          "passed": true,
+          "detail": "no model call, no message, nothing submitted"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "turns": 0
+    },
+    {
+      "case_id": "silent_btc_long_quiet",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: none"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "no rule fired and nothing was submitted"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "0 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        },
+        {
+          "name": "silent",
+          "passed": true,
+          "detail": "no model call, no message, nothing submitted"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "turns": 0
+    },
+    {
+      "case_id": "silent_eth_short_quiet",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: none"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "no rule fired and nothing was submitted"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "0 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        },
+        {
+          "name": "silent",
+          "passed": true,
+          "detail": "no model call, no message, nothing submitted"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "turns": 0
+    },
+    {
+      "case_id": "silent_eth_structure_stale",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: none"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "no rule fired and nothing was submitted"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "0 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        },
+        {
+          "name": "silent",
+          "passed": true,
+          "detail": "no model call, no message, nothing submitted"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "turns": 0
+    },
+    {
+      "case_id": "silent_sol_external",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: none"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "no rule fired and nothing was submitted"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "0 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        },
+        {
+          "name": "silent",
+          "passed": true,
+          "detail": "no model call, no message, nothing submitted"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "turns": 0
+    },
+    {
+      "case_id": "silent_xau_long_at_breakeven",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: none"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "no rule fired and nothing was submitted"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "0 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        },
+        {
+          "name": "silent",
+          "passed": true,
+          "detail": "no model call, no message, nothing submitted"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "turns": 0
+    },
+    {
+      "case_id": "timestop_eth_long_24h",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: time_stop"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "returned and saved exactly the computed actions (1)"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "0 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 900,
+      "tokens_out": 160,
+      "turns": 1
+    },
+    {
+      "case_id": "timestop_tsla_short_4h",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: time_stop"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "returned and saved exactly the computed actions (1)"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "0 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 900,
+      "tokens_out": 160,
+      "turns": 1
+    },
+    {
+      "case_id": "tp1_btc_long_resting_trail_only",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: tp1_trail"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "returned and saved exactly the computed actions (1)"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "2 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 900,
+      "tokens_out": 160,
+      "turns": 1
+    },
+    {
+      "case_id": "tp1_eth_short_filled_trail",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: tp1_trail"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "returned and saved exactly the computed actions (1)"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "2 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 900,
+      "tokens_out": 160,
+      "turns": 1
+    },
+    {
+      "case_id": "tp1_sol_long_partial_and_trail",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: tp1_partial, tp1_trail"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "returned and saved exactly the computed actions (2)"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "2 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 900,
+      "tokens_out": 160,
+      "turns": 1
+    },
+    {
+      "case_id": "tworr_btc_long",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: two_r_trail"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "returned and saved exactly the computed actions (1)"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "2 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 900,
+      "tokens_out": 160,
+      "turns": 1
+    },
+    {
+      "case_id": "tworr_xau_short",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rules_fired",
+          "passed": true,
+          "detail": "rules fired: two_r_trail"
+        },
+        {
+          "name": "rule_compliance",
+          "passed": true,
+          "detail": "returned and saved exactly the computed actions (1)"
+        },
+        {
+          "name": "never_widens_stop",
+          "passed": true,
+          "detail": "2 stop(s), all tighter than the current stop"
+        },
+        {
+          "name": "never_adds",
+          "passed": true,
+          "detail": "no entry or add: only stop, partial-close and close actions"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 900,
+      "tokens_out": 160,
+      "turns": 1
+    }
+  ],
+  "overall": {
+    "passed": 149,
+    "total": 149,
+    "pass_rate": 100.0
+  },
+  "baseline": {
+    "path": "/Users/mhmd/Work/atlas/wt-task-atl-171/services/agents/evals/portfolio_manager/baseline.json",
+    "pass_rate": null,
+    "max_drop_points": 5.0,
+    "ok": true
+  }
+}

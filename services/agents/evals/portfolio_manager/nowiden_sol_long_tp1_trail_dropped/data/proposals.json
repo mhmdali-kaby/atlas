@@ -1,0 +1,27 @@
+[
+ {
+  "id": "def84371-268e-53eb-a7dc-91b9367ee765",
+  "env": "demo",
+  "kind": "entry",
+  "author": "strategist",
+  "inst_id": "SOL-USDT-SWAP",
+  "side": "buy",
+  "order_type": "limit",
+  "entry": "150",
+  "stop": "145",
+  "take_profits": [
+   {
+    "price": "157.5",
+    "pct": "50"
+   },
+   {
+    "price": "162.5",
+    "pct": "50"
+   }
+  ],
+  "time_stop_minutes": 1440,
+  "status": "filled",
+  "created_at": "2087-05-13T05:50:00Z",
+  "updated_at": "2087-05-13T06:00:00Z"
+ }
+]

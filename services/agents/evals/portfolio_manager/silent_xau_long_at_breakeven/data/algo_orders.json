@@ -1,0 +1,16 @@
+[
+ {
+  "env": "demo",
+  "order_id": "fdb2dcc2-29cd-5a00-8677-e417fc2eb721",
+  "algo_id": "a2095e351",
+  "algo_cl_ord_id": "sa4e42d0a",
+  "inst_id": "XAU-USDT-SWAP",
+  "side": "sell",
+  "sz": "2",
+  "state": "live",
+  "origin": "atlas",
+  "created_at": "2087-05-13T06:00:00Z",
+  "kind": "sl",
+  "trigger_px": "2402.4"
+ }
+]

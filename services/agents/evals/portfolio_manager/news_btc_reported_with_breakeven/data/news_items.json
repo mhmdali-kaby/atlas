@@ -1,0 +1,25 @@
+[
+ {
+  "id": "4911e95c-cfea-59e6-b381-99b769447336",
+  "source": "evalpm.wire_b",
+  "url": "https://news.example/news-btc-reported-with-breakeven/0",
+  "canonical_url": "https://news.example/news-btc-reported-with-breakeven/0",
+  "title": "Report says a US pension fund bought spot BTC ETFs",
+  "summary": "Report says a US pension fund bought spot BTC ETFs",
+  "published_at": "2087-05-13T08:40:00Z",
+  "fetched_at": "2087-05-13T08:41:00Z",
+  "language": "en",
+  "instruments": [
+   "BTC-USDT-SWAP"
+  ],
+  "asset_classes": [
+   "crypto"
+  ],
+  "event_type": "other",
+  "sentiment": "-0.4",
+  "importance": 4,
+  "novelty": "0.8",
+  "cluster_id": "d822ecb3-2643-5ee8-b514-0ce39d2d4acd",
+  "created_at": "2087-05-13T08:41:00Z"
+ }
+]

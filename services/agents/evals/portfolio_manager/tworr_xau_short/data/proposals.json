@@ -1,0 +1,27 @@
+[
+ {
+  "id": "107fd6cc-4099-587e-a44c-3feab34b74ac",
+  "env": "demo",
+  "kind": "entry",
+  "author": "strategist",
+  "inst_id": "XAU-USDT-SWAP",
+  "side": "sell",
+  "order_type": "limit",
+  "entry": "2400",
+  "stop": "2420",
+  "take_profits": [
+   {
+    "price": "2340",
+    "pct": "50"
+   },
+   {
+    "price": "2320",
+    "pct": "50"
+   }
+  ],
+  "time_stop_minutes": 1440,
+  "status": "filled",
+  "created_at": "2087-05-13T05:50:00Z",
+  "updated_at": "2087-05-13T06:00:00Z"
+ }
+]

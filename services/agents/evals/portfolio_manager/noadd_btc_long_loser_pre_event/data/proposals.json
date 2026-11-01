@@ -1,0 +1,27 @@
+[
+ {
+  "id": "1c702bab-f585-5942-b078-cad318620da9",
+  "env": "demo",
+  "kind": "entry",
+  "author": "strategist",
+  "inst_id": "BTC-USDT-SWAP",
+  "side": "buy",
+  "order_type": "limit",
+  "entry": "60000",
+  "stop": "59000",
+  "take_profits": [
+   {
+    "price": "62000",
+    "pct": "50"
+   },
+   {
+    "price": "63000",
+    "pct": "50"
+   }
+  ],
+  "time_stop_minutes": 1440,
+  "status": "filled",
+  "created_at": "2087-05-13T05:50:00Z",
+  "updated_at": "2087-05-13T06:00:00Z"
+ }
+]
