@@ -1098,6 +1098,16 @@ agents:
       taker_fee_rate: "0.0005"
     verdict:
       min_n: 20
+    # ATL-199, brief §7.3 weekly review (atlas_agents.historian_weekly), run at
+    # agents.schedule.historian_weekly_review.
+    #   lookback_days: Baghdad days aggregated, ending with the review's day.
+    #   output_retries: follow-ups when the reply is not one verdict + exactly one suggested change.
+    #   verdict_max_chars / change_max_chars: the model's verdict line and suggestion are cut to these.
+    weekly_review:
+      lookback_days: 7
+      output_retries: 1
+      verdict_max_chars: 240
+      change_max_chars: 400
   # ATL-84, brief §6.2/§7.11 and rule 7: the agents' tool layer (atlas_agents.tools).
   #   max_result_tokens: a tool result whose JSON is estimated (chars / chars_per_token) above this
   #     is trimmed by code: every list is cut to trim_rows rows, then the longest list is halved
@@ -1221,8 +1231,13 @@ agents:
     # ATL-110: the daily agent_scores job (atlas_agents.scoring), run per agent (Market Scout,
     # News Intelligence) for the previous Baghdad days in agents.scoring.lookback_days.
     scoring: "00:15"
+    # ATL-198, brief §7.9: the voters' 30-day reliability weights, after every 00:15 scorer (it
+    # reads the paper trades the Strategist's scorer writes). Run under the Orchestrator's slug.
+    reliability: "00:30"
     # ATL-170, brief §7.8: the Portfolio Manager's daily report.
     pm_daily_report: "23:30"
+    # ATL-199, brief §7.3: the Historian's weekly review ("<Day> HH:MM" = weekly, Baghdad).
+    historian_weekly_review: "Sun 18:00"
     tick_seconds: 30
     # ATL-160, brief §8: Orchestrator analysis cycles start every analysis_interval_minutes from
     # analysis_first_slot while the slot is at or before analysis_last_slot (Asia/Baghdad), so the
@@ -1332,6 +1347,20 @@ agents:
       lookback_days: 7
       high_rating: 4
       low_rating: 2
+      scratch_r: "0.1"
+    # ATL-198, brief §7.9 Voting: each voter's reliability weight (atlas_agents.scorecards.reliability),
+    # read by votes.py. Sample = the voter's newest vote on every Strategist entry chain whose latest
+    # version was created in the reliability_days Baghdad days ending yesterday, with an outcome:
+    # the taken trade's realised R, else its filled paper trade's (not-filled paper trades, open
+    # trades and |R| < scratch_r are left out). Correct = take, or change with its fix applied,
+    # before a win (R >= scratch_r); skip, or change without the fix, before a loss.
+    # weight = clamp(base + accuracy, agents.votes.reliability_min/max); below min_n scored votes
+    # the weight is agents.votes.reliability_default. Written as data.reliability_weight (with
+    # reliability_accuracy, reliability_n, reliability_correct) on the voter's row for yesterday.
+    reliability:
+      days: 30
+      min_n: 10
+      base: "0.5"
       scratch_r: "0.1"
   # ATL-132, brief §7.4: the Technical Analyst's deterministic precompute (atlas_agents.ta), per
   # timeframe. EMA/RSI/ATR/ADX are atlas_quant.indicators (the backtester's definitions).

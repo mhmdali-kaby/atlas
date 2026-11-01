@@ -105,7 +105,11 @@ def test_the_historian_registers_itself_through_discovery() -> None:
     historian = hooks["historian"]
     assert historian.on_mention is not None
     # Hook order follows module import order, which differs between a full run and one file.
-    assert sorted(hook.name for hook in historian.schedule) == ["historian_regime_table", "scoring"]
+    assert sorted(hook.name for hook in historian.schedule) == [
+        "historian_regime_table",
+        "historian_weekly_review",
+        "scoring",
+    ]
     regime = next(h for h in historian.schedule if h.name == "historian_regime_table")
     assert regime.time_of_day().isoformat() == "07:30:00"
 

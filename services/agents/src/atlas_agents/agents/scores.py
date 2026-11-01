@@ -20,7 +20,7 @@ from typing import Any
 
 from atlas_agents import scoring
 from atlas_agents.registry import HOOKS, AgentHost, ScheduleFire
-from atlas_agents.scorecards import derivatives, technical
+from atlas_agents.scorecards import derivatives, reliability, technical
 from atlas_agents.scorecards import devils_advocate as da_scorecard
 from atlas_agents.scorecards import historian as historian_scores
 from atlas_agents.scorecards import orchestrator as orchestrator_scores
@@ -129,6 +129,22 @@ async def score_devils_advocate(host: AgentHost, fire: ScheduleFire) -> RunResul
     return None
 
 
+_reliability_done: dict[str, date] = {}
+"""env -> the Baghdad day whose reliability weights this process last wrote."""
+
+
+@HOOKS.schedule(reliability.HOST_AGENT, reliability.JOB)
+async def write_reliability_weights(host: AgentHost, fire: ScheduleFire) -> RunResult | None:
+    """ATL-198: the voters' 30-day reliability weights at agents.schedule.reliability (00:30), after
+    the 00:15 scorers, under the Orchestrator's slug (it runs the votes that read them)."""
+    if _reliability_done.get(host.env) == fire.day:
+        return None
+    ctx = host.tool_context(reliability.HOST_AGENT)
+    await asyncio.to_thread(reliability.run, ctx, fire.day)
+    _reliability_done[host.env] = fire.day
+    return None
+
+
 __all__ = [
     "run_scoring",
     "score_derivatives_sentiment",
@@ -140,4 +156,5 @@ __all__ = [
     "score_portfolio_manager",
     "score_strategist",
     "score_technical_analyst",
+    "write_reliability_weights",
 ]

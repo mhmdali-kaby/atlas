@@ -49,8 +49,8 @@ from atlas_quant import compute_stats, load_candles
 from atlas_quant.grid import bar_delta
 from atlas_shared.db import AgentScore, NewsItem, Watchlist, WatchlistItem, owner_day
 from atlas_shared.defaults import DEFAULTS
-from sqlalchemy import select, text
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy import literal_column, select, text
+from sqlalchemy.dialects.postgresql import JSONB, insert
 from sqlalchemy.orm import Session
 
 from atlas_agents.tools import ToolContext
@@ -191,6 +191,13 @@ def _dec(value: float | None, places: int) -> Decimal | None:
     return None if value is None else Decimal(str(round(value, places)))
 
 
+_KEPT_RELIABILITY = literal_column(
+    "COALESCE((SELECT jsonb_object_agg(k.key, k.value) FROM jsonb_each(agent_scores.data) AS k "
+    "WHERE k.key LIKE 'reliability%'), '{}'::jsonb)",
+    type_=JSONB,
+)
+
+
 def upsert_score(
     session: Session,
     *,
@@ -223,7 +230,8 @@ def upsert_score(
             "n": stmt.excluded.n,
             "hit_rate": stmt.excluded.hit_rate,
             "brier_score": stmt.excluded.brier_score,
-            "data": stmt.excluded.data,
+            # ATL-198: the vote reliability keys written by scorecards.reliability survive a re-score.
+            "data": _KEPT_RELIABILITY.op("||")(stmt.excluded.data),
             "updated_at": stmt.excluded.updated_at,
         },
     )
