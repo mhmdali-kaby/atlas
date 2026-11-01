@@ -1,0 +1,41 @@
+[
+ {
+  "id": "24fbf2eb-4b7e-54a1-b75e-3926e6df3e52",
+  "env": "demo",
+  "version": 1,
+  "kind": "entry",
+  "author": "strategist",
+  "inst_id": "BTC-USDT-SWAP",
+  "side": "buy",
+  "order_type": "limit",
+  "entry_zone": [
+   "64180",
+   "64320"
+  ],
+  "stop": "63400",
+  "take_profits": [
+   {
+    "price": "65900",
+    "pct": "50"
+   },
+   {
+    "price": "66800",
+    "pct": "50"
+   }
+  ],
+  "time_stop_minutes": 1440,
+  "size_suggestion_pct": "2.5",
+  "leverage_suggestion": 2,
+  "expected_r": "2.4",
+  "probability": "0.57",
+  "rationale_md": "Pullback to support on BTC-USDT-SWAP.",
+  "invalidation": "1H close beyond the stop",
+  "evidence": [],
+  "status": "awaiting_owner",
+  "status_reason": null,
+  "approval_expires_at": null,
+  "parent_id": null,
+  "created_at": "2026-05-30T07:20:00Z",
+  "updated_at": "2026-05-30T07:55:00Z"
+ }
+]

@@ -1,0 +1,17 @@
+[
+ {
+  "id": "df4325b4-a29d-532f-912b-40e5432654fc",
+  "env": "demo",
+  "proposal_id": "24fbf2eb-4b7e-54a1-b75e-3926e6df3e52",
+  "settings_version": 7,
+  "result": "approved",
+  "checks": [],
+  "final_size": "12",
+  "final_notional_usd": "7710",
+  "leverage": 2,
+  "reason": "All checks passed.",
+  "decision": "awaiting_owner",
+  "created_at": "2026-05-30T07:50:00Z",
+  "updated_at": "2026-05-30T07:50:00Z"
+ }
+]

@@ -1,0 +1,20 @@
+[
+ {
+  "id": "b7100b54-c6de-509b-9506-5e926ad55b2f",
+  "env": "demo",
+  "inst_id": "LINK-USDT-SWAP",
+  "inst_type": "SWAP",
+  "inst_family": "LINK-USDT",
+  "base_ccy": "LINK",
+  "quote_ccy": "USDT",
+  "settle_ccy": "USDT",
+  "ct_val": "1",
+  "lot_sz": "1",
+  "min_sz": "1",
+  "tick_sz": "0.001",
+  "max_lever": "20",
+  "state": "live",
+  "asset_class": "crypto",
+  "list_time": "2025-03-02T09:00:00Z"
+ }
+]

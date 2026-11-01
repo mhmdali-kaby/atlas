@@ -1,0 +1,22 @@
+[
+ {
+  "id": "c658c2de-1d23-5781-9dbc-b6a4f953e90a",
+  "env": "demo",
+  "thread_id": "953706e9-334d-5264-84f8-9471843b48a4",
+  "event_id": "9320738f-5c98-554d-8039-6fd5dff02d13",
+  "author_type": "agent",
+  "author": "strategist",
+  "kind": "proposal",
+  "content_md": "**BUY XAG-USDT-SWAP** v1",
+  "card": {
+   "type": "proposal",
+   "proposal_id": "fbdc84cf-e70b-56d0-b387-45c45c659613",
+   "inst_id": "XAG-USDT-SWAP",
+   "version": 1
+  },
+  "reply_to": null,
+  "mentions": [],
+  "created_at": "2026-04-17T08:58:00Z",
+  "updated_at": "2026-04-17T08:58:00Z"
+ }
+]

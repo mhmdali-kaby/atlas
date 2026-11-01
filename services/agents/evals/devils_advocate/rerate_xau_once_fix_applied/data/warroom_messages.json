@@ -1,0 +1,123 @@
+[
+ {
+  "id": "5fccbe15-073c-51c5-9476-3a1cfe1b383d",
+  "env": "demo",
+  "thread_id": "6a48b1fa-eeaa-58fc-8473-98922f0823a2",
+  "event_id": "3bad7e79-83fc-562f-bbae-062a04e73a73",
+  "author_type": "agent",
+  "author": "strategist",
+  "kind": "proposal",
+  "content_md": "**BUY XAU-USDT-SWAP** v1",
+  "card": {
+   "type": "proposal",
+   "proposal_id": "209be547-07ca-5ee1-ac40-a7fe14c4fe01",
+   "inst_id": "XAU-USDT-SWAP",
+   "version": 1
+  },
+  "reply_to": null,
+  "mentions": [],
+  "created_at": "2026-04-27T08:58:00Z",
+  "updated_at": "2026-04-27T08:58:00Z"
+ },
+ {
+  "id": "48228ee9-147d-56c0-8fde-5f2653f86f85",
+  "env": "demo",
+  "thread_id": "6a48b1fa-eeaa-58fc-8473-98922f0823a2",
+  "event_id": "bebbb880-4155-57dd-8ccb-79371f31d314",
+  "author_type": "agent",
+  "author": "devils_advocate",
+  "kind": "research_report",
+  "content_md": "US CPI (importance 5) is 180 minutes into the 1440-minute window",
+  "card": {
+   "type": "da_review",
+   "items": [
+    {
+     "item": 1,
+     "name": "event_risk",
+     "status": "problem",
+     "severity": "serious",
+     "detail": "US CPI (importance 5) is 180 minutes into the 1440-minute window"
+    },
+    {
+     "item": 2,
+     "name": "crowding",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 3,
+     "name": "history",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 4,
+     "name": "stop_quality",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 5,
+     "name": "chasing",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 6,
+     "name": "correlation",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 7,
+     "name": "liquidity",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 8,
+     "name": "priced_in",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 9,
+     "name": "data_quality",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    },
+    {
+     "item": 10,
+     "name": "overconfidence",
+     "status": "ok",
+     "severity": "none",
+     "detail": "OK"
+    }
+   ],
+   "strongest_objection": "US CPI (importance 5) is 180 minutes into the 1440-minute window",
+   "risk_rating": 3,
+   "fix": "Wait until after US CPI, then re-enter at the zone",
+   "fix_applied": false,
+   "vote": "change",
+   "confidence": 0.75,
+   "reason": "US CPI (importance 5) is 180 minutes into the 1440-minute window",
+   "proposal_id": "209be547-07ca-5ee1-ac40-a7fe14c4fe01",
+   "version": 1,
+   "inst_id": "XAU-USDT-SWAP",
+   "round": 1,
+   "rerate_of": null
+  },
+  "reply_to": "5fccbe15-073c-51c5-9476-3a1cfe1b383d",
+  "mentions": [],
+  "created_at": "2026-04-27T08:59:00Z",
+  "updated_at": "2026-04-27T08:59:00Z"
+ }
+]

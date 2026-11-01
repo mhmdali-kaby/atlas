@@ -1,0 +1,22 @@
+[
+ {
+  "id": "355a3583-fc1f-57ac-a26c-f1ed6b8a9feb",
+  "env": "demo",
+  "thread_id": "604951c1-5209-58ea-adf0-599491770432",
+  "event_id": "d3ba7940-f9c4-5019-9295-416d783c0eba",
+  "author_type": "agent",
+  "author": "strategist",
+  "kind": "proposal",
+  "content_md": "**BUY XAU-USDT-SWAP** v1",
+  "card": {
+   "type": "proposal",
+   "proposal_id": "eb307ef9-7ecd-51c2-814b-41e925ab7ae1",
+   "inst_id": "XAU-USDT-SWAP",
+   "version": 1
+  },
+  "reply_to": null,
+  "mentions": [],
+  "created_at": "2026-04-23T08:58:00Z",
+  "updated_at": "2026-04-23T08:58:00Z"
+ }
+]
