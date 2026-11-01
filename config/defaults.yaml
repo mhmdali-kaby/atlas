@@ -691,6 +691,37 @@ approvals:
   sweep_seconds: 15
   reminder_fraction: "0.5"
 
+# ATL-214, brief §17, decision #254 (2): owner notifications. atlas:bridge maps these events to rows
+# in `notifications` and broadcasts `notification.created` on private-system. Each event has the
+# settings keys notifications.<event>.<channel> (booleans); a fresh env starts from
+# channel_defaults. An event with every channel off stores nothing; with in_app and browser off it
+# is not broadcast (telegram alone still stores the row for the Telegram sender, ATL-215).
+notifications:
+  events:
+    - proposal_awaiting_approval
+    - order_filled
+    - stop_hit
+    - target_hit
+    - circuit_breaker
+    - kill_switch
+    - daily_report
+    - news_alert
+    - agent_degraded
+    - data_stale
+    - reconciliation_mismatch
+  channels: [in_app, browser, telegram]
+  channel_defaults:
+    in_app: true
+    browser: true
+    telegram: false
+  # agent states that count as "agent degraded" (system.agent_state).
+  degraded_agent_states: [degraded, rate_limited]
+  # longest string kept in a notification param (headlines, reasons).
+  param_max_length: 300
+  per_page_default: 50
+  per_page_max: 200
+  writes_per_minute: 120
+
 data_sources_api:
   poll_seconds_min: 60
   poll_seconds_max: 86400
