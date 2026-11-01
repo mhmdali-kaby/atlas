@@ -5,12 +5,37 @@ import { storybookTest } from '@storybook/addon-vitest/vitest-plugin'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { playwright } from '@vitest/browser-playwright'
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 
+/*
+ * ATL-193: Vitest's fsModuleCache (on by default, node_modules/.vitest-cache)
+ * persists each module's transformed code across separate `vitest` process
+ * runs, keyed on that module's own id + source text. It means to skip caching
+ * any module that calls `import.meta.glob`, since the result also depends on
+ * which files exist on disk — but its built-in check is a literal
+ * `import.meta.glob(` substring match, and every glob in this app
+ * (src/i18n/index.ts's locale namespaces, src/app/registry.ts's feature
+ * routes) carries a TypeScript generic between `glob` and `(`, so the check
+ * never fires and the stale file list is written to the cache anyway. A
+ * checkout that already ran Vitest once, then gains a new locale namespace
+ * or feature, replays the old glob result and renders raw translation keys
+ * (or drops the new routes) until someone runs `vitest --clearCache` by
+ * hand. This plugin makes Vitest bail out of caching those modules the way
+ * it already means to for the literal form, so no manual step is needed.
+ */
+function bailFsModuleCacheForGlobModules(): Plugin {
+  return {
+    name: 'atlas:fs-module-cache-glob-bail',
+    configureVitest({ defineCacheKeyGenerator }) {
+      defineCacheKeyGenerator(({ sourceCode }) => (sourceCode.includes('import.meta.glob') ? false : undefined))
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss(), bailFsModuleCacheForGlobModules()],
   server: {
     host: '127.0.0.1',
     port: 3000,
