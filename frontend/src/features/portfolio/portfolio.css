@@ -301,10 +301,6 @@ a.pf-ledger-item:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 .pp-chart-title { font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); font-weight: 600; }
 .pp-chart-sub { font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
 .pp-chart-empty { margin-top: 12px; font-size: var(--fs-footnote); color: var(--label-secondary); }
-.pp-bars-plot { margin-top: 12px; width: 100%; }
-.pp-bar-name { font-size: var(--fs-footnote); fill: var(--label); }
-.pp-bar-name-base { font-weight: 600; }
-.pp-bar-name-rest { fill: var(--label-secondary); font-weight: 500; }
 .pp-bar-val { display: flex; align-items: center; height: 20px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 500; }
 
 .pp-tip { position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, calc(-100% - 8px)); }
@@ -363,4 +359,18 @@ a.pf-ledger-item:focus-visible { outline: none; box-shadow: var(--focus-ring); }
   .pp-heat-row.is-rtl { grid-template-columns: repeat(24, minmax(0, 1fr)) 40px; }
   .pp-day-long { display: none; }
   .pp-day-short { display: inline; }
+}
+/* Bars: the names are a column at the reading start (mirrors); the plot beside them stays left to right. */
+.pp-bars { --nw: 170px; display: grid; grid-template-columns: var(--nw) minmax(0, 1fr); column-gap: 12px; margin-top: 12px; }
+.pp-chart-inst .pp-bars { --nw: 156px; }
+.pp-bar-names { display: grid; grid-auto-rows: 30px; margin: 0; padding: 0; list-style: none; }
+.pp-bar-names .pp-bar-name {
+  display: flex; align-items: center; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label);
+}
+.pp-bar-names .pf-inst { font-size: var(--fs-footnote); }
+.pp-bars-plot { position: relative; min-width: 0; height: 100%; }
+@media (max-width: 760px) {
+  .pp-bars { --nw: 110px; }
+  .pp-chart-inst .pp-bars { --nw: 110px; }
 }

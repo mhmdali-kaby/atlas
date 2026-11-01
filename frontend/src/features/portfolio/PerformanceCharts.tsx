@@ -1,10 +1,22 @@
 import { useReducedMotion } from 'motion/react'
 import { useRef, useState, type KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Bar, BarChart, Cell, LabelList, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis, type TooltipContentProps } from 'recharts'
+import {
+  Bar,
+  BarChart,
+  Cell,
+  LabelList,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+  type TooltipContentProps,
+} from 'recharts'
 import { formatSigned, signOf, type Lang } from '../../lib/format'
 import { SignedValue } from '../../ui'
 import { cx } from '../../ui/cx'
+import { InstId } from './parts'
 import type { Bucket, HeatCell } from './performanceApi'
 import { heatStep, iso } from './performanceFormat'
 
@@ -46,7 +58,14 @@ function BarShape(props: { x?: number; y?: number; width?: number; height?: numb
   return <path d={d} fill={fill} />
 }
 
-function TipValue(props: { x?: number | string; y?: number | string; width?: number | string; height?: number | string; index?: number; rows: BarRow[] }) {
+function TipValue(props: {
+  x?: number | string
+  y?: number | string
+  width?: number | string
+  height?: number | string
+  index?: number
+  rows: BarRow[]
+}) {
   const row = props.index === undefined ? undefined : props.rows[props.index]
   if (!row) return null
   const x = Number(props.x ?? 0)
@@ -59,32 +78,10 @@ function TipValue(props: { x?: number | string; y?: number | string; width?: num
   const box = TIP_ROOM - 6
   return (
     <foreignObject x={pos ? end + 6 : start - 6 - box} y={y + h / 2 - 10} width={box} height={20} className="overflow-visible">
-      <div className={cx('pp-bar-val', pos ? 'justify-start' : 'justify-end')}>
+      <div dir="ltr" className={cx('pp-bar-val', pos ? 'justify-start' : 'justify-end')}>
         <SignedValue value={row.pnl_usd} unit="USD" />
       </div>
     </foreignObject>
-  )
-}
-
-function NameTick(props: { x?: number | string; y?: number | string; payload?: { value: string }; rows: BarRow[]; rtl: boolean }) {
-  const row = props.rows.find((r) => r.key === props.payload?.value)
-  if (!row) return null
-  const x = Number(props.x ?? 0)
-  const y = Number(props.y ?? 0)
-  const anchor = props.rtl ? 'start' : 'end'
-  if (row.inst) {
-    const cut = row.name.indexOf('-')
-    return (
-      <text x={x} y={y} dy="0.35em" textAnchor={anchor} direction="ltr" className="pp-bar-name">
-        <tspan className="pp-bar-name-base">{cut < 0 ? row.name : row.name.slice(0, cut)}</tspan>
-        {cut >= 0 && <tspan className="pp-bar-name-rest">{row.name.slice(cut)}</tspan>}
-      </text>
-    )
-  }
-  return (
-    <text x={x} y={y} dy="0.35em" textAnchor={anchor} className="pp-bar-name">
-      {row.name}
-    </text>
   )
 }
 
@@ -98,7 +95,10 @@ function BarTip({ active, payload, lang }: TooltipContentProps<number, string> &
       sign={signOf(row.pnl_usd)}
       value={formatSigned(row.pnl_usd, 'USD', lang)}
       title={row.name}
-      sub={t('tipTrades', { count: row.trades, w: iso(String(row.wins)) })}
+      sub={t('tipTrades', {
+        count: row.trades,
+        w: iso(String(row.wins)),
+      })}
     />
   )
 }
@@ -128,17 +128,22 @@ function FrostedTip({ lang, sign, value, title, sub }: { lang: Lang; sign: numbe
 export function PnlBars({ id, title, sub, items, lang }: { id: string; title: string; sub: string; items: BarItem[]; lang: Lang }) {
   const { t } = useTranslation('portfolio-performance')
   const reduced = useReducedMotion()
-  const rtl = lang === 'ar'
   const rows: BarRow[] = items.map((x) => ({ ...x, v: Number(x.pnl_usd) }))
   const min = Math.min(0, ...rows.map((r) => r.v))
   const max = Math.max(0, ...rows.map((r) => r.v))
-  const nameW = id === 'inst' ? 156 : 170
-  const margin = { top: 2, bottom: 2, left: min < 0 ? TIP_ROOM : 4, right: max > 0 ? TIP_ROOM : 4 }
+  // The value axis runs left to right in both languages: losses label to the left of zero, gains to
+  // the right, each with room past its tip. The names are an HTML column at the reading start.
+  const margin = {
+    top: 0,
+    bottom: 0,
+    left: min < 0 ? TIP_ROOM : 4,
+    right: max > 0 ? TIP_ROOM : 4,
+  }
 
   return (
     <figure className={cx('pf-panel pp-chart', `pp-chart-${id}`)} data-testid={`pp-bars-${id}`}>
       <figcaption className="pp-chart-head">
-        <h3 className="pp-chart-title">{title}</h3>
+        <h2 className="pp-chart-title">{title}</h2>
         <p className="pp-chart-sub">{sub}</p>
       </figcaption>
       {rows.length === 0 ? (
@@ -157,40 +162,40 @@ export function PnlBars({ id, title, sub, items, lang }: { id: string; title: st
               </li>
             ))}
           </ul>
-          <div aria-hidden="true" className="pp-bars-plot" style={{ height: rows.length * ROW_H + 4 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                layout="vertical"
-                data={rows}
-                margin={margin}
-                barCategoryGap={8}
-                accessibilityLayer={false}
-              >
-                <XAxis type="number" dataKey="v" domain={[min, max]} hide />
-                <YAxis
-                  type="category"
-                  dataKey="key"
-                  orientation={rtl ? 'right' : 'left'}
-                  width={nameW}
-                  axisLine={false}
-                  tickLine={false}
-                  interval={0}
-                  tick={<NameTick rows={rows} rtl={rtl} />}
-                />
-                <ReferenceLine x={0} stroke="var(--chart-grid)" />
-                <Tooltip
-                  cursor={{ fill: 'var(--fill-4)' }}
-                  isAnimationActive={false}
-                  content={(p) => <BarTip {...(p as TooltipContentProps<number, string>)} lang={lang} />}
-                />
-                <Bar dataKey="v" shape={<BarShape />} isAnimationActive={!reduced} maxBarSize={14}>
-                  {rows.map((r) => (
-                    <Cell key={r.key} fill={r.v >= 0 ? 'var(--profit)' : 'var(--loss)'} />
-                  ))}
-                  <LabelList dataKey="v" content={<TipValue rows={rows} />} />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+          <div aria-hidden="true" className="pp-bars" style={{ height: rows.length * ROW_H }}>
+            <ol className="pp-bar-names">
+              {rows.map((r) => (
+                <li key={r.key} className="pp-bar-name" title={r.name}>
+                  {r.inst ? <InstId id={r.name} /> : r.name}
+                </li>
+              ))}
+            </ol>
+            <div className="pp-bars-plot" dir="ltr">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  layout="vertical"
+                  data={rows}
+                  margin={margin}
+                  barCategoryGap={8}
+                  accessibilityLayer={false}
+                >
+                  <XAxis type="number" dataKey="v" domain={[min, max]} hide />
+                  <YAxis type="category" dataKey="key" hide />
+                  <ReferenceLine x={0} stroke="var(--chart-grid)" />
+                  <Tooltip
+                    cursor={{ fill: 'var(--fill-4)' }}
+                    isAnimationActive={false}
+                    content={(p) => <BarTip {...(p as TooltipContentProps<number, string>)} lang={lang} />}
+                  />
+                  <Bar dataKey="v" shape={<BarShape />} isAnimationActive={!reduced} maxBarSize={14}>
+                    {rows.map((r) => (
+                      <Cell key={r.key} fill={r.v >= 0 ? 'var(--profit)' : 'var(--loss)'} />
+                    ))}
+                    <LabelList dataKey="v" content={<TipValue rows={rows} />} />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </>
       )}
@@ -210,7 +215,12 @@ export function Heatmap({ cells, lang }: { cells: HeatCell[]; lang: Lang }) {
   const maxAbs = Math.max(0, ...cells.map((c) => Math.abs(Number(c.pnl_usd))))
   const firstFilled = DAYS.flatMap((d) => Array.from({ length: 24 }, (_, h) => [d, h] as const)).find(([d, h]) => byKey.has(`${d}-${h}`))
   const [focus, setFocus] = useState<readonly [number, number]>(firstFilled ?? [1, 0])
-  const [tip, setTip] = useState<{ d: number; h: number; x: number; y: number } | null>(null)
+  const [tip, setTip] = useState<{
+    d: number
+    h: number
+    x: number
+    y: number
+  } | null>(null)
   const figRef = useRef<HTMLElement>(null)
   const gridRef = useRef<HTMLDivElement>(null)
 
@@ -219,7 +229,12 @@ export function Heatmap({ cells, lang }: { cells: HeatCell[]; lang: Lang }) {
     if (!fig) return
     const fr = fig.getBoundingClientRect()
     const er = el.getBoundingClientRect()
-    setTip({ d, h, x: er.left - fr.left + er.width / 2, y: er.top - fr.top })
+    setTip({
+      d,
+      h,
+      x: er.left - fr.left + er.width / 2,
+      y: er.top - fr.top,
+    })
   }
 
   const onKey = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -248,7 +263,7 @@ export function Heatmap({ cells, lang }: { cells: HeatCell[]; lang: Lang }) {
   return (
     <figure ref={figRef} className="pf-panel pp-heat" data-testid="pp-heat">
       <figcaption className="pp-chart-head">
-        <h3 className="pp-chart-title">{t('heat')}</h3>
+        <h2 className="pp-chart-title">{t('heat')}</h2>
         <p className="pp-chart-sub">{t('heatSub')}</p>
       </figcaption>
       <div className="pp-heat-scroll">
@@ -281,9 +296,14 @@ export function Heatmap({ cells, lang }: { cells: HeatCell[]; lang: Lang }) {
                         day,
                         hour: iso(pad2(h)),
                         pnl: iso(formatSigned(c.pnl_usd, 'USD', lang)),
-                        trades: t('ntrades', { count: c.trades }),
+                        trades: t('ntrades', {
+                          count: c.trades,
+                        }),
                       })
-                    : t('cellNone', { day, hour: iso(pad2(h)) })
+                    : t('cellNone', {
+                        day,
+                        hour: iso(pad2(h)),
+                      })
                   const isFocus = focus[0] === d && focus[1] === h
                   return (
                     <span
@@ -350,21 +370,27 @@ export function Heatmap({ cells, lang }: { cells: HeatCell[]; lang: Lang }) {
         </span>
       </div>
       {tip && (
-        <div
-          className="pp-tip"
-          style={{ left: tip.x, top: tip.y }}
-          data-testid="pp-heat-tip"
-        >
+        <div className="pp-tip" style={{ left: tip.x, top: tip.y }} data-testid="pp-heat-tip">
           <FrostedTip
             lang={lang}
             sign={tipCell ? signOf(tipCell.pnl_usd) : null}
             value={tipCell ? formatSigned(tipCell.pnl_usd, 'USD', lang) : t('noTrades')}
-            title={t('cellTip', { day: t(`d.${tip.d}`), hour: iso(pad2(tip.h)), next: iso(pad2((tip.h + 1) % 24)) })}
-            sub={tipCell ? t('tipTrades', { count: tipCell.trades, w: iso(String(tipCell.wins)) }) : undefined}
+            title={t('cellTip', {
+              day: t(`d.${tip.d}`),
+              hour: iso(pad2(tip.h)),
+              next: iso(pad2((tip.h + 1) % 24)),
+            })}
+            sub={
+              tipCell
+                ? t('tipTrades', {
+                    count: tipCell.trades,
+                    w: iso(String(tipCell.wins)),
+                  })
+                : undefined
+            }
           />
         </div>
       )}
     </figure>
   )
 }
-
