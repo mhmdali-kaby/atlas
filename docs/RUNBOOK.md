@@ -122,6 +122,12 @@ the new value.
   `.env` or a prompt to the agents. Rotate by creating a new key on OKX and re-entering it there;
   the old one is simply overwritten (encrypted at rest, shown back only as its last 4 characters).
 
+- **Telegram bot token** (ATL-215) — entered in Settings → Notifications (`PUT
+  /api/notifications/telegram`), encrypted with `APP_KEY`, shown back only as its last 4
+  characters. Rotate with @BotFather's `/revoke`, then save the new token there; the poller's
+  stored update offset resets with it. Rotating `APP_KEY` invalidates every Approve/Reject button
+  already sent (their HMAC key is derived from it); they answer "expired".
+
 ## Alerts
 
 Circuit breakers, the kill switch and most owner-facing alerts arrive with the Risk Engine

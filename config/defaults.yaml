@@ -724,6 +724,24 @@ notifications:
   per_page_max: 200
   writes_per_minute: 120
 
+# ATL-215, decision #254 (3): the optional Telegram bot. Outgoing messages go through the queue job
+# SendTelegramNotification; button presses are read by `php artisan atlas:telegram-poll` with
+# getUpdates long polling (no webhook, no public URL, brief §18). poll_timeout_seconds is Telegram's
+# long-poll wait; http_timeout_seconds must stay above it. Approve/Reject buttons expire at the
+# proposal's approval_expires_at.
+telegram:
+  api_base: https://api.telegram.org
+  queue: default
+  poll_timeout_seconds: 25
+  http_timeout_seconds: 35
+  send_timeout_seconds: 10
+  # pause after a failed getUpdates before the next try.
+  error_backoff_seconds: 5
+  send_tries: 3
+  writes_per_minute: 30
+  # bytes of HMAC-SHA256 kept in callback_data (base64url: 24 chars), so it fits Telegram's 64 bytes.
+  callback_mac_bytes: 18
+
 data_sources_api:
   poll_seconds_min: 60
   poll_seconds_max: 86400

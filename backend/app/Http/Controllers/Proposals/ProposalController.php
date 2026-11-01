@@ -18,7 +18,7 @@ use App\Support\Auditable;
 use App\Support\Events\EventBus;
 use App\Support\Proposals\Dec;
 use App\Support\Proposals\MarkPrice;
-use App\Support\Proposals\ProposalRules;
+use App\Support\Proposals\ProposalApprovalService;
 use App\Support\Proposals\ProposalView;
 use App\Support\TradingCore;
 use App\Support\Warroom\MentionParser;
@@ -34,6 +34,7 @@ use RuntimeException;
 /**
  * /api/proposals (ATL-162, brief §12 proposal actions, §16).
  *
+ * - approve / reject go through ProposalApprovalService (shared with Telegram, ATL-215).
  * - approve: only an awaiting_owner proposal inside its window whose newest risk check ran on the
  *   current settings version. Laravel then makes one signed call to trading_core
  *   POST /internal/proposals/{id}/execute, which re-runs the Risk Engine and only then calls the
@@ -50,7 +51,11 @@ class ProposalController extends Controller
     /** Query-builder updates bypass the model's dateFormat; keep the microseconds. */
     private const TS = 'Y-m-d H:i:s.uP';
 
-    public function __construct(private readonly Auditable $audit, private readonly EventBus $bus) {}
+    public function __construct(
+        private readonly Auditable $audit,
+        private readonly EventBus $bus,
+        private readonly ProposalApprovalService $approvals,
+    ) {}
 
     public function index(ListProposalsRequest $request): AnonymousResourceCollection
     {
@@ -94,88 +99,29 @@ class ProposalController extends Controller
     public function approve(Proposal $proposal): JsonResponse
     {
         Gate::authorize('act', $proposal);
-        $check = $proposal->latestRiskCheck()->first();
-        $blocked = ProposalView::approveBlocked($proposal, $check, ProposalView::settingsVersion($proposal->env));
-        if ($blocked !== null) {
-            return $this->conflict($blocked, $proposal);
+        $outcome = $this->approvals->approve($proposal, 'owner');
+        if ($outcome->error !== null && $outcome->status === 409 && $outcome->execution === []) {
+            return $this->conflict($outcome->error, $outcome->proposal);
         }
-
-        $status = 200;
-        $error = null;
-        $body = [];
-        try {
-            $response = TradingCore::fromConfig()->post("/internal/proposals/{$proposal->id}/execute", ['approved_by' => 'owner']);
-            $json = $response->json();
-            $body = is_array($json) ? $json : [];
-            if ($response->status() === 409 || $response->status() === 404) {
-                [$status, $error] = [409, 'execution_refused'];
-            } elseif (! $response->successful()) {
-                [$status, $error] = [502, $body === [] ? 'trading_core_error' : 'execution_failed'];
-            }
-        } catch (ConnectionException|RuntimeException) {
-            [$status, $error] = [502, 'trading_core_unavailable'];
-        }
-
-        $proposal->refresh();
-        $outcome = [
-            'ok' => $error === null,
-            'error' => $error,
-            'status' => $body['status'] ?? null,
-            'reason' => $body['reason'] ?? null,
-            'order_id' => $body['order_id'] ?? null,
-            'cl_ord_id' => $body['cl_ord_id'] ?? null,
-            'state' => $body['state'] ?? null,
-            'risk_check_id' => is_array($body['risk_check'] ?? null) ? ($body['risk_check']['risk_check_id'] ?? null) : null,
-        ];
-        $this->audit->record('proposal.approved', 'proposals', $proposal->id, [
-            'status' => 'awaiting_owner',
-            'risk_check_id' => $check?->id,
-        ], [...$outcome, 'proposal_status' => $proposal->status]);
-        $this->publish('proposal.approved', $proposal, [...$outcome, 'decided_by' => 'owner']);
 
         return response()->json([
-            'ok' => $error === null,
-            'error' => $error,
-            'message' => $error === null ? null : __("proposals.{$error}"),
-            'execution' => $body,
-            'proposal' => ProposalView::summary($proposal),
-        ], $status);
+            'ok' => $outcome->ok,
+            'error' => $outcome->error,
+            'message' => $outcome->error === null ? null : __("proposals.{$outcome->error}"),
+            'execution' => $outcome->execution,
+            'proposal' => ProposalView::summary($outcome->proposal),
+        ], $outcome->status);
     }
 
     public function reject(RejectProposalRequest $request, Proposal $proposal): JsonResponse
     {
         Gate::authorize('act', $proposal);
-
-        $result = DB::transaction(function () use ($request, $proposal): Proposal|JsonResponse {
-            /** @var Proposal $locked */
-            $locked = Proposal::query()->lockForUpdate()->findOrFail($proposal->id);
-            if (! in_array($locked->status, ProposalRules::REJECTABLE, true)) {
-                return $this->conflict('not_rejectable', $locked);
-            }
-            $before = ['status' => $locked->status, 'approval_expires_at' => $locked->approval_expires_at?->toIso8601ZuluString()];
-            $locked->fill([
-                'status' => 'rejected',
-                'status_reason' => 'owner_rejected',
-                'owner_note' => $request->reason(),
-                'decided_by' => 'owner',
-                'decided_at' => Carbon::now(),
-                'approval_expires_at' => null,
-            ])->save();
-            $this->audit->record('proposal.rejected', 'proposals', $locked->id, $before, [
-                'status' => 'rejected',
-                'status_reason' => 'owner_rejected',
-                'reason' => $request->reason(),
-            ]);
-            $this->publish('proposal.rejected', $locked, ['decided_by' => 'owner', 'reason' => $request->reason()]);
-
-            return $locked;
-        });
-
-        if ($result instanceof JsonResponse) {
-            return $result;
+        $outcome = $this->approvals->reject($proposal, 'owner', $request->reason());
+        if ($outcome->error !== null) {
+            return $this->conflict($outcome->error, $outcome->proposal);
         }
 
-        return response()->json(['ok' => true, 'proposal' => ProposalView::summary($result)]);
+        return response()->json(['ok' => true, 'proposal' => ProposalView::summary($outcome->proposal)]);
     }
 
     public function update(EditProposalRequest $request, Proposal $proposal): JsonResponse

@@ -79,6 +79,15 @@ class AppServiceProvider extends ServiceProvider
                 ->by('notifications-write|'.($user !== null ? (string) $user->getAuthIdentifier() : $request->ip()));
         });
 
+        // ATL-215: the Telegram bot settings and its test message, per user.
+        RateLimiter::for('telegram-write', function (Request $request): Limit {
+            $perMinute = config('atlas_defaults.telegram.writes_per_minute');
+            $user = $request->user();
+
+            return Limit::perMinute(is_int($perMinute) ? $perMinute : 30)
+                ->by('telegram-write|'.($user !== null ? (string) $user->getAuthIdentifier() : $request->ip()));
+        });
+
         RateLimiter::for('watchlists-write', function (Request $request): Limit {
             $perMinute = config('atlas_defaults.watchlists_api.writes_per_minute');
             $user = $request->user();
