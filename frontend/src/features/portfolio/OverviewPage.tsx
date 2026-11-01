@@ -6,7 +6,18 @@ import { useTradingEnv } from '../../app/shell/tradingEnv'
 import { formatMoney, type Lang } from '../../lib/format'
 import { Seal, SegmentedControl, SignedValue } from '../../ui'
 import { cx } from '../../ui/cx'
-import { RANGES, POLL_MS, useConnections, useEquity, usePositions, useSummary, type EquityRange } from './api'
+import {
+  BENCHMARKS,
+  RANGES,
+  POLL_MS,
+  useBenchmark,
+  useConnections,
+  useEquity,
+  usePositions,
+  useSummary,
+  type BenchmarkSymbol,
+  type EquityRange,
+} from './api'
 import { EquityChart } from './EquityChart'
 import { useLang, useNow } from './hooks'
 import { ReconciledIndicator, Skeleton, StateBlock } from './parts'
@@ -17,8 +28,12 @@ import './portfolio.css'
  * Portfolio → Overview (brief §13, design: Overview). The hero equity, the reconciled
  * seal and indicator, the equity curve with its range control, and the six-figure
  * ledger strip. Reads /api/portfolio/summary (polled every 30 s) and
- * /api/portfolio/equity?range=…; never calls OKX.
+ * /api/portfolio/equity?range=…; never calls OKX. The "Compare with" control (ATL-177)
+ * overlays /api/portfolio/benchmark for the same range; a benchmark the env has no history
+ * for is shown disabled, with the reason as its tooltip.
  */
+
+type BenchChoice = 'none' | BenchmarkSymbol
 
 /** "$5,136,121" + ".59" in the secondary label colour; tinted for a moment when it changes. */
 function HeroEquity({ value, lang }: { value: string; lang: Lang }) {
@@ -130,11 +145,20 @@ export function OverviewPage() {
   const env = useTradingEnv()
   const now = useNow(POLL_MS)
   const [range, setRange] = useState<EquityRange>('1M')
+  const [benchChoice, setBench] = useState<BenchChoice>('none')
 
   const summary = useSummary(env)
   const equity = useEquity(env, range)
   const positions = usePositions(env)
   const connections = useConnections()
+  const benchmarks: Record<BenchmarkSymbol, ReturnType<typeof useBenchmark>> = {
+    BTC: useBenchmark(env, 'BTC', range, benchChoice === 'BTC'),
+    SPY: useBenchmark(env, 'SPY', range, benchChoice === 'SPY'),
+    XAU: useBenchmark(env, 'XAU', range, benchChoice === 'XAU'),
+  }
+  /** Unavailable for this range: the API said so, or could not answer. Loading counts as available. */
+  const unavailable = (b: BenchmarkSymbol) => benchmarks[b].isError || benchmarks[b].data?.data.available === false
+  const bench: BenchChoice = benchChoice !== 'none' && unavailable(benchChoice) ? 'none' : benchChoice
 
   const retry = () => {
     void summary.refetch()
@@ -166,13 +190,34 @@ export function OverviewPage() {
     YTD: t('range.YTD'),
     ALL: t('range.ALL'),
   }
+  const benchName = (b: BenchmarkSymbol) => t(`benchmark.${b}`)
   const rangeControl = (
-    <SegmentedControl<EquityRange>
-      aria-label={t('range.label')}
-      options={RANGES.map((r) => ({ value: r, label: rangeLabels[r] }))}
-      value={range}
-      onValueChange={setRange}
-    />
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+      <SegmentedControl<EquityRange>
+        aria-label={t('range.label')}
+        options={RANGES.map((r) => ({ value: r, label: rangeLabels[r] }))}
+        value={range}
+        onValueChange={setRange}
+      />
+      <span className="inline-flex items-center gap-2" data-testid="benchmark-control">
+        <span aria-hidden="true" className="whitespace-nowrap text-footnote font-medium text-label-secondary">
+          {t('benchmark.label')}
+        </span>
+        <SegmentedControl<BenchChoice>
+          aria-label={t('benchmark.label')}
+          options={[
+            { value: 'none', label: t('benchmark.none') },
+            ...BENCHMARKS.map((b) =>
+              unavailable(b)
+                ? { value: b, label: benchName(b), disabled: true, tip: t(`benchmark.unavailable.${env}`, { name: benchName(b) }) }
+                : { value: b, label: benchName(b) },
+            ),
+          ]}
+          value={bench}
+          onValueChange={setBench}
+        />
+      </span>
+    </div>
   )
 
   const ledger: LedgerItem[] = s
@@ -244,7 +289,19 @@ export function OverviewPage() {
       </>
     )
   } else {
-    chart = <EquityChart series={series} lang={lang} head={rangeControl} />
+    const chosen = bench === 'none' ? null : benchmarks[bench].data?.data
+    chart = (
+      <EquityChart
+        series={series}
+        lang={lang}
+        head={rangeControl}
+        benchmark={
+          bench === 'none'
+            ? null
+            : { name: benchName(bench), series: chosen && chosen.range === range ? chosen : null }
+        }
+      />
+    )
   }
 
   return (
@@ -268,7 +325,7 @@ export function OverviewPage() {
         {uidLast4 && !loading && <AccountSeal uidLast4={uidLast4} stale={s?.stale ?? false} />}
       </section>
 
-      <section aria-label={t('equity')} className="mt-3">
+      <section aria-label={t('chartSection')} className="mt-3">
         {chart}
         <p className="sr-only" aria-live="polite" data-testid="range-announcement">
           {t('range.label')}: {rangeLabels[range]}

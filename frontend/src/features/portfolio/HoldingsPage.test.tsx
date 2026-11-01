@@ -16,6 +16,8 @@ const row = (h: Partial<Holding> & Pick<Holding, 'ccy' | 'account' | 'quantity'>
   pct_of_portfolio: null,
   avg_cost_usd: null,
   change_24h_pct: null,
+  change_24h_reason: h.change_24h_pct ? null : 'no_instrument',
+  change_24h_inst_id: null,
   ...h,
 })
 const USDT_T = row({ ccy: 'USDT', account: 'trading', quantity: '5099121.59', value_usd: '5099121.59', pct_of_portfolio: '99.2796' })
@@ -97,16 +99,77 @@ describe('Portfolio Holdings', () => {
     expect(screen.getByTestId('holdings-total')).toHaveTextContent('$5,136,121.59')
   })
 
-  it('shows average cost and 24h change as a dash with the later-phase tooltip', async () => {
-    fakeBackend(SEEDED)
+  it('renders average cost and a signed 24h change, and a dash with its reason for nulls', async () => {
+    const btc = row({
+      ccy: 'BTC',
+      account: 'trading',
+      quantity: '1.5',
+      value_usd: '99000',
+      pct_of_portfolio: '60',
+      avg_cost_usd: '60000.50',
+      change_24h_pct: '10',
+      change_24h_inst_id: 'BTC-USDT-SWAP',
+    })
+    const pepe = row({
+      ccy: 'PEPE',
+      account: 'trading',
+      quantity: '1000000',
+      value_usd: '50000',
+      pct_of_portfolio: '30',
+      avg_cost_usd: '0.00001234',
+      change_24h_pct: '-2.5',
+      change_24h_inst_id: 'PEPE-USDT',
+    })
+    const sol = row({ ccy: 'SOL', account: 'funding', quantity: '2', value_usd: '400', pct_of_portfolio: '5', change_24h_reason: 'no_candles' })
+    const xyz = row({ ccy: 'XYZ', account: 'funding', quantity: '3', value_usd: '100', pct_of_portfolio: '1' })
+    const usdt = row({ ccy: 'USDT', account: 'trading', quantity: '7000', value_usd: '7000', pct_of_portfolio: '4' })
+    fakeBackend({ taken_at: SEEDED.taken_at, total_value_usd: '156500', items: [btc, pepe, sol, xyz, usdt] })
     renderHoldings()
     await screen.findByTestId('holdings-table')
-    const later = screen.getAllByTestId('later-phase')
-    expect(later).toHaveLength(6)
-    for (const el of later) {
-      expect(el).toHaveTextContent('—')
-      expect(el).toHaveAttribute('title', 'Available in a later phase')
-    }
+    const rows = screen.getAllByTestId('holding-row')
+    const byCcy = (ccy: string) => rows.find((r) => r.dataset.ccy === ccy)!
+
+    // Average cost: every decimal the API fixed, in dollars.
+    expect(cell(byCcy('BTC'), 'avgCost')).toHaveTextContent('$60,000.50')
+    expect(cell(byCcy('PEPE'), 'avgCost')).toHaveTextContent('$0.00001234')
+
+    // 24h change: signed, coloured, with an icon and a spoken direction.
+    const up = within(cell(byCcy('BTC'), 'change')).getByTestId('change-24h')
+    expect(up).toHaveTextContent('+10.00%')
+    expect(up.querySelector('[data-sign="profit"]')).toHaveClass('text-profit-ink')
+    expect(up.querySelector('[data-sign-icon]')).not.toBeNull()
+    const down = within(cell(byCcy('PEPE'), 'change')).getByTestId('change-24h')
+    expect(down).toHaveTextContent('−2.50%')
+    expect(down.querySelector('[data-sign="loss"]')).toHaveClass('text-loss-ink')
+
+    // Nulls: a dash whose tooltip and screen-reader text say why.
+    const why = (ccy: string, col: string) => within(cell(byCcy(ccy), col)).getByTestId(col === 'avgCost' ? 'no-avg-cost' : 'no-change')
+    expect(why('SOL', 'avgCost')).toHaveTextContent('—')
+    expect(why('SOL', 'avgCost')).toHaveAttribute('title', 'No spot buys of SOL are recorded, so it has no average cost')
+    expect(why('SOL', 'change')).toHaveAttribute('title', 'No SOL price history for the last 24 hours yet')
+    expect(why('XYZ', 'change')).toHaveAttribute(
+      'title',
+      'OKX has no XYZ market against USDT or USDC on this account, so it has no 24h change',
+    )
+    expect(why('USDT', 'avgCost')).toHaveAttribute('title', 'Cash is counted at $1.00, so it has no average cost')
+    expect(why('USDT', 'change')).toHaveTextContent('—')
+    expect(why('USDT', 'change')).toHaveAttribute('title', 'Cash is counted at $1.00, so it has no 24h change')
+  })
+
+  it('renders the cost columns in Arabic', async () => {
+    await i18n.changeLanguage('ar')
+    const btc = row({ ccy: 'BTC', account: 'trading', quantity: '1', value_usd: '66000', pct_of_portfolio: '100', avg_cost_usd: '60000.50', change_24h_pct: '-1.2345' })
+    fakeBackend({ taken_at: SEEDED.taken_at, total_value_usd: '66000', items: [btc, USDT_F] })
+    renderHoldings()
+    await screen.findByTestId('holdings-table')
+    expect(screen.getByRole('columnheader', { name: 'متوسط التكلفة' })).toBeInTheDocument()
+    const [first, second] = screen.getAllByTestId('holding-row')
+    expect(cell(first!, 'avgCost')).toHaveTextContent('$60,000.50')
+    expect(cell(first!, 'change')).toHaveTextContent('−1.23%')
+    expect(within(cell(second!, 'change')).getByTestId('no-change')).toHaveAttribute(
+      'title',
+      'يُحتسب النقد بسعر ⁦$1.00⁩، فلا تغيّر له خلال 24 ساعة',
+    )
   })
 
   it('keeps every digit of a quantity and sorts by value even if the API order differs', async () => {

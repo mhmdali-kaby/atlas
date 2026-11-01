@@ -121,9 +121,12 @@ export interface Holding {
   value_usd: string | null
   /** Percent units (4 dp) of `total_value_usd`; null when the value is unknown. */
   pct_of_portfolio: string | null
-  /** Phase 2 (decision 236): always null until the Executor exists; shown as "—". */
-  avg_cost_usd: null
-  change_24h_pct: null
+  /** ATL-176: moving average cost of the spot fills, fixed decimals; null with no such fills. */
+  avg_cost_usd: string | null
+  /** ATL-176: percent (not a fraction), stripped; null with `change_24h_reason` set. */
+  change_24h_pct: string | null
+  change_24h_reason: 'no_instrument' | 'no_candles' | null
+  change_24h_inst_id: string | null
 }
 
 export interface HoldingsPayload {
@@ -210,6 +213,31 @@ export interface OrdersPayload {
   algo_orders: AlgoOrder[]
 }
 
+/** The Overview's comparison lines (ATL-176 GET /api/portfolio/benchmark). XAU is shown as "Gold". */
+export const BENCHMARKS = ['BTC', 'SPY', 'XAU'] as const
+export type BenchmarkSymbol = (typeof BENCHMARKS)[number]
+
+export interface BenchmarkPoint {
+  ts: string
+  close: string
+  /** base_equity × close / base_close: drawn on the equity axis. */
+  value_usd: string
+}
+
+export interface BenchmarkSeries {
+  symbol: BenchmarkSymbol
+  env: TradingEnv
+  range: EquityRange
+  from: string | null
+  to: string
+  available: boolean
+  reason: 'not_in_universe' | 'no_equity' | 'no_candles' | null
+  inst_id: string | null
+  bar: string | null
+  base: { ts: string; equity_usd: string; close: string; candle_ts: string } | null
+  points: BenchmarkPoint[]
+}
+
 export const portfolioKeys = {
   summary: (env: TradingEnv) => ['portfolio', env, 'summary'] as const,
   equity: (env: TradingEnv, range: EquityRange) => ['portfolio', env, 'equity', range] as const,
@@ -217,6 +245,8 @@ export const portfolioKeys = {
   holdings: (env: TradingEnv) => ['portfolio', env, 'holdings'] as const,
   cashflows: (env: TradingEnv, page: number) => ['portfolio', env, 'cashflows', page] as const,
   orders: (env: TradingEnv) => ['portfolio', env, 'orders'] as const,
+  benchmark: (env: TradingEnv, symbol: BenchmarkSymbol, range: EquityRange) =>
+    ['portfolio', env, 'benchmark', symbol, range] as const,
   connections: ['connections'] as const,
 }
 
@@ -265,4 +295,16 @@ export function useOrders(env: TradingEnv) {
   return useApiQuery<{ data: OrdersPayload }>(portfolioKeys.orders(env), '/api/portfolio/orders', {
     refetchInterval: POLL_MS,
   })
+}
+
+/**
+ * One benchmark series for the active range. All three are read so an unavailable one can be
+ * shown disabled before it is chosen; only the chosen one follows the equity poll.
+ */
+export function useBenchmark(env: TradingEnv, symbol: BenchmarkSymbol, range: EquityRange, chosen: boolean) {
+  return useApiQuery<{ data: BenchmarkSeries }>(
+    portfolioKeys.benchmark(env, symbol, range),
+    `/api/portfolio/benchmark?env=${env}&symbol=${symbol}&range=${range}`,
+    { refetchInterval: chosen ? POLL_MS : false, staleTime: 60_000 },
+  )
 }

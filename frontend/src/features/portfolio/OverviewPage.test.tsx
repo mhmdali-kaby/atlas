@@ -5,7 +5,7 @@ import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import i18n from '../../i18n'
 import { API_URL } from '../../lib/api'
-import type { EquitySeries, PortfolioSummary } from './api'
+import type { BenchmarkSeries, BenchmarkSymbol, EquitySeries, PortfolioSummary } from './api'
 import portfolio from './routes'
 
 /* The ATL-12 handoff's example bodies: what PortfolioDemoSeeder data looks like. */
@@ -42,11 +42,39 @@ function series(range: string, n: number): EquitySeries {
   }
 }
 
+/** ATL-176's benchmark body: rebased to the equity's first point, then the close's ratio. */
+function benchmark(symbol: BenchmarkSymbol, range: string, available: boolean): BenchmarkSeries {
+  const eq = series(range, range === '1D' ? 5 : 40)
+  const base = { ts: eq.points[0]!.ts, equity_usd: eq.points[0]!.equity_usd, close: '60000', candle_ts: eq.points[0]!.ts }
+  const closes = ['60000', '61200', '62400', '63000']
+  return {
+    symbol,
+    env: 'demo',
+    range: range as BenchmarkSeries['range'],
+    from: eq.from,
+    to: eq.to,
+    available,
+    reason: available ? null : 'not_in_universe',
+    inst_id: available ? `${symbol}-USDT-SWAP` : null,
+    bar: available ? '4H' : null,
+    base: available ? base : null,
+    points: available
+      ? closes.map((close, i) => ({
+          ts: eq.points[Math.round((i * (eq.points.length - 1)) / (closes.length - 1))]!.ts,
+          close,
+          value_usd: ((5_000_000 * Number(close)) / 60000).toFixed(2),
+        }))
+      : [],
+  }
+}
+
 interface Backend {
   summary?: PortfolioSummary
   points?: number
   failSummary?: boolean
   slow?: boolean
+  /** Symbols the env has no history for; the rest are available. Unset: benchmark 404s. */
+  unavailable?: BenchmarkSymbol[]
 }
 
 function fakeBackend(opts: Backend = {}) {
@@ -64,6 +92,11 @@ function fakeBackend(opts: Backend = {}) {
       const range = url.searchParams.get('range') ?? '1M'
       return reply(200, { data: series(range, state.points ?? (range === '1D' ? 5 : 40)) })
     }
+    if (url.pathname === '/api/portfolio/benchmark' && state.unavailable) {
+      const symbol = url.searchParams.get('symbol') as BenchmarkSymbol
+      const range = url.searchParams.get('range') ?? '1M'
+      return reply(200, { data: benchmark(symbol, range, !state.unavailable.includes(symbol)) })
+    }
     if (url.pathname === '/api/portfolio/positions') {
       return reply(200, { data: { taken_at: SUMMARY.equity_as_of, items: [{ id: 'a', inst_id: 'BTC-USDT-SWAP' }, { id: 'b', inst_id: 'XAU-USDT-SWAP' }] } })
     }
@@ -78,6 +111,9 @@ function fakeBackend(opts: Backend = {}) {
 
 const equityCalls = (fetch: ReturnType<typeof vi.fn>) =>
   fetch.mock.calls.map(([u]) => String(u)).filter((u) => u.includes('/api/portfolio/equity'))
+
+const benchmarkCalls = (fetch: ReturnType<typeof vi.fn>) =>
+  fetch.mock.calls.map(([u]) => String(u)).filter((u) => u.includes('/api/portfolio/benchmark'))
 
 function renderOverview(path = '/portfolio') {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
@@ -167,6 +203,60 @@ describe('Portfolio Overview', () => {
     expect(screen.getByRole('img', { name: /Equity over 1D/ })).toBeInTheDocument()
     // The screen-reader table carries the redrawn values.
     expect(within(screen.getByTestId('equity-table')).getAllByRole('row').length).toBe(6)
+  })
+
+  it('choosing BTC fetches its benchmark for the active range and draws a second series; None removes it', async () => {
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const { fetch } = fakeBackend({ unavailable: [] })
+    renderOverview()
+    const chart = await screen.findByTestId('equity-chart')
+    expect(chart).not.toHaveAttribute('data-benchmark')
+    expect(screen.getByRole('radiogroup', { name: 'Compare with' })).toBeInTheDocument()
+    expect(screen.getByRole('radio', { name: 'None' })).toHaveAttribute('aria-checked', 'true')
+
+    await user.click(screen.getByRole('radio', { name: 'BTC' }))
+    await waitFor(() => expect(screen.getByTestId('equity-chart')).toHaveAttribute('data-benchmark', 'BTC'))
+    expect(benchmarkCalls(fetch).some((u) => u.includes('symbol=BTC') && u.includes('range=1M'))).toBe(true)
+    // The second series: its legend with the change since the base, a column in the screen-reader
+    // table, and the chart's label.
+    expect(screen.getByTestId('legend-bench')).toHaveTextContent('BTC')
+    expect(screen.getByTestId('legend-bench')).toHaveTextContent('+5.00%')
+    expect(screen.getByTestId('legend-bench')).toHaveAttribute('title', expect.stringMatching(/^Rebased to your equity/))
+    expect(screen.getByTestId('legend-equity')).toHaveTextContent('Your equity')
+    expect(within(screen.getByTestId('equity-table')).getByRole('columnheader', { name: 'BTC' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: /Compared with BTC/ })).toBeInTheDocument()
+
+    // A new range fetches that range's benchmark.
+    await user.click(screen.getByRole('radio', { name: '1D' }))
+    await waitFor(() => expect(screen.getByTestId('equity-chart')).toHaveAttribute('data-range', '1D'))
+    await waitFor(() => expect(screen.getByTestId('equity-chart')).toHaveAttribute('data-benchmark', 'BTC'))
+    expect(benchmarkCalls(fetch).some((u) => u.includes('symbol=BTC') && u.includes('range=1D'))).toBe(true)
+
+    await user.click(screen.getByRole('radio', { name: 'None' }))
+    await waitFor(() => expect(screen.getByTestId('equity-chart')).not.toHaveAttribute('data-benchmark'))
+    expect(screen.queryByTestId('legend-bench')).toBeNull()
+    expect(screen.queryByTestId('legend-equity')).toBeNull()
+    expect(within(screen.getByTestId('equity-table')).queryByRole('columnheader', { name: 'BTC' })).toBeNull()
+  })
+
+  it('renders an unavailable SPY disabled, with the locale file’s tooltip', async () => {
+    fakeBackend({ unavailable: ['SPY'] })
+    renderOverview()
+    await screen.findByTestId('equity-chart')
+    const spy = screen.getByRole('radio', { name: 'SPY' })
+    await waitFor(() => expect(spy).toBeDisabled())
+    const tip = 'No SPY history for this range on the demo account yet'
+    expect(spy.closest('[data-segment-tip]')).toHaveAttribute('title', tip)
+    expect(spy).toHaveAccessibleDescription(tip)
+    expect(screen.getByRole('radio', { name: 'BTC' })).toBeEnabled()
+    expect(screen.getByRole('radio', { name: 'Gold' })).toBeEnabled()
+
+    await i18n.changeLanguage('ar')
+    await waitFor(() =>
+      expect(screen.getByRole('radio', { name: 'SPY' })).toHaveAccessibleDescription(
+        'لا يتوفر سجل لـ SPY في هذا المدى على الحساب التجريبي بعد',
+      ),
+    )
   })
 
   it('shows the warning state with the minutes since the last sync when summary.stale is true', async () => {
