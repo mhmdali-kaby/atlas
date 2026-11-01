@@ -147,7 +147,7 @@ describe('Portfolio Orders', () => {
   it('registers /portfolio/orders with an Orders nav entry between Positions and Holdings', () => {
     const nav = (Array.isArray(portfolio.nav) ? portfolio.nav : [portfolio.nav]).filter(Boolean)
     const sorted = [...nav].sort((a, b) => (a!.order ?? 0) - (b!.order ?? 0)).map((n) => n!.path)
-    expect(sorted).toEqual(['/portfolio', '/portfolio/positions', '/portfolio/orders', '/portfolio/holdings', '/portfolio/cashflows'])
+    expect(sorted).toEqual(['/portfolio', '/portfolio/positions', '/portfolio/orders', '/portfolio/holdings', '/portfolio/cashflows', '/portfolio/history'])
     expect(portfolio.routes.map((r) => r.path)).toContain('portfolio/orders')
   })
 

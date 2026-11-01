@@ -4,6 +4,8 @@ import arPortfolio from '../../src/i18n/locales/ar/portfolio.json' with { type: 
 import enPortfolio from '../../src/i18n/locales/en/portfolio.json' with { type: 'json' }
 import arPortfolioOrders from '../../src/i18n/locales/ar/portfolio-orders.json' with { type: 'json' }
 import enPortfolioOrders from '../../src/i18n/locales/en/portfolio-orders.json' with { type: 'json' }
+import arPortfolioHistory from '../../src/i18n/locales/ar/portfolio-history.json' with { type: 'json' }
+import enPortfolioHistory from '../../src/i18n/locales/en/portfolio-history.json' with { type: 'json' }
 import arSettings from '../../src/i18n/locales/ar/settings.json' with { type: 'json' }
 import enSettings from '../../src/i18n/locales/en/settings.json' with { type: 'json' }
 import arAgents from '../../src/i18n/locales/ar/settings-agents.json' with { type: 'json' }
@@ -25,8 +27,8 @@ import { expect, test } from './appearance'
  */
 const SHOTS = path.join(EVIDENCE_DIR, 'ATL-41')
 const T = {
-  en: { shell: enShell, portfolio: enPortfolio, portfolioOrders: enPortfolioOrders, settings: enSettings, money: enMoney, agents: enAgents, data: enData, sources: enSources },
-  ar: { shell: arShell, portfolio: arPortfolio, portfolioOrders: arPortfolioOrders, settings: arSettings, money: arMoney, agents: arAgents, data: arData, sources: arSources },
+  en: { shell: enShell, portfolio: enPortfolio, portfolioOrders: enPortfolioOrders, portfolioHistory: enPortfolioHistory, settings: enSettings, money: enMoney, agents: enAgents, data: enData, sources: enSources },
+  ar: { shell: arShell, portfolio: arPortfolio, portfolioOrders: arPortfolioOrders, portfolioHistory: arPortfolioHistory, settings: arSettings, money: arMoney, agents: arAgents, data: arData, sources: arSources },
 }
 
 test.use({ viewport: { width: 1440, height: 900 } })
@@ -50,6 +52,7 @@ test('on /portfolio the switcher selects Portfolio and lists only its pages; Set
     t.portfolioOrders.nav,
     t.portfolio.nav.holdings,
     t.portfolio.nav.cashflows,
+    t.portfolioHistory.nav,
   ])
   await expect(sidebar.getByRole('link', { name: t.settings.nav.risk })).toHaveCount(0)
 

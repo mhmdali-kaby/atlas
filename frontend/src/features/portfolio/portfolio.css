@@ -208,3 +208,58 @@ a.pf-ledger-item:focus-visible { outline: none; box-shadow: var(--focus-ring); }
 @media (max-width: 1279px) {
   .pf-share-track { width: 64px; }
 }
+
+/* ---- History (ATL-173; design: css/history.css) ---- */
+.ph-filters { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.ph-menu {
+  display: inline-flex; align-items: center; gap: 4px; height: 28px; padding-inline: 10px 8px;
+  border-radius: 8px; background: var(--fill-3); color: var(--label);
+  font-size: var(--text-footnote); line-height: var(--lh-footnote); font-weight: 500; white-space: nowrap;
+}
+.ph-menu:hover:not(:disabled) { background: var(--fill-2); }
+.ph-menu svg { width: 14px; height: 14px; color: var(--label-secondary); }
+.ph-menu.is-set { background: var(--accent-wash); color: var(--accent-ink); }
+.ph-menu.is-set svg { color: var(--accent-ink); }
+.ph-menu:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.ph-menu:disabled { opacity: 0.45; }
+.ph-search {
+  position: relative; display: inline-flex; align-items: center; gap: 6px; height: 28px; width: 210px;
+  padding-inline: 8px; border-radius: 8px; background: var(--fill-3); color: var(--label-secondary);
+  transition: box-shadow var(--dur-fast) var(--ease-out);
+}
+.ph-search svg { width: 14px; height: 14px; flex-shrink: 0; }
+.ph-search:focus-within { box-shadow: var(--focus-ring); background: var(--field-bg, var(--bg)); }
+.ph-search-input { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; outline: none; font: inherit; font-size: var(--text-footnote); color: var(--label); text-align: start; }
+.ph-search-input::placeholder { color: var(--label-secondary); }
+.ph-chips { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.ph-chip {
+  display: inline-flex; align-items: center; gap: 2px; height: 26px; padding-inline: 10px 3px; border-radius: var(--radius-full);
+  background: var(--accent-wash); color: var(--accent-ink); font-size: var(--text-footnote); line-height: var(--lh-footnote); font-weight: 500;
+}
+.ph-chip-x { width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; color: var(--accent-ink); }
+.ph-chip-x svg { width: 12px; height: 12px; stroke-width: 2.25; }
+.ph-chip-x:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.ph-chip-x:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+/* The table scrolls inside its own box, so the header sticks to the box and only the visible window is in the DOM. */
+.ph-panel { overflow: hidden; }
+.ph-scroll {
+  max-height: max(380px, calc(100vh - 372px)); overflow: auto; overscroll-behavior: contain;
+  border-radius: var(--radius-panel);
+}
+.ph-scroll:focus-visible { outline: none; box-shadow: inset var(--focus-ring); }
+.ph-table td { height: 44px; padding-block: 0; }
+.ph-table td, .ph-table th { padding-inline: 8px; }
+.ph-table th:first-child, .ph-table td:first-child { padding-inline-start: 20px; }
+.ph-table th:last-child, .ph-table td:last-child { padding-inline-end: 20px; }
+.ph-table tr.ph-pad td { padding: 0; border: 0; height: auto; }
+.ph-table tr.ph-pad:hover { background: none; }
+.ph-r { color: var(--label); }
+.ph-more { padding: 10px 20px; font-size: var(--text-footnote); color: var(--label-secondary); }
+.ph-foot { margin-top: 10px; padding-inline: 4px; font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.ph-range-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ph-date {
+  height: 32px; padding-inline: 10px; border-radius: 8px; background: var(--fill-3); color: var(--label);
+  font: inherit; font-size: var(--text-subheadline); font-variant-numeric: tabular-nums; border: 0;
+}
+.ph-date:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.ph-date[aria-invalid="true"] { box-shadow: 0 0 0 1px var(--loss); }

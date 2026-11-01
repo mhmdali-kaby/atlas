@@ -36,7 +36,7 @@ describe('shell registry', () => {
     expect(features.length).toBeGreaterThan(0)
     expect(shellRegistry.areas.map((a) => a.id)).toEqual(['warroom', 'agents', 'portfolio', 'settings'])
     const paths = (area: string) => shellRegistry.navEntries.filter((e) => e.area === area).map((e) => e.path)
-    expect(paths('portfolio')).toEqual(['/portfolio', '/portfolio/positions', '/portfolio/orders', '/portfolio/holdings', '/portfolio/cashflows'])
+    expect(paths('portfolio')).toEqual(['/portfolio', '/portfolio/positions', '/portfolio/orders', '/portfolio/holdings', '/portfolio/cashflows', '/portfolio/history'])
     expect(paths('settings')).toEqual(['/settings/connections', '/settings/risk', '/settings/money', '/settings/markets', '/settings/agents', '/settings/data', '/settings/sources'])
   })
 

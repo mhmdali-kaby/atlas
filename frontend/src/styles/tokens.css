@@ -576,12 +576,20 @@
   --sidebar-width: 256px;
   --toolbar-height: 52px;
   --footer-height: 30px;
-  --content-max: 1180px;
-  --form-max: 720px;
+  /* Every page fills the window beside the sidebar (design v13/v14 Phase 0 §6). No page has a
+     max width; this one inset is the only space between content and the window edge:
+     32 px on desktop, 24 px at 1100 px and below, 16 px on phones. */
+  --page-gutter: 32px;
 }
 @media (max-width: 1100px) {
   :root {
     --sidebar-width: 236px;
+    --page-gutter: 24px;
+  }
+}
+@media (max-width: 760px) {
+  :root {
+    --page-gutter: 16px;
   }
 }
 
@@ -653,7 +661,6 @@
   --lh-message: 1.4375rem;
   --tr-message: -0.012em;
   --inspector-width: 300px;
-  --feed-max: 720px;
   --radius-bubble: 18px;
   --radius-composer: 22px;
 }
