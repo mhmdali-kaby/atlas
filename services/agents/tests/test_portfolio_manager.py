@@ -101,6 +101,7 @@ def test_registered_off_by_default_on_the_strong_model_with_a_5_minute_check() -
         ("pm_daily_report", None),
         ("pm_postmortem", 60),
         ("pm_check", 300),
+        ("scoring", None),  # ATL-197: the daily scorecard job
     ]
     assert set(found.on_event) == {hooks.NEWS_ALERT, hooks.FILL, hooks.SYSTEM_ALERT}
 
