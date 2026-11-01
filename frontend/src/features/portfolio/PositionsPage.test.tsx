@@ -1,10 +1,13 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, render, screen, within } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import i18n from '../../i18n'
-import type { PortfolioSummary, Position, PositionsPayload } from './api'
+import { API_URL, resetCsrfForTests } from '../../lib/api'
+import { useToasts } from '../../ui'
+import type { Connection } from '../onboarding'
+import type { ClosePositionReport, PortfolioSummary, Position, PositionsPayload } from './api'
 import portfolio from './routes'
 
 /* The ATL-12 handoff's /api/portfolio/positions example: PortfolioDemoSeeder's two positions. */
@@ -54,14 +57,62 @@ const SUMMARY = {
   stale: false,
 } as PortfolioSummary
 
-function fakeBackend(positions: PositionsPayload | 'fail') {
+/* A verified OKX demo connection (ATL-151: Close is hidden without one). */
+function connection(over: Partial<Connection> = {}): Connection {
+  return {
+    id: 'c1',
+    exchange: 'okx',
+    env: 'demo',
+    label: 'OKX demo',
+    api_key_last4: '9fz1',
+    has_secret: true,
+    has_passphrase: true,
+    permissions: ['read_only', 'trade'],
+    account_mode: 'futures',
+    position_mode: 'net_mode',
+    uid_last4: '6123',
+    last_verified_at: '2026-10-28T08:00:00.000000Z',
+    last_test_error: null,
+    created_at: '2026-10-28T07:00:00.000000Z',
+    updated_at: '2026-10-28T08:00:00.000000Z',
+    ...over,
+  }
+}
+
+const CLOSED_REPORT: ClosePositionReport = {
+  ok: true,
+  env: 'demo',
+  inst_id: 'BTC-USDT-SWAP',
+  status: 'closed',
+  closed: 1,
+  cancelled_algos: 1,
+  failed: [],
+}
+
+interface BackendOptions {
+  /** null: no verified OKX connection, so Close is hidden (default: verified). */
+  connection?: Connection | null
+  /** Overrides the default success answer for POST …/close. */
+  close?: (positionId: string) => Response
+}
+
+function fakeBackend(positions: PositionsPayload | 'fail', opts: BackendOptions = {}) {
+  const conn = opts.connection === undefined ? connection() : opts.connection
   const reply = (status: number, body?: unknown) =>
     new Response(body === undefined ? null : JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
-  const fetch = vi.fn(async (input: RequestInfo | URL) => {
+  const fetch = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
+    const path = String(input).replace(API_URL, '')
     const url = new URL(String(input))
+    const method = (init.method ?? 'GET').toUpperCase()
+    if (path === '/sanctum/csrf-cookie') return reply(204)
     if (url.pathname === '/api/portfolio/summary') return reply(200, { data: SUMMARY })
+    if (url.pathname === '/api/connections') return reply(200, { data: conn ? [conn] : [] })
     if (url.pathname === '/api/portfolio/positions') {
       return positions === 'fail' ? reply(500, { message: 'Server Error' }) : reply(200, { data: positions })
+    }
+    const closeMatch = /^\/api\/portfolio\/positions\/([^/]+)\/close$/.exec(url.pathname)
+    if (closeMatch && method === 'POST') {
+      return opts.close ? opts.close(closeMatch[1]!) : reply(200, CLOSED_REPORT)
     }
     return reply(404, { message: 'Not found' })
   })
@@ -83,6 +134,8 @@ const cell = (row: HTMLElement, col: string) => row.querySelector<HTMLElement>(`
 
 beforeEach(async () => {
   vi.useFakeTimers({ shouldAdvanceTime: true, now: NOW })
+  resetCsrfForTests()
+  useToasts.setState({ toasts: [] })
   await i18n.changeLanguage('en')
 })
 
@@ -118,9 +171,10 @@ describe('Portfolio Positions', () => {
       'Liq. price',
       'Unrealised PnL',
       'Time in trade',
+      'Actions',
     ])
-    // No Phase 2 columns.
-    expect(screen.queryByText(/stop|target|agent|close/i)).toBeNull()
+    // No Phase 2 columns beyond Close (ATL-151).
+    expect(screen.queryByText(/stop|target|agent/i)).toBeNull()
 
     const [btc, xau] = screen.getAllByTestId('position-row')
     expect(btc).toHaveAttribute('data-inst', 'BTC-USDT-SWAP')
@@ -228,5 +282,104 @@ describe('Portfolio Positions', () => {
     const dateEl = cell(btc!, 'time').querySelector('.pf-cell-sub')!
     expect(dateEl).toHaveTextContent('28 تشرين الأول')
     expect(dateEl).not.toHaveClass('fig')
+  })
+
+  describe('Close action (ATL-151)', () => {
+    const openSheet = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(screen.getByRole('button', { name: 'Close the BTC-USDT-SWAP long' }))
+      return screen.findByRole('dialog', { name: 'Close BTC-USDT-SWAP long?' })
+    }
+
+    it('shows a Close button per row; the sheet names the instrument, side, size and unrealised PnL', async () => {
+      fakeBackend({ taken_at: '2026-10-28T17:36:00.000000Z', items: [BTC, XAU] })
+      renderPositions()
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      await screen.findByTestId('positions-table')
+      expect(screen.getAllByRole('button', { name: /^Close the /i })).toHaveLength(2)
+
+      const sheet = await openSheet(user)
+      expect(sheet).toHaveTextContent('25')
+      expect(sheet).toHaveTextContent('contracts')
+      expect(sheet).toHaveTextContent('+$217.45')
+      expect(sheet).toHaveTextContent('+6.47%')
+    })
+
+    it('Cancel ("Keep position") sends nothing', async () => {
+      const fetch = fakeBackend({ taken_at: '2026-10-28T17:36:00.000000Z', items: [BTC] })
+      renderPositions()
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      await screen.findByTestId('positions-table')
+      const closeCalls = () => fetch.mock.calls.filter(([u]) => String(u).includes(`/api/portfolio/positions/${BTC.id}/close`))
+
+      const sheet = await openSheet(user)
+      await user.click(within(sheet).getByRole('button', { name: 'Keep position' }))
+      expect(closeCalls()).toHaveLength(0)
+    })
+
+    it('Confirm ("Close position") sends one POST with confirm:true and refetches positions', async () => {
+      const fetch = fakeBackend({ taken_at: '2026-10-28T17:36:00.000000Z', items: [BTC] })
+      renderPositions()
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      await screen.findByTestId('positions-table')
+      const closeCalls = () => fetch.mock.calls.filter(([u]) => String(u).includes(`/api/portfolio/positions/${BTC.id}/close`))
+      const positionsGets = () =>
+        fetch.mock.calls.filter(([u, init]) => String(u).includes('/api/portfolio/positions?') && (init?.method ?? 'GET') === 'GET').length
+
+      const before = positionsGets()
+      const sheet = await openSheet(user)
+      await user.click(within(sheet).getByRole('button', { name: 'Close position' }))
+
+      await waitFor(() => expect(closeCalls()).toHaveLength(1))
+      const [, init] = closeCalls()[0]!
+      expect(init?.method).toBe('POST')
+      expect(JSON.parse(String(init?.body))).toEqual({ confirm: true })
+      await waitFor(() => expect(positionsGets()).toBeGreaterThan(before))
+    })
+
+    it('shows the API error message in the sheet and keeps it open', async () => {
+      fakeBackend({ taken_at: '2026-10-28T17:36:00.000000Z', items: [BTC] }, {
+        close: () =>
+          new Response(
+            JSON.stringify({
+              ok: false,
+              env: 'demo',
+              inst_id: 'BTC-USDT-SWAP',
+              status: 'failed',
+              closed: 0,
+              cancelled_algos: 0,
+              failed: [
+                {
+                  kind: 'position',
+                  inst_id: 'BTC-USDT-SWAP',
+                  ref: 'kil-1',
+                  action: 'failed',
+                  attempts: 3,
+                  code: '51169',
+                  message: 'OKX answered 51169: there’s no position in this direction to close.',
+                },
+              ],
+            }),
+            { status: 502, headers: { 'Content-Type': 'application/json' } },
+          ),
+      })
+      renderPositions()
+      const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+      await screen.findByTestId('positions-table')
+
+      const sheet = await openSheet(user)
+      await user.click(within(sheet).getByRole('button', { name: 'Close position' }))
+
+      expect(await within(sheet).findByRole('alert')).toHaveTextContent('there’s no position in this direction to close')
+      expect(screen.getByRole('dialog', { name: 'Close BTC-USDT-SWAP long?' })).toBeInTheDocument()
+    })
+
+    it('hides Close and shows a notice when there is no verified OKX connection', async () => {
+      fakeBackend({ taken_at: '2026-10-28T17:36:00.000000Z', items: [BTC] }, { connection: null })
+      renderPositions()
+      await screen.findByTestId('positions-table')
+      expect(screen.queryByRole('button', { name: /close/i })).toBeNull()
+      expect(screen.queryByRole('columnheader', { name: 'Actions' })).toBeNull()
+      expect(await screen.findByText('Closing needs the OKX demo connection.')).toBeInTheDocument()
+    })
   })
 })

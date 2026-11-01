@@ -1,4 +1,4 @@
-import { CircleCheck, CloudOff, RefreshCw, TriangleAlert, type LucideIcon } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, CircleCheck, CloudOff, RefreshCw, TriangleAlert, type LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { Lang } from '../../lib/format'
 import { Button, Seal, Spinner } from '../../ui'
@@ -11,8 +11,34 @@ export { Skeleton } from '../../ui'
 
 /*
  * Pieces every Portfolio page shares (design: css/portfolio.css): the reconciled
- * indicator, the state blocks and skeletons (hooks are in hooks.ts).
+ * indicator, the state blocks and skeletons, the instrument ID and the side badge
+ * (hooks are in hooks.ts).
  */
+
+/** OKX instrument ID verbatim: the base asset carries the row, the rest recedes. */
+export function InstId({ id }: { id: string }) {
+  const cut = id.indexOf('-')
+  return (
+    <span dir="ltr" className="pf-inst">
+      {cut < 0 ? id : id.slice(0, cut)}
+      {cut >= 0 && <span className="pf-inst-rest">{id.slice(cut)}</span>}
+    </span>
+  )
+}
+
+/**
+ * Direction badge: a position's long/short or an order's buy/sell. The caller passes the
+ * translated label, because each page words it in its own namespace.
+ */
+export function SideBadge({ side, label }: { side: 'long' | 'short' | 'buy' | 'sell'; label: string }) {
+  const Icon = side === 'long' || side === 'buy' ? ArrowUpRight : ArrowDownRight
+  return (
+    <span className="pf-badge" data-side={side}>
+      <Icon aria-hidden="true" strokeWidth={2} className="rtl:-scale-x-100" />
+      {label}
+    </span>
+  )
+}
 
 export function ReconciledIndicator({ summary, lang, now }: { summary: PortfolioSummary; lang: Lang; now: number }) {
   const { t } = useTranslation('portfolio')
@@ -28,7 +54,13 @@ export function ReconciledIndicator({ summary, lang, now }: { summary: Portfolio
         className={cx(pill, 'bg-warning-wash font-medium text-warning-ink')}
       >
         <TriangleAlert aria-hidden="true" strokeWidth={2} />
-        <span>{at ? t('stale', { ago: formatAgo(now - Date.parse(at), lang) }) : t('staleNever')}</span>
+        <span>
+          {at
+            ? t('stale', {
+                ago: formatAgo(now - Date.parse(at), lang),
+              })
+            : t('staleNever')}
+        </span>
         <span className="sr-only">. {t('staleTip')}</span>
       </p>
     )
@@ -44,7 +76,9 @@ export function ReconciledIndicator({ summary, lang, now }: { summary: Portfolio
     >
       <CircleCheck aria-hidden="true" strokeWidth={2} className="text-profit-ink" />
       <span>
-        {t('reconciled', { time: summary.reconciled_at ? formatClock(summary.reconciled_at, lang) : '—' })}
+        {t('reconciled', {
+          time: summary.reconciled_at ? formatClock(summary.reconciled_at, lang) : '—',
+        })}
       </span>
     </p>
   )
@@ -85,7 +119,9 @@ export function StateBlock({
         <span
           className={cx(
             'mb-1.5 grid size-14 place-items-center rounded-panel',
-            kind === 'error' ? 'bg-loss-wash text-loss-ink' : 'bg-fill-4 text-label-secondary shadow-[inset_0_0_0_0.5px_var(--hairline-color)]',
+            kind === 'error'
+              ? 'bg-loss-wash text-loss-ink'
+              : 'bg-fill-4 text-label-secondary shadow-[inset_0_0_0_0.5px_var(--hairline-color)]',
           )}
         >
           <Icon aria-hidden="true" className="size-7" strokeWidth={1.5} />
@@ -96,7 +132,10 @@ export function StateBlock({
         {parts.length === 2 ? (
           <>
             {parts[0]}
-            <code dir="ltr" className="inline-block whitespace-nowrap rounded-[6px] bg-fill-3 px-1.5 text-label [unicode-bidi:isolate]">
+            <code
+              dir="ltr"
+              className="inline-block whitespace-nowrap rounded-[6px] bg-fill-3 px-1.5 text-label [unicode-bidi:isolate]"
+            >
               ./atlas up
             </code>
             {parts[1]}
