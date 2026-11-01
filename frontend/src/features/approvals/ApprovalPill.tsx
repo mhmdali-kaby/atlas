@@ -5,8 +5,8 @@ import { useNavigate } from 'react-router'
 import { useTradingEnv } from '../../app/shell/tradingEnv'
 import { toast } from '../../ui'
 import { useLang, useNow } from '../portfolio/hooks'
-import { formatTime } from '../warroom/time'
-import { mmss, nearest, openForApproval, proposalHref, useAwaitingProposals, useProposalEvents, WARN_MS, type AwaitingProposal } from './api'
+import { formatTime, mmss } from '../warroom/time'
+import { nearest, openForApproval, proposalHref, useAwaitingProposals, useProposalEvents, WARN_MS, type AwaitingProposal } from './api'
 import './approvals.css'
 
 /*

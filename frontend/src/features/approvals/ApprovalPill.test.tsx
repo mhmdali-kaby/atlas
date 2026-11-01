@@ -12,7 +12,7 @@ import { Toaster, useToasts } from '../../ui'
 import { RequireAuth } from '../auth/RequireAuth'
 import { formatTime } from '../warroom/time'
 import { proposalParam } from '../warroom/useProposalFocus'
-import { mmss, type AwaitingProposal } from './api'
+import { type AwaitingProposal } from './api'
 
 /*
  * ATL-180: the approval pill in the toolbar and the "trade waiting for your approval" toast, on any
@@ -147,16 +147,6 @@ beforeEach(async () => {
 afterEach(async () => {
   vi.unstubAllGlobals()
   await i18n.changeLanguage('en')
-})
-
-describe('mmss', () => {
-  it('rounds seconds up, so 0:00 never shows while time remains', () => {
-    expect(mmss(354_000)).toBe('5:54')
-    expect(mmss(353_001)).toBe('5:54')
-    expect(mmss(59_999)).toBe('1:00')
-    expect(mmss(1)).toBe('0:01')
-    expect(mmss(-5)).toBe('0:00')
-  })
 })
 
 describe('the approval pill', () => {

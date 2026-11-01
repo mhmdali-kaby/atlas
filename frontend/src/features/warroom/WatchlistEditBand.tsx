@@ -7,7 +7,8 @@ import { Fig } from './historianParts'
 import { PinPopover, type PinPopoverProps } from './PinPopover'
 import { fillSlots, slot } from './slots'
 import { InstrumentId } from './text'
-import { mmss, type Conflict } from './watchlist'
+import { mmss } from './time'
+import { type Conflict } from './watchlist'
 import { css, Time } from './watchlistFormat'
 
 /*

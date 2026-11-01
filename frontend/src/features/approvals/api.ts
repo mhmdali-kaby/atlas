@@ -141,8 +141,3 @@ export function nearest(list: AwaitingProposal[]): AwaitingProposal | null {
 /** The War Room URL that opens with this proposal's card in view and focused (see warroom/useProposalFocus). */
 export const proposalHref = (id: string) => `/warroom?proposal=${encodeURIComponent(id)}`
 
-/** "5:54": minutes and seconds left, rounded up so 0:00 is never shown while time remains. */
-export function mmss(ms: number): string {
-  const s = Math.max(0, Math.ceil(ms / 1000))
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
-}

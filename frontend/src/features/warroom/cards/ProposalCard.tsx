@@ -32,7 +32,7 @@ import { useNow } from '../../portfolio/hooks'
 import { Medallion } from '../Medallion'
 import { fillSlots, slot } from '../slots'
 import { InstrumentId, Inline, Markdown } from '../text'
-import { formatTime } from '../time'
+import { formatTime, mmss } from '../time'
 import { dec, decStr, div } from './dec'
 import { Ladder } from './Ladder'
 import {
@@ -90,11 +90,6 @@ function Fig({ children, className = '' }: { children: ReactNode; className?: st
       {children}
     </bdi>
   )
-}
-
-const mmss = (ms: number) => {
-  const s = Math.max(0, Math.ceil(ms / 1000))
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
 }
 
 /** "+1.2R" for a target, from the geometry: (price − mid entry) / (mid entry − stop). */

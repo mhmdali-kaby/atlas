@@ -357,12 +357,6 @@ export function usSessions(a: number, b: number): Array<[number, number, number,
   return out
 }
 
-/** "7:12": minutes and seconds left, rounded up. */
-export function mmss(ms: number): string {
-  const s = Math.max(0, Math.ceil(ms / 1000))
-  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
-}
-
 export const baseOf = (id: string) => id.split('-')[0] ?? id
 /** Perpetuals and dated futures carry the class word alone; spot adds "spot". */
 export const isDerivative = (id: string) => /-SWAP$|-\d{6}$/.test(id)
