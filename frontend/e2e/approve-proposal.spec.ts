@@ -53,6 +53,8 @@ async function fakeApi(page: Page, lang: 'en' | 'ar') {
     if (p === '/api/warroom/threads') return json(200, { data: [MAIN] })
     if (p === '/api/warroom/messages') return json(200, { data: url.searchParams.get('thread_id') === MAIN.id ? [message] : [], meta: { next_cursor: null } })
     if (p === `/api/proposals/${PROPOSAL_ID}` && req.method() === 'GET') return json(200, { data: state.detail })
+    // ATL-188: a fresh mark, so the live card's ladder shows Now
+    if (p === `/api/proposals/${PROPOSAL_ID}/mark` && req.method() === 'GET') return json(200, { data: { inst_id: state.detail.inst_id, mark: '249.95', mark_at: new Date().toISOString() } })
     if (p === `/api/proposals/${PROPOSAL_ID}/approve` && req.method() === 'POST') {
       state.approves += 1
       state.detail = { ...sentDetail(), rationale_md: state.detail.rationale_md, da_review: state.detail.da_review }

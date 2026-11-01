@@ -17,6 +17,7 @@ use App\Models\WarroomThread;
 use App\Support\Auditable;
 use App\Support\Events\EventBus;
 use App\Support\Proposals\Dec;
+use App\Support\Proposals\MarkPrice;
 use App\Support\Proposals\ProposalRules;
 use App\Support\Proposals\ProposalView;
 use App\Support\TradingCore;
@@ -77,6 +78,17 @@ class ProposalController extends Controller
         Gate::authorize('view', $proposal);
 
         return (new ProposalResource($proposal))->detailed();
+    }
+
+    /**
+     * The proposal's live mark alone (ATL-188), so an open card can poll it every 10 s without
+     * re-reading votes, checks and orders.
+     */
+    public function mark(Proposal $proposal): JsonResponse
+    {
+        Gate::authorize('view', $proposal);
+
+        return response()->json(['data' => ['inst_id' => $proposal->inst_id, ...MarkPrice::of($proposal->env, $proposal->inst_id)]]);
     }
 
     public function approve(Proposal $proposal): JsonResponse

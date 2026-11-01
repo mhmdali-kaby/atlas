@@ -13,6 +13,7 @@ Route::prefix('proposals')
     ->group(function (): void {
         Route::get('/', [ProposalController::class, 'index'])->name('index');
         Route::get('/{proposal}', [ProposalController::class, 'show'])->name('show');
+        Route::get('/{proposal}/mark', [ProposalController::class, 'mark'])->name('mark');
 
         Route::middleware('throttle:proposals-write')->group(function (): void {
             Route::post('/{proposal}/approve', [ProposalController::class, 'approve'])->name('approve');
