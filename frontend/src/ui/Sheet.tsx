@@ -150,11 +150,11 @@ function useSheetClip(el: HTMLElement | null): boolean {
   }, [el])
   useEffect(() => {
     if (!el) return undefined
-    check()
     const schedule = () => {
       cancelAnimationFrame(frame.current)
       frame.current = requestAnimationFrame(check)
     }
+    schedule()
     el.addEventListener('scroll', check, { passive: true })
     const resize = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(schedule)
     resize?.observe(el)

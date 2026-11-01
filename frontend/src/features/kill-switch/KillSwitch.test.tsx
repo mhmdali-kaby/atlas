@@ -21,18 +21,34 @@ vi.mock('../../lib/echo', () => ({
   reconnectEcho() {},
 }))
 
-const OWNER = { id: '01a18376-1d35-70c2-ad01-6d1d2cd870ad', name: 'Mohammed Ali', email: 'owner@atlas.test', locale: 'en', theme: 'system' }
+const OWNER = {
+  id: '01a18376-1d35-70c2-ad01-6d1d2cd870ad',
+  name: 'Mohammed Ali',
+  email: 'owner@atlas.test',
+  locale: 'en',
+  theme: 'system',
+}
 
 const RUNNING: SystemHealth = {
   env: 'demo',
   as_of: '2026-10-31T10:00:00Z',
-  trading: { paused: false, reason: null, paused_at: null, accepting_new_orders: true },
+  trading: {
+    paused: false,
+    reason: null,
+    paused_at: null,
+    accepting_new_orders: true,
+  },
   breakers: [],
 }
 
 const DAILY_LOSS: SystemHealth = {
   ...RUNNING,
-  trading: { paused: true, reason: 'Circuit breaker: daily_loss', paused_at: '2026-10-31T09:55:00Z', accepting_new_orders: false },
+  trading: {
+    paused: true,
+    reason: 'Circuit breaker: daily_loss',
+    paused_at: '2026-10-31T09:55:00Z',
+    accepting_new_orders: false,
+  },
   breakers: [
     {
       name: 'daily_loss',
@@ -57,15 +73,65 @@ const REPORT: KillReport = {
   closed: 2,
   stops_kept: 0,
   failed: [
-    { kind: 'position', inst_id: 'AAPL-USDC-SWAP', ref: 'c1', action: 'failed', attempts: 3, code: '51008', message: 'Not enough margin to place this order.' },
-    { kind: 'algo', inst_id: 'TSLA-USDT-SWAP', ref: '7009', action: 'failed', attempts: 3, code: '50001', message: 'The service is temporarily unavailable.', algo_kind: 'tp' },
+    {
+      kind: 'position',
+      inst_id: 'AAPL-USDC-SWAP',
+      ref: 'c1',
+      action: 'failed',
+      attempts: 3,
+      code: '51008',
+      message: 'Not enough margin to place this order.',
+    },
+    {
+      kind: 'algo',
+      inst_id: 'TSLA-USDT-SWAP',
+      ref: '7009',
+      action: 'failed',
+      attempts: 3,
+      code: '50001',
+      message: 'The service is temporarily unavailable.',
+      algo_kind: 'tp',
+    },
   ],
   items: [
-    { kind: 'order', inst_id: 'SOL-USDT-SWAP', ref: '1001', action: 'cancelled', attempts: 1 },
-    { kind: 'order', inst_id: 'ETH-USDT-SWAP', ref: '1002', action: 'cancelled', attempts: 1 },
-    { kind: 'algo', inst_id: 'BTC-USDT-SWAP', ref: '7001', action: 'cancelled', attempts: 1, algo_kind: 'tp' },
-    { kind: 'position', inst_id: 'BTC-USDT-SWAP', ref: 'c2', action: 'closed', attempts: 1, pos_side: 'net' },
-    { kind: 'position', inst_id: 'XAU-USDT-SWAP', ref: 'c3', action: 'closed', attempts: 1, pos_side: 'net' },
+    {
+      kind: 'order',
+      inst_id: 'SOL-USDT-SWAP',
+      ref: '1001',
+      action: 'cancelled',
+      attempts: 1,
+    },
+    {
+      kind: 'order',
+      inst_id: 'ETH-USDT-SWAP',
+      ref: '1002',
+      action: 'cancelled',
+      attempts: 1,
+    },
+    {
+      kind: 'algo',
+      inst_id: 'BTC-USDT-SWAP',
+      ref: '7001',
+      action: 'cancelled',
+      attempts: 1,
+      algo_kind: 'tp',
+    },
+    {
+      kind: 'position',
+      inst_id: 'BTC-USDT-SWAP',
+      ref: 'c2',
+      action: 'closed',
+      attempts: 1,
+      pos_side: 'net',
+    },
+    {
+      kind: 'position',
+      inst_id: 'XAU-USDT-SWAP',
+      ref: 'c3',
+      action: 'closed',
+      attempts: 1,
+      pos_side: 'net',
+    },
   ],
 }
 
@@ -78,10 +144,37 @@ const KEPT_REPORT: KillReport = {
   stops_kept: 2,
   failed: [],
   items: [
-    { kind: 'order', inst_id: 'SOL-USDT-SWAP', ref: '1001', action: 'cancelled', attempts: 1 },
-    { kind: 'algo', inst_id: 'BTC-USDT-SWAP', ref: '7001', action: 'cancelled', attempts: 1, algo_kind: 'tp' },
-    { kind: 'algo', inst_id: 'BTC-USDT-SWAP', ref: '7002', action: 'kept', attempts: 0, algo_kind: 'sl' },
-    { kind: 'algo', inst_id: 'XAU-USDT-SWAP', ref: '7003', action: 'kept', attempts: 0, algo_kind: 'oco' },
+    {
+      kind: 'order',
+      inst_id: 'SOL-USDT-SWAP',
+      ref: '1001',
+      action: 'cancelled',
+      attempts: 1,
+    },
+    {
+      kind: 'algo',
+      inst_id: 'BTC-USDT-SWAP',
+      ref: '7001',
+      action: 'cancelled',
+      attempts: 1,
+      algo_kind: 'tp',
+    },
+    {
+      kind: 'algo',
+      inst_id: 'BTC-USDT-SWAP',
+      ref: '7002',
+      action: 'kept',
+      attempts: 0,
+      algo_kind: 'sl',
+    },
+    {
+      kind: 'algo',
+      inst_id: 'XAU-USDT-SWAP',
+      ref: '7003',
+      action: 'kept',
+      attempts: 0,
+      algo_kind: 'oco',
+    },
   ],
 }
 
@@ -112,7 +205,10 @@ function fakeBackend({
       const body = typeof init.body === 'string' ? (JSON.parse(init.body) as unknown) : null
       calls.push({ method, path, body })
       const reply = (status: number, json?: unknown) =>
-        new Response(json === undefined ? null : JSON.stringify(json), { status, headers: { 'Content-Type': 'application/json' } })
+        new Response(json === undefined ? null : JSON.stringify(json), {
+          status,
+          headers: { 'Content-Type': 'application/json' },
+        })
       if (path === '/sanctum/csrf-cookie') return reply(204)
       if (path === '/api/auth/status') return reply(200, { owner_exists: true })
       if (path === '/api/auth/me') return reply(200, { data: OWNER })
@@ -135,20 +231,39 @@ function fakeBackend({
           data: {
             taken_at: null,
             items: [
-              { id: 'p1', inst_id: 'BTC-USDT-SWAP', side: 'long', upl_usd: '6561.25' },
-              { id: 'p2', inst_id: 'XAU-USDT-SWAP', side: 'short', upl_usd: '-860' },
+              {
+                id: 'p1',
+                inst_id: 'BTC-USDT-SWAP',
+                side: 'long',
+                upl_usd: '6561.25',
+              },
+              {
+                id: 'p2',
+                inst_id: 'XAU-USDT-SWAP',
+                side: 'short',
+                upl_usd: '-860',
+              },
             ],
           },
         })
       }
       if (path === '/api/system/kill' && method === 'POST') {
         return killDown
-          ? reply(503, { ok: false, error: 'trading_core_unavailable', message: 'trading_core is not answering.' })
+          ? reply(503, {
+              ok: false,
+              error: 'trading_core_unavailable',
+              message: 'trading_core is not answering.',
+            })
           : reply(200, report)
       }
       if (path === '/api/system/resume' && method === 'POST') {
         state.health = RUNNING
-        return reply(200, { ok: true, paused: false, active_breakers: [], breakers_cleared: ['daily_loss'] })
+        return reply(200, {
+          ok: true,
+          paused: false,
+          active_breakers: [],
+          breakers_cleared: ['daily_loss'],
+        })
       }
       return reply(404, { message: 'Not found' })
     }),
@@ -161,7 +276,9 @@ function fakeBackend({
 }
 
 function withClient(node: ReactNode) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
   return render(<QueryClientProvider client={client}>{node}</QueryClientProvider>)
 }
 
@@ -177,9 +294,36 @@ afterEach(async () => {
 
 describe('the Stop trading button', () => {
   const FEATURES: FeatureModule[] = [
-    { routes: [], area: 'warroom', nav: { path: '/warroom', labelKey: 'shell:area.warroom', order: 1, icon: MessagesSquare } },
-    { routes: [], area: 'portfolio', nav: { path: '/portfolio', labelKey: 'shell:area.portfolio', order: 10, icon: Wallet } },
-    { routes: [], area: 'settings', nav: { path: '/settings/connections', labelKey: 'shell:area.settings', order: 100, icon: Plug } },
+    {
+      routes: [],
+      area: 'warroom',
+      nav: {
+        path: '/warroom',
+        labelKey: 'shell:area.warroom',
+        order: 1,
+        icon: MessagesSquare,
+      },
+    },
+    {
+      routes: [],
+      area: 'portfolio',
+      nav: {
+        path: '/portfolio',
+        labelKey: 'shell:area.portfolio',
+        order: 10,
+        icon: Wallet,
+      },
+    },
+    {
+      routes: [],
+      area: 'settings',
+      nav: {
+        path: '/settings/connections',
+        labelKey: 'shell:area.settings',
+        order: 100,
+        icon: Plug,
+      },
+    },
   ]
   const SHELL = buildShellRegistry(FEATURES)
 
@@ -201,7 +345,10 @@ describe('the Stop trading button', () => {
           children: [
             { path: 'warroom', element: <p>War Room page</p> },
             { path: 'portfolio', element: <p>Portfolio page</p> },
-            { path: 'settings/connections', element: <p>Settings page</p> },
+            {
+              path: 'settings/connections',
+              element: <p>Settings page</p>,
+            },
           ],
         },
       ],
@@ -209,7 +356,9 @@ describe('the Stop trading button', () => {
     )
     withClient(<RouterProvider router={router} />)
     const toolbar = await screen.findByRole('banner')
-    const button = within(toolbar).getByRole('button', { name: 'Stop trading: cancel orders and pause Atlas' })
+    const button = within(toolbar).getByRole('button', {
+      name: 'Stop trading: cancel orders and pause Atlas',
+    })
     expect(button).toHaveTextContent('Stop trading')
     expect(button).toHaveAttribute('aria-haspopup', 'dialog')
   })
@@ -219,7 +368,9 @@ describe('the Stop sheet (decision 251)', () => {
   async function openSheet() {
     const user = userEvent.setup()
     await user.click(screen.getByTestId('kill-switch'))
-    const sheet = await screen.findByRole('dialog', { name: 'Stop all trading?' })
+    const sheet = await screen.findByRole('dialog', {
+      name: 'Stop all trading?',
+    })
     // The counts come from the orders and positions lists.
     await within(sheet).findByText(/Keep the/)
     return { user, sheet }
@@ -237,7 +388,10 @@ describe('the Stop sheet (decision 251)', () => {
 
     await user.click(within(sheet).getByTestId('kill-go'))
     await waitFor(() => expect(api.kills()).toHaveLength(1))
-    expect(api.kills()[0]!.body).toEqual({ confirm: 'KILL', flatten: false })
+    expect(api.kills()[0]!.body).toEqual({
+      confirm: 'KILL',
+      flatten: false,
+    })
     const report = await screen.findByTestId('kill-report')
     expect(within(report).getByTestId('kill-kept')).toHaveTextContent('2 stops. Each open position keeps its stop on OKX.')
   })
@@ -265,8 +419,13 @@ describe('the Stop sheet (decision 251)', () => {
     fireEvent.pointerDown(hold, { button: 0, pointerId: 2 })
     expect(sheet).toHaveTextContent('Keep holding…')
     await sleep(HOLD_MS)
-    await waitFor(() => expect(api.kills()).toHaveLength(1), { timeout: 1000 })
-    expect(api.kills()[0]!.body).toEqual({ confirm: 'KILL', flatten: true })
+    await waitFor(() => expect(api.kills()).toHaveLength(1), {
+      timeout: 1000,
+    })
+    expect(api.kills()[0]!.body).toEqual({
+      confirm: 'KILL',
+      flatten: true,
+    })
   })
 
   it.each([' ', 'Enter'])('with close-all on, holding %j for 1.5 s sends flatten true; an early key release sends nothing', async (key) => {
@@ -288,8 +447,13 @@ describe('the Stop sheet (decision 251)', () => {
     await sleep(700)
     fireEvent.keyDown(hold, { key, repeat: true })
     await sleep(HOLD_MS - 700)
-    await waitFor(() => expect(api.kills()).toHaveLength(1), { timeout: 1000 })
-    expect(api.kills()[0]!.body).toEqual({ confirm: 'KILL', flatten: true })
+    await waitFor(() => expect(api.kills()).toHaveLength(1), {
+      timeout: 1000,
+    })
+    expect(api.kills()[0]!.body).toEqual({
+      confirm: 'KILL',
+      flatten: true,
+    })
   })
 
   it('reports the cancelled and closed counts and each failure’s message', async () => {
@@ -297,7 +461,10 @@ describe('the Stop sheet (decision 251)', () => {
     withClient(<KillSwitchButton />)
     const { user, sheet } = await openSheet()
     await user.click(within(sheet).getByRole('switch'))
-    fireEvent.pointerDown(within(sheet).getByTestId('kill-hold'), { button: 0, pointerId: 1 })
+    fireEvent.pointerDown(within(sheet).getByTestId('kill-hold'), {
+      button: 0,
+      pointerId: 1,
+    })
     await sleep(HOLD_MS)
 
     const report = await screen.findByTestId('kill-report')
@@ -309,7 +476,11 @@ describe('the Stop sheet (decision 251)', () => {
     expect(failures).toHaveLength(2)
     expect(failures[0]).toHaveTextContent('Position close · AAPL-USDC-SWAP · 51008Not enough margin to place this order.')
     expect(failures[1]).toHaveTextContent('Take profit · TSLA-USDT-SWAP · 50001The service is temporarily unavailable.')
-    expect(within(report).getByText('BTC-USDT-SWAP', { selector: '.ks-closed .ks-inst' })).toBeInTheDocument()
+    expect(
+      within(report).getByText('BTC-USDT-SWAP', {
+        selector: '.ks-closed .ks-inst',
+      }),
+    ).toBeInTheDocument()
 
     // The cancelled list opens on demand.
     await user.click(within(report).getByRole('button', { name: /Show all/ }))
@@ -332,7 +503,9 @@ describe('the Stop sheet (decision 251)', () => {
     withClient(<KillSwitchButton />)
     const { user } = await openSheet()
     await user.keyboard('{Escape}')
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), { timeout: 3000 })
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), {
+      timeout: 3000,
+    })
     expect(screen.getByTestId('kill-switch')).toHaveFocus()
   })
 })
@@ -347,14 +520,18 @@ describe('the trading banner', () => {
         <TradingBanner />
       </>,
     )
-    const banner = await screen.findByRole('region', { name: 'Trading status' })
+    const banner = await screen.findByRole('region', {
+      name: 'Trading status',
+    })
     expect(banner).toHaveTextContent('Circuit breaker: daily loss limit')
     expect(banner).toHaveTextContent('Today’s loss reached 4.1% of equity, over the 4% daily limit.')
     expect(banner).toHaveTextContent('Since')
     expect(screen.getByTestId('kill-switch')).toHaveTextContent('Stopped')
 
     await user.click(within(banner).getByRole('button', { name: 'Resume trading' }))
-    const sheet = await screen.findByRole('dialog', { name: 'Resume trading?' })
+    const sheet = await screen.findByRole('dialog', {
+      name: 'Resume trading?',
+    })
     expect(sheet).toHaveTextContent('The loss limit is still exceeded, so the next trade will trip the breaker again.')
     expect(api.resumes()).toHaveLength(0)
 
@@ -369,15 +546,33 @@ describe('the trading banner', () => {
     const user = userEvent.setup()
     withClient(<TradingBanner />)
     await user.click(await screen.findByRole('button', { name: 'Resume trading' }))
-    await user.click(within(await screen.findByRole('dialog')).getByRole('button', { name: 'Cancel' }))
-    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), { timeout: 3000 })
+    await user.click(
+      within(await screen.findByRole('dialog')).getByRole('button', {
+        name: 'Cancel',
+      }),
+    )
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), {
+      timeout: 3000,
+    })
     expect(api.resumes()).toHaveLength(0)
   })
 
   it('shows paused-by-you with the time, and nothing while trading runs', async () => {
-    fakeBackend({ health: { ...RUNNING, trading: { paused: true, reason: null, paused_at: '2026-10-31T09:55:00Z', accepting_new_orders: false } } })
+    fakeBackend({
+      health: {
+        ...RUNNING,
+        trading: {
+          paused: true,
+          reason: null,
+          paused_at: '2026-10-31T09:55:00Z',
+          accepting_new_orders: false,
+        },
+      },
+    })
     const { unmount } = withClient(<TradingBanner />)
-    const banner = await screen.findByRole('region', { name: 'Trading status' })
+    const banner = await screen.findByRole('region', {
+      name: 'Trading status',
+    })
     // 09:55 UTC is 12:55 in Baghdad.
     expect(banner).toHaveTextContent('Trading paused by you at 12:55')
     unmount()
@@ -393,7 +588,9 @@ describe('the trading banner', () => {
     fakeBackend({ health: DAILY_LOSS })
     await i18n.changeLanguage('ar')
     withClient(<TradingBanner />)
-    const banner = await screen.findByRole('region', { name: 'حالة التداول' })
+    const banner = await screen.findByRole('region', {
+      name: 'حالة التداول',
+    })
     expect(banner).toHaveTextContent('قاطع الحماية: حدّ الخسارة اليومي')
     expect(within(banner).getByRole('button', { name: 'استئناف التداول' })).toBeInTheDocument()
   })

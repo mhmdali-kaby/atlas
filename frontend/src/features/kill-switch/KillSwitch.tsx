@@ -70,15 +70,7 @@ export function KillSwitchButton() {
   )
 }
 
-export function KillSheet({
-  open,
-  onOpenChange,
-  trigger,
-}: {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  trigger?: ReactNode
-}) {
+export function KillSheet({ open, onOpenChange, trigger }: { open: boolean; onOpenChange: (open: boolean) => void; trigger?: ReactNode }) {
   const { t } = useTranslation(NS)
   const lang = useLang()
   const env = useTradingEnv()
@@ -98,14 +90,15 @@ export function KillSheet({
   }, [])
 
   // Each opening starts over at the confirmation, with close-all off.
-  useEffect(() => {
-    if (open) {
+  function changeOpen(next: boolean) {
+    if (next) {
       setView('confirm')
       setFlatten(false)
       setReport(null)
       setRetrying(false)
     }
-  }, [open])
+    onOpenChange(next)
+  }
 
   async function send(withFlatten: boolean, retry = false) {
     if (retry) setRetrying(true)
@@ -169,22 +162,14 @@ export function KillSheet({
     title = t('title')
     icon = <OctagonX strokeWidth={1.5} />
     description = t('intro', { account })
-    body = (
-      <ConfirmBody
-        preview={preview.data}
-        flatten={flatten}
-        onFlatten={setFlatten}
-        account={account}
-        lang={lang}
-      />
-    )
+    body = <ConfirmBody preview={preview.data} flatten={flatten} onFlatten={setFlatten} account={account} lang={lang} />
     actions = <ConfirmActions flatten={flatten} onGo={() => void send(flatten)} />
   }
 
   return (
     <Sheet
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={changeOpen}
       trigger={trigger}
       title={title}
       description={description}
@@ -231,32 +216,45 @@ function ConfirmBody({
   const subId = useId()
   const n = preview?.positions.length
   const upl = preview ? sumDecimals(preview.positions.map((p) => p.upl_usd)) : null
-  const what: [ReactNode, ReactNode][] = [
-    [
-      <CircleX key="i" />,
-      preview ? (
-        flatten ? (
-          <Tr k="w.cancelAll" values={{ open: preview.openOrders, algo: preview.takeProfits + preview.stops }} />
-        ) : (
-          <Tr k="w.cancelKeep" values={{ open: preview.openOrders, tp: preview.takeProfits, account }} />
-        )
-      ) : (
-        t(flatten ? 'w.cancelAllAny' : 'w.cancelKeepAny', { account })
-      ),
-    ],
-    [
-      flatten ? <Shrink key="i" /> : <ShieldCheck key="i" />,
-      preview ? (
-        flatten ? (
-          <Tr k="w.close" values={{ n }} />
-        ) : (
-          <Tr k="w.keep" values={{ n: preview.stops }} />
-        )
-      ) : (
-        t(flatten ? 'w.closeAny' : 'w.keepAny')
-      ),
-    ],
-    [<CirclePause key="i" />, t('w.pause')],
+  const cancelText = preview ? (
+    flatten ? (
+      <Tr
+        k="w.cancelAll"
+        values={{
+          open: preview.openOrders,
+          algo: preview.takeProfits + preview.stops,
+        }}
+      />
+    ) : (
+      <Tr
+        k="w.cancelKeep"
+        values={{
+          open: preview.openOrders,
+          tp: preview.takeProfits,
+          account,
+        }}
+      />
+    )
+  ) : (
+    t(flatten ? 'w.cancelAllAny' : 'w.cancelKeepAny', { account })
+  )
+  const keepText = preview ? (
+    flatten ? (
+      <Tr k="w.close" values={{ n }} />
+    ) : (
+      <Tr k="w.keep" values={{ n: preview.stops }} />
+    )
+  ) : (
+    t(flatten ? 'w.closeAny' : 'w.keepAny')
+  )
+  const what: { key: string; icon: ReactNode; text: ReactNode }[] = [
+    { key: 'cancel', icon: <CircleX />, text: cancelText },
+    {
+      key: 'keep',
+      icon: flatten ? <Shrink /> : <ShieldCheck />,
+      text: keepText,
+    },
+    { key: 'pause', icon: <CirclePause />, text: t('w.pause') },
   ]
 
   return (
@@ -266,12 +264,12 @@ function ConfirmBody({
           {t('what')}
         </h3>
         <ul className="ks-list" role="list">
-          {what.map(([ic, text], i) => (
-            <li key={i}>
+          {what.map((w) => (
+            <li key={w.key}>
               <span className="ks-li-ic" aria-hidden="true">
-                {ic}
+                {w.icon}
               </span>
-              <span>{text}</span>
+              <span>{w.text}</span>
             </li>
           ))}
         </ul>
@@ -283,7 +281,16 @@ function ConfirmBody({
               {n === undefined ? t('flattenAny') : <Tr k="flatten" values={{ n }} />}
             </span>
             <span className="ks-row-sub" id={subId}>
-              {upl === null ? t('flattenSubAny') : <Tr k="flattenSub" values={{ upl: formatSigned(upl, 'USD', lang) }} />}
+              {upl === null ? (
+                t('flattenSubAny')
+              ) : (
+                <Tr
+                  k="flattenSub"
+                  values={{
+                    upl: formatSigned(upl, 'USD', lang),
+                  }}
+                />
+              )}
             </span>
           </div>
           <Toggle
@@ -317,15 +324,22 @@ function signClass(v: string | null | undefined) {
 
 function ConfirmActions({ flatten, onGo }: { flatten: boolean; onGo: () => void }) {
   const { t } = useTranslation(NS)
+  const [hint, setHint] = useState<Hint>('idle')
+  const hintId = useId()
   return (
     <>
+      {flatten && (
+        <p className={cx('ks-hold-hint', hint === 'early' && 'is-early')} id={hintId} aria-live="polite">
+          {t(hint === 'early' ? 'holdEarly' : hint === 'holding' ? 'holdKeep' : 'holdHint')}
+        </p>
+      )}
       <SheetClose>
         <Button variant="secondary" data-ks-cancel="">
           {t('cancel')}
         </Button>
       </SheetClose>
       {flatten ? (
-        <HoldButton onComplete={onGo} />
+        <HoldButton onComplete={onGo} onHint={setHint} describedBy={hintId} />
       ) : (
         <Button variant="destructive" icon={<OctagonX strokeWidth={1.75} />} onClick={onGo} data-testid="kill-go">
           {t('go')}
@@ -341,12 +355,24 @@ type Hint = 'idle' | 'holding' | 'early'
  * Press and hold for 1.5 s (decision 251): pointer, or Space/Enter held. Released early,
  * nothing is sent and the hint says so. Clicks alone never fire it.
  */
-export function HoldButton({ onComplete }: { onComplete: () => void }) {
+export function HoldButton({
+  onComplete,
+  onHint,
+  describedBy,
+}: {
+  onComplete: () => void
+  /** Drives the hint line the parent draws above the buttons. */
+  onHint: (hint: Hint) => void
+  describedBy: string
+}) {
   const { t } = useTranslation(NS)
-  const [hint, setHint] = useState<Hint>('idle')
+  const [holding, setHolding] = useState(false)
   const [done, setDone] = useState(false)
   const timer = useRef<number | null>(null)
-  const hintId = useId()
+  const setHint = (h: Hint) => {
+    setHolding(h === 'holding')
+    onHint(h)
+  }
 
   useEffect(
     () => () => {
@@ -375,48 +401,43 @@ export function HoldButton({ onComplete }: { onComplete: () => void }) {
   const isKey = (e: KeyboardEvent) => e.key === ' ' || e.key === 'Enter'
 
   return (
-    <>
-      <p className={cx('ks-hold-hint', hint === 'early' && 'is-early')} id={hintId} aria-live="polite">
-        {t(hint === 'early' ? 'holdEarly' : hint === 'holding' ? 'holdKeep' : 'holdHint')}
-      </p>
-      <button
-        type="button"
-        className={cx('ks-hold', hint === 'holding' && 'is-holding', done && 'is-done')}
-        aria-describedby={hintId}
-        data-testid="kill-hold"
-        onPointerDown={(e: PointerEvent<HTMLButtonElement>) => {
-          if (e.button > 0) return
-          try {
-            e.currentTarget.setPointerCapture(e.pointerId)
-          } catch {
-            /* not capturable (tests, some browsers) */
-          }
-          start()
-        }}
-        onPointerUp={stop}
-        onPointerCancel={stop}
-        onLostPointerCapture={stop}
-        onKeyDown={(e) => {
-          if (!isKey(e)) return
-          e.preventDefault()
-          if (!e.repeat) start()
-        }}
-        onKeyUp={(e) => {
-          if (!isKey(e)) return
-          e.preventDefault()
-          stop()
-        }}
-        onBlur={stop}
-        onClick={(e) => e.preventDefault()}
-        onContextMenu={(e) => e.preventDefault()}
-      >
-        <span className="ks-hold-fill" aria-hidden="true" />
-        <span className="ks-hold-label">
-          <OctagonX aria-hidden="true" strokeWidth={1.75} />
-          <span>{t('hold')}</span>
-        </span>
-      </button>
-    </>
+    <button
+      type="button"
+      className={cx('ks-hold', holding && 'is-holding', done && 'is-done')}
+      aria-describedby={describedBy}
+      data-testid="kill-hold"
+      onPointerDown={(e: PointerEvent<HTMLButtonElement>) => {
+        if (e.button > 0) return
+        try {
+          e.currentTarget.setPointerCapture(e.pointerId)
+        } catch {
+          /* not capturable (tests, some browsers) */
+        }
+        start()
+      }}
+      onPointerUp={stop}
+      onPointerCancel={stop}
+      onLostPointerCapture={stop}
+      onKeyDown={(e) => {
+        if (!isKey(e)) return
+        e.preventDefault()
+        if (!e.repeat) start()
+      }}
+      onKeyUp={(e) => {
+        if (!isKey(e)) return
+        e.preventDefault()
+        stop()
+      }}
+      onBlur={stop}
+      onClick={(e) => e.preventDefault()}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      <span className="ks-hold-fill" aria-hidden="true" />
+      <span className="ks-hold-label">
+        <OctagonX aria-hidden="true" strokeWidth={1.75} />
+        <span>{t('hold')}</span>
+      </span>
+    </button>
   )
 }
 
@@ -463,8 +484,14 @@ function Report({ report, retrying, onRetry }: { report: KillReport; retrying: b
             aria-controls={listId}
             onClick={() => setShowCancelled((s) => !s)}
           >
-            {t(showCancelled ? 'r.hide' : 'r.show')}
-            {showCancelled ? <ChevronUp aria-hidden="true" /> : <ChevronDown aria-hidden="true" />}
+            <span className="inline-flex items-center gap-1">
+              {t(showCancelled ? 'r.hide' : 'r.show')}
+              {showCancelled ? (
+                <ChevronUp aria-hidden="true" className="size-3.5" />
+              ) : (
+                <ChevronDown aria-hidden="true" className="size-3.5" />
+              )}
+            </span>
           </Button>
         )}
       </div>
@@ -511,7 +538,9 @@ function Report({ report, retrying, onRetry }: { report: KillReport; retrying: b
               {closed.map((i) => (
                 <li key={`${i.inst_id}-${i.pos_side ?? ''}-${i.ref}`}>
                   <Inst id={i.inst_id} />
-                  <span className="ks-side">{i.pos_side && i.pos_side !== 'net' ? t(i.pos_side === 'short' ? 'short' : 'long') : null}</span>
+                  <span className="ks-side">
+                    {i.pos_side && i.pos_side !== 'net' ? t(i.pos_side === 'short' ? 'short' : 'long') : null}
+                  </span>
                 </li>
               ))}
             </ul>

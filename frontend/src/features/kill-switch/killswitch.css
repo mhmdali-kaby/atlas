@@ -24,6 +24,11 @@
   .ks-stop { width: 28px; padding: 0; }
   .ks-stop-label { display: none; }
 }
+/* phones: Stop takes the room the language label used (design v11 killswitch.css) */
+@media (max-width: 480px) {
+  .shell-toolbar [data-testid='language-switch'] > span { display: none; }
+  .shell-toolbar [data-testid='language-switch'] { width: 32px; padding: 0; justify-content: center; }
+}
 @media (pointer: coarse) {
   .ks-stop { position: relative; }
   .ks-stop::after { content: ''; position: absolute; inset: -8px 0; }

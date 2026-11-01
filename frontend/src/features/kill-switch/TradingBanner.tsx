@@ -22,9 +22,11 @@ const PRIORITY = [
   'data_stale',
 ]
 const KNOWN = new Set(PRIORITY)
+/** trading_core's reason when the owner paused without one; the banner already says it. */
+const OWNER_DEFAULT_REASON = 'Paused by the owner.'
 const LOSS_BREAKERS = new Set(['daily_loss', 'weekly_loss', 'consecutive_losses'])
 
-export function primaryBreaker(breakers: readonly Breaker[]): Breaker | undefined {
+function primaryBreaker(breakers: readonly Breaker[]): Breaker | undefined {
   const rank = (b: Breaker) => {
     const i = PRIORITY.indexOf(b.name)
     return i === -1 ? PRIORITY.length : i
@@ -84,11 +86,15 @@ export function TradingBanner() {
       </>
     )
   } else {
-    title = trading.paused_at ? <Tr k="b.paused.title" values={{ time: formatClock(trading.paused_at, lang, false) }} /> : t('b.paused.titleNoTime')
+    title = trading.paused_at ? (
+      <Tr k="b.paused.title" values={{ time: formatClock(trading.paused_at, lang, false) }} />
+    ) : (
+      t('b.paused.titleNoTime')
+    )
     body = (
       <>
         {t('b.paused.body')}
-        {trading.reason && (
+        {trading.reason && trading.reason !== OWNER_DEFAULT_REASON && (
           <>
             {' '}
             <bdi className="ks-reason">{trading.reason}</bdi>
@@ -151,7 +157,11 @@ function ResumeSheet({
     try {
       await postResume()
       onOpenChange(false)
-      toast({ title: t('res.toast'), body: t('res.toastBody'), tone: 'success' })
+      toast({
+        title: t('res.toast'),
+        body: t('res.toastBody'),
+        tone: 'success',
+      })
     } catch {
       setError(true)
     } finally {

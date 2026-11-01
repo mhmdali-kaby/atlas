@@ -35,7 +35,9 @@ export function Tr({
   className?: string
 }) {
   const { t } = useTranslation(NS)
-  const components: Record<string, ReactElement> = { f: <Fig className={className} /> }
+  const components: Record<string, ReactElement> = {
+    f: <Fig className={className} />,
+  }
   return <Trans t={t} i18nKey={k} count={count} values={count === undefined ? values : { count, ...values }} components={components} />
 }
 
