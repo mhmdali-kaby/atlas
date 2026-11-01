@@ -53,7 +53,7 @@ import {
  * watchlist size and the allowed/blocked instrument lists. Changes are batched into one versioned
  * PATCH /api/settings of ATL-124's flat keys; a 409 keeps the owner's edits on top of the newer
  * version. Each allowed instrument shows the first filter it fails today, from ATL-155's
- * eligibility API with the unsaved draft (decision #250).
+ * eligibility API with the unsaved draft (decision 250).
  */
 
 const ENV: SettingsDoc['env'] = 'demo'

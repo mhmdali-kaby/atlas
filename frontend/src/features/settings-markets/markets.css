@@ -45,8 +45,8 @@
   display: flex; align-items: baseline; gap: 8px; min-height: 30px; padding: 5px 10px; border-radius: 7px;
   font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); color: var(--label); cursor: default;
 }
-.mk-opt[aria-selected='true'] { background: var(--accent-solid); color: #fff; }
-.mk-opt[aria-selected='true'] .mk-opt-market, .mk-opt[aria-selected='true'] .mk-opt-state { color: #fff; }
+.mk-opt[aria-selected='true'] { background: var(--accent-solid); color: var(--on-solid); }
+.mk-opt[aria-selected='true'] .mk-opt-market, .mk-opt[aria-selected='true'] .mk-opt-state { color: var(--on-solid); }
 .mk-opt[aria-disabled='true'] { color: var(--label-secondary); }
 .mk-opt-id { font-weight: 500; }
 .mk-opt-market { font-size: var(--fs-footnote); color: var(--label-secondary); }

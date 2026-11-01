@@ -316,7 +316,10 @@ export function usSession(now: number): { open: number; close: number; isOpen: b
   }
   const open = at(9, 30)
   const close = at(16, 0)
-  return { open, close, isOpen: now >= open && now < close }
+  // No cash session on a New York Saturday or Sunday (exchange holidays are not modelled).
+  const weekday = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', weekday: 'short' }).format(new Date(now))
+  const weekend = weekday === 'Sat' || weekday === 'Sun'
+  return { open, close, isOpen: !weekend && now >= open && now < close }
 }
 
 /** "$3.1M", "$20M", "$4.2B": short USD for warnings. */

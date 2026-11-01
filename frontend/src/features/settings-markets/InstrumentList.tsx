@@ -73,7 +73,7 @@ export function InstrumentList({
     if (deny.includes(instId)) return 'blocked'
     return null
   }
-  // On this list already: not addable. On the other list: addable (decision #250, the blocklist wins).
+  // On this list already: not addable. On the other list: addable (decision 250, the blocklist wins).
   const addable = (i: Instrument) => !list.includes(i.inst_id)
   const firstAddable = items.findIndex(addable)
   const current = active >= 0 && active < items.length && items[active] && addable(items[active]) ? active : firstAddable
