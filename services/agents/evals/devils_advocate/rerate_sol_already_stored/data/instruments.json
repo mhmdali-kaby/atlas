@@ -1,0 +1,20 @@
+[
+ {
+  "id": "9def27c1-7ccb-53f3-95a0-d02fddbea9a4",
+  "env": "demo",
+  "inst_id": "SOL-USDT-SWAP",
+  "inst_type": "SWAP",
+  "inst_family": "SOL-USDT",
+  "base_ccy": "SOL",
+  "quote_ccy": "USDT",
+  "settle_ccy": "USDT",
+  "ct_val": "1",
+  "lot_sz": "1",
+  "min_sz": "1",
+  "tick_sz": "0.01",
+  "max_lever": "20",
+  "state": "live",
+  "asset_class": "crypto",
+  "list_time": "2025-03-26T09:00:00Z"
+ }
+]

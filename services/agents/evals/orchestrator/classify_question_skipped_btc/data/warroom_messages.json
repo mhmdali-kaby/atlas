@@ -1,0 +1,17 @@
+[
+ {
+  "id": "38f6debd-db79-552f-9b6b-f4863efbe4ef",
+  "env": "demo",
+  "thread_id": "93e99755-033f-57c3-a20c-3aeae588dd19",
+  "event_id": "70416873-2822-5f90-91d3-c5b384c6ec5d",
+  "author_type": "human",
+  "author": "owner",
+  "kind": "text",
+  "content_md": "Why did we skip BTC this morning?",
+  "card": null,
+  "reply_to": null,
+  "mentions": [],
+  "created_at": "2026-05-05T07:59:59Z",
+  "updated_at": "2026-05-05T07:59:59Z"
+ }
+]

@@ -1,0 +1,22 @@
+[
+ {
+  "id": "80776646-4aca-5918-b27e-ef743b7a003f",
+  "env": "demo",
+  "thread_id": "b587bebb-baf2-5731-a3fb-f38c7ffb4ba8",
+  "event_id": "1dbe14ec-d083-5ea6-8bdd-68696a76c271",
+  "author_type": "agent",
+  "author": "strategist",
+  "kind": "proposal",
+  "content_md": "**BUY LINK-USDT-SWAP** v1",
+  "card": {
+   "type": "proposal",
+   "proposal_id": "b65aedc5-0b23-564c-b451-d815c7777377",
+   "inst_id": "LINK-USDT-SWAP",
+   "version": 1
+  },
+  "reply_to": null,
+  "mentions": [],
+  "created_at": "2026-04-06T08:58:00Z",
+  "updated_at": "2026-04-06T08:58:00Z"
+ }
+]

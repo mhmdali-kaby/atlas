@@ -51,7 +51,9 @@ _PROPOSAL_FIELDS: Final = (
     '"take_profits": [{"price": number, "pct": number}] (1-3), "time_stop_minutes": int|null, '
     '"size_suggestion_pct_equity": number, "leverage_suggestion": int, "expected_r_multiple": number, '
     '"probability_estimate": 0-1, "rationale_md", "invalidation", '
-    '"evidence": [{"type": "research_report"|"news"|"stat", "id": "<message id>"}]}'
+    '"evidence": [{"type": "research_report"|"news"|"stat", "id": "<message id>"}], '
+    '"probability_basis": {"analog_hit_rate": 0-1, "n": int, "adjustment_pts": number (-15..15), '
+    '"reason": "<one line>"}|null (analog_hit_rate x 100 + adjustment_pts = probability_estimate x 100)}'
 )
 
 

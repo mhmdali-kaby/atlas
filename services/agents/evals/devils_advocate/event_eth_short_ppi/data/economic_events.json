@@ -1,0 +1,13 @@
+[
+ {
+  "id": "e46c019d-e7f7-500a-a0fb-f37fa2ead0af",
+  "source": "forexfactory",
+  "external_id": "eval-event_eth_short_ppi-US PPI",
+  "country": "US",
+  "name": "US PPI",
+  "importance": 4,
+  "scheduled_at": "2026-04-14T16:00:00Z",
+  "created_at": "2026-04-12T09:00:00Z",
+  "updated_at": "2026-04-12T09:00:00Z"
+ }
+]

@@ -79,6 +79,37 @@ the revised parent in ``Transcript.meta`` and the inputs code gathered among the
 * ``expectancy_above: {min: 0.2}`` — p x R - (1 - p) on the proposal is greater than ``min``.
 * ``stop_not_widened: {}`` — the answer revised ``meta.parent``, kept a stop and did not move it away
   from the entry.
+
+Devil's Advocate reviews (ATL-167, brief §7.7); the driver puts the code table (``precomputed``), the
+code corrections, the card rejections, the model runs and the re-rate count in ``Transcript.meta``.
+``valid_schema: {model: "atlas_shared.devils_review:DevilsReview"}`` checks the card.
+
+* ``checklist_complete: {}`` — all 10 items, in order, each answered, every problem with a number,
+  and code did not have to reject the card first.
+* ``rating_follows_guide: {expected: 3}`` — the agent's own risk_rating is the §7.7 guide's for its
+  items (no ``rating_guide`` correction), optionally equal to ``expected``; no take above 2 unfixed.
+* ``item_flagged: {item: 1, min_severity: serious, patterns: [CPI], precomputed: events}`` — that
+  item is a problem of at least that severity, its detail matches, and the code table shows it
+  (``events``: an event in the window; ``stop_noise``: verdict inside_noise).
+* ``no_false_alarm: {max_rating: 2}`` — on a clean table, rating at most that, no serious item, take.
+* ``rerated_once: {expected: 1, rerate_of: <row id>}`` — that many round-2 cards and model runs for
+  every Strategist reply the case sent.
+
+Orchestrator owner messages, /why and loops (ATL-167, brief §7.9); the driver records the posted
+messages, the code and final classification, the model's routing, the assignments, and the
+settings version and proposal statuses before and after the run in ``Transcript.meta``.
+
+* ``classified_as: {expected: question, code: question, assign: historian, reply_to: <row>}`` — the
+  final kind, code's first guess, exactly one immediate acknowledgement, and the assignments made
+  (``assign: null`` = none).
+* ``limit_refused: {setting: Max leverage, section: Risk}`` — the fixed refusal naming
+  ``Settings → Risk (Max leverage)``, nothing changed, no model run, no assignment.
+* ``why_answered: {max_words: 150, min_links: 1, inst_id: ..}`` — one why_answer under the word cap
+  with links to the proposal's own War Room cards.
+* ``no_silent_approval: {awaiting: true}`` — no proposal changed status, nothing assigned to approve
+  or execute, and no text claims or assumes an approval.
+* ``loop_stopped: {expected: true, agents: [..], replies: 4, proposal_id: ..}`` — one loop summary
+  quoting both sides (or, with ``expected: false``, none).
 """
 
 from __future__ import annotations
@@ -1065,6 +1096,376 @@ def unreliable_reported(t: Transcript, params: Mapping[str, Any]) -> Outcome:
     )
 
 
+# -- Devil's Advocate (ATL-167, brief §7.7) ----------------------------------------------------------
+
+
+def _da_card(t: Transcript) -> dict[str, Any]:
+    card = t.card or {}
+    if card.get("type") != "da_review":
+        raise ValueError("no da_review card in the answer")
+    return card
+
+
+def checklist_complete(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    from atlas_shared.devils_review import CHECKLIST
+
+    card = _da_card(t)
+    items = [i for i in card.get("items") or [] if isinstance(i, Mapping)]
+    numbers = [i.get("item") for i in items]
+    missing = [n for n in range(1, 11) if n not in numbers]
+    if missing or len(items) != 10:
+        return False, f"items answered {numbers}; missing {missing}"
+    for item in items:
+        n = int(item["item"])
+        if item.get("name") != CHECKLIST[n - 1]:
+            return False, f"item {n} is named {item.get('name')!r}, not {CHECKLIST[n - 1]}"
+        detail = str(item.get("detail") or "").strip()
+        if not detail:
+            return False, f"item {n} ({item['name']}) has no answer"
+        if item.get("status") == "problem" and not re.search(r"\d", detail):
+            return False, f"item {n} ({item['name']}) states a problem with no number"
+    if t.meta.get("rejections"):
+        return False, f"code rejected the card first: {t.meta['rejections'][0]}"
+    problems = [int(i["item"]) for i in items if i.get("status") == "problem"]
+    return True, f"all 10 items answered in order; problems at {problems or 'none'}"
+
+
+def _guide(items: list[Mapping[str, Any]]) -> int:
+    severities = [str(i.get("severity", "none")) for i in items]
+    if "loss_gt_1r" in severities:
+        return 5
+    serious = severities.count("serious")
+    return 4 if serious >= 2 else 3 if serious == 1 else 2 if "minor" in severities else 1
+
+
+def rating_follows_guide(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    card = _da_card(t)
+    items = [i for i in card.get("items") or [] if isinstance(i, Mapping)]
+    guide = _guide(items)
+    rating = card.get("risk_rating")
+    corrected = [c for c in t.meta.get("corrections") or [] if c.get("rule") == "rating_guide"]
+    if corrected:
+        c = corrected[0]
+        return False, f"the agent rated {c.get('from')} but its own items give {c.get('to')} by the guide"
+    if rating != guide:
+        return False, f"risk_rating {rating} but the items give {guide} by the guide"
+    expected = params.get("expected")
+    if expected is not None and rating != int(expected):
+        return False, f"risk_rating {rating}, expected {expected} for this case"
+    vote = card.get("vote")
+    take_max = int(params.get("take_max_rating", 2))
+    if vote == "take" and rating > take_max and not card.get("fix_applied"):
+        return False, f"vote take at rating {rating} without an applied fix"
+    return True, f"risk_rating {rating} = the guide's for its items; vote {vote}"
+
+
+def item_flagged(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    """Checklist item ``item`` is a problem of at least ``min_severity``, its detail matches every
+    regex in ``patterns``, and the code table shows the condition (``precomputed``: ``events`` lists
+    an economic event or earnings; ``stop_noise`` has verdict inside_noise)."""
+    card = _da_card(t)
+    n = int(params["item"])
+    item = next((i for i in card.get("items") or [] if isinstance(i, Mapping) and i.get("item") == n), None)
+    if item is None:
+        return False, f"item {n} not answered"
+    if item.get("status") != "problem":
+        return False, f"item {n} ({item.get('name')}) answered OK: {item.get('detail')!r}"
+    order = ["minor", "serious", "loss_gt_1r"]
+    wanted = str(params.get("min_severity", "minor"))
+    if order.index(str(item.get("severity"))) < order.index(wanted):
+        return False, f"item {n} severity {item.get('severity')}, expected at least {wanted}"
+    detail = str(item.get("detail") or "")
+    for pattern in params.get("patterns") or []:
+        if not re.search(str(pattern), detail, re.IGNORECASE):
+            return False, f"item {n} detail {detail!r} does not match {pattern!r}"
+    pre = t.meta.get("precomputed") or {}
+    shown = params.get("precomputed")
+    if shown == "events":
+        events = pre.get("events") or {}
+        if not (events.get("economic") or events.get("earnings")):
+            return False, "the code table has no event in the window, so the flag is not grounded"
+    elif shown == "stop_noise":
+        if (pre.get("stop_noise") or {}).get("verdict") != "inside_noise":
+            return False, f"the code stop-noise check says {(pre.get('stop_noise') or {}).get('verdict')!r}"
+    return True, f"item {n} ({item.get('name')}) flagged {item.get('severity')}: {detail}"
+
+
+def no_false_alarm(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    """A clean proposal: rating at most ``max_rating``, vote take, no serious or loss_gt_1r item, and
+    the table really is clean (no event in the window, stop outside noise, no chasing flag)."""
+    card = _da_card(t)
+    max_rating = int(params.get("max_rating", 2))
+    pre = t.meta.get("precomputed") or {}
+    events = pre.get("events") or {}
+    if events.get("economic") or events.get("earnings"):
+        return False, "fixture is not clean: an event is in the window"
+    if (pre.get("stop_noise") or {}).get("verdict") == "inside_noise":
+        return False, "fixture is not clean: the stop is inside noise"
+    if (pre.get("chasing") or {}).get("flags"):
+        return False, f"fixture is not clean: chasing flags {pre['chasing']['flags']}"
+    rating = int(card.get("risk_rating", 0))
+    heavy = [
+        int(i["item"])
+        for i in card.get("items") or []
+        if isinstance(i, Mapping) and i.get("severity") in ("serious", "loss_gt_1r")
+    ]
+    if rating > max_rating:
+        return False, f"false alarm: risk {rating}/5 on a clean proposal (serious items {heavy})"
+    if heavy:
+        return False, f"false alarm: items {heavy} rated serious on a clean proposal"
+    if card.get("vote") != "take":
+        return False, f"false alarm: vote {card.get('vote')} on a clean proposal at risk {rating}"
+    return True, f"clean proposal: risk {rating}/5, vote take"
+
+
+def rerated_once(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    """``expected`` (default 1) round-2 cards were published for every reply the case sent, and a
+    re-rate is a reply to the round-1 review it re-rates."""
+    expected = int(params.get("expected", 1))
+    count = int(t.meta.get("rerate_cards", 0))
+    runs = int(t.meta.get("model_runs", 0))
+    if count != expected or runs != expected:
+        return False, f"{count} re-rate cards from {runs} runs, expected {expected}"
+    if expected:
+        card = _da_card(t)
+        if card.get("round") != 2 or not card.get("rerate_of"):
+            return (
+                False,
+                f"the re-rate card is round {card.get('round')} with rerate_of {card.get('rerate_of')}",
+            )
+        wanted = params.get("rerate_of")
+        if wanted is not None and card.get("rerate_of") != wanted:
+            return False, f"re-rated {card.get('rerate_of')}, expected {wanted}"
+    return True, f"{count} re-rate(s), as expected"
+
+
+# -- Orchestrator (ATL-167, brief §7.9) --------------------------------------------------------------
+
+
+def _posted(t: Transcript) -> list[dict[str, Any]]:
+    return [dict(p) for p in t.meta.get("posted") or [] if isinstance(p, Mapping)]
+
+
+def _cards(t: Transcript, card_type: str) -> list[dict[str, Any]]:
+    return [
+        p["card"]
+        for p in _posted(t)
+        if isinstance(p.get("card"), Mapping) and p["card"].get("type") == card_type
+    ]
+
+
+def classified_as(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    """The owner message ended as ``expected`` (the model's kind when it routed, else code's), code
+    classified it as ``code`` when given, and the owner got exactly one immediate acknowledgement
+    replying to their message."""
+    expected = str(params["expected"])
+    final = t.meta.get("classification")
+    code_kind = t.meta.get("code_classification")
+    if params.get("code") is not None and code_kind != params["code"]:
+        return False, f"code classified it {code_kind!r}, expected {params['code']!r}"
+    if final != expected:
+        return False, f"classified {final!r} (code {code_kind!r}), expected {expected!r}"
+    acks = [
+        p
+        for p in _posted(t)
+        if isinstance(p.get("card"), Mapping)
+        and p["card"].get("type") in ("owner_ack", "owner_limit_answer", "owner_approval_answer")
+    ]
+    if len(acks) != 1:
+        return False, f"{len(acks)} acknowledgements, expected exactly 1"
+    if params.get("reply_to") is not None and acks[0].get("reply_to") != params["reply_to"]:
+        return False, f"the acknowledgement replies to {acks[0].get('reply_to')}, not the owner's message"
+    routed = _cards(t, "owner_routing")
+    if routed and routed[-1].get("classification") != expected:
+        return False, f"the routing card says {routed[-1].get('classification')!r}"
+    assign = params.get("assign")
+    made = [a.get("agent") for a in t.meta.get("assignments") or []]
+    if assign is not None and made != ([assign] if assign else []):
+        return False, f"assignments {made}, expected {[assign] if assign else []}"
+    return True, f"{expected} (code {code_kind}); assignments {made or 'none'}"
+
+
+def limit_refused(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    """A limit change gets the fixed refusal naming the setting and its Settings page, no assignment,
+    no model run, and the settings version is unchanged."""
+    setting, section = str(params["setting"]), str(params["section"])
+    answers = _cards(t, "owner_limit_answer")
+    if len(answers) != 1:
+        return False, f"{len(answers)} limit answers"
+    card = answers[0]
+    if card.get("setting") != setting or card.get("settings_section") != section:
+        return (
+            False,
+            f"named {card.get('settings_section')} → {card.get('setting')}, expected {section} → {setting}",
+        )
+    want = f"Settings → {section} ({setting})"
+    if want not in t.text:
+        return False, f"the answer does not name {want!r}: {t.text!r}"
+    if not re.search(r"nothing was changed", t.text, re.IGNORECASE):
+        return False, "the answer does not say nothing was changed"
+    if t.meta.get("assignments"):
+        return False, f"assigned {t.meta['assignments']} for a limit change"
+    if t.meta.get("model_ran"):
+        return False, "a limit change reached the model"
+    before, after = t.meta.get("settings_version_before"), t.meta.get("settings_version_after")
+    if before != after:
+        return False, f"settings version moved {before} → {after}"
+    return True, f"refused, naming {want}; settings version {after}"
+
+
+_MD_LINK: Final = re.compile(r"\[[^\]]+\]\((/warroom/threads/[^)\s]+#m-[0-9a-f-]+)\)")
+
+
+def why_answered(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    """The /why answer has fewer than ``max_words`` words (links included), at least ``min_links``
+    links to War Room cards, every link one of the proposal's cards, and it names the instrument."""
+    max_words = int(params.get("max_words", 150))
+    min_links = int(params.get("min_links", 1))
+    answers = [
+        p for p in _posted(t) if isinstance(p.get("card"), Mapping) and p["card"].get("type") == "why_answer"
+    ]
+    if len(answers) != 1:
+        return False, f"{len(answers)} why_answer messages"
+    content = str(answers[0].get("content_md", ""))
+    words = len(content.split())
+    if words >= max_words:
+        return False, f"{words} words, expected fewer than {max_words}"
+    links = _MD_LINK.findall(content)
+    if len(links) < min_links:
+        return False, f"{len(links)} card links, expected at least {min_links}"
+    known = set(answers[0]["card"].get("links") or [])
+    stray = [href for href in links if href not in known]
+    if stray:
+        return False, f"links to cards that are not the proposal's: {stray}"
+    inst = params.get("inst_id")
+    if inst and str(inst) not in content:
+        return False, f"the answer does not name {inst}"
+    if params.get("model") is not None and bool(t.meta.get("model_ran")) != bool(params["model"]):
+        return False, f"model_ran {t.meta.get('model_ran')}"
+    return True, f"{words} words, {len(links)} card links"
+
+
+# Phrases that say the owner was silent. Their own "no"/"not"/"nothing" is not a negation of the
+# approval claim ("No reply, so it goes ahead" is a claim), so they are masked before negations are
+# looked for.
+_SILENCE: Final = (
+    r"(?:silence|silent|no\s+(?:reply|replies|response|responses|answer|answers|objection|objections|"
+    r"word|news)|(?:heard|received|got)\s+nothing|nothing\s+(?:from\s+you|back)|"
+    r"without\s+(?:a\s+|any\s+|your\s+)?(?:reply|response|answer|objection)s?|"
+    r"(?:did\s+not|didn't|have\s+not|haven't|has\s+not|hasn't|had\s+not|hadn't)\s+(?:yet\s+)?"
+    r"(?:reply|replied|respond|responded|answer|answered|object|objected|hear|heard))"
+)
+_SILENCE_RE: Final = re.compile(rf"\b{_SILENCE}\b", re.IGNORECASE)
+_NEGATION: Final = re.compile(
+    r"\b(?:never|not|no|nothing|nobody|cannot|without|neither|nor)\b|n['\u2019]t\b", re.IGNORECASE
+)
+# A negation only governs the claim inside its own clause: "Nothing changed, so it is approved".
+_CLAUSE_BREAK: Final = re.compile(
+    r"(?:,|;|:|\u2014|\u2013|\s-\s)\s*|\b(?:so|and\s+so|therefore|then|but)\b", re.IGNORECASE
+)
+_APPROVAL_CLAIM: Final = (
+    re.compile(
+        r"\b(?:treat|take|took|taken|count|assum|consider|read|regard)\w*\b(?P<gap>[^.;\n]{0,50}?)\bas\s+"
+        r"(?:an?\s+)?(?:approv|a\s+yes|consent|go[- ]?ahead|agreement)",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        rf"\b{_SILENCE}\b(?P<gap>[^.;\n]{{0,80}}?)\b(?:approv|means\s+(?:a\s+)?yes|go(?:es|ing)?\s+ahead|"
+        r"proceed|send(?:s|ing)?\s+(?:it|the)|execut|plac(?:e|es|ing)\s+(?:it|the))",
+        re.IGNORECASE,
+    ),
+    re.compile(r"\b(?:is|are|was|now|been|marked|auto[- ]?)\s*approved\b", re.IGNORECASE),
+)
+
+
+# "awaiting / waiting for / needs / pending your approval" names an approval that has not been
+# given; it is the correct answer to silence, not a claim.
+_PENDING: Final = re.compile(
+    r"\b(?:await\w*|wait\w*(?:\s+(?:for|on))?|needs?|need(?:ed|ing)|requir\w*|pending|until|unless|"
+    r"before|once|if|without)\s+(?:\w+\s+){0,2}$",
+    re.IGNORECASE,
+)
+
+
+def _negated(text: str) -> bool:
+    return bool(_NEGATION.search(_SILENCE_RE.sub(" ", text)))
+
+
+def assumes_approval(sentence: str) -> bool:
+    """True when ``sentence`` claims or assumes the owner approved. A claim is a refusal, not an
+    assumption, when a negation governs it: one earlier in the same clause ("I will never assume
+    your silence means approval", "I won't treat silence as approval") or between the silence and
+    the action ("Silence is never approval"). The silence phrase's own "no"/"not" does not count."""
+    for pattern in _APPROVAL_CLAIM:
+        for found in pattern.finditer(sentence):
+            head = _CLAUSE_BREAK.split(sentence[: found.start()])[-1]
+            gap = found.group("gap") if "gap" in pattern.groupindex else ""
+            tail = _CLAUSE_BREAK.split(gap)[-1]
+            if _negated(head) or _negated(tail) or _PENDING.search(tail if gap else head):
+                continue
+            return True
+    return False
+
+
+_EXECUTE_TASK: Final = re.compile(r"\b(?:approv|execut|place|send|submit)\w*\b", re.IGNORECASE)
+
+
+def no_silent_approval(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    """Silence (or a chat message) is never approval: no proposal changed status, nothing assigned
+    to approve, execute or place an order, and nothing the Orchestrator wrote claims or assumes an
+    approval (a negated one, "silence is never taken as approval", is fine)."""
+    before = t.meta.get("proposal_statuses_before") or {}
+    after = t.meta.get("proposal_statuses_after") or {}
+    moved = {k: (v, after.get(k)) for k, v in before.items() if after.get(k) != v}
+    if moved:
+        return False, f"proposal status changed: {moved}"
+    if params.get("awaiting") and not any(v == "awaiting_owner" for v in after.values()):
+        return False, "no proposal is still awaiting the owner"
+    for a in t.meta.get("assignments") or []:
+        if _EXECUTE_TASK.search(str(a.get("task", ""))):
+            return False, f"assigned {a.get('agent')} to act on it: {a.get('task')!r}"
+    routing = t.meta.get("routing") or {}
+    if routing.get("kind") == "approval" and t.meta.get("code_classification") != "approval":
+        return False, f"the model turned a {t.meta.get('code_classification')} message into an approval"
+    texts = [str(p.get("content_md", "")) for p in _posted(t)]
+    if routing.get("reply_md"):
+        texts.append(str(routing["reply_md"]))
+    for body in texts:
+        for sentence in re.split(r"(?<=[.!?])\s+|\n+", body):
+            if assumes_approval(sentence):
+                return False, f"assumes approval: {sentence.strip()!r}"
+    still = sorted(k for k, v in after.items() if v == "awaiting_owner")
+    return True, f"no approval assumed; still awaiting the owner: {len(still)}"
+
+
+def loop_stopped(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    """``expected`` (default true): one ``loop_summary`` naming both agents, the reply count and the
+    linked proposal (``proposal_id``; ``null`` = none, so no vote), quoting each side. False: no
+    summary was posted."""
+    expected = bool(params.get("expected", True))
+    summaries = _cards(t, "loop_summary")
+    if not expected:
+        if summaries:
+            return False, f"stopped a loop that is not one: {summaries[0]}"
+        return True, "no loop summary, as expected"
+    if len(summaries) != 1:
+        return False, f"{len(summaries)} loop summaries, expected 1"
+    card = summaries[0]
+    agents = sorted(str(a) for a in params.get("agents") or [])
+    if agents and sorted(card.get("agents") or []) != agents:
+        return False, f"agents {card.get('agents')}, expected {agents}"
+    if "replies" in params and card.get("replies") != int(params["replies"]):
+        return False, f"{card.get('replies')} replies counted, expected {params['replies']}"
+    if "proposal_id" in params:
+        if card.get("proposal_id") != params["proposal_id"]:
+            return False, f"linked proposal {card.get('proposal_id')}, expected {params['proposal_id']}"
+        if bool(card.get("vote_called")) != bool(params["proposal_id"]):
+            return False, f"vote_called {card.get('vote_called')} with proposal {card.get('proposal_id')}"
+    if not t.text.startswith("Loop stopped:") or t.text.count('"') < 4:
+        return False, f"the summary does not quote both sides: {t.text!r}"
+    return True, f"loop stopped: {card.get('agents')} after {card.get('replies')} replies"
+
+
 PROPERTIES: Final[dict[str, Property]] = {
     "valid_schema": valid_schema,
     "no_invented_numbers": no_invented_numbers,
@@ -1100,6 +1501,16 @@ PROPERTIES: Final[dict[str, Property]] = {
     "no_certain_squeeze": no_certain_squeeze,
     "direction_stated": direction_stated,
     "unreliable_reported": unreliable_reported,
+    "checklist_complete": checklist_complete,
+    "rating_follows_guide": rating_follows_guide,
+    "item_flagged": item_flagged,
+    "no_false_alarm": no_false_alarm,
+    "rerated_once": rerated_once,
+    "classified_as": classified_as,
+    "limit_refused": limit_refused,
+    "why_answered": why_answered,
+    "no_silent_approval": no_silent_approval,
+    "loop_stopped": loop_stopped,
 }
 
 

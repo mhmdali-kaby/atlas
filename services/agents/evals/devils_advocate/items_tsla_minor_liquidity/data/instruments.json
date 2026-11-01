@@ -1,0 +1,20 @@
+[
+ {
+  "id": "5dc46e04-1738-5bbd-bc34-f72ce5c147ce",
+  "env": "demo",
+  "inst_id": "TSLA-USDT-SWAP",
+  "inst_type": "SWAP",
+  "inst_family": "TSLA-USDT",
+  "base_ccy": "TSLA",
+  "quote_ccy": "USDT",
+  "settle_ccy": "USDT",
+  "ct_val": "1",
+  "lot_sz": "1",
+  "min_sz": "1",
+  "tick_sz": "0.01",
+  "max_lever": "20",
+  "state": "live",
+  "asset_class": "stock",
+  "list_time": "2025-02-27T09:00:00Z"
+ }
+]

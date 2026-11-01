@@ -1,12 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor, within } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import i18n from '../../../i18n'
 import en from '../../../i18n/locales/en/proposal.json'
 import type { Lang } from '../../../lib/format'
-import { DA_MESSAGE_ID, PROPOSAL_ID, proposalDetail, proposalMessage, sentDetail } from '../fixtures/proposal'
+import { BASIS, DA_MESSAGE_ID, PROPOSAL_ID, proposalDetail, proposalMessage, sentDetail } from '../fixtures/proposal'
 import { Message } from '../Message'
 import { proposalKey, stakeOf, type ProposalDetail } from './proposal'
 import { editErrors } from './ProposalSheets'
@@ -286,6 +286,42 @@ describe('proposal card', () => {
     state.detail = sentDetail()
     await qc.invalidateQueries({ queryKey: proposalKey(PROPOSAL_ID) })
     await waitFor(() => expect(within(card()).queryByTestId('pr-actions')).toBeNull())
+  })
+
+  it('the odds basis: the Historian hit rate and the adjustment under the probability (ATL-189)', async () => {
+    backend({ detail: proposalDetail({ probability_basis: { ...BASIS } }) })
+    draw()
+    await waitFor(() => expect(within(card()).getByTestId('pr-odds-basis')).toBeInTheDocument())
+    expect(within(card()).getByTestId('pr-odds-basis')).toHaveTextContent('Historian analogs 48%, +4 for the ETF catalyst')
+  })
+
+  it('the odds basis in Arabic, with a negative adjustment signed', async () => {
+    backend({ detail: proposalDetail({ probability_basis: { ...BASIS, reason: 'لمحفّز صناديق ETF' } }) })
+    draw('ar')
+    await waitFor(() => expect(within(card()).getByTestId('pr-odds-basis')).toBeInTheDocument())
+    expect(within(card()).getByTestId('pr-odds-basis')).toHaveTextContent('سوابق المؤرّخ 48%، و+4 لمحفّز صناديق ETF')
+    cleanup()
+    backend({ detail: proposalDetail({ probability_basis: { ...BASIS, analog_hit_rate: '0.55', adjustment_pts: '-3' } }) })
+    draw()
+    await waitFor(() => expect(within(card()).getByTestId('pr-odds-basis')).toHaveTextContent('Historian analogs 55%, −3 for the ETF catalyst'))
+  })
+
+  it('the odds basis reason is text: markup in it is shown, never parsed', async () => {
+    backend({ detail: proposalDetail({ probability_basis: { ...BASIS, reason: '<img src=x onerror=alert(1)> **bold**' } }) })
+    draw()
+    await waitFor(() => expect(within(card()).getByTestId('pr-odds-basis')).toBeInTheDocument())
+    const line = within(card()).getByTestId('pr-odds-basis')
+    expect(line).toHaveTextContent('<img src=x onerror=alert(1)> **bold**')
+    expect(line.querySelector('img, strong')).toBeNull()
+  })
+
+  it('no basis: no pr-odds-basis element and nothing in its place', async () => {
+    backend({ detail: proposalDetail({ probability_basis: null }) })
+    draw()
+    await waitFor(() => expect(card()).toHaveAttribute('data-status', 'awaiting_owner'))
+    expect(within(card()).getByTestId('pr-odds')).toBeInTheDocument()
+    expect(within(card()).queryByTestId('pr-odds-basis')).toBeNull()
+    expect(within(card()).getByTestId('pr-odds').closest('dd')!.children).toHaveLength(1)
   })
 
   it('Arabic: words translated, figures stay left-to-right islands', async () => {

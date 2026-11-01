@@ -1,0 +1,1139 @@
+{
+  "agent": "devils_advocate",
+  "mode": "fake",
+  "label": "ATL-167",
+  "started_at": "2026-11-01T17:16:43.172485+00:00",
+  "finished_at": "2026-11-01T17:16:57.247332+00:00",
+  "cases": [
+    {
+      "case_id": "clean_avax_short",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at [10]"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 2 = the guide's for its items; vote take"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 23 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "no_false_alarm",
+          "passed": true,
+          "detail": "clean proposal: risk 2/5, vote take"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "clean_btc_long",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at none"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 1 = the guide's for its items; vote take"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 15 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "no_false_alarm",
+          "passed": true,
+          "detail": "clean proposal: risk 1/5, vote take"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "clean_eth_short",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at none"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 1 = the guide's for its items; vote take"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 15 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "no_false_alarm",
+          "passed": true,
+          "detail": "clean proposal: risk 1/5, vote take"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "clean_spy_long",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at none"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 1 = the guide's for its items; vote take"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 15 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "no_false_alarm",
+          "passed": true,
+          "detail": "clean proposal: risk 1/5, vote take"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "clean_xag_long",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at none"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 1 = the guide's for its items; vote take"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 15 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "no_false_alarm",
+          "passed": true,
+          "detail": "clean proposal: risk 1/5, vote take"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "clean_xau_long",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at [2]"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 2 = the guide's for its items; vote take"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 19 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "no_false_alarm",
+          "passed": true,
+          "detail": "clean proposal: risk 2/5, vote take"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "event_btc_fomc",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at [1]"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 3 = the guide's for its items; vote change"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 27 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "item_flagged",
+          "passed": true,
+          "detail": "item 1 (event_risk) flagged serious: FOMC Rate Decision (importance 5) is 600 minutes into the 1440-minute window"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "event_eth_short_ppi",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at [1]"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 3 = the guide's for its items; vote change"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 27 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "item_flagged",
+          "passed": true,
+          "detail": "item 1 (event_risk) flagged serious: US PPI (importance 4) is 420 minutes into the 1440-minute window"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "event_spy_nfp",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at [1]"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 3 = the guide's for its items; vote change"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 27 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "item_flagged",
+          "passed": true,
+          "detail": "item 1 (event_risk) flagged serious: Non-Farm Payrolls (importance 5) is 60 minutes into the 1440-minute window"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "event_tsla_earnings",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at [1]"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 3 = the guide's for its items; vote change"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 19 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "item_flagged",
+          "passed": true,
+          "detail": "item 1 (event_risk) flagged serious: TSLA earnings on 2026-04-15 fall inside the 1440-minute window"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "event_xau_us_cpi",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at [1]"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 3 = the guide's for its items; vote change"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 27 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "item_flagged",
+          "passed": true,
+          "detail": "item 1 (event_risk) flagged serious: US CPI (importance 5) is 180 minutes into the 1440-minute window"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "guide_avax_rating2",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at [2]"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 2 = the guide's for its items; vote take"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 19 numbers, all traced to tool outputs"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "guide_eth_rating4",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at [3, 4]"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 4 = the guide's for its items; vote skip"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 25 numbers, all traced to tool outputs"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "guide_link_rating1",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at none"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 1 = the guide's for its items; vote take"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 15 numbers, all traced to tool outputs"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "guide_nvda_rating3",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at [10]"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 3 = the guide's for its items; vote change"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 23 numbers, all traced to tool outputs"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "guide_xau_rating5",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at [1, 4]"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 5 = the guide's for its items; vote skip"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 27 numbers, all traced to tool outputs"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "items_btc_minor_overconfidence",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at [10]"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 2 = the guide's for its items; vote take"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 23 numbers, all traced to tool outputs"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "items_eth_minor_history_crowding",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at [2, 3]"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 2 = the guide's for its items; vote take"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 20 numbers, all traced to tool outputs"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "items_sol_short_minor_priced_in",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at [8]"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 2 = the guide's for its items; vote take"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 19 numbers, all traced to tool outputs"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "items_tsla_minor_liquidity",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at [7]"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 2 = the guide's for its items; vote take"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 19 numbers, all traced to tool outputs"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "items_xag_minor_data_quality",
+      "status": "ok",
+      "error": null,
+      "passed": 4,
+      "total": 4,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at [9, 10]"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 2 = the guide's for its items; vote take"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 25 numbers, all traced to tool outputs"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "noise_btc_tight_stop",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at [4]"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 3 = the guide's for its items; vote change"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 43 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "item_flagged",
+          "passed": true,
+          "detail": "item 4 (stop_quality) flagged serious: stop 63800.3 is 449.75 from the entry 64250.05, inside 0.8 x the median 4H range (threshold 616.8, ratio 0.73)"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "noise_link_tight_stop",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at [4]"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 3 = the guide's for its items; vote change"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 43 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "item_flagged",
+          "passed": true,
+          "detail": "item 4 (stop_quality) flagged serious: stop 11.439 is 0.081 from the entry 11.52, inside 0.8 x the median 4H range (threshold 0.11, ratio 0.73)"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "noise_nvda_tight_stop",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at [4]"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 3 = the guide's for its items; vote change"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 43 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "item_flagged",
+          "passed": true,
+          "detail": "item 4 (stop_quality) flagged serious: stop 120.85 is 0.85 from the entry 121.7, inside 0.8 x the median 4H range (threshold 1.17, ratio 0.73)"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "noise_sol_short_tight_stop",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at [4]"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 3 = the guide's for its items; vote change"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 43 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "item_flagged",
+          "passed": true,
+          "detail": "item 4 (stop_quality) flagged serious: stop 153.47 is 1.07 from the entry 152.4, inside 0.8 x the median 4H range (threshold 1.46, ratio 0.73)"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "noise_xag_tight_stop",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at [4]"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 3 = the guide's for its items; vote change"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 43 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "item_flagged",
+          "passed": true,
+          "detail": "item 4 (stop_quality) flagged serious: stop 30.982 is 0.218 from the entry 31.2, inside 0.8 x the median 4H range (threshold 0.299, ratio 0.73)"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "rerate_btc_second_reply_ignored",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at [4]"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 3 = the guide's for its items; vote change"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 43 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rerated_once",
+          "passed": true,
+          "detail": "1 re-rate(s), as expected"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "rerate_eth_third_reply_ignored",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at [10]"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 2 = the guide's for its items; vote take"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 23 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rerated_once",
+          "passed": true,
+          "detail": "1 re-rate(s), as expected"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    },
+    {
+      "case_id": "rerate_sol_already_stored",
+      "status": "ok",
+      "error": null,
+      "passed": 1,
+      "total": 1,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rerated_once",
+          "passed": true,
+          "detail": "0 re-rate(s), as expected"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "turns": 0
+    },
+    {
+      "case_id": "rerate_tsla_reply_to_rerate",
+      "status": "ok",
+      "error": null,
+      "passed": 1,
+      "total": 1,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "rerated_once",
+          "passed": true,
+          "detail": "0 re-rate(s), as expected"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 0,
+      "tokens_out": 0,
+      "turns": 0
+    },
+    {
+      "case_id": "rerate_xau_once_fix_applied",
+      "status": "ok",
+      "error": null,
+      "passed": 5,
+      "total": 5,
+      "pass_rate": 100.0,
+      "properties": [
+        {
+          "name": "valid_schema",
+          "passed": true,
+          "detail": "card is a valid DevilsReview"
+        },
+        {
+          "name": "checklist_complete",
+          "passed": true,
+          "detail": "all 10 items answered in order; problems at [1]"
+        },
+        {
+          "name": "rating_follows_guide",
+          "passed": true,
+          "detail": "risk_rating 3 = the guide's for its items; vote take"
+        },
+        {
+          "name": "no_invented_numbers",
+          "passed": true,
+          "detail": "numguard: 27 numbers, all traced to tool outputs"
+        },
+        {
+          "name": "rerated_once",
+          "passed": true,
+          "detail": "1 re-rate(s), as expected"
+        }
+      ],
+      "tool_calls": 0,
+      "tokens_in": 6400,
+      "tokens_out": 720,
+      "turns": 1
+    }
+  ],
+  "overall": {
+    "passed": 137,
+    "total": 137,
+    "pass_rate": 100.0
+  },
+  "baseline": {
+    "path": "/Users/mhmd/Work/atlas/wt-task-atl-167/services/agents/evals/devils_advocate/baseline.json",
+    "pass_rate": null,
+    "max_drop_points": 5.0,
+    "ok": true
+  }
+}

@@ -1,0 +1,24 @@
+[
+ {
+  "id": "6e35c2b7-34dd-55ab-9afa-bdfb294d144f",
+  "env": "demo",
+  "proposal_id": "305b6842-57f3-552a-afe4-b7b7e6f43f7e",
+  "agent": "technical_analyst",
+  "vote": "take",
+  "confidence": "0.65",
+  "reason": "Squeeze.",
+  "created_at": "2026-05-31T15:40:00Z",
+  "updated_at": "2026-05-31T15:40:00Z"
+ },
+ {
+  "id": "aa371069-aad8-51ea-a421-e7f870829de3",
+  "env": "demo",
+  "proposal_id": "305b6842-57f3-552a-afe4-b7b7e6f43f7e",
+  "agent": "devils_advocate",
+  "vote": "take",
+  "confidence": "0.6",
+  "reason": "Risk 2/5.",
+  "created_at": "2026-05-31T15:41:00Z",
+  "updated_at": "2026-05-31T15:41:00Z"
+ }
+]

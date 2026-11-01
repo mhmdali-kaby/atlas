@@ -1,0 +1,38 @@
+[
+ {
+  "id": "87a34d44-be88-57a3-9f49-538742629f62",
+  "env": "demo",
+  "version": 1,
+  "kind": "entry",
+  "author": "strategist",
+  "inst_id": "XAG-USDT-SWAP",
+  "side": "buy",
+  "order_type": "limit",
+  "entry_zone": [
+   "31.169",
+   "31.231"
+  ],
+  "stop": "30.576",
+  "take_profits": [
+   {
+    "price": "32.448",
+    "pct": "50"
+   },
+   {
+    "price": "33.072",
+    "pct": "50"
+   }
+  ],
+  "time_stop_minutes": 1440,
+  "size_suggestion_pct": "2.5",
+  "leverage_suggestion": 2,
+  "expected_r": "2.4",
+  "probability": "0.55",
+  "rationale_md": "Long XAG-USDT-SWAP from the setup.",
+  "invalidation": "1H close beyond 30.576",
+  "evidence": [],
+  "status": "under_review",
+  "created_at": "2026-04-26T08:58:00Z",
+  "updated_at": "2026-04-26T08:58:00Z"
+ }
+]

@@ -1,0 +1,31 @@
+[
+ {
+  "id": "ec252ceb-de8c-5621-97fd-17e3098ded5d",
+  "env": "demo",
+  "proposal_id": "305b6842-57f3-552a-afe4-b7b7e6f43f7e",
+  "risk_check_id": "c068be96-5e48-57dc-a33f-0f70c9aa07d2",
+  "cl_ord_id": "atlasT5L1M3",
+  "ord_id": "1990077",
+  "inst_id": "TSLA-USDT-SWAP",
+  "side": "buy",
+  "pos_side": null,
+  "ord_type": "limit",
+  "td_mode": "isolated",
+  "px": "251.2",
+  "sz": "20",
+  "filled_sz": "0",
+  "avg_px": null,
+  "lever": 2,
+  "fee": null,
+  "fee_ccy": null,
+  "state": "live",
+  "reduce_only": false,
+  "origin": "atlas",
+  "purpose": "entry",
+  "last_error_code": null,
+  "last_error_msg": null,
+  "raw": {},
+  "created_at": "2026-05-31T15:52:00Z",
+  "updated_at": "2026-05-31T15:52:00Z"
+ }
+]

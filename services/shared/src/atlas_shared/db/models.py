@@ -735,6 +735,9 @@ class Proposal(_Row, Base):
     leverage_suggestion: Mapped[int | None] = mapped_column(Integer, nullable=True)
     expected_r: Mapped[Decimal | None] = mapped_column(_num(), nullable=True)
     probability: Mapped[Decimal | None] = mapped_column(Numeric(6, 4, asdecimal=True), nullable=True)
+    probability_basis: Mapped[Any | None] = mapped_column(JSONB, nullable=True)
+    """ATL-189, entries only, optional: {analog_hit_rate (0-1, string), n, adjustment_pts (string),
+    reason (untrusted model text)}."""
     rationale_md: Mapped[str] = _text_blank()
     invalidation: Mapped[str] = _text_blank()
     evidence: Mapped[Any] = _jsonb_list()

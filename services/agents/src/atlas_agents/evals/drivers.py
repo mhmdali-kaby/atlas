@@ -45,6 +45,7 @@ eval scores what the owner would see:
 
 from __future__ import annotations
 
+import asyncio
 import re
 import uuid
 from collections.abc import Awaitable, Callable, Mapping
@@ -547,11 +548,360 @@ async def derivatives_sentiment_driver(
     )
 
 
+# -- devils_advocate ---------------------------------------------------------------------------------
+
+
+def _warroom_payloads(recorder: Any, since: int, author: str) -> list[dict[str, Any]]:
+    """``warroom.message`` payloads by ``author`` published on atlas.warroom after event ``since``."""
+    events = list(getattr(recorder, "events", []))[since:]
+    return [
+        dict(env.payload)
+        for stream, env in events
+        if stream == "atlas.warroom" and env.type == "warroom.message" and env.payload.get("author") == author
+    ]
+
+
+class _DevilsHost(_RecordingHost):
+    """Records every card rejection of the Devil's Advocate's reviewer, so a case whose card fails
+    validation reports why (``checklist items missing: 4 (stop_quality)``) and not only that the
+    scripted run had no second answer for the retry."""
+
+    def __init__(self, inner: Supervisor) -> None:
+        super().__init__(inner)
+        self.rejections: list[str] = []
+        self.results: list[RunResult] = []
+
+    async def run(self, agent: str, prompt: str, **kwargs: Any) -> RunResult:
+        inner_reviewer = kwargs.get("reviewer")
+        if inner_reviewer is not None:
+            rejections = self.rejections
+
+            async def recording(text: str, messages: list[Any], attempt: int) -> Any:
+                verdict = await inner_reviewer(text, messages, attempt)
+                if verdict.failure is not None:
+                    rejections.append(str(verdict.failure))
+                elif verdict.follow_up is not None:
+                    first = str(verdict.follow_up).split("\n", 1)[0]
+                    rejections.append(first.removeprefix("Your DevilsReview card was not accepted: "))
+                return verdict
+
+            kwargs["reviewer"] = recording
+        self.prompt = prompt
+        self.reviewer = inner_reviewer
+        result = await self._inner.run(agent, prompt, **kwargs)
+        self.results.append(result)
+        return result
+
+
+def _da_judgments(card: Mapping[str, Any]) -> dict[str, Any]:
+    """The Devil's Advocate's own judgments (item numbers, severities' rating, confidence) for the
+    number guard's pool, as the other drivers add their agent's ranks and probabilities."""
+    return {
+        "as_of": None,
+        "source": "agent:devils_advocate judgments",
+        "data": {
+            "items": list(range(1, 11)),
+            "risk_rating": card.get("risk_rating"),
+            "rating_scale": 5,
+            "confidence": card.get("confidence"),
+            "version": card.get("version"),
+            "round": card.get("round"),
+        },
+    }
+
+
+async def devils_advocate_driver(
+    supervisor: Supervisor, case: EvalCase
+) -> tuple[RunResult | None, props.Transcript]:
+    """``inputs.mode`` ``review`` (default): :func:`atlas_agents.devils_advocate.review` of
+    ``inputs.proposal_id`` (a proposal in the snapshot, its War Room card ``inputs.message_id``):
+    code builds the precomputed table, the model answers, code validates the card, applies the
+    rating guide and vote rules, casts the vote and posts the card.
+
+    ``rerate``: the Strategist's reply goes through the production hook
+    :func:`atlas_agents.agents.devils_advocate.on_strategist_reply` once for every entry of
+    ``inputs.replies`` (``{reply_to, content_md}``; ``reply_to`` is a stored War Room message row
+    id), and the driver waits for the background re-rates. ``meta.rerate_cards`` counts the round-2
+    cards published; the transcript card is the first of them.
+
+    The transcript card is the posted ``da_review`` without its runtime parts: ``precomputed``,
+    ``corrections`` and ``meta`` go to ``Transcript.meta``. The tool outputs are the run's plus the
+    precomputed table, the proposal the model saw and its own judgments."""
+    from atlas_shared.events import EventEnvelope
+
+    from atlas_agents import devils_advocate as da
+    from atlas_agents.agents import devils_advocate as da_hooks
+
+    mode = str(case.inputs.get("mode", "review"))
+    recorder = getattr(supervisor, "_publish", None)
+    since = len(getattr(recorder, "events", []))
+    host = _DevilsHost(supervisor)
+    meta: dict[str, Any] = {"mode": mode}
+    result: RunResult | None = None
+    if mode == "rerate":
+        ctx = supervisor.tool_context(da.SLUG)
+        for reply in case.inputs.get("replies") or []:
+            reviewed = da.message_row(ctx, str(reply["reply_to"]))
+            card_ = (reviewed or {}).get("card") or {}
+            # The hook's in-process guard is per (env, proposal); a re-run of this case starts clean.
+            da_hooks._rerated.discard((supervisor.env, str(card_.get("proposal_id"))))
+        for index, reply in enumerate(case.inputs.get("replies") or []):
+            envelope = EventEnvelope(
+                id=uuid.uuid5(uuid.NAMESPACE_URL, f"eval/{case.case_id}/reply/{index}"),
+                type="warroom.message",
+                ts=ctx.now(),
+                env=supervisor.env,
+                source="agent:strategist",
+                correlation_id=f"eval-{case.case_id}",
+                payload={
+                    "author_type": "agent",
+                    "author": da.STRATEGIST,
+                    "kind": "text",
+                    "content_md": str(reply.get("content_md", "")),
+                    "reply_to": str(reply["reply_to"]),
+                },
+            )
+            await da_hooks.on_strategist_reply(cast(AgentHost, host), envelope)
+            await da_hooks.settled()
+    else:
+        result = await da.review(
+            cast(AgentHost, host),
+            str(case.inputs["proposal_id"]),
+            message_id=case.inputs.get("message_id"),
+            correlation_id=f"eval-{case.case_id}",
+            trigger="eval",
+        )
+        if result is None:
+            return None, props.Transcript(
+                status="error",
+                error="the proposal was not reviewed (unknown or not open)",
+                prompt=case.prompt,
+            )
+    posted = _warroom_payloads(recorder, since, da.SLUG)
+    # A run's final War Room message is the RunResult's ``message`` (the supervisor posts it).
+    posted += [dict(r.message, author=da.SLUG) for r in host.results if r.status == "ok" and r.message]
+    cards = [
+        dict(p["card"])
+        for p in posted
+        if isinstance(p.get("card"), Mapping) and p["card"].get("type") == "da_review"
+    ]
+    meta["model_runs"] = len(host.results)
+    meta["rejections"] = list(host.rejections)
+    meta["rerate_cards"] = sum(1 for c in cards if c.get("round") == 2)
+    meta["review_cards"] = len(cards)
+    meta["posted"] = posted
+    if mode == "rerate":
+        # The hooks run in the background: the case's run is the first re-rate, or none at all
+        # (an ``ok`` run with ``meta.model_runs = 0``).
+        result = (
+            host.results[0]
+            if host.results
+            else RunResult(run_id=uuid.uuid5(uuid.NAMESPACE_URL, f"eval/{case.case_id}"), status="ok")
+        )
+    assert result is not None
+    if result.status != "ok" and host.rejections:
+        result.error = f"{result.error or result.status}; card rejected: {' | '.join(host.rejections)}"
+    base = transcript(result, host.prompt or case.prompt)
+    outputs = list(base.tool_outputs)
+    inputs = getattr(host.reviewer, "inputs", None)
+    row = getattr(host.reviewer, "row", None)
+    if isinstance(inputs, Mapping):
+        outputs.append({"as_of": inputs.get("as_of"), "source": da.SOURCE, "data": dict(inputs)})
+    if row is not None:
+        outputs.append({"as_of": None, "source": "postgres:proposals", "data": da._proposal_view(row)})
+    card: dict[str, Any] | None = None
+    text = ""
+    if cards:
+        raw = cards[0]
+        meta["corrections"] = list(raw.pop("corrections", None) or [])
+        meta["precomputed"] = raw.pop("precomputed", None)
+        meta["card_meta"] = raw.pop("meta", None)
+        card = raw
+        outputs.append(_da_judgments(card))
+        text = str(
+            next(p for p in posted if p.get("card") and p["card"].get("type") == "da_review")["content_md"]
+        )
+    return result, props.Transcript(
+        status=result.status,
+        text=text,
+        card=card,
+        tool_calls=base.tool_calls,
+        tool_outputs=outputs,
+        error=result.error,
+        prompt=base.prompt,
+        meta=meta,
+    )
+
+
+# -- orchestrator ------------------------------------------------------------------------------------
+
+
+def _settings_version(supervisor: Supervisor) -> int | None:
+    from sqlalchemy import text as sql
+
+    with supervisor.tool_context("orchestrator").session_factory() as session:
+        found = session.execute(
+            sql("SELECT version FROM settings WHERE env = :env"), {"env": supervisor.env}
+        ).first()
+    return None if found is None else int(found[0])
+
+
+def _proposal_statuses(supervisor: Supervisor) -> dict[str, str]:
+    from atlas_shared.db import Proposal
+    from sqlalchemy import select
+
+    with supervisor.tool_context("orchestrator").session_factory() as session:
+        rows = session.execute(
+            select(Proposal.id, Proposal.status).where(Proposal.env == supervisor.env)
+        ).all()
+    return {str(r[0]): str(r[1]) for r in rows}
+
+
+_LINKS_LINE = re.compile(r"(?m)^Cards: \[.*$")
+
+
+async def orchestrator_driver(
+    supervisor: Supervisor, case: EvalCase
+) -> tuple[RunResult | None, props.Transcript]:
+    """``inputs.mode`` ``owner`` (default): ``inputs.message`` is an owner War Room message (its row
+    ``inputs.message_row`` and thread ``inputs.thread_id`` in the snapshot). It takes the production
+    steps the hook takes outside replay (``take_owner_message`` returns early while replaying):
+    ``/why <id>`` goes to :func:`atlas_agents.orchestrator.why.answer_why`; anything else to
+    :func:`atlas_agents.orchestrator.owner.handle_owner_message` (code classification and the
+    acknowledgement) and, for a non-decisive kind, :func:`owner.route` (the model's routing run).
+
+    ``loop``: ``inputs.replies`` (``{author, author_type, content_md, reply_to, card}``) are fed in
+    order to :func:`atlas_agents.orchestrator.loops.observe` as War Room messages of
+    ``inputs.thread_id``; a hit goes to :func:`loops.stop`, as the hook does.
+
+    The transcript text is everything the Orchestrator posted and the card its last card.
+    ``Transcript.meta`` holds the posted messages, the code and final classification, the routing
+    the model gave (``routing``), the assignments, and the settings version and proposal statuses
+    before and after the run (nothing the Orchestrator does may change them)."""
+    from atlas_shared.events import EventEnvelope
+
+    from atlas_agents.orchestrator import classify as cls
+    from atlas_agents.orchestrator import loops, owner, why
+
+    slug = "orchestrator"
+    mode = str(case.inputs.get("mode", "owner"))
+    recorder = getattr(supervisor, "_publish", None)
+    since = len(getattr(recorder, "events", []))
+    ctx = supervisor.tool_context(slug)
+    host = _RecordingHost(supervisor)
+    meta: dict[str, Any] = {
+        "mode": mode,
+        "settings_version_before": _settings_version(supervisor),
+        "proposal_statuses_before": _proposal_statuses(supervisor),
+    }
+    result: RunResult | None = None
+    outputs: list[dict[str, Any]] = []
+    thread_id = case.inputs.get("thread_id")
+    if mode == "loop":
+        loops.reset()
+        try:
+            for index, reply in enumerate(case.inputs.get("replies") or []):
+                payload = {
+                    "author_type": str(reply.get("author_type", "agent")),
+                    "author": str(reply["author"]),
+                    "kind": str(reply.get("kind", "text")),
+                    "content_md": str(reply.get("content_md", "")),
+                    "thread_id": thread_id,
+                    "reply_to": reply.get("reply_to"),
+                    "card": reply.get("card"),
+                }
+                envelope = EventEnvelope(
+                    id=uuid.uuid5(uuid.NAMESPACE_URL, f"eval/{case.case_id}/msg/{index}"),
+                    type="warroom.message",
+                    ts=ctx.now(),
+                    env=supervisor.env,
+                    source=f"agent:{payload['author']}",
+                    correlation_id=f"eval-{case.case_id}",
+                    payload=payload,
+                )
+                hit = loops.observe(envelope)
+                if hit is not None:
+                    meta["loop_proposal_id"] = await loops.stop(cast(AgentHost, host), hit)
+        finally:
+            loops.reset()
+    else:
+        content = str(case.inputs["message"])
+        message = owner.OwnerMessage(
+            event_id=str(uuid.uuid5(uuid.NAMESPACE_URL, f"eval/{case.case_id}/owner")),
+            env=supervisor.env,
+            content=content,
+            ts=ctx.now(),
+            row_id=case.inputs.get("message_row"),
+            thread_id=thread_id,
+            correlation_id=f"eval-{case.case_id}",
+        )
+        target = why.why_target(content)
+        if target is not None:
+            meta["why_target"] = target
+            evidence = await asyncio.to_thread(why.why_evidence, ctx, target) if target else None
+            if evidence is not None:
+                outputs.append(
+                    {
+                        "as_of": None,
+                        "source": "code:orchestrator why evidence",
+                        "data": {"facts": evidence.facts, "messages": evidence.messages},
+                    }
+                )
+            result = await why.answer_why(cast(AgentHost, host), message, target)
+        elif not content.lstrip().startswith("/"):
+            guess = await owner.handle_owner_message(cast(AgentHost, host), message)
+            meta["code_classification"] = guess.kind
+            meta["classification"] = guess.kind
+            if guess.kind not in cls.DECISIVE:
+                result = await owner.route(cast(AgentHost, host), message, guess)
+                accepted = getattr(host.reviewer, "accepted", None)
+                if accepted is not None:
+                    meta["routing"] = accepted.model_dump(mode="json")
+                    meta["classification"] = accepted.kind
+    meta["model_ran"] = result is not None
+    if result is None:
+        result = RunResult(run_id=uuid.uuid5(uuid.NAMESPACE_URL, f"eval/{case.case_id}"), status="ok")
+    posted = _warroom_payloads(recorder, since, slug)
+    if meta["model_ran"] and result.status == "ok" and result.message:
+        # The run's final War Room message is the RunResult's ``message`` (the supervisor posts it).
+        posted.append(dict(result.message, author=slug))
+    meta["posted"] = posted
+    meta["assignments"] = [
+        dict(p["card"])
+        for p in posted
+        if isinstance(p.get("card"), Mapping) and p["card"].get("type") == "assignment"
+    ]
+    meta["settings_version_after"] = _settings_version(supervisor)
+    meta["proposal_statuses_after"] = _proposal_statuses(supervisor)
+    base = transcript(result, host.prompt or case.prompt)
+    cards = [dict(p["card"]) for p in posted if isinstance(p.get("card"), Mapping)]
+    for card in cards:
+        card.pop("links", None)  # code's hrefs to the cards (why_answered reads them from meta.posted)
+    if meta.get("routing"):
+        # The model's own routing (its deadline, the task it wrote) joins the number guard's pool.
+        outputs.append({"as_of": None, "source": "agent:orchestrator routing", "data": meta["routing"]})
+    # The "Cards: [..](/warroom/threads/..#m-..)" line of a /why answer is code's, not the model's:
+    # it is checked by why_answered, and left out of the text the number guard reads.
+    text = "\n\n".join(_LINKS_LINE.sub("", str(p.get("content_md", ""))).strip() for p in posted).strip()
+    return result, props.Transcript(
+        status=result.status,
+        text=text,
+        card=cards[-1] if cards else None,
+        tool_calls=base.tool_calls,
+        tool_outputs=[*base.tool_outputs, *outputs],
+        error=result.error,
+        prompt=str(case.inputs.get("message") or case.prompt),
+        meta=meta,
+    )
+
+
 DRIVERS: dict[str, Driver] = {
     "market_scout": market_scout_driver,
     "technical_analyst": technical_analyst_driver,
     "strategist": strategist_driver,
     "derivatives_sentiment": derivatives_sentiment_driver,
+    "devils_advocate": devils_advocate_driver,
+    "orchestrator": orchestrator_driver,
 }
 
 
@@ -564,7 +914,9 @@ __all__ = [
     "Driver",
     "default_driver",
     "derivatives_sentiment_driver",
+    "devils_advocate_driver",
     "driver_for",
     "market_scout_driver",
+    "orchestrator_driver",
     "technical_analyst_driver",
 ]

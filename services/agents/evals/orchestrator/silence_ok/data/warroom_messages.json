@@ -1,0 +1,17 @@
+[
+ {
+  "id": "6456cc64-3584-5fbb-bc3e-643b725df9b1",
+  "env": "demo",
+  "thread_id": "015aa9b8-2a3f-5947-b527-88cf3f86611e",
+  "event_id": "1d51d4d2-d884-52e5-a1d5-d91a4d40c82f",
+  "author_type": "human",
+  "author": "owner",
+  "kind": "text",
+  "content_md": "ok",
+  "card": null,
+  "reply_to": null,
+  "mentions": [],
+  "created_at": "2026-05-18T07:59:59Z",
+  "updated_at": "2026-05-18T07:59:59Z"
+ }
+]
