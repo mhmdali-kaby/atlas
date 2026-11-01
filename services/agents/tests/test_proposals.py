@@ -235,6 +235,48 @@ async def test_a_proposal_without_a_stop_is_refused_by_the_schema(world: World) 
     assert rec.events == []
 
 
+_BASIS = {"analog_hit_rate": 0.46, "n": 31, "adjustment_pts": 4, "reason": "ETF catalyst"}
+
+
+@pytest.mark.parametrize(
+    ("basis", "expected"),
+    [
+        ({**_BASIS, "analog_hit_rate": 0.30, "adjustment_pts": 20}, "outside +/-15"),
+        ({**_BASIS, "adjustment_pts": -16}, "outside +/-15"),
+        ({**_BASIS, "adjustment_pts": 6.5}, "does not add up"),  # 46 + 6.5 = 52.5 vs 50
+        ({**_BASIS, "analog_hit_rate": 0.40}, "does not add up"),  # 40 + 4 = 44 vs 50
+    ],
+)
+async def test_a_probability_basis_out_of_bounds_or_not_adding_up_is_refused(
+    world: World, basis: dict[str, Any], expected: str
+) -> None:
+    """ATL-189: |adjustment_pts| <= 15 and hit rate + adjustment = probability within 1 pt."""
+    rec = Recorder()
+    error, out = await _submit(world, rec, probability_basis=basis)
+    assert error and out["error"] == "invalid_proposal", out
+    assert "probability_basis" in out["message"] and expected in out["message"]
+    assert world.proposals() == []
+    assert rec.events == []
+
+
+async def test_a_valid_probability_basis_is_stored_and_on_the_card(world: World) -> None:
+    rec = Recorder()
+    # 46 + 4.8 = 50.8 vs 50: inside the 1 pt tolerance.
+    error, out = await _submit(world, rec, probability_basis={**_BASIS, "adjustment_pts": 4.8})
+    assert not error, out
+    [row] = world.proposals()
+    stored = {"analog_hit_rate": "0.46", "n": 31, "adjustment_pts": "4.8", "reason": "ETF catalyst"}
+    assert row.probability_basis == stored
+    assert rec.events[0][1].payload["card"]["probability_basis"] == stored
+
+
+async def test_a_proposal_without_a_basis_stores_null(world: World) -> None:
+    error, out = await _submit(world)
+    assert not error, out
+    [row] = world.proposals()
+    assert row.probability_basis is None
+
+
 # -- AC2: the six checklist items -----------------------------------------------------------------------
 
 

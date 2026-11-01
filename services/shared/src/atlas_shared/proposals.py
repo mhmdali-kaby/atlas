@@ -40,6 +40,36 @@ class EvidenceRef(_Model):
     id: str = Field(min_length=1, max_length=200)
 
 
+MAX_ADJUSTMENT_PTS: Decimal = Decimal(15)
+"""Brief §7.6 step 3: the Strategist adjusts the analog hit rate by at most +/-15 percentage points."""
+BASIS_TOLERANCE_PTS: Decimal = Decimal(1)
+"""analog_hit_rate + adjustment_pts must equal probability_estimate within this many points."""
+
+
+class ProbabilityBasis(_Model):
+    """How the Strategist reached ``probability_estimate`` (brief §7.6 step 3, ATL-189): the
+    Historian's analog hit rate (0-1, like probability_estimate), the number of analogs, and its
+    adjustment in percentage points with a one-line reason. ``reason`` is model text: untrusted."""
+
+    analog_hit_rate: Decimal = Field(ge=0, le=1)
+    n: int = Field(ge=0)
+    adjustment_pts: Decimal
+    reason: str = Field(min_length=1, max_length=200)
+
+    @model_validator(mode="after")
+    def _bounded(self) -> ProbabilityBasis:
+        if abs(self.adjustment_pts) > MAX_ADJUSTMENT_PTS:
+            raise ValueError(
+                f"adjustment_pts {self.adjustment_pts} is outside +/-{MAX_ADJUSTMENT_PTS} points of the "
+                "analog hit rate"
+            )
+        return self
+
+    def implied_probability_pts(self) -> Decimal:
+        """analog_hit_rate in points plus the adjustment."""
+        return self.analog_hit_rate * 100 + self.adjustment_pts
+
+
 def _check_targets(take_profits: tuple[TakeProfit, ...] | list[TakeProfit]) -> None:
     total = sum((tp.pct for tp in take_profits), Decimal(0))
     if total > 100:
@@ -65,9 +95,22 @@ class TradeProposal(_Model):
     rationale_md: str = Field(min_length=1, max_length=8000)
     invalidation: str = Field(min_length=1, max_length=2000)
     evidence: list[EvidenceRef] = Field(default_factory=list, max_length=50)
+    probability_basis: ProbabilityBasis | None = None
+    """Optional (ATL-189): the analog hit rate and adjustment behind probability_estimate."""
 
     @model_validator(mode="after")
     def _consistent(self) -> TradeProposal:
+        if self.probability_basis is not None:
+            implied = self.probability_basis.implied_probability_pts()
+            stated = self.probability_estimate * 100
+            if abs(implied - stated) > BASIS_TOLERANCE_PTS:
+                raise ValueError(
+                    f"probability_basis does not add up: analog_hit_rate "
+                    f"{(self.probability_basis.analog_hit_rate * 100).normalize()} pts + adjustment "
+                    f"{self.probability_basis.adjustment_pts.normalize()} pts = {implied.normalize()} pts, "
+                    f"but probability_estimate is {stated.normalize()} pts (tolerance "
+                    f"{BASIS_TOLERANCE_PTS} pt)"
+                )
         if self.entry_zone is not None:
             low, high = self.entry_zone
             if low <= 0 or high < low:
@@ -129,8 +172,11 @@ def validate_position_action(kind: str, action: PositionAction) -> list[str]:
 
 
 __all__ = [
+    "BASIS_TOLERANCE_PTS",
+    "MAX_ADJUSTMENT_PTS",
     "POSITION_ACTION_KINDS",
     "EvidenceRef",
+    "ProbabilityBasis",
     "OrderType",
     "PositionAction",
     "ProposalKind",
