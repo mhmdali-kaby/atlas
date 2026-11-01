@@ -1513,6 +1513,23 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "squeeze_move_atr": 2,
                 "squeeze_hours": 48,
             },
+            "portfolio_manager": {
+                "loser_limit_r": "1.1",
+            },
+            "orchestrator": {
+                "grace_seconds": 120,
+            },
+            "historian": {
+                "horizons": [
+                    "1h",
+                    "4h",
+                    "24h",
+                    "72h",
+                ],
+                "price_bar": "5m",
+                "max_price_lag_minutes": 30,
+                "lookback_days": 5,
+            },
             "paper": {
                 "statuses": [
                     "rejected",
