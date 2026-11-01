@@ -92,10 +92,14 @@ it('stores a published news.alert as a news_alert message that GET /api/warroom/
 
     expect(WarroomMessage::query()->where('event_id', $envelope['id'])->value('env'))->toBe('demo');
 
-    expect($this->broadcasts->sent)->toHaveCount(1)
+    // ATL-214: an alert on a held instrument is also one owner notification on private-system.
+    expect($this->broadcasts->sent)->toHaveCount(2)
         ->and($this->broadcasts->sent[0]['channels'])->toBe(['private-warroom'])
         ->and($this->broadcasts->sent[0]['event'])->toBe('warroom.message')
-        ->and($this->broadcasts->sent[0]['payload']['kind'])->toBe('news_alert');
+        ->and($this->broadcasts->sent[0]['payload']['kind'])->toBe('news_alert')
+        ->and($this->broadcasts->sent[1]['channels'])->toBe(['private-system'])
+        ->and($this->broadcasts->sent[1]['event'])->toBe('notification.created')
+        ->and($this->broadcasts->sent[1]['payload']['event'])->toBe('news_alert');
 });
 
 it('stores one row when the same story alert is published twice', function (): void {
@@ -105,7 +109,7 @@ it('stores one row when the same story alert is published twice', function (): v
     atl65Bridge()->readOnce(ATL65_CONSUMER, 10);
 
     expect(WarroomMessage::query()->where('kind', 'news_alert')->count())->toBe(1)
-        ->and($this->broadcasts->sent)->toHaveCount(1);
+        ->and(array_column($this->broadcasts->sent, 'event'))->toBe(['warroom.message', 'notification.created']);
 });
 
 it('keeps untrusted headline text out of content_md markup, and keeps it verbatim in the card', function (): void {

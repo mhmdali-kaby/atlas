@@ -62,6 +62,10 @@ class UpdateSettingsRequest extends FormRequest
                 default => ['sometimes', 'integer:strict', 'between:'.implode(',', SettingsSchema::agentIntegerBounds($setting))],
             };
         }
+        // ATL-214: notifications.<event>.<channel> switches (dotted keys, escaped like the agents').
+        foreach (SettingsSchema::notificationFields() as $field) {
+            $rules['changes.'.self::escape($field)] = ['sometimes', 'boolean:strict'];
+        }
         // ATL-124: markets toggles and lists.
         foreach (SettingsSchema::BOOLEAN_FIELDS as $field) {
             $rules["changes.{$field}"] = ['sometimes', 'boolean:strict'];

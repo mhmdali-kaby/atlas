@@ -7,6 +7,7 @@ namespace App\Support\Events;
 use App\Http\Resources\WarroomMessageResource;
 use App\Models\WarroomMessage;
 use App\Models\WarroomThread;
+use App\Support\Notifications\Notifier;
 use App\Support\Warroom\MentionParser;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
@@ -23,6 +24,7 @@ use Illuminate\Validation\Rule;
  * atlas.warroom, atlas.account or atlas.system is broadcast as-is on `private-warroom`,
  * `private-account` or `private-system`, named by its envelope `type`, with the envelope as the
  * payload; atlas.proposals events (`proposal.*`) go to `private-warroom` the same way. Other streams have no browser channel yet and are only acknowledged.
+ * Brief §17 events on any stream also become a stored `notification.created` (ATL-214, Notifier).
  *
  * Throws MalformedEvent for entries that can never succeed (the bridge acks and logs them); any
  * other exception is transient (the bridge leaves the entry pending and retries it).
@@ -56,7 +58,13 @@ final class BridgeEventHandler
 
     public const OUTCOME_IGNORED = 'ignored';
 
+    public function __construct(private readonly Notifier $notifier) {}
+
     /**
+     * Every entry is also offered to the Notifier (ATL-214), which stores and broadcasts the brief
+     * §17 events once per envelope id; War Room messages are offered after they are stored, so the
+     * notification can link to the stored message.
+     *
      * @return self::OUTCOME_*
      */
     public function handle(string $stream, ?string $raw): string
@@ -70,12 +78,19 @@ final class BridgeEventHandler
         if ($stream === 'atlas.warroom' && in_array($envelope['type'], [self::MESSAGE_EVENT, self::NEWS_ALERT_EVENT], true)) {
             $message = $this->persist($envelope);
             if ($message === null) {
+                // Stored on an earlier delivery; the notification is keyed on the envelope id too,
+                // so offering it again only fills in one a failed earlier attempt did not store.
+                $this->notifier->handle($stream, $envelope, WarroomMessage::query()->where('event_id', $envelope['id'])->first());
+
                 return self::OUTCOME_DUPLICATE;
             }
             $this->broadcast('warroom', self::MESSAGE_EVENT, (new WarroomMessageResource($message))->resolve());
+            $this->notifier->handle($stream, $envelope, $message);
 
             return self::OUTCOME_PERSISTED;
         }
+
+        $this->notifier->handle($stream, $envelope);
 
         $channel = self::CHANNELS[$stream] ?? null;
         if ($channel === null) {

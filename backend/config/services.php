@@ -35,6 +35,11 @@ return [
         'timeout' => 10,
     ],
 
+    // ATL-215: links in Telegram messages point at the local SPA (the owner opens them on the Mac).
+    'telegram' => [
+        'app_url' => env('FRONTEND_URL', 'http://localhost:3000'),
+    ],
+
     // Decision #242: agents run on the owner's logged-in Claude Code CLI, not an API key.
     // `null` means atlas:doctor looks for `claude` on PATH; ATLAS_CLAUDE_BIN names an exact path
     // when the CLI isn't on PATH for the user running `./atlas up`.
