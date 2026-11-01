@@ -37,7 +37,7 @@ describe('shell registry', () => {
     expect(shellRegistry.areas.map((a) => a.id)).toEqual(['warroom', 'agents', 'portfolio', 'settings'])
     const paths = (area: string) => shellRegistry.navEntries.filter((e) => e.area === area).map((e) => e.path)
     expect(paths('portfolio')).toEqual(['/portfolio', '/portfolio/positions', '/portfolio/orders', '/portfolio/holdings', '/portfolio/cashflows', '/portfolio/history'])
-    expect(paths('settings')).toEqual(['/settings/connections', '/settings/risk', '/settings/money', '/settings/agents', '/settings/data', '/settings/sources'])
+    expect(paths('settings')).toEqual(['/settings/connections', '/settings/risk', '/settings/money', '/settings/markets', '/settings/agents', '/settings/data', '/settings/sources'])
   })
 
   it('adds a fake feature\'s area and sections without touching any other module', () => {
