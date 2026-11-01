@@ -37,6 +37,7 @@
   "tpRow": "{{pct}} at {{r}}",
   "odds": "Odds",
   "oddsV": "{{p}} to reach TP1 before the stop",
+  "oddsBasis": "Historian analogs {{rate}}, {{adj}} {{reason}}",
   "plan": "Plan",
   "planV": "Expected {{r}}, {{order}}, closes after {{time}} if neither the stop nor TP1 is hit",
   "planNoTime": "Expected {{r}}, {{order}}",

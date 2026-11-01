@@ -51,7 +51,8 @@ Test ids: `pr-card` (`data-status`, `data-proposal-id`), `pr-status`, `pr-countd
 - No "Now" marker on the proposal's ladder: the resource carries no mark price (the risk check does
   not store the mark it used, and the browser has no live price feed yet). Nothing is shown in its
   place. It needs a `mark` on ProposalView (e.g. read from the md Redis hash) — follow-up.
-- No Odds sub-line ("Historian analogs 48%, +4 for the ETF catalyst"): the proposal stores only
-  `probability_estimate`, not the analog base rate or the adjustment. Nothing is shown in its place;
-  it needs the Strategist to record both as structured fields — follow-up.
+- Odds sub-line ("Historian analogs 48%, +4 for the ETF catalyst", `pr-odds-basis`): built by ATL-189
+  from the optional `probability_basis` {analog_hit_rate 0-1, n, adjustment_pts, reason} that
+  submit_proposal validates (|adjustment| <= 15 pts; hit rate + adjustment = probability within 1 pt)
+  and /api/proposals returns. No basis, no line. `reason` is model text, rendered as a text node.
   Deferral of these two asked of UX in the room (QA round 1).
