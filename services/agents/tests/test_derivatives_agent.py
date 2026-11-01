@@ -241,8 +241,9 @@ def test_disabled_by_default_and_registers_its_triggers() -> None:
     found = discover_hooks()[SLUG]
     assert found.on_mention is hooks.answer_mention
     assert set(found.on_event) == {"warroom.message.watchlist"}
-    assert {h.name for h in found.schedule} == {hooks.FUNDING_JOB, hooks.EXTREME_JOB}
-    assert all(not h.daily for h in found.schedule)
+    # ATL-195 adds the daily 00:15 scoring hook (atlas_agents.agents.scores).
+    assert {h.name for h in found.schedule} == {hooks.FUNDING_JOB, hooks.EXTREME_JOB, "scoring"}
+    assert all(not h.daily for h in found.schedule if h.name != "scoring")
 
 
 # -- AC2: watchlist card -> one run per pick; regime is code's ---------------------------------------

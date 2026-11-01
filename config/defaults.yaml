@@ -1203,6 +1203,35 @@ agents:
       atr_bars: 100
     news:
       latency_target_seconds: 90
+    # ATL-195, brief §7.4 Scoring: the Technical Analyst's TechnicalSetup cards of the day
+    # (atlas_agents.scorecards.technical). Each card is scored from its created_at (t0).
+    #   walk_bar: candles walked for trigger, stop and target (ambiguous bar = stop first).
+    #   atr_bar/atr_bars: tolerance unit, Wilder ATR(quant.atr_window) of these bars closed by t0.
+    #   level_tolerance_atr: a level is held while no walk_bar close crosses it by more than this.
+    #   outcome_hours: level-hold and "no setup" range window; trade_hours: trigger + resolution.
+    technical:
+      walk_bar: 15m
+      atr_bar: 1H
+      atr_bars: 100
+      level_tolerance_atr: "0.25"
+      outcome_hours: 24
+      trade_hours: 24
+    # ATL-195, brief §7.5 Scoring: the Derivatives & Sentiment Analyst's PositioningReport cards
+    # (atlas_agents.scorecards.derivatives), each from its created_at (t0).
+    #   supports_hours: supports_direction is checked against the sign of the price_bar
+    #     close-to-close move over this many hours (zero move = miss).
+    #   squeeze_call_min: a squeeze call is squeeze_risk >= this; it hits when price moves
+    #     squeeze_move_atr x ATR(atr_bar) in the squeeze direction (high/low of price_bar bars)
+    #     within squeeze_hours. The Brier score covers every stated squeeze probability.
+    derivatives:
+      price_bar: 1H
+      max_price_lag_minutes: 120
+      atr_bar: 1D
+      atr_bars: 100
+      supports_hours: 24
+      squeeze_call_min: "0.6"
+      squeeze_move_atr: 2
+      squeeze_hours: 48
   # ATL-132, brief §7.4: the Technical Analyst's deterministic precompute (atlas_agents.ta), per
   # timeframe. EMA/RSI/ATR/ADX are atlas_quant.indicators (the backtester's definitions).
   #   slope_bars: EMA slope = (EMA_t / EMA_{t-k} - 1) x 100 / k, in % per bar.

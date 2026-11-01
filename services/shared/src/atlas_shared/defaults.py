@@ -1452,6 +1452,24 @@ DEFAULTS: Final[dict[str, Any]] = {
             "news": {
                 "latency_target_seconds": 90,
             },
+            "technical": {
+                "walk_bar": "15m",
+                "atr_bar": "1H",
+                "atr_bars": 100,
+                "level_tolerance_atr": "0.25",
+                "outcome_hours": 24,
+                "trade_hours": 24,
+            },
+            "derivatives": {
+                "price_bar": "1H",
+                "max_price_lag_minutes": 120,
+                "atr_bar": "1D",
+                "atr_bars": 100,
+                "supports_hours": 24,
+                "squeeze_call_min": "0.6",
+                "squeeze_move_atr": 2,
+                "squeeze_hours": 48,
+            },
         },
         "ta": {
             "timeframes": [
