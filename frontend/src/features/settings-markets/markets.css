@@ -1,0 +1,60 @@
+/*
+ * Settings → Markets (ATL-131; design v14 css for settings-markets). Built from the Settings system:
+ * grouped inset rows (.sa-row, .ml-row), steppers, token fields and the save bar. No new colours.
+ */
+.mk-page { gap: 22px; }
+
+/* a changed row carries a short accent bar at its inline start until it is saved */
+.mk-page .sa-row.is-changed::after {
+  content: ""; position: absolute; inset-inline-start: 5px; top: 50%; width: 3px; height: 20px; margin-top: -10px;
+  border-radius: 2px; background: var(--accent);
+}
+.mk-page .sa-row.sa-list.is-changed::after { top: 22px; margin-top: 0; }
+
+/* ---- asset classes: a 28px icon tile, label, switch ---------------------- */
+.mk-class { gap: 12px; }
+.mk-page .mk-class + .sa-row::before, .mk-page .mk-class + .mk-class::before { inset-inline-start: 56px; }
+.mk-row-icon {
+  width: 28px; height: 28px; flex: none; display: grid; place-items: center;
+  border-radius: 7px; background: var(--fill-3); color: var(--label-secondary);
+}
+.mk-row-icon svg { width: 16px; height: 16px; }
+.mk-class.is-later .sa-row-label { color: var(--label-secondary); }
+
+/* ---- numbers ------------------------------------------------------------- */
+.mk-stepper.is-usd .st-stepper-input { width: 172px; padding-inline: 10px 44px; }
+.mk-stepper.is-bps .st-stepper-input { width: 96px; padding-inline: 10px 38px; }
+.mk-stepper.is-int .st-stepper-input { width: 72px; }
+.mk-stepper.is-error .st-stepper-input { border-color: var(--loss); }
+.mk-num.is-dim .ml-row-main label { color: var(--label-secondary); }
+
+/* ---- instrument lists ---------------------------------------------------- */
+.mk-chip.is-warn { background: var(--warning-wash); }
+.mk-chip-warn { display: inline-flex; color: var(--warning-ink); margin-inline-end: 4px; }
+.mk-chip-warn svg { width: 13px; height: 13px; }
+
+/* the matches: a popover under the field (the group clips overflow) */
+.mk-pop {
+  z-index: 60; max-height: 280px; overflow: auto; padding: 5px;
+  border-radius: 12px; background: var(--material-popover);
+  -webkit-backdrop-filter: var(--material-filter); backdrop-filter: var(--material-filter);
+  box-shadow: var(--shadow-popover), 0 0 0 0.5px var(--hairline-color);
+}
+.mk-lb { margin: 0; padding: 0; list-style: none; }
+.mk-opt {
+  display: flex; align-items: baseline; gap: 8px; min-height: 30px; padding: 5px 10px; border-radius: 7px;
+  font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); color: var(--label); cursor: default;
+}
+.mk-opt[aria-selected='true'] { background: var(--accent-solid); color: #fff; }
+.mk-opt[aria-selected='true'] .mk-opt-market, .mk-opt[aria-selected='true'] .mk-opt-state { color: #fff; }
+.mk-opt[aria-disabled='true'] { color: var(--label-secondary); }
+.mk-opt-id { font-weight: 500; }
+.mk-opt-market { font-size: var(--fs-footnote); color: var(--label-secondary); }
+.mk-opt-state { margin-inline-start: auto; font-size: var(--fs-footnote); color: var(--label-secondary); }
+.mk-pop-empty { padding: 8px 10px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+
+@media (max-width: 760px) {
+  .mk-num { flex-wrap: wrap; row-gap: 10px; }
+  .mk-num .ml-row-main { flex-basis: 100%; }
+  .mk-num .st-stepper { margin-inline-start: auto; }
+}
