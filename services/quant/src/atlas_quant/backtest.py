@@ -151,6 +151,40 @@ class InstrumentBacktest(BaseModel):
     overfit_warning: bool
 
 
+class EquityPoint(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    ts: datetime
+    equity: float  # starting equity = 1.0, after fees, slippage and funding
+
+
+class Trade(BaseModel):
+    """One closed trade of a run. Prices are fill prices (slippage included); ``pnl`` and ``fees`` are
+    fractions of the run's starting equity, ``pnl`` after fees and funding."""
+
+    model_config = ConfigDict(frozen=True)
+
+    side: Literal["long", "short"]
+    entry_ts: datetime
+    exit_ts: datetime
+    entry_price: float
+    exit_price: float
+    size: float  # units of the instrument
+    pnl: float
+    return_pct: float  # vectorbt's trade return x 100 (before funding)
+    fees: float
+    funding: float
+
+
+class RunDetail(BaseModel):
+    """The bar equity curve and the trades of an instrument's full-period run (ATL-205)."""
+
+    model_config = ConfigDict(frozen=True)
+
+    equity_curve: list[EquityPoint]
+    trades: list[Trade]
+
+
 class BacktestResult(BaseModel):
     model_config = ConfigDict(frozen=True)
 
@@ -164,6 +198,16 @@ class BacktestResult(BaseModel):
     n_trades: int
     data_gap: bool  # any instrument
     overfit_warning: bool  # any instrument
+
+
+class DetailedBacktest(BaseModel):
+    """:func:`backtest_rule_detailed`'s answer: the same ``result`` as :func:`backtest_rule`, plus
+    each instrument's full-period equity curve and trades."""
+
+    model_config = ConfigDict(frozen=True)
+
+    result: BacktestResult
+    details: dict[str, RunDetail]
 
 
 def _cfg() -> Mapping[str, Any]:
@@ -241,14 +285,29 @@ def _run(
     bar: str,
     ppy: float,
 ) -> Metrics:
+    return _simulate(df, entry_raw, exit_raw, rule, fee, slip, funding, bar, ppy)[0]
+
+
+def _simulate(
+    df: pd.DataFrame,
+    entry_raw: pd.Series[bool],
+    exit_raw: pd.Series[bool],
+    rule: RuleSpec,
+    fee: float,
+    slip: float,
+    funding: pd.Series[float] | None,
+    bar: str,
+    ppy: float,
+) -> tuple[Metrics, RunDetail]:
     n = len(df)
     if n < 2:
+        points = [EquityPoint(ts=df.index[0].to_pydatetime(), equity=1.0)] if n else []
         return Metrics(
             start=None if n == 0 else df.index[0].to_pydatetime(),
             end=None if n == 0 else df.index[-1].to_pydatetime(),
             bars=n, total_return=None, cagr=None, sharpe=None, sortino=None, max_drawdown=0.0,
             n_trades=0, win_rate=None, profit_factor=None, fees_paid=0.0, funding_paid=0.0,
-        )  # fmt: skip
+        ), RunDetail(equity_curve=points, trades=[])  # fmt: skip
     o = df["o"].astype("float64")
     c = df["c"].astype("float64")
     entries = entry_raw.shift(1, fill_value=False).astype(bool)
@@ -285,6 +344,7 @@ def _run(
     fees_paid = float((trades["entry_fees"] + trades["exit_fees"]).sum())
 
     funding_cost = np.zeros(n)
+    trade_funding = np.zeros(len(pnl))
     if funding is not None and not funding.empty:
         assets = np.asarray(pf.assets(), dtype="float64")
         pos = {int(ts.value): i for i, ts in enumerate(pd.DatetimeIndex(df.index))}
@@ -299,7 +359,8 @@ def _run(
         entry_idx = trades["entry_idx"].to_numpy(dtype="int64")
         exit_idx = trades["exit_idx"].to_numpy(dtype="int64")
         for k in range(len(pnl)):
-            pnl[k] -= float(funding_cost[entry_idx[k] : exit_idx[k]].sum())
+            trade_funding[k] = float(funding_cost[entry_idx[k] : exit_idx[k]].sum())
+            pnl[k] -= trade_funding[k]
     equity = value - np.cumsum(funding_cost)
 
     r = equity[1:] / equity[:-1] - 1.0
@@ -310,7 +371,28 @@ def _run(
     max_dd = float(np.min(equity / running - 1.0))
     wins = pnl[pnl > 0]
     losses = pnl[pnl < 0]
-    return Metrics(
+    index = pd.DatetimeIndex(df.index)
+    detail = RunDetail(
+        equity_curve=[
+            EquityPoint(ts=ts.to_pydatetime(), equity=float(e)) for ts, e in zip(index, equity, strict=True)
+        ],
+        trades=[
+            Trade(
+                side="long" if int(row["direction"]) == 0 else "short",
+                entry_ts=index[int(row["entry_idx"])].to_pydatetime(),
+                exit_ts=index[int(row["exit_idx"])].to_pydatetime(),
+                entry_price=float(row["entry_price"]),
+                exit_price=float(row["exit_price"]),
+                size=float(row["size"]),
+                pnl=float(pnl[k]),
+                return_pct=float(row["return"]) * 100.0,
+                fees=float(row["entry_fees"] + row["exit_fees"]),
+                funding=float(trade_funding[k]),
+            )
+            for k, (_, row) in enumerate(trades.iterrows())
+        ],
+    )
+    metrics = Metrics(
         start=df.index[0].to_pydatetime(),
         end=df.index[-1].to_pydatetime(),
         bars=n,
@@ -325,6 +407,7 @@ def _run(
         fees_paid=fees_paid,
         funding_paid=float(funding_cost.sum()),
     )
+    return metrics, detail
 
 
 def _gap_notes(
@@ -375,6 +458,23 @@ def backtest_rule(
     asset_class: str | None = None,
 ) -> BacktestResult:
     """Backtest ``rule_spec`` on each frame over ``period`` (``start <= ts < end``; None = all bars)."""
+    return backtest_rule_detailed(
+        rule_spec, frames, period, costs, splits=splits, quality=quality, bar=bar, asset_class=asset_class
+    ).result
+
+
+def backtest_rule_detailed(
+    rule_spec: RuleSpec,
+    frames: Mapping[str, pd.DataFrame],
+    period: tuple[datetime, datetime] | None,
+    costs: Costs,
+    *,
+    splits: int | None = None,
+    quality: Mapping[str, DataQuality] | None = None,
+    bar: str | None = None,
+    asset_class: str | None = None,
+) -> DetailedBacktest:
+    """:func:`backtest_rule` that also returns each instrument's full-period equity curve and trades."""
     cfg = _cfg()
     k = int(cfg["walk_forward_splits"]) if splits is None else splits
     if k < 1:
@@ -385,6 +485,7 @@ def backtest_rule(
     bounds = None if period is None else (_aware(period[0]), _aware(period[1]))
 
     results: list[InstrumentBacktest] = []
+    details: dict[str, RunDetail] = {}
     for inst_id, raw in frames.items():
         if not isinstance(raw.index, pd.DatetimeIndex) or raw.index.tz is None:
             raise ValueError(f"{inst_id}: frame index must be a timezone-aware DatetimeIndex")
@@ -423,13 +524,16 @@ def backtest_rule(
         oos_mean = float(np.mean(oos_s)) if oos_s else None
         overfit = is_mean is not None and is_mean > 0 and (oos_mean or 0.0) < fraction * is_mean
         notes = _gap_notes(df, inst_bar, bounds, (quality or {}).get(inst_id))
+        full, details[inst_id] = _simulate(
+            df, entry_raw, exit_raw, rule_spec, costs.taker_fee_rate, slip, funding, inst_bar, ppy
+        )
         results.append(
             InstrumentBacktest(
                 inst_id=inst_id,
                 bar=inst_bar,
                 data_gap=bool(notes),
                 gap_notes=notes,
-                full=run(0, len(df)),
+                full=full,
                 folds=folds,
                 is_sharpe_mean=is_mean,
                 oos_sharpe_mean=oos_mean,
@@ -437,7 +541,7 @@ def backtest_rule(
             )
         )
 
-    return BacktestResult(
+    result = BacktestResult(
         rule=rule_spec,
         period_start=None if bounds is None else bounds[0],
         period_end=None if bounds is None else bounds[1],
@@ -449,3 +553,4 @@ def backtest_rule(
         data_gap=any(r.data_gap for r in results),
         overfit_warning=any(r.overfit_warning for r in results),
     )
+    return DetailedBacktest(result=result, details=details)
