@@ -39,9 +39,11 @@ is (docs/DECISIONS.md #252):
 - **Ports** — `mocked` (3140), `spa` (3141), `api` (8140), `core` (8141) and `reverb` (8142) each
   get the same deterministic offset (0-2990, from the checkout's sha1 hash) added to their base, so
   two worktrees land on different ports and neither can reach a real port. `stack.ts` prints the
-  chosen ports once at startup, the way `bootstrap.php` prints the Pest test database name.
-  `E2E_PORT`, `E2E_FLOW_PORT`, `E2E_API_PORT`, `E2E_CORE_PORT` and `E2E_REVERB_PORT` each override
-  one port and win over the derived value.
+  chosen ports once at startup, the way `bootstrap.php` prints the Pest test database name — once
+  per run, not once per worker, because the print is guarded on `TEST_WORKER_INDEX` (unset in the
+  main process that loads `playwright.config.ts`, set in every worker). `E2E_PORT`,
+  `E2E_FLOW_PORT`, `E2E_API_PORT`, `E2E_CORE_PORT` and `E2E_REVERB_PORT` each override one port and
+  win over the derived value. Set `E2E_QUIET_STARTUP_LOG=1` to silence the ports line entirely.
 
 ## OKX demo integration tests (brief §19, ATL-152)
 
