@@ -295,7 +295,10 @@ def run_checks(ctx: RiskContext, config: Mapping[str, Any] | None = None) -> Out
             continue
         if n == 9:
             res, decision = decide_autonomy(
-                eng.autonomy_level, int(DEFAULTS["autonomy"]["max_enabled_level"])
+                eng.autonomy_level,
+                int(DEFAULTS["autonomy"]["max_enabled_level"]),
+                notional_usd=None if sizing is None else sizing.final_notional_usd,
+                ask_above_usd=eng.autonomy_ask_above_usd,
             )
         else:
             res = step(n)

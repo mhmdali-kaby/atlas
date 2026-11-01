@@ -65,7 +65,8 @@ return [
         ],
         'on_approval_timeout' => 'reject',
         'approval_timeout_minutes' => 15,
-        'max_enabled_level' => 2,
+        'max_enabled_level' => 4,
+        'ask_above_usd' => '1000',
     ],
     'markets' => [
         'min_24h_volume_usd' => [

@@ -55,6 +55,7 @@ from trading_core.risk.rules import (
     OpenPosition,
     ScheduledEvent,
     check_loss_limits,
+    decide_autonomy,
     us_session_open,
 )
 
@@ -422,13 +423,85 @@ def test_event_outside_the_window_or_below_5_passes_check_8() -> None:
 
 @pytest.mark.parametrize(
     ("level", "decision"),
-    [(1, "advise_only"), (2, "awaiting_owner"), (3, "awaiting_owner"), (4, "awaiting_owner")],
+    # The happy path resizes to max_usdt_per_trade = 1000 = the default ask-above amount, and
+    # equality sends at level 3 (ATL-212).
+    [(1, "advise_only"), (2, "awaiting_owner"), (3, "send_now"), (4, "send_now")],
 )
 def test_autonomy_level_sets_the_decision(level: int, decision: str) -> None:
     out = run_checks(ctx(settings={"autonomy_level": level}))
     assert out.result != "rejected"
     assert out.decision == decision
     assert out.checks[8]["status"] == "passed"
+
+
+# --- ATL-212: autonomy 3 (ask above an amount) and 4 (full auto) --------------------------------
+
+
+@pytest.mark.parametrize(
+    ("level", "notional", "decision", "note"),
+    [
+        (3, D("999.99"), "send_now", None),
+        (3, D("1000"), "send_now", None),
+        (3, D("1000.00"), "send_now", None),
+        (3, D("1000.01"), "awaiting_owner", "above_ask_threshold"),
+        (4, D("1000.01"), "send_now", None),
+        (4, D("99999999"), "send_now", None),
+        (2, D("999.99"), "awaiting_owner", None),
+        (2, D("1000.01"), "awaiting_owner", None),
+        (1, D("999.99"), "advise_only", None),
+        (1, D("1000.01"), "advise_only", None),
+    ],
+)
+def test_decide_autonomy_boundaries(level: int, notional: D, decision: str, note: str | None) -> None:
+    res, got = decide_autonomy(level, 4, notional_usd=notional, ask_above_usd=D("1000"))
+    assert got == decision
+    assert res.passed
+    assert res.values.get("note") == note
+    assert res.values["ask_above_usd"] == D("1000") and res.values["notional_usd"] == notional
+
+
+def test_decide_autonomy_never_sends_above_the_enabled_level_or_while_halted() -> None:
+    _, gated = decide_autonomy(4, 3, notional_usd=D(1), ask_above_usd=D(1000))
+    assert gated == "awaiting_owner"
+    for level in (3, 4):
+        res, halted = decide_autonomy(
+            level, 4, notional_usd=D(1), ask_above_usd=D(1000), risk_reducing=True, halted=True
+        )
+        assert halted == "awaiting_owner" and res.values["note"] == "halted"
+    _, unknown = decide_autonomy(3, 4, notional_usd=None, ask_above_usd=D(1000))
+    assert unknown == "awaiting_owner"
+
+
+def test_level_3_compares_the_final_notional_with_the_ask_above_setting() -> None:
+    base = run_checks(ctx(settings={"autonomy_level": 2}))
+    assert base.sizing is not None and base.sizing.final_notional_usd is not None
+    n = base.sizing.final_notional_usd
+    at = run_checks(ctx(settings={"autonomy_level": 3, "autonomy_ask_above_usd": str(n)}))
+    assert at.decision == "send_now"
+    below = run_checks(
+        ctx(settings={"autonomy_level": 3, "autonomy_ask_above_usd": str(n - D("0.01"))})
+    )
+    assert below.result != "rejected" and below.decision == "awaiting_owner"
+    assert below.checks[8]["values"]["note"] == "above_ask_threshold"
+    assert below.checks[8]["values"]["notional_usd"] == str(n)
+    full = run_checks(ctx(settings={"autonomy_level": 4, "autonomy_ask_above_usd": "0"}))
+    assert full.decision == "send_now"
+
+
+@pytest.mark.parametrize("level", [3, 4])
+def test_paused_or_a_breaker_rejects_at_check_1_at_autonomy_3_and_4(level: int) -> None:
+    settings = {"autonomy_level": level, "autonomy_ask_above_usd": "1000000000"}
+    for out, code in (
+        (run_checks(ctx(settings=settings, paused=True, pause_reason="kill switch")), "trading_paused"),
+        (run_checks(ctx(settings=settings, active_breakers=("daily_loss",))), "circuit_breaker_active"),
+        (
+            run_checks(ctx(settings=settings, active_breakers=("okx_errors", "data_stale"))),
+            "circuit_breaker_active",
+        ),
+    ):
+        _rejected_at(out, 1, code)
+        assert out.decision != "send_now"
+        assert out.checks[8]["status"] == "not_run"
 
 
 TC_SRC = Path(__file__).resolve().parents[1] / "src" / "trading_core"
