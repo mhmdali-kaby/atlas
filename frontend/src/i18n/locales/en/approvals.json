@@ -1,0 +1,21 @@
+{
+  "pill": {
+    "label_one": "{{count}} to approve",
+    "label_other": "{{count}} to approve",
+    "labelWarn_one": "Last minute: {{count}} to approve",
+    "labelWarn_other": "Last minute: {{count}} to approve",
+    "aria_one": "A trade is waiting for your approval, {{time}} left. Open it in the War Room.",
+    "aria_other": "{{count}} trades are waiting for your approval; the first closes in {{time}}. Open it in the War Room.",
+    "ariaWarn_one": "Last minute: a trade is waiting for your approval, {{time}} left. Open it in the War Room.",
+    "ariaWarn_other": "Last minute: {{count}} trades are waiting for your approval; the first closes in {{time}}. Open it in the War Room."
+  },
+  "side": {
+    "buy": "long",
+    "sell": "short"
+  },
+  "toast": {
+    "title": "Trade waiting for your approval",
+    "body": "{{inst}} {{side}}. Approve by {{time}} in the War Room.",
+    "bodyNoTime": "{{inst}} {{side}}. Approve it in the War Room."
+  }
+}
