@@ -8,7 +8,6 @@ index-tickers fixtures. The index lands in the local test Redis (DB ``REDIS_TEST
 from __future__ import annotations
 
 import json
-import os
 import uuid
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime
@@ -66,7 +65,7 @@ def _wipe(engine: Engine) -> None:
 
 @pytest.fixture
 def rds() -> Iterator[redis.Redis]:
-    conn = bus.make_client({**os.environ, "REDIS_DB": os.environ.get("REDIS_TEST_DB", "15")})
+    conn = bus.make_client(testing.redis_settings())
     try:
         conn.ping()
     except redis.ConnectionError:

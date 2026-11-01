@@ -111,7 +111,7 @@ def breaker_config() -> Mapping[str, Any]:
 
 
 def okx_errors_key(env: str) -> str:
-    return f"atlas:breakers:{env}:okx_errors"
+    return bus.redis_key(f"atlas:breakers:{env}:okx_errors")
 
 
 def _iso(at: datetime) -> str:
@@ -627,7 +627,7 @@ class BreakerMonitor:
             await asyncio.sleep(self.interval)
 
     async def _consume(self) -> None:
-        last: dict[str, str] = {SYSTEM_STREAM: "$", MARKET_STREAM: "$"}
+        last: dict[str, str] = {bus.stream_key(SYSTEM_STREAM): "$", bus.stream_key(MARKET_STREAM): "$"}
         rds = self.breakers.rds
         while True:
             try:
@@ -641,9 +641,10 @@ class BreakerMonitor:
                 log.warning("circuit breaker event read failed")
                 await asyncio.sleep(self.interval)
                 continue
-            for stream, entries in rows or []:
+            for key, entries in rows or []:
+                stream = bus.logical_stream(key)
                 for entry_id, fields in entries:
-                    last[stream] = entry_id
+                    last[key] = entry_id
                     raw = fields.get(bus.FIELD)
                     if raw is None:
                         continue
