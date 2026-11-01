@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import ast
 import json
-import os
 import re
 import uuid
 from collections.abc import Iterator
@@ -524,14 +523,14 @@ def engine() -> Engine:
 
 @pytest.fixture
 def rds() -> Iterator[redis.Redis]:
-    conn = bus.make_client({**os.environ, "REDIS_DB": os.environ.get("REDIS_TEST_DB", "15")})
+    conn = bus.make_client(testing.redis_settings())
     try:
         conn.ping()
     except redis.ConnectionError:
         pytest.fail("Redis is not running on REDIS_HOST:REDIS_PORT")
-    conn.delete("atlas.risk")
+    conn.delete(bus.stream_key("atlas.risk"))
     yield conn
-    conn.delete("atlas.risk")
+    conn.delete(bus.stream_key("atlas.risk"))
     conn.close()
 
 
@@ -736,7 +735,9 @@ def _proposal_row(engine: Engine, inst_id: str, status: str = "passed") -> uuid.
 
 
 def _envelopes(rds: redis.Redis) -> list[EventEnvelope]:
-    return [EventEnvelope.model_validate_json(f[bus.FIELD]) for _id, f in rds.xrange("atlas.risk")]
+    return [
+        EventEnvelope.model_validate_json(f[bus.FIELD]) for _id, f in rds.xrange(bus.stream_key("atlas.risk"))
+    ]
 
 
 def test_evaluate_writes_one_row_with_nine_checks_and_publishes_one_decision(

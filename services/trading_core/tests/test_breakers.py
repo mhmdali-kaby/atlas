@@ -8,7 +8,6 @@ Runs against this checkout's test DB (migrated by `cd backend && php artisan tes
 from __future__ import annotations
 
 import json
-import os
 import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
@@ -86,14 +85,14 @@ def engine() -> Engine:
 
 @pytest.fixture
 def rds() -> Iterator[redis.Redis]:
-    conn = bus.make_client({**os.environ, "REDIS_DB": os.environ.get("REDIS_TEST_DB", "15")})
+    conn = bus.make_client(testing.redis_settings())
     try:
         conn.ping()
     except redis.ConnectionError:
         pytest.fail("Redis is not running on REDIS_HOST:REDIS_PORT")
-    conn.delete(*STREAMS, okx_errors_key(ENV))
+    conn.delete(*map(bus.stream_key, STREAMS), okx_errors_key(ENV))
     yield conn
-    conn.delete(*STREAMS, okx_errors_key(ENV))
+    conn.delete(*map(bus.stream_key, STREAMS), okx_errors_key(ENV))
     conn.close()
 
 
@@ -225,7 +224,7 @@ def fresh(rds: redis.Redis, inst: str, at: datetime) -> None:
 
 
 def events(rds: redis.Redis, stream: str) -> list[EventEnvelope]:
-    return [EventEnvelope.model_validate_json(f[bus.FIELD]) for _id, f in rds.xrange(stream)]
+    return [EventEnvelope.model_validate_json(f[bus.FIELD]) for _id, f in rds.xrange(bus.stream_key(stream))]
 
 
 def breaker_events(rds: redis.Redis) -> list[EventEnvelope]:

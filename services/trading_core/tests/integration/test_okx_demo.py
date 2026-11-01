@@ -201,7 +201,7 @@ def demo() -> Iterator[Demo]:
         )
 
     engine = make_engine(testing.db_settings())
-    rds = bus.make_client({**os.environ, "REDIS_DB": os.environ.get("REDIS_TEST_DB", "15")})
+    rds = bus.make_client(testing.redis_settings())
     try:
         rds.ping()
     except redis.ConnectionError:

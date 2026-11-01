@@ -11,7 +11,6 @@ import base64
 import hmac
 import json
 import logging
-import os
 import uuid
 from collections.abc import AsyncIterator, Iterator
 from datetime import UTC, datetime, timedelta
@@ -160,14 +159,14 @@ async def okx() -> AsyncIterator[FakePrivateOkx]:
 
 @pytest.fixture
 def rds() -> Iterator[redis.Redis]:
-    conn = bus.make_client({**os.environ, "REDIS_DB": os.environ.get("REDIS_TEST_DB", "15")})
+    conn = bus.make_client(testing.redis_settings())
     try:
         conn.ping()
     except redis.ConnectionError:
         pytest.fail("Redis is not running on REDIS_HOST:REDIS_PORT")
-    conn.delete(*STREAMS, md.private_key(ENV), md.private_key("live"))
+    conn.delete(*map(bus.stream_key, STREAMS), md.private_key(ENV), md.private_key("live"))
     yield conn
-    conn.delete(*STREAMS, md.private_key(ENV), md.private_key("live"))
+    conn.delete(*map(bus.stream_key, STREAMS), md.private_key(ENV), md.private_key("live"))
     conn.close()
 
 
@@ -188,7 +187,7 @@ def _inst() -> str:
 
 def _events(rds: redis.Redis, stream: str, kind: str | None = None) -> list[EventEnvelope]:
     out = []
-    for _, fields in rds.xrange(stream):
+    for _, fields in rds.xrange(bus.stream_key(stream)):
         env = EventEnvelope.model_validate_json(fields[bus.FIELD])
         if kind is None or env.type == kind:
             out.append(env)

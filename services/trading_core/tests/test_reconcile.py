@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
 import uuid
 from collections.abc import Callable, Iterator
 from datetime import UTC, datetime, timedelta
@@ -83,14 +82,14 @@ def engine() -> Engine:
 
 @pytest.fixture
 def rds() -> Iterator[redis.Redis]:
-    conn = bus.make_client({**os.environ, "REDIS_DB": os.environ.get("REDIS_TEST_DB", "15")})
+    conn = bus.make_client(testing.redis_settings())
     try:
         conn.ping()
     except redis.ConnectionError:
         pytest.fail("Redis is not running on REDIS_HOST:REDIS_PORT")
-    conn.delete(*STREAMS)
+    conn.delete(*map(bus.stream_key, STREAMS))
     yield conn
-    conn.delete(*STREAMS)
+    conn.delete(*map(bus.stream_key, STREAMS))
     conn.close()
 
 
@@ -494,7 +493,7 @@ async def run(engine: Engine, rds: redis.Redis, at: datetime = AT) -> Any:
 
 
 def envelopes(rds: redis.Redis, stream: str) -> list[EventEnvelope]:
-    return [EventEnvelope.model_validate_json(f[bus.FIELD]) for _id, f in rds.xrange(stream)]
+    return [EventEnvelope.model_validate_json(f[bus.FIELD]) for _id, f in rds.xrange(bus.stream_key(stream))]
 
 
 def posts(router: respx.MockRouter, path: str) -> list[dict[str, Any]]:
@@ -563,7 +562,6 @@ async def test_a_protected_position_is_left_alone_and_a_second_run_places_nothin
     assert okx.placed() == []
     assert result.protected == []
     assert [e for e in envelopes(rds, "atlas.system") if e.type == "system.alert"] == []
-
 
 
 def _sending_entry(engine: Engine, inst_id: str, age: timedelta) -> str:
@@ -920,7 +918,6 @@ async def test_execute_is_refused_until_the_startup_reconciliation_has_run(
         other = f"/internal/execute/{uuid.uuid4()}"
         after = http.post(other, headers=signed_headers(SECRET, "POST", other))
     assert after.json()["reason"] == "risk_check_not_found"
-
 
 
 async def test_owner_approval_execute_is_refused_until_the_startup_reconciliation_has_run(

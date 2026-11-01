@@ -10,7 +10,6 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
 import re
 import uuid
 from collections.abc import AsyncIterator, Iterator
@@ -155,14 +154,14 @@ async def servers() -> AsyncIterator[dict[str, FakeOkx]]:
 
 @pytest.fixture
 def rds() -> Iterator[redis.Redis]:
-    conn = bus.make_client({**os.environ, "REDIS_DB": os.environ.get("REDIS_TEST_DB", "15")})
+    conn = bus.make_client(testing.redis_settings())
     try:
         conn.ping()
     except redis.ConnectionError:
         pytest.fail("Redis is not running on REDIS_HOST:REDIS_PORT")
-    conn.delete("atlas.market")
+    conn.delete(bus.stream_key("atlas.market"))
     yield conn
-    conn.delete("atlas.market")
+    conn.delete(bus.stream_key("atlas.market"))
     conn.close()
 
 
@@ -183,7 +182,7 @@ def _inst() -> str:
 
 def _events(rds: redis.Redis, kind: str | None = None) -> list[EventEnvelope]:
     out = []
-    for _, fields in rds.xrange("atlas.market"):
+    for _, fields in rds.xrange(bus.stream_key("atlas.market")):
         env = EventEnvelope.model_validate_json(fields[bus.FIELD])
         if kind is None or env.type == kind:
             out.append(env)
@@ -253,7 +252,7 @@ async def test_ticker_lands_in_redis_and_publishes_one_throttled_tick(
         await _until(lambda: md.read_snapshot(rds, ENV, inst).ticker is not None)
 
         snap = md.read_snapshot(rds, ENV, inst)
-        assert rds.exists(f"atlas:md:demo:{inst}")
+        assert rds.exists(bus.redis_key(f"atlas:md:demo:{inst}"))
         assert snap.ticker is not None and snap.ticker["last"] == "100.5"
         assert snap.last_msg_at is not None
         assert abs((snap.last_msg_at - clock.now()).total_seconds()) < 1

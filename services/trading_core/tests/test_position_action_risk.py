@@ -11,7 +11,6 @@ positions snapshot, a live exchange stop in algo_orders and a fresh mark in the 
 from __future__ import annotations
 
 import json
-import os
 import uuid
 from collections.abc import Iterator
 from dataclasses import replace
@@ -258,14 +257,14 @@ def engine() -> Engine:
 
 @pytest.fixture
 def rds() -> Iterator[redis.Redis]:
-    conn = bus.make_client({**os.environ, "REDIS_DB": os.environ.get("REDIS_TEST_DB", "15")})
+    conn = bus.make_client(testing.redis_settings())
     try:
         conn.ping()
     except redis.ConnectionError:
         pytest.fail("Redis is not running on REDIS_HOST:REDIS_PORT")
-    conn.delete("atlas.risk")
+    conn.delete(bus.stream_key("atlas.risk"))
     yield conn
-    conn.delete("atlas.risk")
+    conn.delete(bus.stream_key("atlas.risk"))
     conn.close()
 
 
@@ -482,7 +481,7 @@ def test_evaluate_approves_a_tightening_amend_stop_and_stores_each_check(
     assert by_name(rc.checks)["stop_tightens"]["values"]["current_stop"] == "3900"
     # Same contract as entries: evaluate leaves risk_checked; the caller (cycle / PM) moves it on.
     assert status == "risk_checked"
-    published = rds.xrange("atlas.risk")
+    published = rds.xrange(bus.stream_key("atlas.risk"))
     assert len(published) == 1
 
 
