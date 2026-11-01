@@ -680,7 +680,7 @@
       "block": "Block an instrument until the end of today, Baghdad time."
     },
     "help": {
-      "unknown": "{{cmd}} is not a command. Nothing was sent. These are the commands:",
+      "unknown": "<c>{{cmd}}</c> is not a command. Nothing was sent. These are the commands:",
       "usage": "Type it as <c>{{usage}}</c>. Nothing was sent. These are the commands:"
     },
     "msg": {

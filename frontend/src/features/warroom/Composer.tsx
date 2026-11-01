@@ -67,9 +67,9 @@ function SlashHelpPanel({ help }: { help: SlashHelp }) {
   const usage = help.kind === 'usage' ? SLASH_COMMANDS.find((c) => c.name === help.name) : undefined
   return (
     <div className="picker" role="status" data-testid="wr-slash-help">
-      <p className="picker-label" dir="auto">
+      <p className="picker-label">
         {help.kind === 'unknown' ? (
-          t('slash.help.unknown', { cmd: help.typed })
+          <Trans t={t} i18nKey="slash.help.unknown" values={{ cmd: help.typed }} components={{ c: <bdi dir="ltr" /> }} />
         ) : (
           <Trans t={t} i18nKey="slash.help.usage" values={{ usage: usage?.label ?? '' }} components={{ c: <bdi dir="ltr" /> }} />
         )}
@@ -77,9 +77,9 @@ function SlashHelpPanel({ help }: { help: SlashHelp }) {
       {SLASH_COMMANDS.map((c) => (
         <div key={c.name} className="picker-item">
           <span className="pk-text">
-            <bdi className="pk-name" dir="ltr">
-              {c.label}
-            </bdi>
+            <span className="pk-name">
+              <bdi dir="ltr">{c.label}</bdi>
+            </span>
             <span className="pk-sub">{t(`slash.cmd.${c.name}`)}</span>
           </span>
         </div>
@@ -434,9 +434,9 @@ export function Composer({ env, thread, threadName, disabled, replyTo, onCancelR
                 onClick={() => insertSlash(c)}
               >
                 <span className="pk-text">
-                  <bdi className="pk-name" dir="ltr">
-                    {c.label}
-                  </bdi>
+                  <span className="pk-name">
+                    <bdi dir="ltr">{c.label}</bdi>
+                  </span>
                   <span className="pk-sub">{t(`slash.cmd.${c.name}`)}</span>
                 </span>
               </div>

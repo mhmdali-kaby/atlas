@@ -318,7 +318,7 @@ describe('Composer slash commands', () => {
     await typeAndSend('/foo')
 
     const help = await screen.findByTestId('wr-slash-help')
-    expect(help).toHaveTextContent(i18n.t('warroom:slash.help.unknown', { cmd: '/foo' }))
+    expect(help).toHaveTextContent(i18n.t('warroom:slash.help.unknown', { cmd: '/foo' }).replace(/<\/?c>/g, ''))
     expect(help).toHaveTextContent(i18n.t('warroom:slash.cmd.block'))
     expect(input().value).toBe('/foo')
     await new Promise((r) => setTimeout(r, 50))
