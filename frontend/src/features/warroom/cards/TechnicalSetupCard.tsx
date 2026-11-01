@@ -41,7 +41,7 @@ function Fig({ children }: { children: string }) {
 }
 
 /** "Data as of 14:00 (11:00 UTC)", both full dates in the tooltip. */
-function AsOf({ ts, lang }: { ts: string; lang: Lang }) {
+export function AsOf({ ts, lang }: { ts: string; lang: Lang }) {
   const { t } = useTranslation('warroom')
   const now = useNow(60_000)
   const today = baghdadDay(ts) === baghdadDay(now)
@@ -57,7 +57,7 @@ function AsOf({ ts, lang }: { ts: string; lang: Lang }) {
 }
 
 /** The instrument: opens its own thread, where the Inspector shows it. Plain text when it has no thread. */
-function InstrumentButton({ instId }: { instId: string }) {
+export function InstrumentButton({ instId }: { instId: string }) {
   const { t } = useTranslation('warroom')
   const navigate = useNavigate()
   const { list } = useSelectedThread()

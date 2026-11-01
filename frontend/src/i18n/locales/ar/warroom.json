@@ -777,5 +777,92 @@
         "unknown": "{{inst}} ليس أداة ضمن أدوات هذا الحساب."
       }
     }
+  },
+  "pm": {
+    "kindPu": "تحديث مركز",
+    "kindDaily": "التقرير اليومي",
+    "long": "شراء",
+    "short": "بيع",
+    "inTrade": "{{d}} في الصفقة",
+    "fundingPaid": "التمويل {{v}}",
+    "fundingNone": "لا تمويل بعد",
+    "dist": "الوقف على بُعد {{s}}، والهدف 1 على بُعد {{tp}}",
+    "distStop": "الوقف على بُعد {{s}}",
+    "rule": "القاعدة: {{rule}}",
+    "rules": {
+      "breakeven": "نقطة التعادل",
+      "tp1_partial": "جني جزئي عند الهدف 1",
+      "tp1_trail": "وقف متحرك بعد الهدف 1",
+      "two_r_trail": "وقف متحرك عند +2R",
+      "time_stop": "وقف زمني",
+      "invalidation": "إبطال الفكرة",
+      "event_reduce": "قاعدة الأحداث",
+      "funding_cost": "قاعدة التمويل",
+      "close": "إغلاق",
+      "partial_close": "إغلاق جزئي",
+      "stop_loss": "الوقف",
+      "take_profit": "الهدف",
+      "liquidation": "تصفية",
+      "adl": "تقليص تلقائي",
+      "manual": "يدوي"
+    },
+    "act": {
+      "amend_stop": "نقل الوقف إلى {{stop}}",
+      "amend_targets": "تعديل الأهداف",
+      "partial_close": "إغلاق {{pct}} من المركز",
+      "close": "إغلاق المركز"
+    },
+    "proposal": "الاقتراح {{id}}",
+    "openProposal": "فتح الاقتراح {{id}}",
+    "notSubmitted": "لم يُقدَّم",
+    "thesisIntact": "لم تُفعَّل أي قاعدة.",
+    "pnlAria": "غير محقَّق {{usd}}، {{r}}",
+    "dayOf": "يوم {{date}}",
+    "equity": "الرصيد",
+    "equityChangeAria": "تغيّر الرصيد {{usd}}، {{pct}}",
+    "realised": "المحقَّق",
+    "unrealised": "غير المحقَّق",
+    "fees": "الرسوم",
+    "funding": "التمويل",
+    "closed": "الصفقات المغلقة",
+    "noTrades": "لم تُغلق أي صفقة اليوم.",
+    "th": {
+      "inst": "الأداة",
+      "side": "الاتجاه",
+      "r": "R",
+      "usd": "دولار",
+      "held": "المدة",
+      "by": "أُغلقت عند"
+    },
+    "best": "الأفضل",
+    "worst": "الأسوأ",
+    "limits": "استخدام الحدود",
+    "l": {
+      "daily_loss": "الخسارة اليومية",
+      "open_positions": "المراكز المفتوحة",
+      "exposure_peak": "ذروة التعرّض"
+    },
+    "of": "{{used}} من {{limit}}",
+    "exposureV": "{{usd}} ({{pct}} من الرصيد)",
+    "noBreach": "لم يُتجاوز أي حد.",
+    "breachTitle_one": "تم تجاوز أحد الحدود",
+    "breachTitle_other": "تم تجاوز {{count}} من الحدود",
+    "breachTitle_zero": "لم يُتجاوز أي حد",
+    "breachTitle_two": "تم تجاوز حدّين",
+    "breachTitle_few": "تم تجاوز {{count}} حدود",
+    "breachTitle_many": "تم تجاوز {{count}} حدًّا",
+    "breach": {
+      "max_daily_loss_pct": "بلغت الخسارة اليومية {{used}} مقابل حدّ {{cap}}.",
+      "max_weekly_loss_pct": "بلغت الخسارة الأسبوعية {{used}} مقابل حدّ {{cap}}.",
+      "max_open_positions": "بلغت المراكز المفتوحة {{used}} من {{cap}}.",
+      "other": "بلغ {{limit}} القيمة {{used}} مقابل {{cap}}."
+    },
+    "breachAt": "عند {{time}}.",
+    "tomorrow": "غدًا",
+    "carried": "المراكز المُرحَّلة",
+    "noCarried": "لا مراكز مُرحَّلة.",
+    "events": "أحداث تستحق المتابعة",
+    "noEvents": "لا أحداث كبرى.",
+    "importance": "الأهمية {{n}} من 5"
   }
 }

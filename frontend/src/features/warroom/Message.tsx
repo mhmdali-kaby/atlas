@@ -28,6 +28,9 @@ import { readTechnicalSetup } from './cards/technicalSetup'
 import { readProposalCard } from './cards/proposal'
 import { ProposalCard } from './cards/ProposalCard'
 import { TechnicalSetupCard } from './cards/TechnicalSetupCard'
+import { DailyReportCard } from './cards/DailyReportCard'
+import { PositionUpdateCard } from './cards/PositionUpdateCard'
+import { readDailyReport, readPositionUpdate } from './cards/pm'
 import { readDevilsReview, readRiskCheck, readVoteSummary } from './cards/debate'
 import { DevilsReviewCard } from './cards/DevilsReviewCard'
 import { RiskCheckCard } from './cards/RiskCheckCard'
@@ -97,6 +100,16 @@ const CARDS: Partial<Record<string, (m: WarroomMessage, lang: Lang, ctx: CardCtx
         </>
       )
     }
+    // The Portfolio Manager's 23:30 daily report (brief §7.8, ATL-170 card; design v14, ATL-178).
+    const daily = readDailyReport(m.card)
+    if (daily) {
+      return (
+        <>
+          <AgentBody message={m} />
+          <DailyReportCard report={daily} lang={lang} />
+        </>
+      )
+    }
     // The Technical Analyst's setup (design v11 Phase 2 §7, ATL-135 card): its words above the card.
     const setup = readTechnicalSetup(m.card)
     if (setup) {
@@ -148,6 +161,18 @@ const CARDS: Partial<Record<string, (m: WarroomMessage, lang: Lang, ctx: CardCtx
       <>
         <AgentBody message={m} />
         <ProposalCard cardRef={ref} lang={lang} onJump={ctx.onJump} />
+      </>
+    )
+  },
+  // The Portfolio Manager's position check (brief §7.8, ATL-178): its words, then code's figures and
+  // the rule actions with links to their proposal cards.
+  position_update: (m, lang) => {
+    const card = readPositionUpdate(m.card)
+    if (!card) return null
+    return (
+      <>
+        <AgentBody message={m} />
+        <PositionUpdateCard card={card} lang={lang} />
       </>
     )
   },
