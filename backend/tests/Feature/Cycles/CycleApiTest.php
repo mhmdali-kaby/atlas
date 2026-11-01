@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\AuditLog;
 use App\Models\User;
+use App\Support\Events\EventBus;
 use Illuminate\Support\Facades\Redis;
 
 /*
@@ -15,7 +16,7 @@ use Illuminate\Support\Facades\Redis;
 /** @return list<array<string, mixed>> */
 function atl163Stream(string $stream): array
 {
-    $entries = Redis::connection('events')->command('executeRaw', [['XRANGE', $stream, '-', '+']]);
+    $entries = Redis::connection('events')->command('executeRaw', [['XRANGE', EventBus::streamKey($stream), '-', '+']]);
 
     return array_values(array_map(
         fn (array $e): array => json_decode($e[1][1], true, flags: JSON_THROW_ON_ERROR),
@@ -25,8 +26,8 @@ function atl163Stream(string $stream): array
 
 beforeEach(function (): void {
     config(['atlas_defaults.env.default' => 'demo']);
-    Redis::connection('events')->command('executeRaw', [['DEL', 'atlas.system']]);
-    Redis::connection('events')->command('executeRaw', [['DEL', 'atlas.warroom']]);
+    Redis::connection('events')->command('executeRaw', [['DEL', EventBus::streamKey('atlas.system')]]);
+    Redis::connection('events')->command('executeRaw', [['DEL', EventBus::streamKey('atlas.warroom')]]);
     $this->user = User::factory()->create();
 });
 

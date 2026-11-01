@@ -22,8 +22,8 @@ function outsideConnection(): Connection
 }
 
 it('runs as a process, persists a published message, and exits 0 on SIGTERM', function (): void {
-    foreach (EventBus::STREAMS as $stream) {
-        Redis::connection('events')->command('executeRaw', [['DEL', $stream]]);
+    foreach (EventBus::streamKeys() as $physicalKey) {
+        Redis::connection('events')->command('executeRaw', [['DEL', $physicalKey]]);
     }
     $key = 'bridge-cmd-'.Str::lower(Str::random(8));
     $outside = outsideConnection();
@@ -31,8 +31,14 @@ it('runs as a process, persists a published message, and exits 0 on SIGTERM', fu
     $process = new Process(
         [PHP_BINARY, 'artisan', 'atlas:bridge', '--block=200'],
         base_path(),
-        // Not "testing": Laravel disables signal traps while running unit tests.
-        ['APP_ENV' => 'local', 'BROADCAST_CONNECTION' => 'log', 'LOG_CHANNEL' => 'stderr', 'DB_DATABASE' => config('database.connections.pgsql.database')],
+        // Not "testing": Laravel disables signal traps while running unit tests. ATL-211: the
+        // subprocess must see this checkout's Redis key prefix too, so it reads the same
+        // physical stream the test just published on.
+        [
+            'APP_ENV' => 'local', 'BROADCAST_CONNECTION' => 'log', 'LOG_CHANNEL' => 'stderr',
+            'DB_DATABASE' => config('database.connections.pgsql.database'),
+            'ATLAS_REDIS_PREFIX' => EventBus::keyPrefix(),
+        ],
     );
     $process->start();
 

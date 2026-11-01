@@ -180,8 +180,15 @@ return [
             'backoff_cap' => env('REDIS_BACKOFF_CAP', 1000),
         ],
 
-        // The Redis Streams event bus (brief §3.2). No key prefix: Python services read the
-        // stream names exactly as written (atlas.system, atlas.warroom, ...).
+        // The Redis Streams event bus (brief §3.2). This connection's 'prefix' option is empty in
+        // production, so stream names stay plain (atlas.system, atlas.warroom, ...), exactly as
+        // Python services read them. The ATL-211 test bootstrap sets ATLAS_REDIS_PREFIX, which
+        // Predis then applies to every *typed* command this connection sends (xrange, del, ...).
+        // Raw commands (XADD via rawCommand/executeRaw, all of StreamReader and EventBus's own
+        // XADD) bypass Predis's own prefixing entirely, so App\Support\Events\EventBus::streamKey()
+        // applies the same prefix (config('database.redis.events.options.prefix')) to those by
+        // hand — the two together mean every atlas.* key this connection touches is prefixed the
+        // same way, however it was sent.
         'events' => [
             'url' => env('REDIS_URL'),
             'host' => env('REDIS_HOST', '127.0.0.1'),
@@ -194,7 +201,7 @@ return [
             'backoff_base' => env('REDIS_BACKOFF_BASE', 100),
             'backoff_cap' => env('REDIS_BACKOFF_CAP', 1000),
             'options' => [
-                'prefix' => '',
+                'prefix' => env('ATLAS_REDIS_PREFIX', ''),
             ],
         ],
 
