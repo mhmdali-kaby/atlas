@@ -248,7 +248,7 @@ function Field({
       <label className="field-label" htmlFor={id}>
         {label}
       </label>
-      <div className="pr-input-wrap">
+      <div className="pr-input-wrap" dir="ltr">
         <input
           id={id}
           className={`${INPUT_CLASSES} input num`}

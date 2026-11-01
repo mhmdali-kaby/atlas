@@ -27,7 +27,7 @@ import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
 import { ApiError } from '../../../lib/api'
 import { formatFixed, formatMoney, type Lang } from '../../../lib/format'
-import { Button, Spinner, toast } from '../../../ui'
+import { Button, toast } from '../../../ui'
 import { useNow } from '../../portfolio/hooks'
 import { Medallion } from '../Medallion'
 import { fillSlots, slot } from '../slots'
@@ -350,33 +350,29 @@ export function ProposalCard({ cardRef, lang, onJump }: { cardRef: ProposalCardR
             className="pr-approve"
             onClick={() => void approve()}
             disabled={busy || !p.actions.approve}
-            aria-busy={busy || undefined}
+            icon={<Check aria-hidden="true" strokeWidth={1.5} />}
+            loading={busy}
             title={p.actions.approve_blocked_reason ? t(`why409.${p.actions.approve_blocked_reason}`, { defaultValue: '' }) || undefined : undefined}
             data-testid="pr-approve"
           >
-            {busy ? <Spinner /> : <Check aria-hidden="true" strokeWidth={1.5} />}
-            <span>{busy ? t('sending') : t('approve')}</span>
+            {busy ? t('sending') : t('approve')}
           </Button>
-          <Button size="sm" onClick={() => setSheet('reject')} disabled={busy || !p.actions.reject} data-testid="pr-reject">
-            <X aria-hidden="true" strokeWidth={1.5} />
-            <span>{t('reject')}</span>
+          <Button size="sm" icon={<X aria-hidden="true" strokeWidth={1.5} />} onClick={() => setSheet('reject')} disabled={busy || !p.actions.reject} data-testid="pr-reject">
+            {t('reject')}
           </Button>
-          <Button size="sm" onClick={() => setSheet('edit')} disabled={busy || !p.actions.edit} data-testid="pr-edit">
-            <Pencil aria-hidden="true" strokeWidth={1.5} />
-            <span>{t('edit')}</span>
+          <Button size="sm" icon={<Pencil aria-hidden="true" strokeWidth={1.5} />} onClick={() => setSheet('edit')} disabled={busy || !p.actions.edit} data-testid="pr-edit">
+            {t('edit')}
           </Button>
           <span className="pr-actions-gap" />
-          <Button variant="plain" size="sm" onClick={() => setSheet('ask')} disabled={busy} data-testid="pr-ask">
-            <MessageSquareText aria-hidden="true" strokeWidth={1.5} />
-            <span>{t('ask')}</span>
+          <Button variant="plain" size="sm" icon={<MessageSquareText aria-hidden="true" strokeWidth={1.5} />} onClick={() => setSheet('ask')} disabled={busy} data-testid="pr-ask">
+            {t('ask')}
           </Button>
         </div>
       )}
       {advice && (
         <div className="pr-actions" role="group" aria-label={t('actionsSr')} data-testid="pr-actions">
           <Button size="sm" onClick={() => setSheet('ask')} data-testid="pr-ask">
-            <MessageSquareText aria-hidden="true" strokeWidth={1.5} />
-            <span>{t('ask')}</span>
+            {t('ask')}
           </Button>
         </div>
       )}
