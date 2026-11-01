@@ -42,6 +42,15 @@ export default defineConfig({
           },
         },
       },
+      {
+        // The e2e support helpers (ATL-187) are plain node modules with no DOM; no jsdom/setup needed.
+        extends: true,
+        test: {
+          name: 'e2e-support',
+          environment: 'node',
+          include: ['e2e/support/**/*.test.ts'],
+        },
+      },
     ],
   },
 })

@@ -29,12 +29,15 @@ const warroomReply = [
 
 export default defineConfig<AppearanceOptions>({
   testDir: './e2e',
+  // e2e/support/ holds helpers, not specs; stack.test.ts (ATL-187) is a Vitest unit test of the
+  // port/DB derivation, run with `npm test`, not a Playwright spec.
+  testIgnore: /support\//,
   outputDir: '../../evidence/playwright/test-results',
   reporter: [['list']],
   projects: [
     {
       name: 'chromium',
-      testIgnore: /flows\//,
+      testIgnore: /flows\/|support\//,
       use: { ...devices['Desktop Chrome'], baseURL: `http://127.0.0.1:${PORTS.mocked}` },
     },
     // Seeds the e2e database and signs the test owner in once.
