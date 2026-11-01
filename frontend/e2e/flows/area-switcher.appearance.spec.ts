@@ -16,6 +16,8 @@ import arSources from '../../src/i18n/locales/ar/settings-data-sources.json' wit
 import enSources from '../../src/i18n/locales/en/settings-data-sources.json' with { type: 'json' }
 import arMoney from '../../src/i18n/locales/ar/settings-money.json' with { type: 'json' }
 import enMoney from '../../src/i18n/locales/en/settings-money.json' with { type: 'json' }
+import arMarkets from '../../src/i18n/locales/ar/settings-markets.json' with { type: 'json' }
+import enMarkets from '../../src/i18n/locales/en/settings-markets.json' with { type: 'json' }
 import arShell from '../../src/i18n/locales/ar/shell.json' with { type: 'json' }
 import enShell from '../../src/i18n/locales/en/shell.json' with { type: 'json' }
 import { EVIDENCE_DIR } from '../support/stack'
@@ -27,8 +29,8 @@ import { expect, test } from './appearance'
  */
 const SHOTS = path.join(EVIDENCE_DIR, 'ATL-41')
 const T = {
-  en: { shell: enShell, portfolio: enPortfolio, portfolioOrders: enPortfolioOrders, portfolioHistory: enPortfolioHistory, settings: enSettings, money: enMoney, agents: enAgents, data: enData, sources: enSources },
-  ar: { shell: arShell, portfolio: arPortfolio, portfolioOrders: arPortfolioOrders, portfolioHistory: arPortfolioHistory, settings: arSettings, money: arMoney, agents: arAgents, data: arData, sources: arSources },
+  en: { shell: enShell, portfolio: enPortfolio, portfolioOrders: enPortfolioOrders, portfolioHistory: enPortfolioHistory, settings: enSettings, money: enMoney, markets: enMarkets, agents: enAgents, data: enData, sources: enSources },
+  ar: { shell: arShell, portfolio: arPortfolio, portfolioOrders: arPortfolioOrders, portfolioHistory: arPortfolioHistory, settings: arSettings, money: arMoney, markets: arMarkets, agents: arAgents, data: arData, sources: arSources },
 }
 
 test.use({ viewport: { width: 1440, height: 900 } })
@@ -75,6 +77,7 @@ test('on /portfolio the switcher selects Portfolio and lists only its pages; Set
     t.settings.nav.connections,
     t.settings.nav.risk,
     t.money.nav,
+    t.markets.nav,
     t.agents.nav,
     t.data.nav.data,
     t.sources.nav,
