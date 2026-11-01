@@ -610,5 +610,59 @@
     },
     "count_one": "{{count}} story",
     "count_other": "{{count}} stories"
+  },
+  "ta": {
+    "kind": "Technical setup",
+    "inspect": "Show {{inst}} in the Inspector",
+    "title": {
+      "long": "Long {{setup}}",
+      "short": "Short {{setup}}"
+    },
+    "setup": {
+      "breakout": "breakout",
+      "pullback_to_support": "pullback to support",
+      "breakdown": "breakdown",
+      "rally_to_resistance": "rally to resistance",
+      "range_fade": "range fade",
+      "squeeze_expansion": "squeeze expansion",
+      "reversal_divergence": "divergence reversal"
+    },
+    "noSetup": "No setup",
+    "bias": "Bias by timeframe",
+    "tf": {
+      "up": "Up",
+      "down": "Down",
+      "range": "Range"
+    },
+    "tfAria": "{{tf}}: {{bias}}",
+    "entry": "Entry zone",
+    "stop": "Stop",
+    "trigger": "Trigger",
+    "targets": "Targets",
+    "expR": "Expected R",
+    "quality": "Quality",
+    "qualityAria": "Quality {{v}} out of 1",
+    "slip": "Slippage",
+    "slipV": "{{bps}} at the Risk Engine’s max size",
+    "thin": "Too thin for full size: {{bps}} estimated slippage at the Risk Engine’s max size",
+    "inval": "Invalidation",
+    "levels": "Levels used",
+    "asOf": "Data as of {{time}} ({{utc}})",
+    "dual": "{{baghdad}} Baghdad, {{utc}} UTC"
+  },
+  "ld": {
+    "stop": "Stop",
+    "entry": "Entry",
+    "tp": "TP{{n}}",
+    "now": "Now",
+    "split": "{{pct}} at {{r}}",
+    "at": "at {{r}}",
+    "breakeven": "Breakeven",
+    "locked": "{{r}} locked",
+    "aria": "{{side}} plan. Stop {{stop}}, entry {{entry}}, {{targets}}.",
+    "ariaNow": " Price now {{now}}, {{r}}.",
+    "long": "Long",
+    "short": "Short",
+    "tgt": "target {{n}} {{price}} at {{r}}"
   }
 }
