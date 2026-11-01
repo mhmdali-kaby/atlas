@@ -11,7 +11,7 @@ import { RequireAuth } from '../auth/RequireAuth'
 import i18n from '../../i18n'
 import { API_URL, resetCsrfForTests } from '../../lib/api'
 import { HOLD_MS, type KillReport, type SystemHealth } from './api'
-import { KillSwitchButton } from './KillSwitch'
+import { KillSheet, KillSwitchButton } from './KillSwitch'
 import { TradingBanner } from './TradingBanner'
 
 vi.mock('../../lib/echo', () => ({
@@ -507,6 +507,52 @@ describe('the Stop sheet (decision 251)', () => {
       timeout: 3000,
     })
     expect(screen.getByTestId('kill-switch')).toHaveFocus()
+  })
+
+  it('opened with `open` and no trigger (/kill), each opening starts at the confirmation with close-all off', async () => {
+    const api = fakeBackend()
+    const user = userEvent.setup()
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const sheet = (open: boolean) => (
+      <QueryClientProvider client={client}>
+        <KillSheet open={open} onOpenChange={() => {}} />
+      </QueryClientProvider>
+    )
+    const { rerender } = render(sheet(true))
+    await screen.findByTestId('kill-view-confirm')
+    await user.click(screen.getByTestId('kill-flatten'))
+    expect(screen.getByTestId('kill-flatten')).toBeChecked()
+    await user.click(screen.getByTestId('kill-flatten'))
+    await user.click(screen.getByTestId('kill-go'))
+    await screen.findByTestId('kill-report')
+    expect(api.kills()).toHaveLength(1)
+
+    rerender(sheet(false))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), { timeout: 3000 })
+    rerender(sheet(true))
+    await screen.findByTestId('kill-view-confirm')
+    expect(screen.queryByTestId('kill-report')).toBeNull()
+    expect(screen.getByTestId('kill-flatten')).not.toBeChecked()
+    expect(screen.getByTestId('kill-go')).toBeInTheDocument()
+  })
+
+  it('reopened after turning close-all on, close-all is off again', async () => {
+    fakeBackend()
+    const user = userEvent.setup()
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const sheet = (open: boolean) => (
+      <QueryClientProvider client={client}>
+        <KillSheet open={open} onOpenChange={() => {}} />
+      </QueryClientProvider>
+    )
+    const { rerender } = render(sheet(true))
+    await user.click(await screen.findByTestId('kill-flatten'))
+    expect(screen.getByTestId('kill-hold')).toBeInTheDocument()
+    rerender(sheet(false))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull(), { timeout: 3000 })
+    rerender(sheet(true))
+    expect(await screen.findByTestId('kill-flatten')).not.toBeChecked()
+    expect(screen.queryByTestId('kill-hold')).toBeNull()
   })
 })
 

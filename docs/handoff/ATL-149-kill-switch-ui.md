@@ -6,8 +6,11 @@ For ATL-163 (slash commands `/pause /resume /kill /kill flatten`) and ATL-180 (t
 
 - `frontend/src/features/kill-switch/`
   - `KillSwitch.tsx`: `KillSwitchButton` (the red toolbar button, rendered by `AppShell` inside the
-    `data-slot="toolbar-actions"` slot), `KillSheet` (controlled: `open`, `onOpenChange`, optional
-    `trigger`) and `HoldButton`.
+    `data-slot="toolbar-actions"` slot) and `KillSheet` (controlled: `open`, `onOpenChange`, optional
+    `trigger`). Every time `open` goes from false to true, with or without a trigger, the sheet starts
+    over at the confirmation with close-all off.
+  - `HoldButton.tsx` (the reusable 1.5 s press-and-hold), `KillConfirm.tsx` (`ConfirmBody`,
+    `ConfirmActions`), `KillReport.tsx` (the per-item report).
   - `TradingBanner.tsx`: the paused/breaker banner, rendered by `AppShell` between the toolbar and
     `<main>`. It draws nothing while trading runs.
   - `api.ts`: `useSystemHealth()` (query key `['system','health']`, polled every 10 s), `useSystemEvents()`
@@ -15,7 +18,8 @@ For ATL-163 (slash commands `/pause /resume /kill /kill flatten`) and ATL-180 (t
     private-system), `postKill(flatten)`, `postResume()`, `HOLD_MS = 1500`, `KILL_CONFIRM = 'KILL'`.
   - Strings: `src/i18n/locales/{en,ar}/kill-switch.json` (namespace `kill-switch`).
 - `src/ui/Sheet.tsx` now pins its actions to the bottom with a hairline while content scrolls under them
-  (design §12.2). Every sheet gets this.
+  (design §12.2). Every sheet gets this. Its `tone` is now `default | destructive | warning | muted`
+  (icon tile red, orange or grey).
 
 ## Behaviour (decision 251)
 

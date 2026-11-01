@@ -51,9 +51,10 @@
     "done": "Done",
     "show": "Show all",
     "hide": "Hide",
-    "keptNote": "Each open position keeps its stop on OKX.",
     "alreadyDone": "<f>{{n}}</f> were already done on OKX.",
-    "noMessage": "OKX didn’t say why."
+    "noMessage": "OKX didn’t say why.",
+    "keptLine_one": "<f>{{count}}</f> stop. Each open position keeps its stop on OKX.",
+    "keptLine_other": "<f>{{count}}</f> stops. Each open position keeps its stop on OKX."
   },
   "kind": {
     "order": "Order",
@@ -69,8 +70,6 @@
     "orders_other": "<f>{{count}}</f> orders",
     "positions_one": "<f>{{count}}</f> position",
     "positions_other": "<f>{{count}}</f> positions",
-    "stops_one": "<f>{{count}}</f> stop",
-    "stops_other": "<f>{{count}}</f> stops",
     "items_one": "<f>{{count}}</f> item",
     "items_other": "<f>{{count}}</f> items"
   },

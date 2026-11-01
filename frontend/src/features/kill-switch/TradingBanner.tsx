@@ -22,7 +22,11 @@ const PRIORITY = [
   'data_stale',
 ]
 const KNOWN = new Set(PRIORITY)
-/** trading_core's reason when the owner paused without one; the banner already says it. */
+/**
+ * trading_core's reason when the owner paused without one; the banner already says it.
+ * Coupled to that English text in trading_core (the health API has no flag for it): if the
+ * server wording changes, the banner only shows the reason once more, nothing breaks.
+ */
 const OWNER_DEFAULT_REASON = 'Paused by the owner.'
 const LOSS_BREAKERS = new Set(['daily_loss', 'weekly_loss', 'consecutive_losses'])
 

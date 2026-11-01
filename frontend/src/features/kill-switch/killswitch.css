@@ -64,8 +64,6 @@
 }
 
 /* ---- the Stop sheet --------------------------------------------------------- */
-.ks-sheet.is-report > div > span[aria-hidden='true']:first-child { background: var(--warning-wash); color: var(--warning-ink); }
-.ks-sheet.is-working > div > span[aria-hidden='true']:first-child { background: var(--fill-3); color: var(--label-secondary); }
 .ks-h { margin: 0 0 8px; font-size: var(--text-footnote); line-height: var(--lh-footnote); font-weight: 600; color: var(--label-secondary); }
 .ks-list { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; }
 .ks-list li { display: flex; align-items: flex-start; gap: 10px; font-size: var(--text-subheadline); line-height: var(--lh-subheadline); color: var(--label); text-wrap: pretty; }

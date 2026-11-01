@@ -4,6 +4,15 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { cx } from './cx'
 import { FADE, SPRING } from './motion'
 
+export type SheetTone = 'default' | 'destructive' | 'warning' | 'muted'
+
+const TONE: Record<SheetTone, string> = {
+  default: 'bg-fill-3 text-label',
+  destructive: 'bg-loss-wash text-loss-ink',
+  warning: 'bg-warning-wash text-warning-ink',
+  muted: 'bg-fill-3 text-label-secondary',
+}
+
 export interface SheetProps {
   /** Controlled open state; omit for an uncontrolled sheet opened by `trigger`. */
   open?: boolean
@@ -15,8 +24,8 @@ export interface SheetProps {
   description?: ReactNode
   /** A 20px icon shown in a 44px tile above the title. */
   icon?: ReactNode
-  /** A destructive sheet tints the icon tile red. */
-  tone?: 'default' | 'destructive'
+  /** Tints the icon tile: red for destructive, orange for warning, grey for a quiet (muted) state. */
+  tone?: SheetTone
   children?: ReactNode
   /** Buttons, at the inline end. Put the destructive one last. */
   actions?: ReactNode
@@ -99,7 +108,7 @@ export function Sheet({
                         aria-hidden="true"
                         className={cx(
                           'grid size-11 place-items-center rounded-card [&_svg]:size-5',
-                          tone === 'destructive' ? 'bg-loss-wash text-loss-ink' : 'bg-fill-3 text-label',
+                          TONE[tone],
                         )}
                       >
                         {icon}
