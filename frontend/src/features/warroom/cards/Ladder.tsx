@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { ArrowLeft } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatFixed, type Lang } from '../../../lib/format'
@@ -39,8 +39,15 @@ export interface LadderProps {
   /** The stop the trade opened with, which defines 1R (defaults to `stop`). */
   riskStop?: string
   targets: LadderTarget[]
-  /** Price now; always labelled "Now" (ld.now). Never the analysis-time price. */
+  /** Price now; always labelled "Now" (ld.now). Never the analysis-time price. The caller passes
+   *  it only while it is at most 30 s old (ATL-188), and null otherwise. */
   mark?: string | null
+  /** A card that can show the price now (a live proposal): the ladder always keeps the Now line's
+   *  room, so the price arriving, moving or going stale never changes its height. */
+  live?: boolean
+  /** Draw the rail with the Now label alone, one line above its dot (the proposal card's compact
+   *  rail, whose other values are listed under it). */
+  nowOnly?: boolean
   /** The price as of analysis time (e.g. the card's data_as_of), labelled with that time, never "Now". */
   priceAt?: LadderPriceAt | null
   /** Estimated liquidation price; shown as a caption under the rail when it lies beyond the stop. */
@@ -103,9 +110,41 @@ function fit(fig: HTMLElement) {
   }
 }
 
-export function Ladder({ side, entry, stop, riskStop, targets, mark, priceAt, liq, decimals, compact = false, lang }: LadderProps) {
+const reducedMotion = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+/** A new price counts from the figure the owner was reading to the new one (600 ms, ease-out).
+ *  Arriving, going stale and reduced motion are instant. Returns the price string to print. */
+function useCountedPrice(mark: string | null | undefined, decimals: number): string | null {
+  const [shown, setShown] = useState<string | null>(mark ?? null)
+  const prev = useRef<string | null>(mark ?? null)
+  useEffect(() => {
+    const from = prev.current
+    const to = mark ?? null
+    prev.current = to
+    if (from === null || to === null || from === to || reducedMotion() || typeof requestAnimationFrame !== 'function') {
+      setShown(to)
+      return
+    }
+    const a = Number(from)
+    const b = Number(to)
+    const t0 = performance.now()
+    let frame = 0
+    const step = (at: number) => {
+      const k = Math.min(1, (at - t0) / 600)
+      const e = 1 - Math.pow(1 - k, 3)
+      setShown(k < 1 ? (a + (b - a) * e).toFixed(decimals) : to)
+      if (k < 1) frame = requestAnimationFrame(step)
+    }
+    frame = requestAnimationFrame(step)
+    return () => cancelAnimationFrame(frame)
+  }, [mark, decimals])
+  return mark ? (shown ?? mark) : null
+}
+
+export function Ladder({ side, entry, stop, riskStop, targets, mark, live = false, nowOnly = false, priceAt, liq, decimals, compact = false, lang }: LadderProps) {
   const { t } = useTranslation('warroom')
   const ref = useRef<HTMLElement>(null)
+  const markShown = useCountedPrice(mark, decimals)
 
   useLayoutEffect(() => {
     const el = ref.current
@@ -158,32 +197,51 @@ export function Ladder({ side, entry, stop, riskStop, targets, mark, priceAt, li
   if (mark) {
     const rm = R(mark)
     const xm = X(rm)
-    const gap = compact ? 22 : 17
-    const nearEntry = Math.abs(xm - xe) < gap
-    const belowFree = [xs, ...tR.map(X)].every((x) => Math.abs(x - xm) >= gap)
-    const where = !nearEntry ? 'is-above' : belowFree ? 'is-below' : ''
-    now = <i className="ladder-mark" style={pos(xm)} />
-    if (where) {
+    const fig = P(markShown ?? mark)
+    const dot = <i className="ladder-mark is-live" style={pos(xm)} />
+    if (nowOnly) {
+      // one line above the dot; dir="auto" reads it in the card's language: "الآن 249.95 +0.1R"
       now = (
         <>
-          {now}
-          <span className={`ladder-label ${where} is-now ${edge(xm)}`} style={pos(xm)} data-testid="ld-now">
+          {dot}
+          <span className={`ladder-label is-above is-now is-line is-live ${edge(xm)}`} style={pos(xm)} dir="auto" data-testid="ld-now">
             <span className="ladder-k">{t('ld.now')}</span>
-            <Isl className="num ladder-v">{P(mark)}</Isl>
-            {where === 'is-below' && !compact && (
-              <span className="ladder-s">
-                <Isl>{rText(rm)}</Isl>
-              </span>
-            )}
+            <Isl className="num ladder-v">{fig}</Isl>
+            <Isl className="num ladder-r">{rText(rm)}</Isl>
           </span>
         </>
       )
     } else {
-      nowInline = (
-        <span className="ladder-nowline" data-testid="ld-now">
-          <span>{t('ld.now')}</span> <Isl className="num ladder-v">{P(mark)}</Isl> <Isl>{rText(rm)}</Isl>
-        </span>
-      )
+      const gap = compact ? 22 : 17
+      const nearEntry = Math.abs(xm - xe) < gap
+      const belowFree = [xs, ...tR.map(X)].every((x) => Math.abs(x - xm) >= gap)
+      const where = !nearEntry ? 'is-above' : belowFree ? 'is-below' : ''
+      now = dot
+      if (where) {
+        now = (
+          <>
+            {dot}
+            <span className={`ladder-label ${where} is-now is-live ${edge(xm)}`} style={pos(xm)} data-testid="ld-now">
+              <span className="ladder-k" dir="auto">
+                {t('ld.now')}
+              </span>
+              <Isl className="num ladder-v">{fig}</Isl>
+              {where === 'is-below' && !compact && (
+                <span className="ladder-s">
+                  <Isl className="num ladder-r">{rText(rm)}</Isl>
+                </span>
+              )}
+            </span>
+          </>
+        )
+      } else {
+        // the entry label's first line, so Entry itself never moves when it comes or goes
+        nowInline = (
+          <span className="ladder-nowline is-live" dir="auto" data-testid="ld-now">
+            <span>{t('ld.now')}</span> <Isl className="num ladder-v">{fig}</Isl> <Isl className="num ladder-r">{rText(rm)}</Isl>
+          </span>
+        )
+      }
     }
   }
 
@@ -236,21 +294,23 @@ export function Ladder({ side, entry, stop, riskStop, targets, mark, priceAt, li
     (liq && R(liq) < lo ? t('ld.ariaLiq', { liq: P(liq) }) : '')
 
   return (
-    <figure ref={ref} className={`ladder${compact ? ' is-compact' : ''}`} dir="ltr" role="img" aria-label={aria} data-testid={compact ? 'ladder-compact' : 'ladder'}>
+    <figure ref={ref} className={`ladder${compact ? ' is-compact' : ''}${live ? ' has-now-room' : ''}${nowOnly ? ' is-now-only' : ''}`} dir="ltr" role="img" aria-label={aria} data-testid={compact ? 'ladder-compact' : 'ladder'}>
       <div className="ladder-rail" aria-hidden="true">
         {rs < 0 && <i className="ladder-seg is-loss" style={span(xs, x0)} />}
         <i className="ladder-seg is-gain" style={span(x0, xLast)} />
         <i className="ladder-zone" style={span(za, zb)} />
         <i className={`ladder-tick ${rs < -0.05 ? 'is-stop' : 'is-lock'}`} style={pos(xs)} />
-        <span className={`ladder-label is-below ${edge(xs)}`} style={pos(xs)} data-testid="ld-stop">
-          <span className="ladder-k">{t('ld.stop')}</span>
-          <Isl className="num ladder-v">{P(stop)}</Isl>
-          {!compact && <span className="ladder-s">{stopNote}</span>}
-        </span>
+        {!nowOnly && (
+          <span className={`ladder-label is-below ${edge(xs)}`} style={pos(xs)} data-testid="ld-stop">
+            <span className="ladder-k">{t('ld.stop')}</span>
+            <Isl className="num ladder-v">{P(stop)}</Isl>
+            {!compact && <span className="ladder-s">{stopNote}</span>}
+          </span>
+        )}
         {targets.map((x, i) => {
           const xx = X(tR[i]!)
           const tick = <i key={`t${i}`} className="ladder-tick is-tp" style={pos(xx)} />
-          if (compact && i > 0 && i < targets.length - 1) return tick
+          if (nowOnly || (compact && i > 0 && i < targets.length - 1)) return tick
           const r = <Isl>{targetR(x, i)}</Isl>
           const note = x.pct ? fillSlots(t('ld.split', { pct: slot('pct'), r: slot('r') }), { pct: <Isl>{pctText(x.pct, lang)}</Isl>, r }) : fillSlots(t('ld.at', { r: slot('r') }), { r })
           return [
@@ -264,14 +324,16 @@ export function Ladder({ side, entry, stop, riskStop, targets, mark, priceAt, li
         })}
         {now}
         {then}
-        <span className={`ladder-label is-above is-entry ${edge(xe)}`} style={pos(xe)} data-testid="ld-entry">
-          <span className="ladder-k">{t('ld.entry')}</span>
-          <Isl className="num ladder-v">{entryText}</Isl>
-          {nowInline}
-          {thenInline}
-        </span>
+        {!nowOnly && (
+          <span className={`ladder-label is-above is-entry ${edge(xe)}`} style={pos(xe)} data-testid="ld-entry">
+            {nowInline}
+            {thenInline}
+            <span className="ladder-k">{t('ld.entry')}</span>
+            <Isl className="num ladder-v">{entryText}</Isl>
+          </span>
+        )}
       </div>
-      {liq && R(liq) < lo && (
+      {!nowOnly && liq && R(liq) < lo && (
         <span className="ladder-liq" aria-hidden="true" data-testid="ld-liq">
           <ArrowLeft className="icon" aria-hidden="true" />
           <span>{t('ld.liq')}</span> <Isl>{P(liq)}</Isl>
