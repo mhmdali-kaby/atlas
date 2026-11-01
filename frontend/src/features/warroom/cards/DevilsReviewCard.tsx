@@ -66,7 +66,7 @@ export function DevilsReviewCard({
           <p className="db-compact-line">
             {previous && (
               <span className="db-was" data-testid="db-was">
-                {fillSlots(t('ratingWas', { n: slot('n') }), { n: <Fig>{String(previous.rating)}</Fig> })}
+                <span>{fillSlots(t('ratingWas', { n: slot('n') }), { n: <Fig>{String(previous.rating)}</Fig> })}</span>
               </span>
             )}
             {resolved.map((item) => (
@@ -100,7 +100,7 @@ export function DevilsReviewCard({
         <VoteChip vote={review.vote} confidence={review.confidence} lang={lang} />
       </div>
       <div className="db-checklist">
-        <h4 className="db-sub">{t('checklist')}</h4>
+        <p className="db-sub">{t('checklist')}</p>
         <ul className="db-ci-list" data-testid="db-checklist">
           {review.rows.map((row) => {
             const Icon = ROW_ICON[row.status]
@@ -110,12 +110,14 @@ export function DevilsReviewCard({
                   <Icon className="icon" aria-hidden="true" />
                 </span>
                 <span className="db-ci-name">{t(`ci.${row.item}`)}</span>
-                <span className="db-ci-text" dir="auto">
+                <span className="db-ci-text">
                   <b className="db-ci-st">{t(`st.${row.status}`)}</b>
                   {row.detail && (
                     <>
                       {' '}
-                      <Inline text={row.detail} flat />
+                      <span dir="auto">
+                        <Inline text={row.detail} flat />
+                      </span>
                     </>
                   )}
                 </span>

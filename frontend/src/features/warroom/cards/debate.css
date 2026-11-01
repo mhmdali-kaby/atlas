@@ -155,7 +155,7 @@
 .db-gate { display: flex; align-items: flex-start; gap: 8px; margin: 0; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label); }
 .db-gate .icon { width: 15px; height: 15px; flex: none; margin-top: 1.5px; }
 .db-gate.is-ok .icon { color: var(--profit-ink); }
-.db-gate.is-fail .icon { color: var(--loss-ink); }
+.db-gate.is-fail .icon, .db-gate.is-missing .icon { color: var(--loss-ink); }
 .db-foot { margin: 0; max-width: 72ch; font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--label-secondary); text-wrap: pretty; }
 
 /* phones: the name gets the whole first line; the vote word leads the bar on the second */

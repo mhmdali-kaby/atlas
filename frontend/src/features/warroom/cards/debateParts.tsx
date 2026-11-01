@@ -21,7 +21,12 @@ export function Fig({ children, className }: { children: string; className?: str
 function Ref({ version, target, onJump }: { version: number | null; target: string | null; onJump: (id: string) => void }) {
   const { t } = useTranslation('debate')
   const words = version === null ? t('refPlain') : fillSlots(t('ref', { v: slot('v') }), { v: <Fig>{String(version)}</Fig> })
-  if (!target) return <span className="db-ref is-plain">{words}</span>
+  if (!target)
+    return (
+      <span className="db-ref is-plain">
+        <span>{words}</span>
+      </span>
+    )
   return (
     <a
       className="db-ref"

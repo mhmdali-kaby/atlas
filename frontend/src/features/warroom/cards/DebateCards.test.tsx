@@ -193,3 +193,12 @@ describe('Risk check card', () => {
     expect(rc?.contracts).toBeNull()
   })
 })
+
+describe('spacing inside flex chips', () => {
+  it('"Was 4 of 5" and "Proposal, version 2" keep their spaces (inline-flex drops bare text-node spaces)', () => {
+    draw(daRerateMessage(), { parent: daReviewMessage() })
+    const was = screen.getByTestId('db-was')
+    expect(was.children).toHaveLength(1)
+    expect(was.firstElementChild?.tagName).toBe('SPAN')
+  })
+})
