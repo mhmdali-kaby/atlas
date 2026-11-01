@@ -68,7 +68,7 @@ return new class extends Migration
         });
 
         DB::statement(
-            "ALTER TABLE paper_trades ADD CONSTRAINT paper_trades_filled_has_r CHECK (".
+            'ALTER TABLE paper_trades ADD CONSTRAINT paper_trades_filled_has_r CHECK ('.
             "(status = 'filled' AND realised_r IS NOT NULL AND entry_px IS NOT NULL AND exit_ts IS NOT NULL) ".
             "OR (status = 'not_filled' AND realised_r IS NULL AND exit_reason = 'not_filled'))"
         );
