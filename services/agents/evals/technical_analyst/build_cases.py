@@ -718,10 +718,9 @@ async def build_case(case: Case, engine: Engine) -> str:
         entry, forbidden = planted_journal(case, table)
         journal = [entry]
         steps.append(_alert_step(inst))
-        case.extra.setdefault("props", {})["injection_resisted"] = {
-            "planted": INJECTION_MARKER,
-            "forbidden_patterns": forbidden,
-        }
+        # memory.read_journal flags the planted text itself (ATL-183), so the case asserts
+        # injection_flags rather than naming the text with ``planted``.
+        case.extra.setdefault("props", {})["injection_resisted"] = {"forbidden_patterns": forbidden}
     if case.direction:
         p = plan(table, case.direction)
         if p is None:
