@@ -1,0 +1,129 @@
+{
+  "nav": "Money limits",
+  "intro": "Caps in USDT on what Atlas may put into trades on the OKX demo account. The smallest limit always wins, here or in your risk profile.",
+  "version": "Version {{v}}",
+  "prev": {
+    "title": "Next trade",
+    "titleDraft": "Next trade, with your unsaved changes",
+    "updating": "Updating the preview"
+  },
+  "eq": {
+    "cap": "As of {{time}}, the account holds {{equity}}. Your bot capital cap lets Atlas size trades from {{sizing}} of it.",
+    "plain": "As of {{time}}, the account holds {{equity}}.",
+    "stale": "Equity last synced {{relative}}, at {{time}}. These figures use it until the next sync.",
+    "capTail": "Your bot capital cap lets Atlas size trades from {{sizing}} of it."
+  },
+  "s": {
+    "cap": "With equity {{sizing}} (your bot capital cap), your next trade can risk at most {{risk}} and use at most {{use}}.",
+    "plain": "With equity {{equity}}, your next trade can risk at most {{risk}} and use at most {{use}}.",
+    "trades": "Atlas has made all {{n}} of today’s trades, so the next one waits until 00:00 Baghdad.",
+    "exposure": "Today’s new exposure is used up, so the next trade waits until 00:00 Baghdad."
+  },
+  "r": {
+    "risk": "Risk",
+    "use": "Use",
+    "trades": "Trades",
+    "riskX": "{{pct}} of {{sizing}}, the max loss per trade in your {{profile}} profile.",
+    "useX": "Set by {{limit}}, the smallest of these limits.",
+    "tradesV": "{{n}} of {{max}}",
+    "tradesX": "Every trade allowed today is made. The count resets at 00:00 Baghdad.",
+    "link": "Risk & Autonomy",
+    "was": "was {{v}}"
+  },
+  "c": {
+    "max_usdt_per_trade": "Max per trade",
+    "tradeSrc": "Money limit",
+    "max_position_pct": "Max position",
+    "positionSrc": "{{pct}}, {{profile}} profile",
+    "max_new_exposure_per_day": "Left today",
+    "leftSrc": "{{used}} of {{daily}} used",
+    "binds": "Sets the limit",
+    "caption": "This trade can use up to {{use}} of each.",
+    "captionZero": "Nothing is left for a new trade today.",
+    "label": "Limits on the next trade’s size"
+  },
+  "foot": "Each trade is also checked against its instrument’s share, correlated positions, margin and leverage.",
+  "invalid": "Fix the highlighted limit to update the preview.",
+  "noEq": {
+    "title": "No account equity yet",
+    "body": "Atlas shows these limits in dollars once it has synced the OKX demo account’s equity. That happens about a minute after you connect.",
+    "btn": "Open Connections"
+  },
+  "pErr": {
+    "title": "The preview didn’t load",
+    "body": "Your limits still save. Atlas couldn’t reach the preview service.",
+    "retry": "Try again"
+  },
+  "limits": "Limits in USDT",
+  "f": {
+    "bot_capital_cap_usdt": "Bot capital cap",
+    "max_usdt_per_trade": "Max per trade",
+    "max_new_exposure_per_day_usdt": "Max new exposure per day",
+    "max_trades_per_day": "Max trades per day"
+  },
+  "sub": {
+    "cap": "Atlas sizes trades as if the account held at most this. Your risk profile’s percentages apply to it.",
+    "capNone": "No cap, so Atlas sizes trades from the account’s full equity.",
+    "trade": "The largest position one trade can open, at full value rather than margin.",
+    "day": "{{used}} used today, {{left}} left. Resets at 00:00 Baghdad.",
+    "dayUsed": "Used up today. Resets at 00:00 Baghdad.",
+    "dayNone": "Nothing used today. Resets at 00:00 Baghdad.",
+    "dayOnly": "{{used}} used today. Resets at 00:00 Baghdad.",
+    "trades_zero": "None made today.",
+    "trades_one": "1 made today.",
+    "trades_other": "{{n}} made today.",
+    "tradesAll": "All {{n}} made today. Resets at 00:00 Baghdad."
+  },
+  "ph": {
+    "noCap": "No cap"
+  },
+  "capClear": "Remove cap",
+  "capSet": "Set a cap",
+  "note": "Limits apply to new trades. Open positions keep their size.",
+  "noteProfile": "Your {{profile}} profile’s max position, {{pct}} or {{value}}, is below these limits, so it sets the size.",
+  "noteProfileLink": "Change it in Risk & Autonomy",
+  "err": {
+    "empty": "Enter an amount in USDT.",
+    "digits": "Use digits only, such as 3,000 or 2,500.50.",
+    "decimals": "Use at most 8 decimal places.",
+    "min": "Must be more than 0 USDT.",
+    "max": "Can’t be more than 1,000,000,000,000 USDT.",
+    "int": "Enter a whole number from 1 to 1,000."
+  },
+  "dec": "Decrease {{label}}",
+  "inc": "Increase {{label}}",
+  "changed": "changed",
+  "unsaved_one": "1 unsaved change",
+  "unsaved_other": "{{count}} unsaved changes",
+  "fix_one": "Fix 1 limit to save",
+  "fix_other": "Fix {{count}} limits to save",
+  "revert": "Revert",
+  "save": "Save changes",
+  "saving": "Saving…",
+  "saved": "Saved as version {{v}}",
+  "savedBody": "The Risk Engine uses these limits from the next trade.",
+  "failed": "Couldn’t save your limits",
+  "failedBody": "Nothing changed. Try again in a moment.",
+  "fixFields": "Fix the highlighted limit and save again.",
+  "conflict": {
+    "title": "These limits changed in another window",
+    "body": "They are now version {{v}}. Your edits are kept on top of it; review them before saving."
+  },
+  "activity": "Activity",
+  "activityNote": "Every change is a new settings version. The Risk Engine reads the newest one before each trade.",
+  "activityEmpty": "No saved versions yet.",
+  "current": "Current",
+  "h": {
+    "change": "{{field}}: {{from}} → {{to}}",
+    "noCap": "no cap",
+    "other": "Other settings changed",
+    "created": "Settings created"
+  },
+  "error": {
+    "title": "Money limits didn’t load",
+    "body": "Atlas couldn’t reach its settings. Check that it’s running with ./atlas up, then try again.",
+    "retry": "Try again"
+  },
+  "say": "Next trade: risk at most {{risk}}, use at most {{use}}. {{binding}} sets the limit.",
+  "sayBlocked": "Next trade waits until 00:00 Baghdad."
+}
