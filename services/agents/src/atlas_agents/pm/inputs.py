@@ -32,6 +32,7 @@ from atlas_quant.grid import bar_delta
 from atlas_quant.indicators import wilder_atr_values
 from atlas_shared.db import (
     AlgoOrder,
+    Bill,
     EarningsEvent,
     EconomicEvent,
     FundingRate,
@@ -92,6 +93,9 @@ class HeldPosition:
     pending_kinds: frozenset[str] = frozenset()
     taken_at: datetime | None = None
     notes: tuple[str, ...] = field(default_factory=tuple)
+    funding_paid_usd: Decimal | None = None
+    """Σ funding-fee bills on the instrument since the position opened (OKX sign: received > 0,
+    paid < 0), USD-like currencies only; None when there is no funding bill (ATL-178's card)."""
 
     def view(self) -> dict[str, Any]:
         """JSON-safe inputs for the model (decimals as strings)."""
@@ -282,6 +286,26 @@ def _funding(session: Session, ctx: ToolContext, inst_id: str) -> FundingInfo | 
     return None if row is None else FundingInfo(rate=row[0], as_of=row[1])
 
 
+FUNDING_FEE_TYPE: Final = "8"
+"""OKX bill type "Funding fee" (trading_core.sync.bill_types.FUNDING_FEE)."""
+USD_LIKE_CCYS: Final = ("USD", "USDT", "USDC")
+
+
+def funding_paid(session: Session, ctx: ToolContext, inst_id: str, since: datetime) -> Decimal | None:
+    """Σ funding-fee ``bal_chg`` on ``inst_id`` since ``since``; None when no funding bill exists."""
+    rows = session.scalars(
+        select(Bill.bal_chg).where(
+            Bill.env == ctx.env,
+            Bill.inst_id == inst_id,
+            Bill.type == FUNDING_FEE_TYPE,
+            Bill.ccy.in_(USD_LIKE_CCYS),
+            Bill.ts >= since,
+            ctx.bound(Bill.ts),
+        )
+    ).all()
+    return sum(rows, Decimal(0)) if rows else None
+
+
 def _own_proposals(session: Session, ctx: ToolContext, inst_id: str, since: datetime) -> list[Proposal]:
     return list(
         session.scalars(
@@ -385,6 +409,7 @@ def gather(
         pending_kinds=pending,
         taken_at=snap.taken_at,
         notes=tuple(notes),
+        funding_paid_usd=funding_paid(session, ctx, snap.inst_id, opened),
     )
 
 

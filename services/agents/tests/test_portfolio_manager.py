@@ -429,6 +429,21 @@ async def test_plus_1_05r_makes_one_run_that_submits_amend_stop_to_breakeven_plu
     assert any(e.payload["kind"] == "risk_check" for e in _messages(rec))
     final = [e for e in _messages(rec) if e.payload["kind"] == "position_update"]
     assert len(final) == 1 and "Submitted **amend_stop** (breakeven)" in final[0].payload["content_md"]
+    # ATL-178: the status card carries code's figures and links the submitted action to its proposal.
+    card = final[0].payload["card"]
+    assert card["type"] == "position_update"
+    assert (card["inst_id"], card["side"], card["r"], card["stop"]) == (world.inst, "long", "1.05", "95")
+    assert card["minutes_in_trade"] >= 0
+    assert card["actions"] == [
+        {
+            "kind": "amend_stop",
+            "rule": "breakeven",
+            "stop": "100.1",
+            "close_pct": None,
+            "proposal_id": str(row.id),
+            "status": "submitted",
+        }
+    ]
 
 
 async def test_a_scripted_widening_stop_is_refused_by_code(world: World) -> None:

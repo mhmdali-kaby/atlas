@@ -11,7 +11,8 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import Mapping, Sequence
-from datetime import datetime
+from datetime import UTC, datetime
+from decimal import ROUND_HALF_UP, Decimal
 from typing import TYPE_CHECKING, Any, Final
 
 from atlas_shared.proposals import EvidenceRef, PositionAction
@@ -150,8 +151,20 @@ class ActionReviewer:
             return Review(follow_up=self._follow_up("; ".join(refused)))
         self.refusals = refused
         notes: list[str] = []
+        card_actions: list[dict[str, Any]] = []
         for kind, model, _action in accepted:
-            notes.append(await submit(self.ctx, kind, model))
+            note, pid = await submit_detail(self.ctx, kind, model)
+            notes.append(note)
+            card_actions.append(
+                {
+                    "kind": kind,
+                    "rule": model.rule,
+                    "stop": _p(model.stop),
+                    "close_pct": _p(model.close_pct),
+                    "proposal_id": pid,
+                    "status": "submitted" if pid else "not_submitted",
+                }
+            )
         if refused:
             notes.append("Refused by code: " + "; ".join(refused))
         status = card.get("status_md")
@@ -159,7 +172,11 @@ class ActionReviewer:
             part for part in (str(status).strip() if isinstance(status, str) else "", content, *notes) if part
         )
         return Review(
-            message={"kind": "position_update", "content_md": body or "Position checked.", "card": None}
+            message={
+                "kind": "position_update",
+                "content_md": body or "Position checked.",
+                "card": status_card(self.plan, self.ctx.now(), card_actions),
+            }
         )
 
     def _follow_up(self, reason: str) -> str:
@@ -171,8 +188,9 @@ class ActionReviewer:
         )
 
 
-async def submit(ctx: ToolContext, kind: str, model: PositionAction) -> str:
-    """Save one checked action through submit_proposal's path; the War Room note for it."""
+async def submit_detail(ctx: ToolContext, kind: str, model: PositionAction) -> tuple[str, str | None]:
+    """Save one checked action through submit_proposal's path: (the War Room note, proposal id or
+    None when it was not saved)."""
     args = SubmitProposalInput(
         action="submit",
         kind=kind,
@@ -182,10 +200,73 @@ async def submit(ctx: ToolContext, kind: str, model: PositionAction) -> str:
     try:
         result = await asyncio.to_thread(submit_entry, ctx, args)
     except ToolError as exc:
-        return f"Not submitted ({kind} {model.rule}): {exc.code}: {exc}"
+        return f"Not submitted ({kind} {model.rule}): {exc.code}: {exc}", None
     data: Any = result.data
     out = data.model_dump() if hasattr(data, "model_dump") else dict(data)
-    return f"Submitted **{kind}** ({model.rule}) on {model.inst_id}: proposal {out['proposal_id']}."
+    pid = str(out["proposal_id"])
+    return f"Submitted **{kind}** ({model.rule}) on {model.inst_id}: proposal {pid}.", pid
 
 
-__all__ = ["ActionReviewer", "run_prompt", "submit"]
+async def submit(ctx: ToolContext, kind: str, model: PositionAction) -> str:
+    """Save one checked action through submit_proposal's path; the War Room note for it."""
+    note, _pid = await submit_detail(ctx, kind, model)
+    return note
+
+
+# -- the position_update card (ATL-178) -----------------------------------------------------------
+
+CARD_TYPE: Final = "position_update"
+_CENT: Final = Decimal("0.01")
+
+
+def _q(value: Decimal | None) -> str | None:
+    return None if value is None else format(value.quantize(_CENT, rounding=ROUND_HALF_UP), "f")
+
+
+def _p(value: Decimal | None) -> str | None:
+    return None if value is None else format(value.normalize(), "f")
+
+
+def status_card(plan: Plan, now: datetime, actions: Sequence[Mapping[str, Any]] = ()) -> dict[str, Any]:
+    """The figures of a position check, computed by code (never the model's): PnL in USD and R,
+    distance to the stop and TP1 in ATR(1H), time in trade, funding paid, and the actions submitted."""
+    pos = plan.position
+    s = pos.state
+    atr = pos.atr_1h if pos.atr_1h is not None and pos.atr_1h > 0 else None
+    sign = Decimal(1) if pos.side == "long" else Decimal(-1)
+    stop_atr = None
+    if s.stop is not None and atr is not None:
+        stop_atr = (s.mark_price - s.stop) * sign / atr
+    tp1: Decimal | None = None
+    if pos.plan is not None and pos.plan.take_profits and not s.tp1_filled:
+        tp1 = pos.plan.take_profits[0].price
+    tp1_atr = (tp1 - s.mark_price) * sign / atr if tp1 is not None and atr is not None else None
+    minutes = max(0, int((now - s.opened_at).total_seconds() // 60))
+    return {
+        "type": CARD_TYPE,
+        "inst_id": pos.inst_id,
+        "side": pos.side,
+        "size": _p(pos.size),
+        "entry": _p(s.entry_price),
+        "mark": _p(s.mark_price),
+        "stop": _p(s.stop),
+        "initial_stop": _p(pos.plan.stop) if pos.plan else None,
+        "targets": [_p(t.price) for t in (pos.plan.take_profits if pos.plan else ())],
+        "tp1": _p(tp1),
+        "tp1_filled": s.tp1_filled,
+        "pnl_usd": _q(pos.upl),
+        "r": _q(plan.evaluation.r_multiple),
+        "atr_1h": _p(atr),
+        "stop_distance_atr": _q(stop_atr),
+        "tp1_distance_atr": _q(tp1_atr),
+        "opened_at": s.opened_at.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "minutes_in_trade": minutes,
+        "funding_paid_usd": _q(pos.funding_paid_usd),
+        "opening_proposal_id": pos.plan.proposal_id if pos.plan else None,
+        "actions": [dict(a) for a in actions],
+        "advisories": [{"rule": guard.rule_label(a), "reason": a.reason} for a in plan.advisories],
+        "as_of": now.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+
+
+__all__ = ["CARD_TYPE", "ActionReviewer", "run_prompt", "status_card", "submit", "submit_detail"]
