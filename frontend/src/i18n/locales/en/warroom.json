@@ -660,6 +660,8 @@
     "breakeven": "Breakeven",
     "locked": "{{r}} locked",
     "aria": "{{side}} plan. Stop {{stop}}, entry {{entry}}, {{targets}}.",
+    "liq": "Liquidation",
+    "ariaLiq": " Estimated liquidation {{liq}}.",
     "ariaNow": " Price now {{now}}, {{r}}.",
     "long": "Long",
     "short": "Short",

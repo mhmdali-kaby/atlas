@@ -305,6 +305,13 @@ export function decimalsOf(p: ProposalSummary): number {
   return Math.max(2, maxDecimals([p.entry, ...(p.entry_zone ?? []), p.stop, ...p.take_profits.map((x) => x.price)]))
 }
 
+/** The Risk Engine's estimated liquidation price (check 7), or null when none was estimated. */
+export function liqOf(p: ProposalSummary): string | null {
+  const c = p.risk_check?.checks?.find((x) => x?.check === 'liquidation_buffer')
+  const v = (c?.values as Record<string, unknown> | undefined) ?? {}
+  return str(v.estimated_liq_price)
+}
+
 function sizingValues(rc: RiskCheckView | null): Record<string, unknown> {
   const c = rc?.checks?.find((x) => x?.check === 'position_size')
   return (c?.values as Record<string, unknown> | undefined) ?? {}

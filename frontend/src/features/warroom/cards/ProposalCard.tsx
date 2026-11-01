@@ -46,6 +46,7 @@ import {
   refusalOf,
   replacedBy,
   shownStatus,
+  liqOf,
   stakeOf,
   useProposal,
   zoneOf,
@@ -248,7 +249,7 @@ export function ProposalCard({ cardRef, lang, onJump }: { cardRef: ProposalCardR
       {zone && p.stop && (
         <div className="pr-ladder">
           <div className="pr-ladder-full">
-            <Ladder side={dir} entry={zone} stop={p.stop} targets={targets.map((x) => ({ price: x.price, pct: x.pct }))} decimals={d} lang={lang} />
+            <Ladder side={dir} entry={zone} stop={p.stop} targets={targets.map((x) => ({ price: x.price, pct: x.pct }))} liq={liqOf(p)} decimals={d} lang={lang} />
           </div>
           <div className="pr-ladder-compact">
             <Ladder side={dir} entry={zone} stop={p.stop} targets={targets.map((x) => ({ price: x.price, pct: x.pct }))} decimals={d} lang={lang} compact />

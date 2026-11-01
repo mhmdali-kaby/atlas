@@ -96,6 +96,9 @@ describe('proposal card', () => {
     expect(within(ladder).getByTestId('ld-entry')).toHaveTextContent('248.60–250.20')
     expect(within(ladder).getByTestId('ld-stop')).toHaveTextContent('241.80')
     expect(within(ladder).getAllByTestId('ld-target').map((x) => x.textContent)).toEqual(['TP1258.5050% at +1.2R', 'TP2264.6030% at +2.0R', 'TP3272.2020% at +3.0R'])
+    // Check 7's estimated liquidation, under the full ladder (the compact one hides it).
+    expect(within(ladder).getByTestId('ld-liq')).toHaveTextContent('Liquidation 166.77')
+    expect(ladder).toHaveAttribute('aria-label', expect.stringContaining('Estimated liquidation 166.77.'))
     expect(c.getByTestId('pr-odds')).toHaveTextContent('52% to reach TP1 before the stop')
     expect(c.getByTestId('pr-notional')).toHaveTextContent('$2,997.79')
     expect(c.getByTestId('pr-size')).toHaveTextContent('12.02 contracts at 3×, margin $999.27')
@@ -122,6 +125,15 @@ describe('proposal card', () => {
     expect(c.queryByTestId('pr-countdown')).toBeNull()
     expect(c.getByTestId('pr-status')).toHaveTextContent('Sent to OKX')
     expect(c.getByTestId('pr-outcome')).toHaveTextContent('Approved by you at 14:33. Sent to OKX at 14:33, limit 249.40.')
+  })
+
+  it('no liquidation line when the risk check estimated none (an unlevered long)', async () => {
+    const detail = proposalDetail()
+    const checks = detail.risk_check!.checks!.map((x) => (x.check === 'liquidation_buffer' ? { ...x, values: { ...x.values, estimated_liq_price: null } } : x))
+    backend({ detail: { ...detail, risk_check: { ...detail.risk_check!, checks } } })
+    draw()
+    await waitFor(() => expect(card()).toHaveAttribute('data-status', 'awaiting_owner'))
+    expect(within(card()).queryByTestId('ld-liq')).toBeNull()
   })
 
   it('autonomy 1: an "advice only" badge and no Approve', async () => {
