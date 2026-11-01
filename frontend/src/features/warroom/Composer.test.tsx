@@ -262,14 +262,15 @@ describe('Composer', () => {
     expect(JSON.parse(String(posts(fetch)[0]![1]!.body)).content_md).toBe('ask @Historian hi')
   })
 
-  it('sends "/" as plain text', async () => {
+  // ATL-163: a leading "/" is a slash command (ComposerSlash.test.tsx); a "/" anywhere else is text.
+  it('sends a "/" that does not start the message as plain text', async () => {
     const fetch = fakeBackend({ stored: [msg({})], posts: [201] })
     renderWarRoom()
     const u = user()
     await waitFor(() => expect(input()).not.toBeDisabled())
-    await u.type(input(), '/pause{Enter}')
+    await u.type(input(), 'XAU/USD at 4,050?{Enter}')
     await waitFor(() => expect(posts(fetch)).toHaveLength(1))
-    expect(JSON.parse(String(posts(fetch)[0]![1]!.body)).content_md).toBe('/pause')
+    expect(JSON.parse(String(posts(fetch)[0]![1]!.body)).content_md).toBe('XAU/USD at 4,050?')
   })
 })
 

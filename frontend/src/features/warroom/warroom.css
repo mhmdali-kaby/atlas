@@ -479,6 +479,7 @@ bdi.fig, bdi.tok { white-space: nowrap; }
   display: flex; justify-content: space-between; gap: 12px;
   font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--label-secondary);
 }
+.composer-note.is-error { color: var(--loss-ink); }
 .composer-hint kbd { font-family: var(--font-sans); font-weight: 600; color: var(--label); }
 .composer-count.is-near { color: var(--warning-ink); font-weight: 600; }
 .composer-count.is-over { color: var(--loss-ink); font-weight: 600; }

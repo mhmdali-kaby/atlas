@@ -49,14 +49,28 @@ export function KillSwitchButton() {
   )
 }
 
-export function KillSheet({ open, onOpenChange, trigger }: { open: boolean; onOpenChange: (open: boolean) => void; trigger?: ReactNode }) {
+/**
+ * `initialFlatten` (ATL-163, `/kill flatten`) preselects close-all on opening; the owner still has
+ * to hold the confirm button for 1.5 s, exactly as when they turn it on by hand.
+ */
+export function KillSheet({
+  open,
+  onOpenChange,
+  trigger,
+  initialFlatten = false,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  trigger?: ReactNode
+  initialFlatten?: boolean
+}) {
   const { t } = useTranslation(NS)
   const lang = useLang()
   const env = useTradingEnv()
   const qc = useQueryClient()
   const preview = useKillPreview(open, env)
   const [view, setView] = useState<View>('confirm')
-  const [flatten, setFlatten] = useState(false)
+  const [flatten, setFlatten] = useState(initialFlatten)
   const [report, setReport] = useState<KillReportData | null>(null)
   const [retrying, setRetrying] = useState(false)
   const alive = useRef(true)
@@ -68,15 +82,15 @@ export function KillSheet({ open, onOpenChange, trigger }: { open: boolean; onOp
     }
   }, [])
 
-  // Each opening starts over at the confirmation, with close-all off: through the trigger
-  // or through a controlled `open` with no trigger (/kill). Adjusted during render, so the
+  // Each opening starts over at the confirmation, with close-all off (on for /kill flatten):
+  // through the trigger or through a controlled `open` with no trigger (/kill). Adjusted during render, so the
   // previous report never paints for a frame.
   const [wasOpen, setWasOpen] = useState(open)
   if (open !== wasOpen) {
     setWasOpen(open)
     if (open) {
       setView('confirm')
-      setFlatten(false)
+      setFlatten(initialFlatten)
       setReport(null)
       setRetrying(false)
     }

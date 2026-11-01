@@ -7,20 +7,29 @@ import type { TradingEnv } from '../../app/shell/tradingEnv'
 import { useLang } from '../portfolio/hooks'
 import { agentStatus, filterAgents, type AgentDef } from './agents'
 import type { WarroomMessage, WarroomThread } from './api'
+import { KillSheet } from '../kill-switch/KillSwitch'
+import { ResumeSheet } from '../kill-switch/TradingBanner'
 import { drafts, sendMessage } from './live'
 import { Medallion } from './Medallion'
 import { useAuthorName } from './shape'
+import { isSlash, parseSlash, SLASH_COMMANDS, slashMatches, type SlashDef, type SlashName } from './slash'
+import { useSlashRunner, type SlashNote } from './slashRun'
 import { Excerpt } from './text'
 
 /*
  * The composer (design v4 War Room §7 Composer, MentionPicker, ReplyChip): a floating glass
  * capsule over the feed's bottom edge. Return sends, Shift-Return adds a line, Return while an IME
  * is composing does not send. "@" at the start of a word opens the agent picker; focus stays in
- * the textarea (aria-activedescendant). `/` is plain text in patch 5. The 4,000-character limit is
+ * the textarea (aria-activedescendant). The 4,000-character limit is
  * the API's (counted in characters, as Laravel's max: rule does); pasted text is never cut.
  *
  * ATL-42: a ReplyChip above the text sets `reply_to` on send. Esc cancels, but closes the picker
  * first when both are open (it stops propagation on its own branch below).
+ *
+ * ATL-163: a message starting with "/" is a slash command (slash.ts), run by useSlashRunner rather
+ * than sent as text. While the text is a single "/word" the same picker lists the matching
+ * commands. An unknown command, or a known one with the wrong arguments, shows the command list
+ * from the locale file in the picker's place and sends nothing; the text stays for editing.
  */
 
 /** The ReplyChip (design v4 War Room §7): the parent's author, its excerpt, and a cancel button. */
@@ -46,6 +55,35 @@ function ReplyChip({ message, onCancel }: { message: WarroomMessage; onCancel: (
       >
         <X aria-hidden="true" strokeWidth={1.5} />
       </button>
+    </div>
+  )
+}
+
+type SlashHelp = { kind: 'unknown'; typed: string } | { kind: 'usage'; name: SlashName }
+
+/** The inline help (ATL-163): what was wrong, then every command with what it does. */
+function SlashHelpPanel({ help }: { help: SlashHelp }) {
+  const { t } = useTranslation('warroom')
+  const usage = help.kind === 'usage' ? SLASH_COMMANDS.find((c) => c.name === help.name) : undefined
+  return (
+    <div className="picker" role="status" data-testid="wr-slash-help">
+      <p className="picker-label" dir="auto">
+        {help.kind === 'unknown' ? (
+          t('slash.help.unknown', { cmd: help.typed })
+        ) : (
+          <Trans t={t} i18nKey="slash.help.usage" values={{ usage: usage?.label ?? '' }} components={{ c: <bdi dir="ltr" /> }} />
+        )}
+      </p>
+      {SLASH_COMMANDS.map((c) => (
+        <div key={c.name} className="picker-item">
+          <span className="pk-text">
+            <bdi className="pk-name" dir="ltr">
+              {c.label}
+            </bdi>
+            <span className="pk-sub">{t(`slash.cmd.${c.name}`)}</span>
+          </span>
+        </div>
+      ))}
     </div>
   )
 }
@@ -87,6 +125,11 @@ export function Composer({ env, thread, threadName, disabled, replyTo, onCancelR
   const draftKey = thread ? `${env}:${thread.id}` : ''
   const [value, setValue] = useState(() => drafts.get(draftKey) ?? '')
   const [picker, setPicker] = useState<Picker | null>(null)
+  const [slashIndex, setSlashIndex] = useState(0)
+  const [slashClosed, setSlashClosed] = useState(false)
+  const [help, setHelp] = useState<SlashHelp | null>(null)
+  const [note, setNote] = useState<SlashNote | null>(null)
+  const slash = useSlashRunner(env, thread)
   const ref = useRef<HTMLTextAreaElement>(null)
   const caretAfter = useRef<number | null>(null)
 
@@ -98,6 +141,11 @@ export function Composer({ env, thread, threadName, disabled, replyTo, onCancelR
   const pickIndex = picker && matches.length ? Math.min(picker.index, matches.length - 1) : 0
   const listId = `${ids}-picker`
   const optionId = (a: AgentDef) => `${ids}-pk-${a.slug}`
+  const slashList = !picker && !slashClosed && !disabled ? slashMatches(value) : []
+  const slashPick = slashList.length ? Math.min(slashIndex, slashList.length - 1) : 0
+  const slashListId = `${ids}-slash`
+  const slashOptionId = (c: SlashDef) => `${ids}-sl-${c.name}`
+  const listOpen = Boolean(picker) || slashList.length > 0
 
   // Put the caret where an insertion asked for it, after React has written the value.
   useLayoutEffect(() => {
@@ -153,6 +201,12 @@ export function Composer({ env, thread, threadName, disabled, replyTo, onCancelR
   }, [])
 
   function update(next: string, caret: number) {
+    if (next !== value) {
+      setHelp(null)
+      setNote(null)
+      setSlashClosed(false)
+      if (!slashMatches(next).length) setSlashIndex(0)
+    }
     setValue(next)
     if (draftKey) drafts.set(draftKey, next)
     const m = mentionAt(next, caret)
@@ -183,6 +237,32 @@ export function Composer({ env, thread, threadName, disabled, replyTo, onCancelR
     caretAfter.current = picker.start + text.length
   }
 
+  /** Writes the chosen command into the composer (ATL-163 autocomplete). */
+  function insertSlash(c: SlashDef) {
+    setValue(c.insert)
+    if (draftKey) drafts.set(draftKey, c.insert)
+    setSlashIndex(0)
+    setSlashClosed(true)
+    caretAfter.current = c.insert.length
+  }
+
+  /** Runs a "/" message. Unknown or malformed: show the help and keep the text. */
+  function runSlash(content: string) {
+    const parsed = parseSlash(content)
+    if (parsed.kind === 'unknown' || parsed.kind === 'usage') {
+      setHelp(parsed.kind === 'unknown' ? { kind: 'unknown', typed: parsed.typed } : { kind: 'usage', name: parsed.name })
+      setSlashClosed(true)
+      return
+    }
+    setValue('')
+    drafts.delete(draftKey)
+    setPicker(null)
+    setHelp(null)
+    setNote(null)
+    void slash.run(parsed).then(setNote)
+    ref.current?.focus()
+  }
+
   /** The @ button: types "@" at the caret (after a space when needed) and opens the picker. */
   function openPicker() {
     const ta = ref.current
@@ -205,6 +285,10 @@ export function Composer({ env, thread, threadName, disabled, replyTo, onCancelR
   function send() {
     if (!canSend || !thread) return
     const content = value.trim()
+    if (isSlash(content)) {
+      runSlash(content)
+      return
+    }
     const replyToId = replyTo?.id ?? null
     setValue('')
     drafts.delete(draftKey)
@@ -239,6 +323,38 @@ export function Composer({ env, thread, threadName, disabled, replyTo, onCancelR
         setPicker(null)
         return
       }
+    }
+    if (slashList.length) {
+      const n = slashList.length
+      const hit = slashList[slashPick]!
+      if (e.key === 'ArrowDown') {
+        e.preventDefault()
+        setSlashIndex((slashPick + 1) % n)
+        return
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault()
+        setSlashIndex((slashPick - 1 + n) % n)
+        return
+      }
+      // Return on a command already typed in full runs it; otherwise Return/Tab completes it.
+      if ((e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey && value.trim().toLowerCase() !== hit.insert)) && !composing) {
+        e.preventDefault()
+        insertSlash(hit)
+        return
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        e.stopPropagation()
+        setSlashClosed(true)
+        return
+      }
+    }
+    if (e.key === 'Escape' && help) {
+      e.preventDefault()
+      e.stopPropagation()
+      setHelp(null)
+      return
     }
     // Esc cancels a reply once the picker (handled above) is out of the way.
     if (e.key === 'Escape' && replyTo) {
@@ -302,6 +418,32 @@ export function Composer({ env, thread, threadName, disabled, replyTo, onCancelR
             )}
           </div>
         )}
+        {slashList.length > 0 && (
+          <div className="picker" id={slashListId} role="listbox" aria-label={t('slash.pickerLabel')} data-testid="wr-slash-picker">
+            <p className="picker-label" aria-hidden="true">
+              {t('slash.pickerLabel')}
+            </p>
+            {slashList.map((c, i) => (
+              <div
+                key={c.name}
+                id={slashOptionId(c)}
+                role="option"
+                aria-selected={i === slashPick}
+                className="picker-item"
+                onPointerDown={(e) => e.preventDefault()}
+                onClick={() => insertSlash(c)}
+              >
+                <span className="pk-text">
+                  <bdi className="pk-name" dir="ltr">
+                    {c.label}
+                  </bdi>
+                  <span className="pk-sub">{t(`slash.cmd.${c.name}`)}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+        {help && !slashList.length && <SlashHelpPanel help={help} />}
         {replyTo && <ReplyChip message={replyTo} onCancel={onCancelReply} />}
         <div className="composer-row">
           <textarea
@@ -314,9 +456,11 @@ export function Composer({ env, thread, threadName, disabled, replyTo, onCancelR
             aria-label={t('composer.label')}
             aria-describedby={`${ids}-hint`}
             aria-autocomplete="list"
-            aria-expanded={Boolean(picker)}
-            aria-controls={picker ? listId : undefined}
-            aria-activedescendant={picker && matches.length ? optionId(matches[pickIndex]!) : undefined}
+            aria-expanded={listOpen}
+            aria-controls={picker ? listId : slashList.length ? slashListId : undefined}
+            aria-activedescendant={
+              picker && matches.length ? optionId(matches[pickIndex]!) : slashList.length ? slashOptionId(slashList[slashPick]!) : undefined
+            }
             aria-invalid={over || undefined}
             onChange={onChange}
             onSelect={onSelect}
@@ -349,11 +493,19 @@ export function Composer({ env, thread, threadName, disabled, replyTo, onCancelR
         </div>
       </div>
       <p className="composer-hint" id={`${ids}-hint`}>
-        <span>{disabled ? t('composer.cantSend') : <Trans t={t} i18nKey="composer.hint" components={{ k: <kbd /> }} />}</span>
+        {note && !disabled ? (
+          <span role="status" className={note.tone === 'error' ? 'composer-note is-error' : 'composer-note'} data-testid="wr-slash-note">
+            {note.text}
+          </span>
+        ) : (
+          <span>{disabled ? t('composer.cantSend') : <Trans t={t} i18nKey="composer.hint" components={{ k: <kbd /> }} />}</span>
+        )}
         <span className={['composer-count', 'num', over ? 'is-over' : chars >= NEAR_FROM && 'is-near'].filter(Boolean).join(' ')} aria-live="polite" data-testid="wr-count">
           {count}
         </span>
       </p>
+      <KillSheet open={slash.kill.open} onOpenChange={slash.setKillOpen} initialFlatten={slash.kill.flatten} />
+      {slash.health && <ResumeSheet open={slash.resumeOpen} onOpenChange={slash.setResumeOpen} health={slash.health} />}
     </div>
   )
 }
