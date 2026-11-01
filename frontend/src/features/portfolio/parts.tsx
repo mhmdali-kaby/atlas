@@ -4,7 +4,7 @@ import type { Lang } from '../../lib/format'
 import { Button, Seal, Spinner } from '../../ui'
 import { cx } from '../../ui/cx'
 import type { PortfolioSummary } from './api'
-import { formatAgo, formatClock } from './time'
+import { formatAgo, formatClock, formatDuration } from './time'
 
 /** Re-exported so the Portfolio pages keep importing it from here; it lives in src/ui. */
 export { Skeleton } from '../../ui'
@@ -23,6 +23,25 @@ export function InstId({ id }: { id: string }) {
       {cut < 0 ? id : id.slice(0, cut)}
       {cut >= 0 && <span className="pf-inst-rest">{id.slice(cut)}</span>}
     </span>
+  )
+}
+
+/**
+ * A duration ("2h 5m", "1 س و9 د"). Figures elsewhere are LTR isolates (`.fig`), but a
+ * duration is words as well as digits: in Arabic it must keep the RTL order, or the
+ * units land before their numbers. Only English gets `.fig`; Arabic gets tabular digits.
+ */
+export function Duration({ ms, lang, title }: { ms: number; lang: Lang; title?: string }) {
+  return (
+    <bdi
+      dir={lang === 'ar' ? 'rtl' : 'ltr'}
+      data-testid="duration"
+      className={lang === 'ar' ? 'tabular-nums' : 'fig'}
+      tabIndex={title ? 0 : undefined}
+      title={title}
+    >
+      {formatDuration(ms, lang)}
+    </bdi>
   )
 }
 

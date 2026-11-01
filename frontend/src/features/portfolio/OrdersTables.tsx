@@ -5,8 +5,8 @@ import { shortId, sizeText, typeText } from './ordersFormat'
 import { Button } from '../../ui'
 import { cx } from '../../ui/cx'
 import type { AlgoOrder, OpenOrder } from './api'
-import { InstId, SideBadge, Skeleton } from './parts'
-import { formatClock, formatDayTime, formatDuration } from './time'
+import { Duration, InstId, SideBadge, Skeleton } from './parts'
+import { formatClock, formatDayTime } from './time'
 
 /*
  * The two tables of Portfolio → Orders (ATL-150): the open-orders row with its Cancel
@@ -89,15 +89,11 @@ export function OpenRow({ o, lang, now, onCancel }: { o: OpenOrder; lang: Lang; 
         <OriginCell o={o} />
       </td>
       <td data-col="age" className="is-num">
-        <span
-          className="fig"
-          tabIndex={0}
-          title={t('placed', {
-            date: formatDayTime(o.created_at, lang),
-          })}
-        >
-          {formatDuration(Math.max(60_000, now - Date.parse(o.created_at)), lang)}
-        </span>
+        <Duration
+          ms={Math.max(60_000, now - Date.parse(o.created_at))}
+          lang={lang}
+          title={t('placed', { date: formatDayTime(o.created_at, lang) })}
+        />
         <span className="pf-cell-sub fig">{formatClock(o.created_at, lang, false)}</span>
       </td>
       <td data-col="actions" className="w-[1%] text-end">
