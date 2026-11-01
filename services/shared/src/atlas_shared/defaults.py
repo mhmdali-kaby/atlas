@@ -1260,6 +1260,7 @@ DEFAULTS: Final[dict[str, Any]] = {
                 "disabled",
             ],
             "risk_timeout_seconds": 30,
+            "execute_timeout_seconds": 60,
             "trading_core_url": "http://127.0.0.1:8100",
             "watchlist_max_instruments": 10,
             "ack_target_seconds": 10,

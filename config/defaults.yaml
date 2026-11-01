@@ -1020,6 +1020,8 @@ agents:
   #   blocking_agents: when any is in one of unavailable_states (or not enabled), the cycle makes no
   #     new proposals and closes after research with the reason.
   #   risk_timeout_seconds: the signed call to trading_core /internal/risk/evaluate/{id}.
+  #   execute_timeout_seconds: the signed POST /internal/proposals/{id}/execute an autonomy 3-4
+  #     send_now makes (ATL-213): a fresh risk check plus the Executor's order and stop check.
   #   trading_core_url: default for the TRADING_CORE_URL env var.
   #   watchlist_max_instruments: research runs per agent per cycle.
   orchestrator:
@@ -1033,6 +1035,7 @@ agents:
     blocking_agents: [technical_analyst, strategist]
     unavailable_states: [degraded, rate_limited, paused, disabled]
     risk_timeout_seconds: 30
+    execute_timeout_seconds: 60
     trading_core_url: "http://127.0.0.1:8100"
     watchlist_max_instruments: 10
     # ATL-161, brief §7.9: the Orchestrator agent (atlas_agents.orchestrator.owner/status/loops).

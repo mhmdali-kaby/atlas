@@ -82,13 +82,13 @@ async def route(ctx: ToolContext, proposal_id: str, client: TradingCoreClient) -
             "The proposal is rejected.",
         )
         return "rejected"
-    status, _expires, row = await asyncio.to_thread(
-        approval.apply_risk_result,
+    status, _expires, row = await approval.apply_risk_result(
         ctx,
         pid,
         body,
         cycle_id=None,
         source=f"agent:{ctx.agent}",
+        client=client,
     )
     if row is None:
         log.warning("portfolio_manager: proposal %s was not risk_checked after the check", proposal_id)
