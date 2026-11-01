@@ -8,7 +8,7 @@
   - `api.ts`: `useAwaitingProposals(env)` (query key `['proposals','awaiting',env]`,
     `GET /api/proposals?env=demo&status=awaiting_owner&limit=50`, polled every 15 s),
     `useProposalEvents(env, onAwaiting)` (private-warroom `.proposal.*`), `awaitingFromEvent`,
-    `openForApproval`, `nearest`, `mmss`, `proposalHref(id)` = `/warroom?proposal=<id>`.
+    `openForApproval`, `nearest`, `proposalHref(id)` = `/warroom?proposal=<id>`. The countdown text uses the shared `mmss` from `warroom/time.ts`.
   - `approvals.css`: `.ks-pill` from design v11 `css/killswitch.css`.
   - Strings: `src/i18n/locales/{en,ar}/approvals.json` (namespace `approvals`, Arabic plurals).
 - `frontend/src/features/warroom/useProposalFocus.ts`: the War Room side of `?proposal=<id>`. `Feed`
