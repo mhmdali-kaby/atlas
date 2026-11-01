@@ -18,6 +18,7 @@ PROCS=(
   "reverb|backend|php artisan reverb:start --host=127.0.0.1 --port=8080"
   "bridge|backend|php artisan atlas:bridge"
   "horizon|backend|php artisan horizon"
+  "telegram|backend|php artisan atlas:telegram-poll"
   "scheduler|backend|php artisan schedule:work"
   "trading_core|services|uv run --package atlas-trading-core python -m trading_core"
   "ingest|services|uv run --package atlas-ingest python -m atlas_ingest"

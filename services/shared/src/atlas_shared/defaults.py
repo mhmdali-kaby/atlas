@@ -847,6 +847,17 @@ DEFAULTS: Final[dict[str, Any]] = {
         "per_page_max": 200,
         "writes_per_minute": 120,
     },
+    "telegram": {
+        "api_base": "https://api.telegram.org",
+        "queue": "default",
+        "poll_timeout_seconds": 25,
+        "http_timeout_seconds": 35,
+        "send_timeout_seconds": 10,
+        "error_backoff_seconds": 5,
+        "send_tries": 3,
+        "writes_per_minute": 30,
+        "callback_mac_bytes": 18,
+    },
     "data_sources_api": {
         "poll_seconds_min": 60,
         "poll_seconds_max": 86400,
