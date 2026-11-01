@@ -98,6 +98,10 @@ export interface ProposalSummary {
   kind: string
   author: string
   inst_id: string
+  /** The live mark from trading_core's market snapshot (ATL-188); null when it has none. */
+  mark?: string | null
+  /** When trading_core received that mark (the Mac's clock, not OKX's ts). */
+  mark_at?: string | null
   side: 'buy' | 'sell'
   order_type: string | null
   entry: string | null
@@ -224,6 +228,54 @@ export function useProposal(id: string, enabled = true) {
     staleTime: 10_000,
     retry: (count, err) => err.status !== 404 && err.status !== 401 && count < 2,
   })
+}
+
+/** GET /api/proposals/{id}/mark: the mark alone, so an open card can poll it cheaply. */
+export interface ProposalMark {
+  inst_id: string
+  mark: string | null
+  mark_at: string | null
+}
+
+export const proposalMarkKey = (id: string) => ['proposals', id, 'mark'] as const
+
+/** How often a live card asks for the mark again (design v12 §13). */
+export const MARK_REFETCH_MS = 10_000
+
+/** The Risk Engine's freshness rule: a mark older than this is not "Now". */
+export const MARK_MAX_AGE_MS = 30_000
+
+/** Cards that can show the price now: the trade is still ahead or under way. */
+export const MARK_LIVE: ReadonlySet<ShownStatus> = new Set<ShownStatus>(['awaiting_owner', 'advice', 'sent', 'partially_filled'])
+
+/** Polls the mark every 10 s and on window focus, only while `enabled` (mounted and live). */
+export function useProposalMark(id: string, enabled: boolean) {
+  return useQuery<ProposalMark, ApiError>({
+    queryKey: proposalMarkKey(id),
+    enabled,
+    queryFn: ({ signal }) => api.get<{ data: ProposalMark }>(`/api/proposals/${encodeURIComponent(id)}/mark`, { signal }).then((r) => r.data),
+    refetchInterval: enabled ? MARK_REFETCH_MS : false,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: enabled,
+    staleTime: 0,
+    retry: false,
+  })
+}
+
+/**
+ * The price the card may call "Now": the newer of the proposal's and the poll's mark, only while
+ * it is at most 30 s old at `now`. Evaluated on the card's clock tick, so a mark ages out without
+ * a fetch.
+ */
+export function freshMark(sources: ReadonlyArray<{ mark?: string | null; mark_at?: string | null } | null | undefined>, now: number): string | null {
+  let best: { mark: string; at: number } | null = null
+  for (const s of sources) {
+    if (!s?.mark || !s.mark_at) continue
+    const at = Date.parse(s.mark_at)
+    if (Number.isNaN(at)) continue
+    if (!best || at > best.at) best = { mark: s.mark, at }
+  }
+  return best && now - best.at <= MARK_MAX_AGE_MS ? best.mark : null
 }
 
 export interface ApproveBody {
