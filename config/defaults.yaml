@@ -265,6 +265,19 @@ portfolio_history:
   # Decimal places of R in the API and CSV.
   r_scale: 2
 
+# ATL-200, brief §16: GET /api/journal, /api/agents/scores and /api/agents/notebook (read-only).
+#   score_days: the windows ?days= accepts (Baghdad days ending today); score_days_default when absent.
+#   hit_rate_scale / brier_scale: decimal places of the window summary figures.
+journal_api:
+  per_page_default: 50
+  per_page_max: 200
+  max_tags: 20
+  score_days: [7, 30, 90]
+  score_days_default: 30
+  hit_rate_scale: 4
+  brier_scale: 6
+  notebook_max_notes: 500
+
 # ATL-174, brief §13 Performance: GET /api/portfolio/performance.
 portfolio_performance:
   ranges: ["1M", "3M", "YTD", "ALL"]
@@ -601,6 +614,28 @@ backfill:
 risk_api:
   # POST /api/risk/check (ATL-128): owner manual risk checks per minute.
   checks_per_minute: 20
+
+# ATL-205: trading_core's signed POST /internal/backtest (decision #253 L, brief §7.3 backtest_rule).
+#   max_bars: (period end - start) / bar per instrument; a longer request is refused with 422.
+#   timeout_seconds: wall-clock limit of one run; over it the call answers 422 reason "timeout".
+#   max_inst_ids: instruments per request. warmup_bars: bars loaded before the period to warm the
+#     indicators (the same role as agents.history.backtest.warmup_bars).
+#   equity_curve_max_points / trades_max_rows: the response's equity curve is downsampled to at most
+#     this many points (first and last kept) and the trade list cut to the first this many rows.
+#   taker_fee_rates: fraction per OKX instType. No trade-fee rate is stored in Postgres yet, so these
+#     are what a run uses (fee_source "config"); an instType not listed uses fallback_taker_fee_rate.
+backtest:
+  max_bars: 50000
+  timeout_seconds: 60
+  max_inst_ids: 5
+  warmup_bars: 250
+  equity_curve_max_points: 1000
+  trades_max_rows: 1000
+  fallback_taker_fee_rate: "0.0005"
+  taker_fee_rates:
+    SPOT: "0.001"
+    SWAP: "0.0005"
+    FUTURES: "0.0005"
 
 data_api:
   resync_per_minute: 1
