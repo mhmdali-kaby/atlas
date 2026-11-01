@@ -133,6 +133,8 @@ class AlgoOrderDetail(OkxModel):
     reduce_only: Str = None
     actual_px: Dec = None
     actual_sz: Dec = None
+    # OKX ``actualSide``: which leg fired once the algo is effective, ``sl`` or ``tp`` (ATL-214).
+    actual_side: Str = None
     ord_id: Str = None
     c_time: Ms = None
     u_time: Ms = None

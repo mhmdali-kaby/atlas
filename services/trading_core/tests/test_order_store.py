@@ -189,3 +189,26 @@ def test_algo_matching_is_env_scoped_and_late_pushes_are_ignored(engine: Engine,
         }
     assert rows["live"]["state"] == "live" and rows["live"]["algo_cl_ord_id"] == algo_cl
     assert rows["demo"]["state"] == "effective" and rows["demo"]["algo_cl_ord_id"] is None
+
+
+def test_algo_payload_carries_which_oco_leg_fired(engine: Engine, inst: str) -> None:
+    """ATL-214: the bridge tells a stop hit from a target hit on an OCO by OKX's actualSide."""
+    row = {
+        "instType": "SWAP",
+        "instId": inst,
+        "algoId": f"O-{uuid.uuid4().hex[:8]}",
+        "ordType": "oco",
+        "side": "sell",
+        "posSide": "net",
+        "sz": "1",
+        "state": "effective",
+        "slTriggerPx": "95",
+        "tpTriggerPx": "110",
+        "actualSide": "tp",
+        "actualPx": "110.2",
+        "cTime": str(md.to_ms(T0)),
+        "uTime": str(md.to_ms(T0)),
+    }
+    payload = order_store.algo_payload(order_store.upsert_algo(engine, "demo", row, T0))
+    assert payload["kind"] == "oco"
+    assert payload["actual_side"] == "tp" and payload["actual_px"] == "110.2"

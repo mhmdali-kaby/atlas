@@ -427,6 +427,8 @@ def algo_payload(u: AlgoUpsert) -> dict[str, Any]:
         "sl_trigger_px": s(d.sl_trigger_px),
         "tp_trigger_px": s(d.tp_trigger_px),
         "trigger_px": s(d.trigger_px),
+        "actual_side": d.actual_side,
+        "actual_px": s(d.actual_px),
         "sz": s(pos_dec(d.sz)),
         "ord_id": d.ord_id,
         "origin": u.origin,

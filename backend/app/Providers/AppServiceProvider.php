@@ -71,6 +71,14 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // ATL-103: owner watchlist pin/remove/restore, per user.
+        RateLimiter::for('notifications-write', function (Request $request): Limit {
+            $perMinute = config('atlas_defaults.notifications.writes_per_minute');
+            $user = $request->user();
+
+            return Limit::perMinute(is_int($perMinute) ? $perMinute : 120)
+                ->by('notifications-write|'.($user !== null ? (string) $user->getAuthIdentifier() : $request->ip()));
+        });
+
         RateLimiter::for('watchlists-write', function (Request $request): Limit {
             $perMinute = config('atlas_defaults.watchlists_api.writes_per_minute');
             $user = $request->user();

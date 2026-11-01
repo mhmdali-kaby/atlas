@@ -127,6 +127,9 @@ final class SettingsSchema
         'daily_turns' => 'integer',
     ];
 
+    /** ATL-214: the delivery channels of every notification event (notifications.channels). */
+    public const NOTIFICATION_CHANNELS = ['in_app', 'browser', 'telegram'];
+
     /** ATL-113: hostname lists for the web agents' fetch policy (ATL-100). */
     public const WEB_DOMAIN_FIELDS = ['agents.web.allow_domains', 'agents.web.deny_domains'];
 
@@ -147,7 +150,59 @@ final class SettingsSchema
             self::BLOCKLIST_UNTIL_FIELD,
             ...array_keys(self::agentFields()),
             ...self::WEB_DOMAIN_FIELDS,
+            ...self::notificationFields(),
         ];
+    }
+
+    /**
+     * ATL-214, brief §17: the notification events (notifications.events), in config order.
+     *
+     * @return list<string>
+     */
+    public static function notificationEvents(): array
+    {
+        $events = config('atlas_defaults.notifications.events');
+
+        return is_array($events) ? array_values(array_map(strval(...), $events)) : [];
+    }
+
+    public static function notificationField(string $event, string $channel): string
+    {
+        return "notifications.{$event}.{$channel}";
+    }
+
+    /**
+     * `notifications.<event>.<channel>` for every event and channel (booleans).
+     *
+     * @return list<string>
+     */
+    public static function notificationFields(): array
+    {
+        $fields = [];
+        foreach (self::notificationEvents() as $event) {
+            foreach (self::NOTIFICATION_CHANNELS as $channel) {
+                $fields[] = self::notificationField($event, $channel);
+            }
+        }
+
+        return $fields;
+    }
+
+    /**
+     * The notification switches a fresh env starts with (notifications.channel_defaults).
+     *
+     * @return array<string, bool>
+     */
+    public static function notificationDefaults(): array
+    {
+        $values = [];
+        foreach (self::notificationEvents() as $event) {
+            foreach (self::NOTIFICATION_CHANNELS as $channel) {
+                $values[self::notificationField($event, $channel)] = config("atlas_defaults.notifications.channel_defaults.{$channel}") === true;
+            }
+        }
+
+        return $values;
     }
 
     /**
@@ -349,7 +404,7 @@ final class SettingsSchema
             'stop_verify_seconds' => config('atlas_defaults.executor.stop_verify_seconds'),
             'order_max_retries' => config('atlas_defaults.executor.order_max_retries'),
             'emergency_stop_atr_mult' => config('atlas_defaults.executor.emergency_stop_atr_mult'),
-        ]), ...self::agentDefaults()];
+        ]), ...self::agentDefaults(), ...self::notificationDefaults()];
     }
 
     /**
@@ -397,6 +452,7 @@ final class SettingsSchema
     public static function normalise(array $values): array
     {
         $agentFields = self::agentFields();
+        $notificationFields = self::notificationFields();
         $out = [];
         foreach ($values as $field => $value) {
             if ($field === 'risk_profile') {
@@ -416,7 +472,7 @@ final class SettingsSchema
 
                 continue;
             }
-            if (in_array($field, self::BOOLEAN_FIELDS, true)) {
+            if (in_array($field, self::BOOLEAN_FIELDS, true) || in_array($field, $notificationFields, true)) {
                 $out[$field] = $value === true;
 
                 continue;
