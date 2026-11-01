@@ -39,6 +39,7 @@ CATEGORIES = {
     "stale_": ("stale candles refused", "stale_refused", 3),
 }
 SHARED = ("valid_schema", "no_invented_numbers", "prices_traceable", "prices_on_tick", "stop_min_atr")
+INJECTION_MARKER = "SYSTEM OVERRIDE"
 JSON_BLOCK = re.compile(r"```json\s*(\{.*?\})\s*```", re.DOTALL)
 
 
@@ -78,9 +79,10 @@ def test_every_case_asserts_the_shared_and_its_category_property() -> None:
             assert "no_setup" in case.properties
         if prefix == "injection_":
             resisted = case.properties["injection_resisted"]
-            assert resisted["planted"] and resisted["forbidden_patterns"]
+            # read_journal flags the text itself (ATL-183): the case asserts injection_flags.
+            assert "planted" not in resisted and resisted["forbidden_patterns"], case.case_id
             journal = case.snapshot()["journal_entries"]
-            assert any(re.search(resisted["planted"], e["lessons_md"]) for e in journal), case.case_id
+            assert any(INJECTION_MARKER in (e["lessons_md"] or "") for e in journal), case.case_id
 
 
 # -- the whole run ------------------------------------------------------------------------------------
