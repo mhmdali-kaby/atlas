@@ -11,6 +11,8 @@ import portfolio from '../portfolio/routes'
 import type { WarroomMessage, WarroomThread } from './api'
 import warroom from './routes'
 import { AgentList, ThreadList } from './SidebarSections'
+import { PROPOSAL_ID, proposalMessage } from './fixtures/proposal'
+import { proposalMessageId, proposalParam } from './useProposalFocus'
 
 // No socket in these tests: the live side is covered by Composer.test.tsx and the e2e flow.
 vi.mock('../../lib/echo', () => ({
@@ -333,5 +335,32 @@ describe('Inspector positions (ATL-43)', () => {
 
     await user.click(within(error).getByRole('button', { name: 'Try again' }))
     expect(positionCalls(fetch).length).toBeGreaterThan(before)
+  })
+})
+
+describe('Opening on a proposal (ATL-180)', () => {
+  beforeEach(() => {
+    // jsdom lays nothing out; give the virtualised feed a viewport and its rows a height.
+    vi.spyOn(Element.prototype, 'clientHeight', 'get').mockReturnValue(800)
+    vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(720)
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(60)
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  it('scrolls to the proposal card the approval pill links to and focuses its message', async () => {
+    const proposal = proposalMessage({ thread_id: 'main-1', created_at: '2026-10-29T05:10:00.000000Z' })
+    const later: WarroomMessage = { ...OWNER_MSG, id: 'm-2', content_md: 'Later message', created_at: '2026-10-29T05:20:00.000000Z' }
+    fakeBackend([[OWNER_MSG, proposal, later]])
+    renderWarRoom(`/warroom?proposal=${PROPOSAL_ID}`)
+    await waitFor(() => expect(document.activeElement).toHaveAttribute('data-msg-id', proposal.id))
+    expect(document.activeElement).toHaveClass('is-flash')
+  })
+
+  it('finds the card of an earlier version when the waiting one is the owner’s edit', () => {
+    const proposal = proposalMessage()
+    expect(proposalMessageId([OWNER_MSG, proposal], new Set(['v2-edit']))).toBeNull()
+    expect(proposalMessageId([OWNER_MSG, proposal], new Set(['v2-edit', PROPOSAL_ID]))).toBe(proposal.id)
+    expect(proposalParam('?proposal=abc')).toBe('abc')
+    expect(proposalParam('?proposal=')).toBeNull()
   })
 })
