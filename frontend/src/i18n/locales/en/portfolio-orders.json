@@ -50,7 +50,7 @@
     "partially_effective": "Partly triggered"
   },
   "atlas": "Atlas",
-  "proposal": "Proposal {{id}}",
+  "proposalLabel": "Proposal",
   "external": "External",
   "externalTip": "Placed outside Atlas, for example in the OKX app. Atlas imported it during reconciliation.",
   "placed": "Placed {{date}}",

@@ -56,7 +56,7 @@
     "partially_effective": "مفعَّل جزئيًا"
   },
   "atlas": "أطلس",
-  "proposal": "المقترح {{id}}",
+  "proposalLabel": "المقترح",
   "external": "خارجي",
   "externalTip": "وُضع خارج أطلس، من تطبيق OKX مثلًا، واستورده أطلس أثناء المطابقة.",
   "placed": "وُضع في {{date}}",

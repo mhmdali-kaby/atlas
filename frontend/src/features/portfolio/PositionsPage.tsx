@@ -1,11 +1,11 @@
-import { ArrowDownRight, ArrowUpRight, Layers } from 'lucide-react'
+import { Layers } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useTradingEnv } from '../../app/shell/tradingEnv'
 import { formatDecimal, formatPrice, NO_VALUE, type Lang } from '../../lib/format'
 import { SignedValue } from '../../ui'
 import { POLL_MS, usePositions, useSummary, type Position } from './api'
 import { useLang, useNow } from './hooks'
-import { ReconciledIndicator, Skeleton, StateBlock } from './parts'
+import { InstId, ReconciledIndicator, SideBadge, Skeleton, StateBlock } from './parts'
 import { formatDay, formatDayTime, formatDuration } from './time'
 import './portfolio.css'
 
@@ -19,28 +19,6 @@ const COLUMNS = ['instrument', 'side', 'size', 'leverage', 'mgnMode', 'entry', '
 type Column = (typeof COLUMNS)[number]
 const NUMERIC = new Set<Column>(['size', 'leverage', 'entry', 'mark', 'liq', 'upl', 'time'])
 
-/** OKX instrument ID verbatim: the base asset carries the row, the rest recedes. */
-function InstId({ id }: { id: string }) {
-  const cut = id.indexOf('-')
-  return (
-    <span dir="ltr" className="pf-inst">
-      {cut < 0 ? id : id.slice(0, cut)}
-      {cut >= 0 && <span className="pf-inst-rest">{id.slice(cut)}</span>}
-    </span>
-  )
-}
-
-function SideBadge({ side }: { side: Position['side'] }) {
-  const { t } = useTranslation('portfolio')
-  const Icon = side === 'long' ? ArrowUpRight : ArrowDownRight
-  return (
-    <span className="pf-badge" data-side={side}>
-      <Icon aria-hidden="true" strokeWidth={2} className="rtl:-scale-x-100" />
-      {t(`positions.${side}`)}
-    </span>
-  )
-}
-
 function PositionRow({ p, lang, now }: { p: Position; lang: Lang; now: number }) {
   const { t } = useTranslation('portfolio')
   const mode = p.margin_mode === 'isolated' || p.margin_mode === 'cross' ? t(`positions.${p.margin_mode}`) : (p.margin_mode ?? NO_VALUE)
@@ -50,7 +28,7 @@ function PositionRow({ p, lang, now }: { p: Position; lang: Lang; now: number })
         <InstId id={p.inst_id} />
       </td>
       <td data-col="side">
-        <SideBadge side={p.side} />
+        <SideBadge side={p.side} label={t(`positions.${p.side}`)} />
       </td>
       <td data-col="size" className="is-num">
         <span className="fig">{formatDecimal(p.size, lang, 0)}</span>
