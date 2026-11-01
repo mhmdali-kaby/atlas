@@ -1,8 +1,17 @@
 import { AnimatePresence, MotionConfig, motion } from 'motion/react'
 import { Dialog } from 'radix-ui'
-import { useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { cx } from './cx'
 import { FADE, SPRING } from './motion'
+
+export type SheetTone = 'default' | 'destructive' | 'warning' | 'muted'
+
+const TONE: Record<SheetTone, string> = {
+  default: 'bg-fill-3 text-label',
+  destructive: 'bg-loss-wash text-loss-ink',
+  warning: 'bg-warning-wash text-warning-ink',
+  muted: 'bg-fill-3 text-label-secondary',
+}
 
 export interface SheetProps {
   /** Controlled open state; omit for an uncontrolled sheet opened by `trigger`. */
@@ -15,8 +24,8 @@ export interface SheetProps {
   description?: ReactNode
   /** A 20px icon shown in a 44px tile above the title. */
   icon?: ReactNode
-  /** A destructive sheet tints the icon tile red. */
-  tone?: 'default' | 'destructive'
+  /** Tints the icon tile: red for destructive, orange for warning, grey for a quiet (muted) state. */
+  tone?: SheetTone
   children?: ReactNode
   /** Buttons, at the inline end. Put the destructive one last. */
   actions?: ReactNode
@@ -49,6 +58,8 @@ export function Sheet({
 }: SheetProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen)
   const isOpen = open ?? uncontrolledOpen
+  const [surface, setSurface] = useState<HTMLDivElement | null>(null)
+  const clipped = useSheetClip(surface)
   const setOpen = (next: boolean) => {
     if (open === undefined) setUncontrolledOpen(next)
     onOpenChange?.(next)
@@ -78,9 +89,11 @@ export function Sheet({
                 {...(description ? {} : { 'aria-describedby': undefined })}
               >
                 <motion.div
+                  ref={setSurface}
                   data-sheet=""
+                  data-clipped={clipped || undefined}
                   className={cx(
-                    'fixed inset-x-0 top-14 z-81 mx-auto flex max-h-[calc(100dvh-6rem)] w-[min(540px,calc(100vw-32px))] flex-col overflow-auto',
+                    'fixed inset-x-0 top-14 z-81 mx-auto flex max-h-[calc(100dvh-6rem)] w-[min(540px,calc(100vw-32px))] flex-col overflow-auto scroll-pb-24',
                     'sheet-surface text-label focus:outline-none',
                     className,
                   )}
@@ -95,7 +108,7 @@ export function Sheet({
                         aria-hidden="true"
                         className={cx(
                           'grid size-11 place-items-center rounded-card [&_svg]:size-5',
-                          tone === 'destructive' ? 'bg-loss-wash text-loss-ink' : 'bg-fill-3 text-label',
+                          TONE[tone],
                         )}
                       >
                         {icon}
@@ -111,7 +124,18 @@ export function Sheet({
                     </div>
                     {children}
                   </div>
-                  {actions && <div className="flex justify-end gap-2 px-7 pt-4 pb-6">{actions}</div>}
+                  {actions && (
+                    <div
+                      data-sheet-actions=""
+                      className={cx(
+                        'sticky bottom-0 z-2 flex flex-wrap items-center justify-end gap-2 px-7 pt-4 pb-6 [background:var(--bg-elevated)]',
+                        'transition-shadow duration-[var(--dur-fast)] ease-[var(--ease-out)]',
+                        clipped && 'shadow-[0_-0.5px_0_var(--separator)]',
+                      )}
+                    >
+                      {actions}
+                    </div>
+                  )}
                 </motion.div>
               </Dialog.Content>
             </Dialog.Portal>
@@ -120,6 +144,39 @@ export function Sheet({
       </MotionConfig>
     </Dialog.Root>
   )
+}
+
+/**
+ * Design §12.2: a sheet's actions stay pinned to its bottom; while content is still below
+ * them they carry a hairline. Re-checked on scroll, resize and content changes.
+ */
+function useSheetClip(el: HTMLElement | null): boolean {
+  const [clipped, setClipped] = useState(false)
+  const frame = useRef(0)
+  const check = useCallback(() => {
+    if (!el) return
+    setClipped(el.scrollHeight - el.scrollTop - el.clientHeight > 1)
+  }, [el])
+  useEffect(() => {
+    if (!el) return undefined
+    const schedule = () => {
+      cancelAnimationFrame(frame.current)
+      frame.current = requestAnimationFrame(check)
+    }
+    schedule()
+    el.addEventListener('scroll', check, { passive: true })
+    const resize = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(schedule)
+    resize?.observe(el)
+    const mutation = typeof MutationObserver === 'undefined' ? null : new MutationObserver(schedule)
+    mutation?.observe(el, { childList: true, subtree: true, characterData: true })
+    return () => {
+      cancelAnimationFrame(frame.current)
+      el.removeEventListener('scroll', check)
+      resize?.disconnect()
+      mutation?.disconnect()
+    }
+  }, [el, check])
+  return clipped
 }
 
 /** Closes the enclosing Sheet; wrap a Button in it. */
