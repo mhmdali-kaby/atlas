@@ -247,6 +247,20 @@ DEFAULTS: Final[dict[str, Any]] = {
         "per_page_max": 200,
         "r_scale": 2,
     },
+    "journal_api": {
+        "per_page_default": 50,
+        "per_page_max": 200,
+        "max_tags": 20,
+        "score_days": [
+            7,
+            30,
+            90,
+        ],
+        "score_days_default": 30,
+        "hit_rate_scale": 4,
+        "brier_scale": 6,
+        "notebook_max_notes": 500,
+    },
     "portfolio_performance": {
         "ranges": [
             "1M",
