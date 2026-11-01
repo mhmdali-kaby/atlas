@@ -215,7 +215,7 @@ describe('the Stop trading button', () => {
   })
 })
 
-describe('the Stop sheet (decision #251)', () => {
+describe('the Stop sheet (decision 251)', () => {
   async function openSheet() {
     const user = userEvent.setup()
     await user.click(screen.getByTestId('kill-switch'))

@@ -37,7 +37,7 @@ import './killswitch.css'
 type View = 'confirm' | 'working' | 'report' | 'fail'
 
 /**
- * The red Stop trading button on every page's toolbar (brief §12, design §8, decision #251).
+ * The red Stop trading button on every page's toolbar (brief §12, design §8, decision 251).
  * One press stops: entry orders and take-profits are cancelled, every stop stays on OKX and
  * trading pauses. Closing all positions too is a 1.5 s press-and-hold, never typed.
  */
@@ -338,7 +338,7 @@ function ConfirmActions({ flatten, onGo }: { flatten: boolean; onGo: () => void 
 type Hint = 'idle' | 'holding' | 'early'
 
 /**
- * Press and hold for 1.5 s (decision #251): pointer, or Space/Enter held. Released early,
+ * Press and hold for 1.5 s (decision 251): pointer, or Space/Enter held. Released early,
  * nothing is sent and the hint says so. Clicks alone never fire it.
  */
 export function HoldButton({ onComplete }: { onComplete: () => void }) {

@@ -11,9 +11,9 @@ import { getEcho } from '../../lib/echo'
 
 export const HEALTH_KEY = ['system', 'health'] as const
 export const HEALTH_POLL_MS = 10_000
-/** Press-and-hold time for "stop and close all" (decision #251). */
+/** Press-and-hold time for "stop and close all" (decision 251). */
 export const HOLD_MS = 1500
-/** Sent by the sheet, never typed by the owner (decision #251; the API refuses a kill without it). */
+/** Sent by the sheet, never typed by the owner (decision 251; the API refuses a kill without it). */
 export const KILL_CONFIRM = 'KILL'
 
 export interface Breaker {
