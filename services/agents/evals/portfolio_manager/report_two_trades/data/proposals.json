@@ -1,0 +1,32 @@
+[
+ {
+  "id": "493a9011-9a38-5093-80d9-13c011dfbf86",
+  "env": "demo",
+  "kind": "entry",
+  "author": "strategist",
+  "inst_id": "BTC-USDT-SWAP",
+  "side": "buy",
+  "order_type": "limit",
+  "entry": "60000",
+  "stop": "59000",
+  "status": "filled",
+  "created_at": "2087-05-12T22:00:00Z",
+  "updated_at": "2087-05-12T22:00:00Z",
+  "invalidation": ""
+ },
+ {
+  "id": "20e8e8b0-3f80-5ca7-8d85-de0d709271cf",
+  "env": "demo",
+  "kind": "close",
+  "author": "portfolio_manager",
+  "inst_id": "BTC-USDT-SWAP",
+  "side": null,
+  "order_type": null,
+  "entry": null,
+  "stop": null,
+  "status": "filled",
+  "created_at": "2087-05-13T02:00:00Z",
+  "updated_at": "2087-05-13T02:00:00Z",
+  "invalidation": "time_stop"
+ }
+]

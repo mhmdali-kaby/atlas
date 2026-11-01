@@ -1,0 +1,48 @@
+[
+ {
+  "id": "c05f43ae-e0e3-5b89-955b-b2c16b4ac39a",
+  "source": "evalpm.wire_a",
+  "url": "https://news.example/news-xau-confirmed-hold/0",
+  "canonical_url": "https://news.example/news-xau-confirmed-hold/0",
+  "title": "Central banks added to gold reserves for a fifth month",
+  "summary": "Central banks added to gold reserves for a fifth month",
+  "published_at": "2087-05-13T08:40:00Z",
+  "fetched_at": "2087-05-13T08:41:00Z",
+  "language": "en",
+  "instruments": [
+   "XAU-USDT-SWAP"
+  ],
+  "asset_classes": [
+   "commodity"
+  ],
+  "event_type": "other",
+  "sentiment": "-0.4",
+  "importance": 4,
+  "novelty": "0.8",
+  "cluster_id": "6e627adf-e8a5-5c4c-80c6-88eb49421019",
+  "created_at": "2087-05-13T08:41:00Z"
+ },
+ {
+  "id": "692d8b0e-d9f9-56de-b06b-aa03d96977e6",
+  "source": "evalpm.wire_b",
+  "url": "https://news.example/news-xau-confirmed-hold/1",
+  "canonical_url": "https://news.example/news-xau-confirmed-hold/1",
+  "title": "Central banks added to gold reserves for a fifth month",
+  "summary": "Central banks added to gold reserves for a fifth month",
+  "published_at": "2087-05-13T08:45:00Z",
+  "fetched_at": "2087-05-13T08:46:00Z",
+  "language": "en",
+  "instruments": [
+   "XAU-USDT-SWAP"
+  ],
+  "asset_classes": [
+   "commodity"
+  ],
+  "event_type": "other",
+  "sentiment": "-0.4",
+  "importance": 4,
+  "novelty": "0.8",
+  "cluster_id": "6e627adf-e8a5-5c4c-80c6-88eb49421019",
+  "created_at": "2087-05-13T08:46:00Z"
+ }
+]

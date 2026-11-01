@@ -1,0 +1,74 @@
+[
+ {
+  "env": "demo",
+  "bill_id": "evalpm-report_two_trades-1",
+  "inst_id": "BTC-USDT-SWAP",
+  "ccy": "USDT",
+  "type": "2",
+  "bal_chg": "-0.1",
+  "pnl": "0",
+  "fee": "-0.1",
+  "ts": "2087-05-12T22:00:00Z",
+  "created_at": "2087-05-12T22:00:00Z"
+ },
+ {
+  "env": "demo",
+  "bill_id": "evalpm-report_two_trades-2",
+  "inst_id": "BTC-USDT-SWAP",
+  "ccy": "USDT",
+  "type": "2",
+  "bal_chg": "39.9",
+  "pnl": "40",
+  "fee": "-0.1",
+  "ts": "2087-05-13T02:00:00Z",
+  "created_at": "2087-05-13T02:00:00Z"
+ },
+ {
+  "env": "demo",
+  "bill_id": "evalpm-report_two_trades-3",
+  "inst_id": "ETH-USDT-SWAP",
+  "ccy": "USDT",
+  "type": "2",
+  "bal_chg": "-0.05",
+  "pnl": "0",
+  "fee": "-0.05",
+  "ts": "2087-05-12T23:00:00Z",
+  "created_at": "2087-05-12T23:00:00Z"
+ },
+ {
+  "env": "demo",
+  "bill_id": "evalpm-report_two_trades-4",
+  "inst_id": "ETH-USDT-SWAP",
+  "ccy": "USDT",
+  "type": "2",
+  "bal_chg": "-20.05",
+  "pnl": "-20",
+  "fee": "-0.05",
+  "ts": "2087-05-13T05:00:00Z",
+  "created_at": "2087-05-13T05:00:00Z"
+ },
+ {
+  "env": "demo",
+  "bill_id": "evalpm-report_two_trades-5",
+  "inst_id": "BTC-USDT-SWAP",
+  "ccy": "USDT",
+  "type": "8",
+  "bal_chg": "-1.25",
+  "pnl": null,
+  "fee": null,
+  "ts": "2087-05-13T05:01:00Z",
+  "created_at": "2087-05-13T05:01:00Z"
+ },
+ {
+  "env": "demo",
+  "bill_id": "evalpm-report_two_trades-6",
+  "inst_id": "SOL-USDT-SWAP",
+  "ccy": "USDT",
+  "type": "8",
+  "bal_chg": "0.5",
+  "pnl": null,
+  "fee": null,
+  "ts": "2087-05-13T13:01:00Z",
+  "created_at": "2087-05-13T13:01:00Z"
+ }
+]

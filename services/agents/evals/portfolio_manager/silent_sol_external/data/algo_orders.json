@@ -1,0 +1,16 @@
+[
+ {
+  "env": "demo",
+  "order_id": null,
+  "algo_id": "a2474d898",
+  "algo_cl_ord_id": "sc49e82d1",
+  "inst_id": "SOL-USDT-SWAP",
+  "side": "sell",
+  "sz": "2",
+  "state": "live",
+  "origin": "atlas",
+  "created_at": "2087-05-13T06:00:00Z",
+  "kind": "sl",
+  "trigger_px": "145"
+ }
+]

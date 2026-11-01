@@ -1,0 +1,42 @@
+[
+ {
+  "env": "demo",
+  "pos_id": "p-report_two_trades-1",
+  "inst_id": "BTC-USDT-SWAP",
+  "inst_type": "SWAP",
+  "mgn_mode": "isolated",
+  "pos_side": "net",
+  "side": "long",
+  "close_type": "2",
+  "size": "2",
+  "entry_px": "60000",
+  "exit_px": "62000",
+  "realised_pnl": "40",
+  "pnl": "40",
+  "opened_at": "2087-05-12T22:00:00Z",
+  "closed_at": "2087-05-13T02:00:00Z",
+  "proposal_id": "493a9011-9a38-5093-80d9-13c011dfbf86",
+  "origin": "atlas",
+  "created_at": "2087-05-13T02:00:00Z"
+ },
+ {
+  "env": "demo",
+  "pos_id": "p-report_two_trades-2",
+  "inst_id": "ETH-USDT-SWAP",
+  "inst_type": "SWAP",
+  "mgn_mode": "isolated",
+  "pos_side": "net",
+  "side": "short",
+  "close_type": "2",
+  "size": "2",
+  "entry_px": "3000",
+  "exit_px": "3010",
+  "realised_pnl": "-20",
+  "pnl": "-20",
+  "opened_at": "2087-05-12T23:00:00Z",
+  "closed_at": "2087-05-13T05:00:00Z",
+  "proposal_id": null,
+  "origin": "external",
+  "created_at": "2087-05-13T05:00:00Z"
+ }
+]

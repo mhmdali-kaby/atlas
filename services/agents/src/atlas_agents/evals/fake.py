@@ -41,8 +41,15 @@ def full_tool_name(name: str) -> str:
 class EvalFakeClient:
     """Implements the ClaudeClient protocol of atlas_agents.session for one scripted query."""
 
-    def __init__(self, steps: Sequence[FakeStep], ctx: ToolContext, options: ClaudeAgentOptions) -> None:
-        self._steps = list(steps)
+    def __init__(
+        self,
+        steps: Sequence[FakeStep],
+        ctx: ToolContext,
+        options: ClaudeAgentOptions,
+        follow_ups: Sequence[Sequence[FakeStep]] = (),
+    ) -> None:
+        self._scripts = [list(steps), *(list(f) for f in follow_ups)]
+        self._steps = self._scripts[0]
         self._ctx = ctx
         self.options = options
         self.queries: list[str] = []
@@ -57,8 +64,11 @@ class EvalFakeClient:
         return None
 
     async def query(self, prompt: str, session_id: str = "default") -> None:
-        if self.queries:
-            raise testing.ScriptExhaustedError("an eval case scripts exactly one query")
+        if len(self.queries) >= len(self._scripts):
+            raise testing.ScriptExhaustedError(
+                f"the eval case scripts {len(self._scripts)} query(ies): the answer and its follow_ups"
+            )
+        self._steps = self._scripts[len(self.queries)]
         self.queries.append(prompt)
 
     async def _call(self, name: str, args: dict[str, Any]) -> tuple[Any, bool]:
@@ -74,7 +84,11 @@ class EvalFakeClient:
                 yield AssistantMessage(content=[TextBlock(text=step.text)], model="fake")
             elif step.tool is not None:
                 name = full_tool_name(step.tool)
-                use_id = f"toolu_eval_{index}"
+                use_id = (
+                    f"toolu_eval_{index}"
+                    if len(self.queries) <= 1
+                    else f"toolu_eval_{len(self.queries)}_{index}"
+                )
                 yield AssistantMessage(
                     content=[ToolUseBlock(id=use_id, name=name, input=step.input)], model="fake"
                 )

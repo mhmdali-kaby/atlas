@@ -1,0 +1,12 @@
+[
+ {
+  "id": "42b6bc97-9a36-5e41-b976-c0f712f55887",
+  "env": "demo",
+  "proposal_id": "75a08db6-933f-56bb-bfd4-9cd5afc640e2",
+  "settings_version": 1,
+  "result": "approved",
+  "checks": [],
+  "decision": "awaiting_owner",
+  "created_at": "2087-05-13T05:55:00Z"
+ }
+]

@@ -70,6 +70,9 @@ class FakeStep(_Strict):
 
 class FakeScript(_Strict):
     steps: list[FakeStep]
+    follow_ups: list[list[FakeStep]] = Field(default_factory=list)
+    """Answers to the reviewer's follow-up prompts, in order (a run that is sent a follow-up the
+    script does not answer fails, as before)."""
 
 
 class EvalCase(_Strict):
