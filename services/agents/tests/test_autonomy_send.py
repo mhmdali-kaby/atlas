@@ -29,7 +29,7 @@ from atlas_agents.tools.framework import ToolContext
 from atlas_shared.db import Proposal, RiskCheck
 from atlas_shared.events import EventEnvelope
 from atlas_shared.internal_api import sign
-from sqlalchemy import Engine, delete, select
+from sqlalchemy import Engine, delete, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
 from .conftest import Recorder
@@ -68,7 +68,7 @@ class FakeTradingCore:
             )
             s.flush()
             s.execute(
-                Proposal.__table__.update()
+                update(Proposal)
                 .where(Proposal.id == pid, Proposal.status == "sent")
                 .values(status="risk_checked")
             )
@@ -85,7 +85,7 @@ class FakeTradingCore:
     def _close(self, pid: uuid.UUID, status: str, reason: str) -> None:
         with Session(self.engine) as s:
             s.execute(
-                Proposal.__table__.update()
+                update(Proposal)
                 .where(Proposal.id == pid, Proposal.status == "risk_checked")
                 .values(status=status, status_reason=reason, decided_by="autonomy:3")
             )
@@ -132,7 +132,7 @@ class FakeTradingCore:
                 },
             )
         with Session(self.engine) as s:  # the Executor's proposal_sent()
-            s.execute(Proposal.__table__.update().where(Proposal.id == pid).values(status="sent"))
+            s.execute(update(Proposal).where(Proposal.id == pid).values(status="sent"))
             s.commit()
         return httpx.Response(
             200,
@@ -355,6 +355,8 @@ async def test_concurrent_applies_execute_once(world: World) -> None:
     results = await asyncio.gather(*[_apply(world, pid, body, tc) for _ in range(4)])
     assert len(tc.requests) == 1
     assert sum(1 for r in results if r[2] is not None) == 1
+    # A duplicate that lands while trading_core re-checks must not open an approval window.
+    assert world.row(pid).status == "sent" and world.rec.of("proposal.awaiting_owner") == []
 
 
 async def test_a_stale_body_after_a_newer_check_does_not_send(world: World) -> None:
@@ -376,8 +378,9 @@ async def test_a_stale_body_after_a_newer_check_does_not_send(world: World) -> N
         )
         s.commit()
     tc = FakeTradingCore(world.engine)
-    status, _e, _r = await _apply(world, pid, body, tc)
-    assert status == "awaiting_owner" and tc.requests == []
+    _status, expires, row = await _apply(world, pid, body, tc)
+    assert (row, expires, tc.requests) == (None, None, [])
+    assert world.row(pid).status == "risk_checked"  # a superseded body moves nothing
 
 
 # -- levels 1-2 and non-send decisions never call execute ---------------------------------------------
@@ -409,7 +412,7 @@ async def test_a_pm_close_at_level_3_goes_through_the_same_route(
 
     pid, body = world.proposal(kind="close")
     with Session(world.engine) as s:
-        s.execute(Proposal.__table__.update().where(Proposal.id == pid).values(status="under_review"))
+        s.execute(update(Proposal).where(Proposal.id == pid).values(status="under_review"))
         s.commit()
 
     tc = FakeTradingCore(world.engine)
@@ -417,7 +420,7 @@ async def test_a_pm_close_at_level_3_goes_through_the_same_route(
     class Risk(TradingCoreClient):
         async def risk_evaluate(self, proposal_id: str) -> dict[str, Any]:
             with Session(world.engine) as s:
-                s.execute(Proposal.__table__.update().where(Proposal.id == pid).values(status="risk_checked"))
+                s.execute(update(Proposal).where(Proposal.id == pid).values(status="risk_checked"))
                 s.commit()
             return body
 

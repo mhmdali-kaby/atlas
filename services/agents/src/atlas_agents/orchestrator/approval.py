@@ -40,7 +40,7 @@ from typing import Any, Final
 from atlas_shared.db import Proposal
 from atlas_shared.defaults import DEFAULTS
 from atlas_shared.events import EventEnvelope
-from sqlalchemy import text, update
+from sqlalchemy import select, text, update
 from sqlalchemy.orm import Session
 
 from atlas_agents import proposals as proposal_reads
@@ -91,15 +91,19 @@ def _decide(level: int, body: Mapping[str, Any]) -> str:
     return "awaiting_owner"
 
 
-def _newest_check(session: Session, proposal_id: uuid.UUID, risk_check_id: Any) -> bool:
-    """Whether ``risk_check_id`` is the proposal's newest risk check (a stale body is not)."""
+def _check_standing(session: Session, proposal_id: uuid.UUID, risk_check_id: Any) -> str:
+    """``newest`` when ``risk_check_id`` is the proposal's newest stored risk check, ``superseded``
+    when it is stored and a newer one exists (a stale or repeated body), else ``unknown``."""
     if not risk_check_id:
-        return False
-    newest = session.execute(
-        text("SELECT id FROM risk_checks WHERE proposal_id = :p ORDER BY created_at DESC, id DESC LIMIT 1"),
+        return "unknown"
+    rows = session.execute(
+        text("SELECT id FROM risk_checks WHERE proposal_id = :p ORDER BY created_at DESC, id DESC"),
         {"p": proposal_id},
-    ).scalar()
-    return newest is not None and str(newest) == str(risk_check_id)
+    ).scalars()
+    ids = [str(r) for r in rows]
+    if ids and ids[0] == str(risk_check_id):
+        return "newest"
+    return "superseded" if str(risk_check_id) in ids else "unknown"
 
 
 def _record(
@@ -115,8 +119,19 @@ def _record(
     with ctx.session_factory() as session:
         level = autonomy if autonomy is not None else autonomy_level(session, ctx, defaults)
         status = _decide(level, body)
-        if status == "sent" and not _newest_check(session, proposal_id, body.get("risk_check_id")):
-            status = "awaiting_owner"
+        # Lock the row first: trading_core's re-check writes the new risk check and moves the row
+        # back to risk_checked in one transaction, so after the lock the newest-check read below
+        # sees both. A body whose check is no longer the newest (a repeat during or after an
+        # execute) moves nothing.
+        locked = session.execute(
+            select(Proposal.status).where(Proposal.id == proposal_id).with_for_update()
+        ).scalar()
+        standing = _check_standing(session, proposal_id, body.get("risk_check_id"))
+        if locked != "risk_checked" or standing == "superseded":
+            session.rollback()
+            return status, level, None, None
+        if status == "sent" and standing != "newest":
+            status = "awaiting_owner"  # autonomy only sends the check it can see is current
         expires = at + approval_timeout(session, ctx, defaults) if status == "awaiting_owner" else None
         values: dict[str, Any] = {"status": status, "updated_at": at}
         if expires is not None:
