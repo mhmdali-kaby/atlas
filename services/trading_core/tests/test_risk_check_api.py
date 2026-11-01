@@ -599,3 +599,100 @@ def test_execute_refuses_expired_repeated_and_unsigned_approvals(
     again = _approve(engine, rds, str(pid), spy)
     assert again.status_code == 409 and again.json()["reason"] == "not_awaiting_owner"
     assert len(spy.calls) == 1
+
+
+# --- ATL-213: approved_by "autonomy:<3|4>", a send_now the agents moved to `sent` --------------------
+
+
+def _autonomy(engine: Engine, level: int) -> None:
+    with engine.begin() as c:
+        c.execute(
+            text("UPDATE settings SET data = data || CAST(:d AS jsonb) WHERE env = :e"),
+            {"d": json.dumps({"autonomy_level": level}), "e": ENV},
+        )
+
+
+def _sent(engine: Engine, inst_id: str) -> uuid.UUID:
+    """What apply_risk_result leaves behind on send_now: status sent, no approval window."""
+    return _agent_proposal(engine, inst_id, "sent")
+
+
+def _auto(
+    engine: Engine, rds: redis.Redis, pid: str, spy: _ExecutorSpy, approved_by: Any = "autonomy:4"
+) -> Any:
+    tc = client(engine, rds)
+    tc.app.state.approval_execute = spy  # type: ignore[attr-defined]
+    path = f"/internal/proposals/{pid}/execute"
+    body = json.dumps({"approved_by": approved_by}).encode()
+    hdrs = signed_headers(SECRET, "POST", path, body)
+    return tc.post(path, content=body, headers={**hdrs, "Content-Type": "application/json"})
+
+
+def test_autonomy_rechecks_then_executes_with_its_own_approved_by(
+    engine: Engine, rds: redis.Redis, world: str
+) -> None:
+    _autonomy(engine, 4)
+    pid = _sent(engine, world)
+    spy = _ExecutorSpy()
+    resp = _auto(engine, rds, str(pid), spy)
+    assert resp.status_code == 200, resp.text
+    _, checks = _rows(engine, world)
+    assert len(checks) == 1 and checks[0].decision == "send_now"  # the fresh check ran here
+    assert spy.calls == [(str(checks[0].id), "autonomy:4")]
+    with Session(engine) as s:
+        row = s.get(Proposal, pid)
+        assert row is not None and row.decided_by == "autonomy:4" and row.approval_expires_at is None
+    # A second call finds the proposal no longer `sent` (the re-check moved it): nothing more is sent.
+    again = _auto(engine, rds, str(pid), spy)
+    assert again.status_code == 409 and again.json()["reason"] == "not_sent"
+    assert len(spy.calls) == 1
+
+
+def test_autonomy_with_trading_paused_since_sends_nothing_and_rejects(
+    engine: Engine, rds: redis.Redis, world: str
+) -> None:
+    _autonomy(engine, 4)
+    pid = _sent(engine, world)
+    with engine.begin() as c:  # paused between the agents' check and the execute call
+        c.execute(
+            insert(TradingState).values(
+                id=uuid.uuid4(), env=ENV, paused=True, breakers={}, created_at=AT, updated_at=AT
+            )
+        )
+    spy = _ExecutorSpy()
+    resp = _auto(engine, rds, str(pid), spy)
+    assert resp.status_code == 409, resp.text
+    assert resp.json()["reason"] == "risk_rejected" and resp.json()["risk_check"]["result"] == "rejected"
+    assert spy.calls == []
+    props, _ = _rows(engine, world)
+    assert (props[0].status, props[0].status_reason) == ("rejected", "risk_rejected")
+    assert props[0].decided_by == "autonomy:4"
+
+
+def test_autonomy_whose_fresh_check_asks_the_owner_sends_nothing(
+    engine: Engine, rds: redis.Redis, world: str
+) -> None:
+    _autonomy(engine, 2)  # the owner lowered autonomy after the first check
+    pid = _sent(engine, world)
+    spy = _ExecutorSpy()
+    resp = _auto(engine, rds, str(pid), spy, approved_by="autonomy:3")
+    assert resp.status_code == 409 and resp.json()["reason"] == "needs_owner", resp.text
+    assert resp.json()["risk_check"]["decision"] == "awaiting_owner"
+    assert spy.calls == []
+    props, _ = _rows(engine, world)
+    assert props[0].status == "risk_checked"  # the agents open the owner's approval window
+
+
+def test_autonomy_refuses_other_statuses_and_levels(engine: Engine, rds: redis.Redis, world: str) -> None:
+    _autonomy(engine, 4)
+    spy = _ExecutorSpy()
+    awaiting = _awaiting(engine, world)
+    resp = _auto(engine, rds, str(awaiting), spy)
+    assert resp.status_code == 409 and resp.json()["reason"] == "not_sent"
+    for bad in ("autonomy:2", "autonomy:5", "autonomy", "Owner", 4):
+        out = _auto(engine, rds, str(_sent(engine, world)), spy, approved_by=bad)
+        assert out.status_code == 422 and out.json()["error"] == "invalid_approved_by"
+    # The owner cannot approve a proposal autonomy is sending (it is not awaiting_owner).
+    pid = _sent(engine, world)
+    assert _approve(engine, rds, str(pid), spy).json()["reason"] == "not_awaiting_owner"
+    assert spy.calls == [] and _rows(engine, world)[1] == []

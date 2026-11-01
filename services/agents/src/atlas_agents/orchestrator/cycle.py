@@ -28,9 +28,9 @@ Steps:
    no vote run on a current version is still going.
 6. Each passed proposal gets exactly one signed ``POST /internal/risk/evaluate/{id}``. A rejected
    check closes the proposal ``rejected``; an approved/resized one becomes ``advise_only`` at
-   autonomy 1, else ``awaiting_owner`` with ``approval_expires_at``. While autonomy 3-4 are not
-   enabled (``autonomy.max_enabled_level`` = 2) a ``send_now`` decision is treated as
-   ``awaiting_owner``: this module never calls the Executor, so ``executing`` is not reached yet.
+   autonomy 1; a ``send_now`` at autonomy 3-4 is sent by :func:`approval.apply_risk_result` through
+   trading_core's signed execute route (ATL-213, state ``executing``); else ``awaiting_owner`` with
+   ``approval_expires_at``. This module never calls the Executor or OKX itself.
 
 Timing goes through a :class:`CycleClock` so tests drive a simulated clock.
 """
@@ -703,6 +703,7 @@ class CycleRunner:
         )
         awaiting: list[str] = []
         advised: list[str] = []
+        sent: list[str] = []
         level = await asyncio.to_thread(self.autonomy_level)
         for item in passed:
             outcome = await self._risk(cycle_id, item, level)
@@ -710,6 +711,15 @@ class CycleRunner:
                 awaiting.append(item.inst_id)
             elif outcome == "advise_only":
                 advised.append(item.inst_id)
+            elif outcome == "sent":
+                sent.append(item.inst_id)
+        if sent:
+            self.transition(
+                cycle_id,
+                "executing",
+                f"Sent automatically (autonomy {level}): {', '.join(sent)}.",
+                inst_ids=sent,
+            )
         if awaiting:
             self.transition(
                 cycle_id,
@@ -718,6 +728,8 @@ class CycleRunner:
                 inst_ids=awaiting,
             )
             return self.close(cycle_id, "awaiting_owner", f"awaiting approval on {', '.join(awaiting)}")
+        if sent:
+            return self.close(cycle_id, "executed", f"sent automatically: {', '.join(sent)}")
         if advised:
             return self.close(cycle_id, "advise_only", f"advice only (autonomy 1) on {', '.join(advised)}")
         return self.close(cycle_id, "risk_rejected", "the Risk Engine approved nothing")
@@ -797,8 +809,8 @@ class CycleRunner:
         return dataclasses.replace(self.ctx, correlation_id=correlation_id(cycle_id), run=RunScope())
 
     async def _risk(self, cycle_id: uuid.UUID, item: _Open, autonomy: int) -> str:
-        """One risk check; the proposal's next status. Returns awaiting_owner, advise_only, rejected
-        or error."""
+        """One risk check; the proposal's next status. Returns awaiting_owner, advise_only, sent
+        (autonomy 3-4 sent it through trading_core's execute route), rejected or error."""
         try:
             body = await self.risk.risk_evaluate(str(item.head))
         except TradingCoreError as exc:
@@ -814,12 +826,13 @@ class CycleRunner:
             )
             self.system_line(cycle_id, "risk_check", f"Risk check on {item.inst_id} failed: {exc.code}.")
             return "error"
-        status, _expires, row = approval.apply_risk_result(
+        status, _expires, row = await approval.apply_risk_result(
             self._vote_ctx(cycle_id),
             item.head,
             body,
             cycle_id=cycle_id,
             source=SOURCE,
+            client=self.risk,
             now=self.clock.now(),
             autonomy=autonomy,
             inst_id=item.inst_id,

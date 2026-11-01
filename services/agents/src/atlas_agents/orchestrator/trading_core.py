@@ -1,12 +1,15 @@
 """The agents process's signed client for trading_core's internal API (decision #235, ATL-160).
 
-The Orchestrator's cycle uses exactly one call: ``POST /internal/risk/evaluate/{proposal_id}``, the
-Risk Engine on a proposal whose vote passed. There is deliberately no Executor call here: an order is
-sent only after the owner approves (ATL-162), through Laravel.
+Two calls: ``POST /internal/risk/evaluate/{proposal_id}`` (the Risk Engine on a proposal whose vote
+passed) and, only for a ``send_now`` decision at autonomy 3-4 (ATL-213, decision #254),
+``POST /internal/proposals/{proposal_id}/execute`` with ``approved_by = "autonomy:<level>"`` — the
+same route the owner's Approve uses. That route re-runs the Risk Engine and calls the Executor only
+if the fresh check says ``send_now``. There is deliberately no direct Executor or OKX call here.
 """
 
 from __future__ import annotations
 
+import json
 import os
 from collections.abc import Mapping
 from typing import Any, Final
@@ -16,6 +19,7 @@ from atlas_shared.defaults import DEFAULTS
 from atlas_shared.internal_api import signed_headers
 
 RISK_EVALUATE_PATH: Final = "/internal/risk/evaluate/{proposal_id}"
+EXECUTE_PATH: Final = "/internal/proposals/{proposal_id}/execute"
 
 
 class TradingCoreError(Exception):
@@ -52,6 +56,7 @@ class TradingCoreClient:
         ).rstrip("/")
         self._secret = secret if secret is not None else os.environ.get("INTERNAL_SHARED_SECRET", "")
         self.timeout = float(timeout if timeout is not None else cfg["risk_timeout_seconds"])
+        self.execute_timeout = max(self.timeout, float(cfg.get("execute_timeout_seconds", self.timeout)))
         self._transport = transport
 
     async def risk_evaluate(self, proposal_id: str) -> dict[str, Any]:
@@ -77,5 +82,30 @@ class TradingCoreClient:
             raise TradingCoreError(str(code or f"http_{resp.status_code}"), str(detail or resp.status_code))
         return body
 
+    async def execute_proposal(self, proposal_id: str, approved_by: str) -> tuple[int, dict[str, Any]]:
+        """Signed ``POST /internal/proposals/{id}/execute``; returns ``(http_status, body)``.
 
-__all__ = ["RISK_EVALUATE_PATH", "TradingCoreClient", "TradingCoreError"]
+        A refusal (409: ``risk_rejected``, ``needs_owner``, ``not_sent``…) or an Executor failure (502)
+        is an answer, not an error: its body carries ``status``/``reason``/``detail`` and the
+        re-check's ``risk_check``. Raises :class:`TradingCoreError` only when trading_core could not
+        be reached or did not answer with a JSON object."""
+        if not self._secret:
+            raise TradingCoreError("not_configured", "INTERNAL_SHARED_SECRET is not set")
+        path = EXECUTE_PATH.format(proposal_id=proposal_id)
+        payload = json.dumps({"approved_by": approved_by}).encode()
+        headers = {**signed_headers(self._secret, "POST", path, payload), "Content-Type": "application/json"}
+        try:
+            async with httpx.AsyncClient(timeout=self.execute_timeout, transport=self._transport) as client:
+                resp = await client.post(self.base_url + path, content=payload, headers=headers)
+        except httpx.HTTPError as exc:
+            raise TradingCoreError("unavailable", type(exc).__name__) from exc
+        try:
+            body = resp.json()
+        except ValueError:
+            body = None
+        if not isinstance(body, dict):
+            raise TradingCoreError(f"http_{resp.status_code}", str(resp.status_code))
+        return resp.status_code, body
+
+
+__all__ = ["EXECUTE_PATH", "RISK_EVALUATE_PATH", "TradingCoreClient", "TradingCoreError"]
