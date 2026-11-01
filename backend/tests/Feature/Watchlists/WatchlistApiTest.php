@@ -7,6 +7,7 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Models\Watchlist;
 use App\Models\WatchlistItem;
+use App\Support\Events\EventBus;
 use App\Support\Settings\SettingsService;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -51,7 +52,7 @@ function atl103Watchlist(string $date, int $version, array $picks, ?CarbonImmuta
 function atl103Events(): array
 {
     /** @var list<array{0: string, 1: list<string>}> $entries */
-    $entries = Redis::connection('events')->command('executeRaw', [['XRANGE', 'atlas.warroom', '-', '+']]);
+    $entries = Redis::connection('events')->command('executeRaw', [['XRANGE', EventBus::streamKey('atlas.warroom'), '-', '+']]);
 
     return array_values(array_filter(
         array_map(fn (array $e): array => json_decode($e[1][1], true, flags: JSON_THROW_ON_ERROR), $entries),
@@ -65,7 +66,7 @@ function atl103Today(): string
 }
 
 beforeEach(function (): void {
-    Redis::connection('events')->command('executeRaw', [['DEL', 'atlas.warroom']]);
+    Redis::connection('events')->command('executeRaw', [['DEL', EventBus::streamKey('atlas.warroom')]]);
     $this->user = User::factory()->create();
     $this->actingAs($this->user, 'web');
 });
@@ -188,7 +189,7 @@ it('refuses remove, restore and pin with 409 edit_window_closed after the window
     $btc = $watchlist->items()->where('inst_id', 'BTC-USDT-SWAP')->firstOrFail();
     $eth = $watchlist->items()->where('inst_id', 'ETH-USDT-SWAP')->firstOrFail();
     $this->postJson("/api/watchlists/{$watchlist->id}/items/{$eth->id}/remove")->assertOk();
-    Redis::connection('events')->command('executeRaw', [['DEL', 'atlas.warroom']]);
+    Redis::connection('events')->command('executeRaw', [['DEL', EventBus::streamKey('atlas.warroom')]]);
     $auditsBefore = AuditLog::query()->count();
 
     $this->travelTo(CarbonImmutable::now()->addMinutes(11));

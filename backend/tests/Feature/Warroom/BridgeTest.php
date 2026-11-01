@@ -51,12 +51,12 @@ function messageEnvelope(array $overrides = [], array $payload = []): array
     ], $overrides);
 }
 
-/** XADD exactly as both publishers do (one `envelope` field). */
+/** XADD exactly as both publishers do (one `envelope` field), on the stream's physical key. */
 function xadd(string $stream, array|string $envelope): string
 {
     $json = is_string($envelope) ? $envelope : json_encode($envelope, JSON_THROW_ON_ERROR);
 
-    return (string) redisRaw(['XADD', $stream, '*', EventBus::FIELD, $json]);
+    return (string) redisRaw(['XADD', EventBus::streamKey($stream), '*', EventBus::FIELD, $json]);
 }
 
 /** Channel auth needs a real (Pusher-protocol) broadcaster; register the channels on it. */
@@ -78,8 +78,8 @@ function bridge(): Bridge
 }
 
 beforeEach(function (): void {
-    foreach (EventBus::STREAMS as $stream) {
-        redisRaw(['DEL', $stream]);
+    foreach (EventBus::streamKeys() as $key) {
+        redisRaw(['DEL', $key]);
     }
     $this->seed(WarroomThreadSeeder::class);
     $this->broadcasts = RecordingBroadcaster::install();
@@ -125,7 +125,7 @@ it('persists one row and broadcasts one .warroom.message on private-warroom', fu
             'created_at' => '2026-10-29T05:00:00.123456Z',
         ]);
 
-    expect(app(StreamReader::class)->pendingIds('atlas.warroom', Bridge::GROUP))->toBe([]);
+    expect(app(StreamReader::class)->pendingIds(EventBus::streamKey('atlas.warroom'), Bridge::GROUP))->toBe([]);
 });
 
 it('dedupes a human message already stored by WarroomController::store, without broadcasting it', function (): void {
@@ -201,7 +201,7 @@ it('keeps one row and one broadcast when the same envelope is published twice', 
 
     expect(WarroomMessage::query()->where('event_id', $envelope['id'])->count())->toBe(1)
         ->and($this->broadcasts->sent)->toHaveCount(1)
-        ->and(app(StreamReader::class)->pendingIds('atlas.warroom', Bridge::GROUP))->toBe([]);
+        ->and(app(StreamReader::class)->pendingIds(EventBus::streamKey('atlas.warroom'), Bridge::GROUP))->toBe([]);
 });
 
 it('persists exactly once an entry read but never acked before the bridge died', function (): void {
@@ -210,9 +210,9 @@ it('persists exactly once an entry read but never acked before the bridge died',
     $entryId = xadd('atlas.warroom', $envelope);
 
     // The old bridge process read the entry (now pending for it), then was killed before XACK.
-    $read = app(StreamReader::class)->readNew(Bridge::GROUP, 'bridge-old', ['atlas.warroom'], 10, 10);
+    $read = app(StreamReader::class)->readNew(Bridge::GROUP, 'bridge-old', [EventBus::streamKey('atlas.warroom')], 10, 10);
     expect($read)->toHaveCount(1)
-        ->and(app(StreamReader::class)->pendingIds('atlas.warroom', Bridge::GROUP))->toBe([$entryId])
+        ->and(app(StreamReader::class)->pendingIds(EventBus::streamKey('atlas.warroom'), Bridge::GROUP))->toBe([$entryId])
         ->and(WarroomMessage::query()->count())->toBe(0);
 
     // Restart: a new XREADGROUP '>' would never see it again; the drain does.
@@ -222,7 +222,7 @@ it('persists exactly once an entry read but never acked before the bridge died',
 
     expect(WarroomMessage::query()->where('event_id', $envelope['id'])->count())->toBe(1)
         ->and($this->broadcasts->sent)->toHaveCount(1)
-        ->and(app(StreamReader::class)->pendingIds('atlas.warroom', Bridge::GROUP))->toBe([]);
+        ->and(app(StreamReader::class)->pendingIds(EventBus::streamKey('atlas.warroom'), Bridge::GROUP))->toBe([]);
 
     // A second restart has nothing left to do.
     expect(bridge()->drainPending(CONSUMER))->toBe(0)
@@ -234,14 +234,14 @@ it('does not double an entry persisted but not acked before the bridge died', fu
     $envelope = messageEnvelope();
     xadd('atlas.warroom', $envelope);
     // Killed after the insert, before XACK: the row exists and the entry is still pending.
-    app(StreamReader::class)->readNew(Bridge::GROUP, 'bridge-old', ['atlas.warroom'], 10, 10);
+    app(StreamReader::class)->readNew(Bridge::GROUP, 'bridge-old', [EventBus::streamKey('atlas.warroom')], 10, 10);
     app(BridgeEventHandler::class)->handle('atlas.warroom', json_encode($envelope));
     $this->broadcasts->sent = [];
 
     expect($bridge->drainPending(CONSUMER))->toBe(1)
         ->and(WarroomMessage::query()->where('event_id', $envelope['id'])->count())->toBe(1)
         ->and($this->broadcasts->sent)->toBe([])
-        ->and(app(StreamReader::class)->pendingIds('atlas.warroom', Bridge::GROUP))->toBe([]);
+        ->and(app(StreamReader::class)->pendingIds(EventBus::streamKey('atlas.warroom'), Bridge::GROUP))->toBe([]);
 });
 
 it('acks and logs a malformed entry without its payload, then persists the next valid one', function (string|array $bad): void {
@@ -255,7 +255,7 @@ it('acks and logs a malformed entry without its payload, then persists the next 
 
     expect(WarroomMessage::query()->where('event_id', $good['id'])->count())->toBe(1)
         ->and(WarroomMessage::query()->count())->toBe(1)
-        ->and(app(StreamReader::class)->pendingIds('atlas.warroom', Bridge::GROUP))->toBe([]);
+        ->and(app(StreamReader::class)->pendingIds(EventBus::streamKey('atlas.warroom'), Bridge::GROUP))->toBe([]);
 
     Log::shouldHaveReceived('warning')->once()->withArgs(function (string $message, array $context) use ($badId): bool {
         $logged = json_encode($context, JSON_THROW_ON_ERROR);
@@ -277,14 +277,14 @@ it('acks and logs a malformed entry without its payload, then persists the next 
 
 it('acks an entry without an envelope field', function (): void {
     $bridge = bridge();
-    redisRaw(['XADD', 'atlas.warroom', '*', 'other', 'SECRET-PAYLOAD']);
+    redisRaw(['XADD', EventBus::streamKey('atlas.warroom'), '*', 'other', 'SECRET-PAYLOAD']);
     $good = messageEnvelope();
     xadd('atlas.warroom', $good);
 
     $bridge->readOnce(CONSUMER, 10);
 
     expect(WarroomMessage::query()->where('event_id', $good['id'])->exists())->toBeTrue()
-        ->and(app(StreamReader::class)->pendingIds('atlas.warroom', Bridge::GROUP))->toBe([]);
+        ->and(app(StreamReader::class)->pendingIds(EventBus::streamKey('atlas.warroom'), Bridge::GROUP))->toBe([]);
 });
 
 it('creates instrument and agent threads on demand, once', function (): void {
@@ -338,7 +338,7 @@ it('broadcasts other events on their stream channel without persisting', functio
         ->and($sent['proposal.approved']['payload'])->toBe($approved)
         ->and(WarroomMessage::query()->count())->toBe(0);
     foreach (EventBus::STREAMS as $stream) {
-        expect(app(StreamReader::class)->pendingIds($stream, Bridge::GROUP))->toBe([]);
+        expect(app(StreamReader::class)->pendingIds(EventBus::streamKey($stream), Bridge::GROUP))->toBe([]);
     }
 });
 
