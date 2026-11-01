@@ -25,6 +25,8 @@ import { discardMessage, isLocal, retryMessage, type LocalMessage } from './live
 import { MessageActions, MessageMenu } from './MessageActions'
 import { Medallion, SystemMedallion } from './Medallion'
 import { readTechnicalSetup } from './cards/technicalSetup'
+import { readProposalCard } from './cards/proposal'
+import { ProposalCard } from './cards/ProposalCard'
 import { TechnicalSetupCard } from './cards/TechnicalSetupCard'
 import { HistoryVerdictCard } from './HistoryVerdictCard'
 import { readHistoryVerdict, readRegimeTable, unmatchedOf } from './historian'
@@ -118,6 +120,18 @@ const CARDS: Partial<Record<string, (m: WarroomMessage, lang: Lang, ctx: CardCtx
       <>
         <AgentBody message={m} />
         <WatchlistCard card={card} lang={lang} onJump={ctx.onJump} />
+      </>
+    )
+  },
+  // A trade proposal (brief §12, §7.9 step 5; ATL-164): the Strategist's words, then the card the
+  // owner approves, rejects, edits or asks the team about.
+  proposal: (m, lang, ctx) => {
+    const ref = readProposalCard(m.card)
+    if (!ref) return null
+    return (
+      <>
+        <AgentBody message={m} />
+        <ProposalCard cardRef={ref} lang={lang} onJump={ctx.onJump} />
       </>
     )
   },

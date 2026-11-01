@@ -9,6 +9,10 @@ import { runMatches, toolLabel, useRuns, type ThinkingEnvelope } from './runs'
 import { useAuthorName } from './shape'
 import { plainText } from './tokens'
 import { invalidateWatchlists } from './watchlist'
+import { invalidateProposal } from './cards/proposal'
+
+/** atlas.proposals event types (bridged to private-warroom); each one refetches the proposal's card. */
+const PROPOSAL_EVENTS = ['opened', 'approved', 'rejected', 'revised', 'advise_only', 'awaiting_owner', 'withdrawn', 'edited', 'status_changed', 'approval_reminder', 'asked_team', 'vote_cast', 'vote_closed']
 
 /*
  * The War Room's live side (brief §12, design v4 War Room §7 ConnectionBanner, §11):
@@ -100,10 +104,18 @@ export function useLiveFeed(env: TradingEnv, threadId: string | undefined) {
     const onWatchlist = (e: { env?: string } | undefined) => {
       if (!e?.env || e.env === env) void invalidateWatchlists(qc, env)
     }
+    // ATL-164: a proposal's card refetches, so its buttons leave the moment it stops waiting for the
+    // owner, in this tab or another.
+    const onProposal = (e: { env?: string; payload?: { proposal_id?: string; parent_id?: string | null } } | undefined) => {
+      if (e?.env && e.env !== env) return
+      void invalidateProposal(qc, e?.payload?.proposal_id, e?.payload?.parent_id)
+    }
+    for (const name of PROPOSAL_EVENTS) channel.listen(`.proposal.${name}`, onProposal)
     channel.listen('.warroom.message', onMessage)
     channel.listen('.warroom.thinking', onThinking)
     channel.listen('.watchlist.updated', onWatchlist)
     return () => {
+      for (const name of PROPOSAL_EVENTS) channel.stopListening(`.proposal.${name}`, onProposal)
       channel.stopListening('.warroom.message', onMessage)
       channel.stopListening('.warroom.thinking', onThinking)
       channel.stopListening('.watchlist.updated', onWatchlist)
