@@ -62,6 +62,7 @@ from trading_core.risk.rules import (
     decide_autonomy,
     not_run,
     rules_config,
+    sizing_equity,
 )
 from trading_core.risk.sizing import SizingResult, size_position
 from trading_core.risk.validity import check_validity
@@ -210,12 +211,13 @@ def run_checks(ctx: RiskContext, config: Mapping[str, Any] | None = None) -> Out
                 return CheckResult(
                     "position_size", False, "equity_unknown", "Account equity is not synced yet."
                 )
+            base, cap_bound = sizing_equity(ctx.equity, eng.bot_capital_cap_usdt)
             try:
                 sizing = size_position(
                     _proposal_input(p, entry),
                     risk,
                     inst.spec,
-                    equity=ctx.equity,
+                    equity=base,
                     available_usd=ctx.available_usd,
                     fee_rate=ctx.fee_rate,
                     new_exposure_used_today_usd=ctx.used_exposure_today_usd,
@@ -233,6 +235,11 @@ def run_checks(ctx: RiskContext, config: Mapping[str, Any] | None = None) -> Out
                 binding_cap=c["binding_cap"],
                 leverage_binding=c["leverage_binding"],
                 equity=str(ctx.equity),
+                sizing_equity=str(base),
+                bot_capital_cap_usdt=(
+                    None if eng.bot_capital_cap_usdt is None else str(eng.bot_capital_cap_usdt)
+                ),
+                cap_bound=cap_bound,
                 fee_rate=str(ctx.fee_rate),
                 fee_source=ctx.fee_source,
             )
@@ -246,7 +253,7 @@ def run_checks(ctx: RiskContext, config: Mapping[str, Any] | None = None) -> Out
                 asset_class=inst.asset_class,
                 positions=ctx.positions,
                 correlations=ctx.correlations,
-                equity=ctx.equity,
+                equity=sizing_equity(ctx.equity, eng.bot_capital_cap_usdt)[0],
                 trades_today=ctx.trades_today,
                 settings=eng,
                 threshold=Decimal(str(cfg["correlation_threshold"])),

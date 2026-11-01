@@ -1,9 +1,9 @@
 {
   "agent": "technical_analyst",
   "mode": "fake",
-  "label": "fake-ATL-137",
-  "started_at": "2026-10-30T22:09:57.453776+00:00",
-  "finished_at": "2026-10-30T22:10:55.810189+00:00",
+  "label": "fake-ATL-183",
+  "started_at": "2026-10-31T00:29:49.314170+00:00",
+  "finished_at": "2026-10-31T00:30:29.098243+00:00",
   "cases": [
     {
       "case_id": "atrstop_btc_long",
@@ -1316,8 +1316,8 @@
     "pass_rate": 100.0
   },
   "baseline": {
-    "path": "/Users/mhmd/Work/atlas/wt-task-atl-137/services/agents/evals/technical_analyst/baseline.json",
-    "pass_rate": null,
+    "path": "/Users/mhmd/Work/atlas/wt-task-atl-183/services/agents/evals/technical_analyst/baseline.json",
+    "pass_rate": 100.0,
     "max_drop_points": 5.0,
     "ok": true
   }

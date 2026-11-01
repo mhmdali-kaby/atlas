@@ -37,7 +37,7 @@
 | n | check | hard-fail codes |
 |---|---|---|
 | 1 | `env_and_kill_switch` | `trading_paused`, `circuit_breaker_active`, `connection_not_verified`, `market_data_stale` |
-| 2 | `instrument_allowed` | `instrument_unknown`, `market_disabled`, `blocklisted`, `instrument_not_live`, `outside_us_hours` |
+| 2 | `instrument_allowed` | `instrument_unknown`, `market_disabled`, `blocklisted`, `not_whitelisted` (ATL-156), `instrument_not_live`, `outside_us_hours` |
 | 3 | `proposal_valid` | `entry_unknown`, `atr_unavailable` + ATL-126 codes (`stop_missing`, `stop_wrong_side`, `stop_too_tight`, `stop_too_wide`, `expected_r_below_min`) |
 | 4 | `position_size` | `equity_unknown`, `sizing_input_missing` + ATL-126 codes (`no_capacity`, `below_min_size`, `margin_insufficient`, `stop_wrong_side`) |
 | 5 | `portfolio` | `max_trades_per_day`, `max_open_positions`, `correlated_exposure`, `asset_class_exposure` |
@@ -59,6 +59,16 @@ After the first failure the rest are
 `{"n": k, "check": "...", "status": "not_run", "passed": null, "code": null, "detail": "Not run: ...", "values": {}}`.
 `values` are JSON-safe (Decimals as strings). Check 3's values add `atr_1h` and `entry_used`;
 check 4's add `binding_cap`, `leverage_binding`, `equity`, `fee_rate`, `fee_source`.
+
+ATL-156 (decision #250): every percentage limit uses **sizing equity** = min(account equity,
+`bot_capital_cap_usdt`); a JSON `null` cap means none (a missing key falls back to the default
+10,000). Check 4's values add `sizing_equity`, `bot_capital_cap_usdt` and `cap_bound` (true only
+when the cap is below equity; `equity` stays the account equity). Check 5's exposure cap is
+`max_correlated_exposure_pct` of sizing equity and its values add `sizing_equity`. Check 6 divides
+each period's loss by min(period start equity, cap) and records `day_sizing_equity`,
+`week_sizing_equity` and `bot_capital_cap_usdt`; the circuit breakers reuse check 6, so they trip on
+the same base. Check 2: with a non-empty `whitelist` an unlisted instrument fails `not_whitelisted`;
+the blocklist is checked first and wins.
 
 ## Row and result
 
