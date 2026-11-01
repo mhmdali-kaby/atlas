@@ -190,9 +190,10 @@ export function readProposalCard(card: Record<string, unknown> | null | undefine
 
 export const proposalKey = (id: string) => ['proposals', id] as const
 
-export function useProposal(id: string) {
+export function useProposal(id: string, enabled = true) {
   return useQuery<ProposalDetail, ApiError>({
     queryKey: proposalKey(id),
+    enabled,
     queryFn: ({ signal }) => api.get<{ data: ProposalDetail }>(`/api/proposals/${encodeURIComponent(id)}`, { signal }).then((r) => r.data),
     staleTime: 10_000,
     retry: (count, err) => err.status !== 404 && err.status !== 401 && count < 2,

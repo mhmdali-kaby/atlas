@@ -6,6 +6,7 @@ import { Navigate, Outlet, useLocation } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { SIGNED_OUT_KEY, useLogout, useSession } from '../features/auth/session'
 import { toast } from '../ui'
+import { ApprovalPill } from '../features/approvals/ApprovalPill'
 import { KillSwitchButton } from '../features/kill-switch/KillSwitch'
 import { TradingBanner } from '../features/kill-switch/TradingBanner'
 import { activeArea, activeNavEntry, areaHome, type AreaId, type ShellRegistry } from './feature'
@@ -98,6 +99,7 @@ export function AppShell({ shell = registeredShell }: { shell?: ShellRegistry })
             <div className="flex-1" />
             {/* ⌘K palette and the approval pill join this slot in later tasks. */}
             <div data-slot="toolbar-actions" className="contents">
+              <ApprovalPill />
               <KillSwitchButton />
             </div>
             <EnvBadge />

@@ -13,6 +13,7 @@ import { Medallion } from './Medallion'
 import { Message } from './Message'
 import type { LiveRun } from './runs'
 import { ARRIVE, useArrivals } from './useArrivals'
+import { useProposalFocus } from './useProposalFocus'
 import { InstrumentId } from './text'
 import { around } from './tokens'
 import { baghdadDay, dayLabel, formatDate } from './time'
@@ -257,6 +258,18 @@ export function Feed({ thread, threadName, query, pending = NO_PENDING, runs = N
       el.focus({ preventScroll: true })
     }
   })
+
+  // ---- Opening on a proposal (ATL-180): the approval pill links to /warroom?proposal=<id> ------
+  const focusProposal = useCallback(
+    (id: string) => {
+      atBottom.current = false
+      onJump(id)
+      setFocusId(id)
+      pendingFocus.current = id
+    },
+    [onJump],
+  )
+  useProposalFocus(messages, focusProposal)
 
   function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
