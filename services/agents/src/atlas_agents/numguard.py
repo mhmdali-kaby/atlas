@@ -57,6 +57,8 @@ _IGNORE: Final[tuple[re.Pattern[str], ...]] = (
     re.compile(rf"(?<![\w.,$\-\u2212+])(?:19[7-9]\d|20\d\d|2100)(?![\w.]|,\d|{_UNIT_AFTER})"),
     # List markers at the start of a line: "1. ", "2) ", "- 3. "
     re.compile(r"(?m)^[ \t>]*(?:[-*+][ \t]+)?\d{1,3}[.)](?=[ \t])"),
+    # UUIDs (proposal, order and report ids), either case: 3f2a1b9c-1234-4567-8901-0123456789ab
+    re.compile(r"(?<![\w-])[0-9A-Fa-f]{8}(?:-[0-9A-Fa-f]{4}){3}-[0-9A-Fa-f]{12}(?![\w-])"),
     # Instrument ids: BTC-USDT-SWAP, BTC-USD-251226, BTC-USD-251226-60000-C, XAU-USDT
     re.compile(r"\b(?=[A-Z0-9]*[A-Z])[A-Z0-9]+(?:-[A-Z0-9]+)+\b"),
     # Bar and horizon labels: 1m, 15m, 1H, 4H, 1D, 1W, 24h, 7d (not $15m, which is money)
