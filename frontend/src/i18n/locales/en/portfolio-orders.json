@@ -1,0 +1,99 @@
+{
+  "nav": "Orders",
+  "open_zero": "No open orders",
+  "open_one": "1 open order",
+  "open_other": "{{count}} open orders",
+  "algo_zero": "no algo orders",
+  "algo_one": "1 algo order",
+  "algo_other": "{{count}} algo orders",
+  "summary": "{{open}} and {{algo}}",
+  "loading": "Loading your orders",
+  "openTitle": "Open orders",
+  "openNote": "Entries waiting on the OKX order book.",
+  "algoTitle": "Algo orders",
+  "algoNote": "Stops and take-profits wait on OKX’s servers, so they work even when your Mac sleeps.",
+  "col": {
+    "instrument": "Instrument",
+    "side": "Side",
+    "type": "Type",
+    "price": "Price",
+    "size": "Size",
+    "filled": "Filled",
+    "state": "State",
+    "origin": "Origin",
+    "age": "Age",
+    "kind": "Kind",
+    "trigger": "Trigger price",
+    "actions": "Actions"
+  },
+  "side": {
+    "buy": "Buy",
+    "sell": "Sell"
+  },
+  "type": {
+    "limit": "Limit",
+    "market": "Market",
+    "post_only": "Post only",
+    "fok": "Fill or kill",
+    "ioc": "Immediate or cancel"
+  },
+  "contracts": "contracts",
+  "wholePosition": "Whole position",
+  "marketPx": "Market",
+  "state": {
+    "new": "Sending",
+    "sending": "Sending",
+    "live": "On the book",
+    "partially_filled": "Partly filled",
+    "algo_live": "Waiting for its price",
+    "pause": "Paused",
+    "partially_effective": "Partly triggered"
+  },
+  "atlas": "Atlas",
+  "proposalLabel": "Proposal",
+  "external": "External",
+  "externalTip": "Placed outside Atlas, for example in the OKX app. Atlas imported it during reconciliation.",
+  "placed": "Placed {{date}}",
+  "kind": {
+    "sl": "Stop loss",
+    "tp": "Take profit",
+    "oco": "Stop and take profit",
+    "ocoSub": "OCO: one cancels the other",
+    "trigger": "Trigger order"
+  },
+  "protects": "Protects the position",
+  "stopAt": "Stop",
+  "tpAt": "Target",
+  "readOnlyTip": "Algo orders can’t be cancelled here. Cancel the entry order instead, and its stop and targets go with it.",
+  "cancel": "Cancel",
+  "cancelAria": "Cancel the {{inst}} {{what}}",
+  "what": {
+    "buy": "buy order",
+    "sell": "sell order"
+  },
+  "sheet": {
+    "title_buy": "Cancel the {{inst}} buy order?",
+    "title_sell": "Cancel the {{inst}} sell order?",
+    "atlas": "Atlas won’t place it again. If part of it has filled, that part keeps a stop sized to what filled.",
+    "external": "This order was placed outside Atlas. Cancelling it here cancels it on OKX too.",
+    "keep": "Keep order",
+    "do": "Cancel order",
+    "doing": "Cancelling…",
+    "failTitle": "OKX didn’t cancel it",
+    "failGeneric": "Atlas couldn’t cancel the order. Try again in a moment."
+  },
+  "toast": "Order cancelled",
+  "empty": {
+    "title": "No open orders",
+    "body": "Atlas places orders only after you approve a trade."
+  },
+  "algoEmpty": {
+    "title": "No algo orders",
+    "body": "Stops and take-profits appear here once a position is open."
+  },
+  "error": {
+    "title": "Couldn’t load your orders",
+    "body": "Atlas’s server didn’t answer. Check that Atlas is running with ./atlas up, then try again."
+  },
+  "listSep": ", "
+}

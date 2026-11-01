@@ -84,6 +84,32 @@ export interface PositionsPayload {
   items: Position[]
 }
 
+/** One failed item inside a close/cancel report (ATL-148's `Report.payload()`). */
+export interface TradeActionFailure {
+  kind: 'order' | 'algo' | 'position' | 'read'
+  inst_id: string | null
+  ref: string | null
+  action: string
+  attempts: number
+  code: string | null
+  message: string | null
+}
+
+/**
+ * `POST /api/portfolio/positions/{id}/close` 200 (ATL-148): the market close succeeded and that
+ * side's algo orders (stop, take profit) were cancelled. A close that failed answers non-2xx with
+ * the same shape (`status: 'failed'`, `failed` non-empty) — see `closeFailureMessage`.
+ */
+export interface ClosePositionReport {
+  ok: boolean
+  env: TradingEnv
+  inst_id: string
+  status: 'closed' | 'failed'
+  closed: number
+  cancelled_algos: number
+  failed: TradeActionFailure[]
+}
+
 /** One balance of one account (ATL-12 /api/portfolio/holdings). */
 export interface Holding {
   ccy: string
@@ -123,12 +149,74 @@ export interface ConnectionSummary {
   last_verified_at: string | null
 }
 
+/** One open order (ATL-148 GET /api/portfolio/orders). Prices and sizes are decimal strings; `sz` is in contracts. */
+export interface OpenOrder {
+  id: string
+  env: TradingEnv
+  inst_id: string
+  side: 'buy' | 'sell'
+  pos_side: string
+  ord_type: string
+  td_mode: string | null
+  px: string | null
+  sz: string
+  filled_sz: string | null
+  avg_px: string | null
+  lever: number | null
+  state: 'new' | 'sending' | 'live' | 'partially_filled'
+  purpose: string | null
+  origin: 'atlas' | 'external'
+  reduce_only: boolean
+  cl_ord_id: string | null
+  ord_id: string | null
+  proposal_id: string | null
+  last_error_code: string | null
+  last_error_msg: string | null
+  can_cancel: boolean
+  created_at: string
+  updated_at: string
+}
+
+/** One pending algo order. `sz: null` = the whole position; `ord_px: null` = market on trigger. Read-only (no cancel route). */
+export interface AlgoOrder {
+  id: string
+  env: TradingEnv
+  order_id: string | null
+  inst_id: string
+  kind: 'sl' | 'tp' | 'oco' | 'trigger'
+  /** true for sl and oco: the stops the kill switch keeps. */
+  protects: boolean
+  side: 'buy' | 'sell'
+  pos_side: string
+  trigger_px: string | null
+  sl_trigger_px: string | null
+  tp_trigger_px: string | null
+  ord_px: string | null
+  sz: string | null
+  state: 'new' | 'sending' | 'live' | 'pause' | 'partially_effective'
+  origin: 'atlas' | 'external'
+  reduce_only: boolean
+  algo_id: string | null
+  algo_cl_ord_id: string | null
+  last_error_code: string | null
+  last_error_msg: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface OrdersPayload {
+  env: TradingEnv
+  orders: OpenOrder[]
+  algo_orders: AlgoOrder[]
+}
+
 export const portfolioKeys = {
   summary: (env: TradingEnv) => ['portfolio', env, 'summary'] as const,
   equity: (env: TradingEnv, range: EquityRange) => ['portfolio', env, 'equity', range] as const,
   positions: (env: TradingEnv) => ['portfolio', env, 'positions'] as const,
   holdings: (env: TradingEnv) => ['portfolio', env, 'holdings'] as const,
   cashflows: (env: TradingEnv, page: number) => ['portfolio', env, 'cashflows', page] as const,
+  orders: (env: TradingEnv) => ['portfolio', env, 'orders'] as const,
   connections: ['connections'] as const,
 }
 
@@ -169,5 +257,12 @@ export function useCashflows(env: TradingEnv, page: number) {
 export function useConnections() {
   return useApiQuery<{ data: ConnectionSummary[] }>(portfolioKeys.connections, '/api/connections', {
     staleTime: 5 * 60_000,
+  })
+}
+
+/** Both lists; the API acts on the active env only (no ?env=), the key still carries it. */
+export function useOrders(env: TradingEnv) {
+  return useApiQuery<{ data: OrdersPayload }>(portfolioKeys.orders(env), '/api/portfolio/orders', {
+    refetchInterval: POLL_MS,
   })
 }
