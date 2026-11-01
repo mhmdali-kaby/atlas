@@ -17,7 +17,7 @@ Query (all optional):
 | param | meaning |
 | --- | --- |
 | `inst_id` | exact instId, e.g. `BTC-USDT-SWAP` |
-| `agent` | exact agent slug, e.g. `portfolio_manager` |
+| `agent` | agent slug, e.g. `historian`; matches entries whose **`data.agents`** array contains it (the agents named or voting in the entry, written by ATL-194). The `agent` column is always the writer (`portfolio_manager`) and is not filtered on. |
 | `tag` or `tag[]` | one tag or several; an entry matches if it has **any** of them (≤ 20) |
 | `outcome` | `win` \| `loss` \| `scratch`; matches `data.outcome` **or** a bare tag of that value |
 | `from`, `to` | Baghdad days, inclusive; `to` ≥ `from` |
@@ -41,7 +41,7 @@ with `cursor` (the SPA builds the URL itself).
       "actual_md": "Stopped at 66,450 after 3h 10m; −1.02R, −512.40 USD.",
       "lessons_md": "Wait for a 1H close back above the level before entering a pullback.",
       "tags": ["pullback_to_support", "crypto", "trend", "none", "loss"],
-      "data": { "outcome": "loss", "realised_r": "-1.02" },
+      "data": { "outcome": "loss", "realised_r": "-1.02", "agents": ["strategist", "technical_analyst", "historian", "devils_advocate"] },
       "created_at": "2026-10-21T20:59:59.999999Z"
     }
   ],
@@ -67,6 +67,39 @@ Markdown fields can be `null`.
   "agent": "portfolio_manager", "proposal_id": null, "expected_md": "…", "actual_md": "…",
   "lessons_md": "…", "tags": ["breakout"], "data": {}, "created_at": "2026-10-20T10:00:00.250000Z" } }
 ```
+
+## GET /api/journal/weekly-reviews
+
+The Historian's Sunday weekly reviews: the active env's `research_reports` rows of kind
+`weekly_review`, newest first (`created_at` desc, then `id` desc). Query: `limit` (1–200, default 50)
+and `cursor` (`meta.next_cursor`; a tampered cursor is a 422). Another env's reviews and other report
+kinds are never returned.
+
+```json
+{
+  "data": [
+    {
+      "id": "3c9a7e10-1b2d-4e5f-8a9b-0c1d2e3f4a5b",
+      "env": "demo",
+      "agent": "historian",
+      "week_start": "2026-10-19",
+      "week_end": "2026-10-25",
+      "content_md": "## Week of 19 Oct\nBreakouts made +3.1R; range fades lost −1.4R…",
+      "data": { "week_start": "2026-10-19", "setups": [{ "name": "breakout", "r": "1.4" }] },
+      "created_at": "2026-10-25T15:00:00.000000Z"
+    }
+  ],
+  "meta": { "env": "demo", "per_page": 50, "next_cursor": null, "prev_cursor": null }
+}
+```
+
+- `week_start` / `week_end` are Baghdad dates (Monday / Sunday of the reviewed week). `week_start` is
+  `data.week_start` when the writer stored a valid `YYYY-MM-DD` there; otherwise it is the Monday of the
+  Baghdad week `created_at` falls in (the review runs Sunday 18:00, the week's last day). **Writer of the
+  weekly review: please store `data.week_start` as `YYYY-MM-DD`.**
+- `data` is passed through unchanged (`{}` when empty); `content_md` is agent-written markdown.
+- The Journal page draws one weekly row per review at the end of its week: place it after the entries
+  whose Baghdad date is ≤ `week_end`.
 
 ## GET /api/agents/scores?days=30
 

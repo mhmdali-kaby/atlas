@@ -22,7 +22,7 @@ function jeEntry(string $createdAtUtc, array $tags = [], array $overrides = []):
         'id' => $id, 'env' => 'demo', 'agent' => 'portfolio_manager', 'inst_id' => 'BTC-USDT-SWAP',
         'proposal_id' => null, 'title' => 'Post-mortem '.$id, 'expected_md' => 'TP1 first',
         'actual_md' => 'Stopped out', 'lessons_md' => 'Wait for the retest.',
-        'tags' => PostgresTextArray::serialize($tags), 'data' => '{}',
+        'tags' => PostgresTextArray::serialize($tags), 'data' => '{"agents":["strategist","historian"]}',
         'created_at' => $ts, 'updated_at' => $ts,
     ], $overrides));
 
@@ -70,6 +70,7 @@ it('rejects unauthenticated requests to all four endpoints', function (): void {
     $this->getJson('/api/journal/'.Str::uuid())->assertUnauthorized();
     $this->getJson('/api/agents/scores?days=7')->assertUnauthorized();
     $this->getJson('/api/agents/notebook?date=2026-10-20')->assertUnauthorized();
+    $this->getJson('/api/journal/weekly-reviews')->assertUnauthorized();
 });
 
 describe('journal filters', function (): void {
@@ -85,13 +86,14 @@ describe('journal filters', function (): void {
         jeEntry('2026-10-21 21:00:00', ['breakout']);                     // 00:00 on the 22nd: outside
         jeEntry('2026-10-19 20:59:59.999999', ['breakout']);              // the 19th: outside
         jeEntry('2026-10-20 12:00:00', ['range_fade']);                   // no matching tag
-        jeEntry('2026-10-20 12:00:00', ['breakout'], ['agent' => 'strategist']);
+        // Not named in data.agents (the column `agent` is not what the filter reads).
+        jeEntry('2026-10-20 12:00:00', ['breakout'], ['data' => '{"agents":["strategist"]}']);
         jeEntry('2026-10-20 12:00:00', ['breakout'], ['inst_id' => 'XAU-USDT-SWAP']);
         jeEntry('2026-10-20 12:00:00', ['breakout'], ['env' => 'live']);
     });
 
     it('returns only matching rows newest first, across pages', function (): void {
-        $query = ['tag' => ['breakout', 'pullback_to_support'], 'agent' => 'portfolio_manager',
+        $query = ['tag' => ['breakout', 'pullback_to_support'], 'agent' => 'historian',
             'inst_id' => 'BTC-USDT-SWAP', 'from' => '2026-10-20', 'to' => '2026-10-21'];
 
         $all = $this->getJson('/api/journal?'.http_build_query($query))->assertOk();
@@ -128,7 +130,28 @@ describe('journal filters', function (): void {
             ])
             ->and($res->json('data.0.tags'))->toBe(['breakout', 'loss'])
             ->and($res->json('data.0.created_at'))->toBe('2026-10-21T20:59:59.999999Z');
-        expect($res->getContent())->toContain('"data":{}');
+        expect($res->json('data.0.data'))->toBe(['agents' => ['strategist', 'historian']]);
+
+        $empty = jeEntry('2026-10-25 08:00:00', ['empty_data'], ['data' => '{}']);
+        expect($this->getJson('/api/journal?tag=empty_data')->assertOk()->getContent())
+            ->toContain('"id":"'.$empty.'"')->toContain('"data":{}');
+    });
+
+    it('filters agent on data.agents, not on the journal_entries.agent column', function (): void {
+        $named = jeEntry('2026-10-26 08:00:00', ['agent_case'], ['agent' => 'portfolio_manager']);
+        $pmListed = jeEntry('2026-10-26 07:00:00', ['agent_case'],
+            ['agent' => 'portfolio_manager', 'data' => '{"agents":["portfolio_manager","devils_advocate"]}']);
+        jeEntry('2026-10-26 06:00:00', ['agent_case'], ['agent' => 'historian', 'data' => '{"agents":["strategist"]}']);
+        jeEntry('2026-10-26 05:00:00', ['agent_case'], ['data' => '{}']);
+        jeEntry('2026-10-26 04:00:00', ['agent_case'], ['data' => '{"agents":"historian"}']);
+
+        $ids = fn (string $agent): array => array_column(
+            $this->getJson('/api/journal?tag=agent_case&agent='.$agent)->assertOk()->json('data'), 'id');
+
+        expect($ids('historian'))->toBe([$named])
+            ->and($ids('portfolio_manager'))->toBe([$pmListed])
+            ->and($ids('devils_advocate'))->toBe([$pmListed])
+            ->and($ids('market_scout'))->toBe([]);
     });
 
     it('filters by outcome from data.outcome or a bare tag', function (): void {
@@ -237,5 +260,68 @@ describe('notebook', function (): void {
             ->and($res->json('meta'))->toMatchArray(['env' => 'demo', 'date' => '2026-10-20']);
 
         $this->getJson('/api/agents/notebook?date=2026/10/20')->assertUnprocessable()->assertJsonValidationErrors('date');
+    });
+});
+
+/**
+ * @param  array<string, mixed>  $data
+ */
+function jeReview(string $createdAtUtc, array $data = [], string $envName = 'demo', string $kind = 'weekly_review'): string
+{
+    $id = (string) Str::uuid();
+    $ts = CarbonImmutable::parse($createdAtUtc, 'UTC')->format('Y-m-d H:i:s.uP');
+    DB::table('research_reports')->insert([
+        'id' => $id, 'env' => $envName, 'agent' => 'historian', 'inst_id' => null, 'kind' => $kind,
+        'content_md' => "Review {$id}", 'data' => json_encode((object) $data),
+        'created_at' => $ts, 'updated_at' => $ts,
+    ]);
+
+    return $id;
+}
+
+describe('weekly reviews', function (): void {
+    it('lists the active env\'s weekly reviews newest first with a working cursor', function (): void {
+        // Sunday 2026-10-25 18:00 Baghdad = 15:00 UTC.
+        $oct25 = jeReview('2026-10-25 15:00:00', ['week_start' => '2026-10-19', 'setups' => [['name' => 'breakout', 'r' => '1.4']]]);
+        $tieA = jeReview('2026-10-18 15:00:00.500000');
+        $tieB = jeReview('2026-10-18 15:00:00.500000');
+        $oct11 = jeReview('2026-10-11 15:00:00', ['week_start' => 'not-a-date']);
+        jeReview('2026-10-26 15:00:00', [], 'live');
+        jeReview('2026-10-26 15:00:00', [], 'demo', 'regime_table');
+
+        $res = $this->getJson('/api/journal/weekly-reviews')->assertOk();
+        $ids = array_column($res->json('data'), 'id');
+        $tied = [$tieA, $tieB];
+        rsort($tied);
+        expect($ids)->toBe([$oct25, ...$tied, $oct11])
+            ->and($res->json('meta.env'))->toBe('demo')
+            ->and($res->json('meta.next_cursor'))->toBeNull()
+            ->and(array_keys($res->json('data.0')))->toEqualCanonicalizing([
+                'id', 'env', 'agent', 'week_start', 'week_end', 'content_md', 'data', 'created_at',
+            ])
+            ->and($res->json('data.0'))->toMatchArray([
+                'week_start' => '2026-10-19', 'week_end' => '2026-10-25', 'agent' => 'historian',
+                'content_md' => "Review {$oct25}", 'created_at' => '2026-10-25T15:00:00.000000Z',
+            ])
+            ->and($res->json('data.0.data'))->toEqual(['week_start' => '2026-10-19', 'setups' => [['name' => 'breakout', 'r' => '1.4']]])
+            // No usable data.week_start: the Monday of the Baghdad week it was written in.
+            ->and($res->json('data.1.week_start'))->toBe('2026-10-12')
+            ->and($res->json('data.3.week_start'))->toBe('2026-10-05');
+        expect($res->getContent())->toContain('"data":{}');
+
+        $pages = [];
+        $cursor = null;
+        do {
+            $params = ['limit' => 3] + ($cursor === null ? [] : ['cursor' => $cursor]);
+            $page = $this->getJson('/api/journal/weekly-reviews?'.http_build_query($params))->assertOk();
+            $pages[] = array_column($page->json('data'), 'id');
+            $cursor = $page->json('meta.next_cursor');
+        } while ($cursor !== null && count($pages) < 10);
+        expect($pages)->toHaveCount(2)->and(array_merge(...$pages))->toBe($ids);
+    });
+
+    it('validates its cursor and limit', function (): void {
+        $this->getJson('/api/journal/weekly-reviews?cursor=bogus')->assertUnprocessable()->assertJsonValidationErrors('cursor');
+        $this->getJson('/api/journal/weekly-reviews?limit=0')->assertUnprocessable()->assertJsonValidationErrors('limit');
     });
 });

@@ -11,5 +11,7 @@ Route::prefix('journal')
     ->middleware('auth:sanctum')
     ->group(function (): void {
         Route::get('/', [JournalController::class, 'index'])->name('index');
+        // Declared before /{entry} so the literal segment is never read as an id.
+        Route::get('/weekly-reviews', [JournalController::class, 'weeklyReviews'])->name('weekly-reviews');
         Route::get('/{entry}', [JournalController::class, 'show'])->whereUuid('entry')->name('show');
     });

@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace App\Http\Requests\Journal;
 
 use Carbon\CarbonImmutable;
-use Illuminate\Pagination\Cursor;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
@@ -49,45 +47,11 @@ class ListJournalRequest extends JournalApiRequest
     }
 
     /**
-     * A crafted cursor would otherwise reach Postgres as a literal and fail there (a 500).
-     *
      * @return list<callable(Validator): void>
      */
     public function after(): array
     {
-        return [
-            function (Validator $validator): void {
-                $encoded = $this->input('cursor');
-                if ($validator->errors()->has('cursor') || ! is_string($encoded) || $encoded === '') {
-                    return;
-                }
-                if (! self::validCursor($encoded)) {
-                    $validator->errors()->add('cursor', __('journal.invalid_cursor'));
-                }
-            },
-        ];
-    }
-
-    private static function validCursor(string $encoded): bool
-    {
-        $params = Cursor::fromEncoded($encoded)?->toArray();
-        if (! is_array($params)) {
-            return false;
-        }
-        unset($params['_pointsToNextItems']);
-        $keys = array_keys($params);
-        sort($keys);
-        if ($keys !== ['created_at', 'id']) {
-            return false;
-        }
-        $id = $params['id'];
-        $ts = $params['created_at'];
-
-        return is_string($id) && Str::isUuid($id)
-            && is_string($ts)
-            && preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d{1,6})?[+-]\d{2}(:\d{2})?$/', $ts) === 1
-            && CarbonImmutable::canBeCreatedFromFormat(substr($ts, 0, 19), 'Y-m-d H:i:s')
-            && substr($ts, 0, 4) !== '0000';
+        return [$this->cursorRule()];
     }
 
     public function instId(): ?string
@@ -129,12 +93,5 @@ class ListJournalRequest extends JournalApiRequest
         $to = $this->validated('to');
 
         return is_string($to) ? CarbonImmutable::createFromFormat('!Y-m-d', $to, self::timezone())?->addDay()->utc() : null;
-    }
-
-    public function limit(): int
-    {
-        $limit = $this->validated('limit');
-
-        return is_numeric($limit) ? (int) $limit : self::int('per_page_default', 50);
     }
 }
