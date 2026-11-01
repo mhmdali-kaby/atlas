@@ -7,7 +7,7 @@ import type { SettingsChanges, SettingsDoc } from '../onboarding'
  * Every field is kept as the text the owner typed, so nothing is re-rounded while they edit.
  * Client checks mirror the server's (UpdateSettingsRequest + SettingsSchema, ATL-124):
  * USDT fields are decimal strings /^\d{1,15}(\.\d{1,8})?$/, more than 0 and at most
- * 1,000,000,000,000; the bot capital cap may be empty (null = no cap, decision #250);
+ * 1,000,000,000,000; the bot capital cap may be empty (null = no cap, decision 250);
  * max trades per day is an integer from 1 to 1,000.
  * Money maths here is integer cents in BigInt, never floats (only bar widths are ratios).
  */
