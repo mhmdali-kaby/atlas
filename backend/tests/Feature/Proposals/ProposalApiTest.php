@@ -392,6 +392,67 @@ it('returns the Strategist probability basis, and null when there is none (ATL-1
         ->assertJsonPath('data.probability_basis', null);
 });
 
+it('resolves each evidence ref to the War Room message that posted it, in one query (ATL-190)', function (): void {
+    $thread = DB::table('warroom_threads')->where('env', 'demo')->where('kind', 'main')->value('id')
+        ?? tap((string) Str::uuid(), fn (string $id) => DB::table('warroom_threads')->insert([
+            'id' => $id, 'env' => 'demo', 'kind' => 'main', 'key' => 'main', 'title' => 'Main', 'created_at' => now(), 'updated_at' => now(),
+        ]));
+    $post = fn (string $author, string $kind, array $card, string $env = 'demo') => WarroomMessage::query()->create([
+        'env' => $env, 'thread_id' => $thread, 'event_id' => (string) Str::uuid(),
+        'author_type' => $author === 'system:news' ? 'system' : 'agent', 'author' => $author, 'kind' => $kind,
+        'content_md' => 'x', 'card' => $card, 'mentions' => [],
+    ]);
+    $ta = $post('technical_analyst', 'research_report', ['type' => 'technical_setup']);
+    $pos = $post('derivatives_sentiment', 'research_report', ['type' => 'positioning_report']);
+    $itemId = (string) Str::uuid();
+    $alert = $post('system:news', 'news_alert', ['news_item_id' => $itemId, 'cluster_id' => (string) Str::uuid()]);
+    $reportId = (string) Str::uuid();
+    $hist = $post('historian', 'research_report', ['type' => 'history_verdict', 'report_id' => $reportId]);
+    $missing = (string) Str::uuid();
+
+    $p = atl162Proposal(['evidence' => [
+        ['type' => 'research_report', 'id' => $ta->id],
+        ['type' => 'research_report', 'id' => $pos->id],
+        ['type' => 'news', 'id' => $itemId],
+        ['type' => 'research_report', 'id' => $reportId],
+        ['type' => 'research_report', 'id' => $missing],
+        ['type' => 'stat', 'id' => 'atr-14-1h'],
+    ]]);
+
+    DB::enableQueryLog();
+    $res = $this->actingAs($this->user, 'web')->getJson("/api/proposals/{$p->id}")->assertOk();
+    $evidenceQueries = collect(DB::getQueryLog())
+        ->filter(fn (array $q) => str_contains($q['query'], 'warroom_messages') && ! str_contains($q['query'], 'da_review'));
+    DB::disableQueryLog();
+
+    expect($evidenceQueries)->toHaveCount(1);
+    $res->assertJsonPath('data.evidence', [
+        ['type' => 'research_report', 'id' => $ta->id, 'label' => 'technical', 'message_id' => $ta->id],
+        ['type' => 'research_report', 'id' => $pos->id, 'label' => 'positioning', 'message_id' => $pos->id],
+        ['type' => 'news', 'id' => $itemId, 'label' => 'news', 'message_id' => $alert->id],
+        ['type' => 'research_report', 'id' => $reportId, 'label' => 'historian', 'message_id' => $hist->id],
+        ['type' => 'research_report', 'id' => $missing, 'label' => null, 'message_id' => null],
+        ['type' => 'stat', 'id' => 'atr-14-1h', 'label' => null, 'message_id' => null],
+    ]);
+});
+
+it('does not resolve evidence to a message in the other env (ATL-190)', function (): void {
+    $thread = (string) Str::uuid();
+    DB::table('warroom_threads')->insert([
+        'id' => $thread, 'env' => 'live', 'kind' => 'main', 'key' => 'main', 'title' => 'Main', 'created_at' => now(), 'updated_at' => now(),
+    ]);
+    $live = WarroomMessage::query()->create([
+        'env' => 'live', 'thread_id' => $thread, 'event_id' => (string) Str::uuid(), 'author_type' => 'agent',
+        'author' => 'technical_analyst', 'kind' => 'research_report', 'content_md' => 'x', 'card' => ['type' => 'technical_setup'], 'mentions' => [],
+    ]);
+    $p = atl162Proposal(['evidence' => [['type' => 'research_report', 'id' => $live->id]]]);
+
+    $this->actingAs($this->user, 'web')
+        ->getJson("/api/proposals/{$p->id}")
+        ->assertOk()
+        ->assertJsonPath('data.evidence.0.message_id', null);
+});
+
 it('asks the team with an owner message that mentions the Orchestrator', function (): void {
     Http::fake();
     $p = atl162Proposal();

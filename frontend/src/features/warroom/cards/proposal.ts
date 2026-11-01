@@ -90,6 +90,45 @@ export interface ProbabilityBasis {
   reason: string
 }
 
+/** Who posted a piece of evidence, as GET /api/proposals/{id} names it (ATL-190). */
+export const EVIDENCE_LABELS = ['technical', 'positioning', 'historian', 'news', 'scout', 'strategist', 'devils_advocate', 'portfolio_manager', 'other'] as const
+export type EvidenceLabel = (typeof EVIDENCE_LABELS)[number]
+
+/**
+ * One evidence ref of the proposal. The detail resource resolves it to the War Room message that
+ * posted it (`message_id`, null when none did); list rows and action responses carry only type/id.
+ */
+export interface EvidenceRef {
+  type: string
+  id: string
+  label?: string | null
+  message_id?: string | null
+}
+
+export interface EvidenceChip {
+  key: string
+  label: EvidenceLabel
+  messageId: string
+}
+
+/** The chips the card shows: one per ref that resolved to a War Room message. */
+export function evidenceChips(p: Pick<ProposalSummary, 'evidence'>): EvidenceChip[] {
+  const refs = Array.isArray(p.evidence) ? p.evidence : []
+  return refs.flatMap((r, i) => {
+    if (!r || typeof r.message_id !== 'string' || r.message_id === '') return []
+    const label = (EVIDENCE_LABELS as readonly string[]).includes(r.label ?? '') ? (r.label as EvidenceLabel) : 'other'
+    return [{ key: `${i}:${r.type}:${r.id}`, label, messageId: r.message_id }]
+  })
+}
+
+/**
+ * An action's response (a summary) merged over the cached detail. The summary's evidence refs are
+ * unresolved, so the detail's resolved ones are kept until the refetch replaces them.
+ */
+export function mergeSummary(old: ProposalDetail, next: ProposalSummary): ProposalDetail {
+  return { ...old, ...next, evidence: old.evidence }
+}
+
 export interface ProposalSummary {
   id: string
   env: string
@@ -117,6 +156,8 @@ export interface ProposalSummary {
   probability_basis?: ProbabilityBasis | null
   rationale_md: string | null
   invalidation: string | null
+  /** Resolved (with message_id) on the detail resource only (ATL-190). */
+  evidence?: EvidenceRef[]
   status: string
   status_reason: string | null
   owner_note: string | null

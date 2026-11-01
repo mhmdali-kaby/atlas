@@ -1,4 +1,5 @@
 import {
+  ChartCandlestick,
   Check,
   ChessKnight,
   ChevronRight,
@@ -7,17 +8,24 @@ import {
   CircleDot,
   CircleX,
   Eye,
+  FileText,
   Hand,
   Hourglass,
   Info,
   MessageSquareText,
+  Newspaper,
   Pencil,
+  Radar,
   Replace,
   Send,
+  ShieldAlert,
+  Sigma,
   Timer,
   TrendingDown,
   TrendingUp,
   Undo2,
+  Users,
+  Briefcase,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -38,6 +46,7 @@ import { Ladder } from './Ladder'
 import {
   daOf,
   decimalsOf,
+  evidenceChips,
   directionOf,
   entryOrderOf,
   followOwnerEdits,
@@ -50,11 +59,14 @@ import {
   replacedBy,
   shownStatus,
   liqOf,
+  mergeSummary,
   stakeOf,
   useProposal,
   useProposalMark,
   zoneOf,
   type ProposalCardRef,
+  type EvidenceChip,
+  type EvidenceLabel,
   type ProposalDetail,
   type ShownStatus,
 } from './proposal'
@@ -175,7 +187,8 @@ export function ProposalCard({ cardRef, lang, onJump }: { cardRef: ProposalCardR
     setConflict(null)
     try {
       const res = await proposalApi.approve(p.id)
-      if (res.proposal) qc.setQueryData<ProposalDetail>(proposalKey(p.id), (old) => (old ? { ...old, ...res.proposal } : old))
+      const next = res.proposal
+      if (next) qc.setQueryData<ProposalDetail>(proposalKey(p.id), (old) => (old ? mergeSummary(old, next) : old))
       toast({ title: t('t.sent'), body: t('t.sentBody', { inst: p.inst_id }) })
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) setConflict(reason409(err, t('c409.title')))
@@ -200,6 +213,7 @@ export function ProposalCard({ cardRef, lang, onJump }: { cardRef: ProposalCardR
   const stake = stakeOf(p)
   const basis = readBasis(p.probability_basis)
   const da = live ? daOf(p) : null
+  const chips = live ? evidenceChips(p) : []
   const statusWord = t(`st.${shown}`)
   const awaiting = live && shown === 'awaiting_owner'
   const advice = live && shown === 'advice'
@@ -358,6 +372,8 @@ export function ProposalCard({ cardRef, lang, onJump }: { cardRef: ProposalCardR
         </div>
       )}
 
+      {chips.length > 0 && <Evidence chips={chips} onJump={onJump} />}
+
       {awaiting && (
         <div className="pr-actions" role="group" aria-label={t('actionsSr')} data-testid="pr-actions">
           <Button
@@ -406,7 +422,7 @@ export function ProposalCard({ cardRef, lang, onJump }: { cardRef: ProposalCardR
             onSubmit={async (reason) => {
               try {
                 const res = await proposalApi.reject(p.id, reason)
-                qc.setQueryData<ProposalDetail>(proposalKey(p.id), (old) => (old ? { ...old, ...res.proposal } : old))
+                qc.setQueryData<ProposalDetail>(proposalKey(p.id), (old) => (old ? mergeSummary(old, res.proposal) : old))
                 toast({ title: t('t.rejected'), body: t('t.rejectedBody') })
               } catch (err) {
                 setConflict(err instanceof ApiError && err.status === 409 ? reason409(err, t('c409.titleReject')) : { title: t('c409.titleReject'), body: refusalOf(err).message ?? t('t.error') })
@@ -551,6 +567,50 @@ function Outcome({ p, shown, live, lang, P }: { p: ProposalDetail; shown: ShownS
     default:
       return null
   }
+}
+
+const EVIDENCE_ICON: Record<EvidenceLabel, LucideIcon> = {
+  technical: ChartCandlestick,
+  positioning: Users,
+  historian: Sigma,
+  news: Newspaper,
+  scout: Radar,
+  strategist: ChessKnight,
+  devils_advocate: ShieldAlert,
+  portfolio_manager: Briefcase,
+  other: FileText,
+}
+
+/** Evidence chips (design v14 pr-evidence): each jumps to the War Room message that posted it. */
+function Evidence({ chips, onJump }: { chips: EvidenceChip[]; onJump: (id: string) => void }) {
+  const { t } = useTranslation('proposal')
+  return (
+    <div className="pr-evidence" data-testid="pr-evidence">
+      <span className="pr-k">{t('evidence')}</span>
+      <div className="pr-chips">
+        {chips.map((c) => {
+          const Icon = EVIDENCE_ICON[c.label]
+          const name = t(`ev.${c.label}`)
+          return (
+            <a
+              key={c.key}
+              className="pr-chip"
+              href={`#${c.messageId}`}
+              aria-label={t('ev.jump', { name })}
+              data-testid="pr-chip"
+              onClick={(e) => {
+                e.preventDefault()
+                onJump(c.messageId)
+              }}
+            >
+              <Icon className="icon" aria-hidden="true" strokeWidth={1.5} />
+              <span>{name}</span>
+            </a>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
 function DaBlock({ da, onJump }: { da: NonNullable<ReturnType<typeof daOf>>; onJump: (id: string) => void }) {
