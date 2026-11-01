@@ -45,7 +45,7 @@ class MarketsEligibility
 
     /**
      * @param  list<string>  $instIds  stored form (upper-case)
-     * @param  array<string, bool|int|string|list<string>|null>  $draft  canonical overrides
+     * @param  array<string, bool|int|string|list<string>|array<string, string>|null>  $draft  canonical overrides
      * @return array<string, mixed>
      */
     public function check(string $env, array $instIds, array $draft = [], ?CarbonImmutable $now = null): array
