@@ -29,6 +29,12 @@ eval scores what the owner would see:
   judgments (its probability and size). A code "no trade" (no usable TechnicalSetup) is an ``ok``
   run with ``meta.model_ran = False``.
 
+* ``derivatives_sentiment`` (ATL-138) runs :func:`atlas_agents.derivatives.report.analyse` for
+  ``inputs.inst_id``: code computes the positioning features from the snapshot, the model answers the
+  code-built prompt and the code rules check the card. The transcript card is the posted
+  PositioningReport (``meta`` moved to ``Transcript.meta``); the tool outputs are the run's plus the
+  features the model saw and the analyst's own judgments (crowding, squeeze risks, sentiment).
+
 ``inputs.replies`` in ``case.yaml``::
 
     inputs:
@@ -465,10 +471,87 @@ async def strategist_driver(
     )
 
 
+# -- derivatives_sentiment ---------------------------------------------------------------------------
+
+
+def _positioning_judgments(card: Mapping[str, Any]) -> dict[str, Any]:
+    """The analyst's own judgments on the card (crowding, squeeze risks, sentiment): numbers the
+    model chose, not data it could invent, so they join the number guard's pool."""
+    return {
+        "as_of": None,
+        "source": "agent:derivatives_sentiment judgments",
+        "data": {
+            "crowding_score": card.get("crowding_score"),
+            "squeeze_risk": card.get("squeeze_risk"),
+            "sentiment_score": card.get("sentiment_score"),
+        },
+    }
+
+
+async def derivatives_sentiment_driver(
+    supervisor: Supervisor, case: EvalCase
+) -> tuple[RunResult | None, props.Transcript]:
+    """``inputs.inst_id`` goes through the production :func:`atlas_agents.derivatives.report.analyse`
+    (ATL-138): code computes the features from the snapshot, the model answers the code-built
+    prompt and :class:`ReportReviewer` applies the code rules. The transcript card is the posted
+    PositioningReport (its ``meta`` moved to ``Transcript.meta``); the text is the posted
+    ``content_md`` (code notes included) plus anything the agent posted itself; the tool outputs are
+    the run's plus the features the model saw and the analyst's own judgments."""
+    from atlas_agents.derivatives import report
+
+    inst_id = str(case.inputs["inst_id"])
+    why = str(case.inputs.get("why") or f"Eval {case.case_id}: positioning of {inst_id}.")
+    host = _RecordingHost(supervisor)
+    result = await report.analyse(
+        cast(AgentHost, host), inst_id, trigger="eval", correlation_id=f"eval-{case.case_id}", why=why
+    )
+    if result is None:
+        return None, props.Transcript(status="error", error=f"{inst_id} was not analysed", prompt=case.prompt)
+    base = transcript(result, host.prompt or case.prompt)
+    message = result.message or {}
+    raw_card = message.get("card")
+    card = dict(raw_card) if isinstance(raw_card, Mapping) else None
+    meta: dict[str, Any] = {"model_ran": True}
+    outputs = list(base.tool_outputs)
+    reviewer = host.reviewer
+    if isinstance(reviewer, report.ReportReviewer):
+        features = reviewer.features
+        outputs.append(
+            {
+                "as_of": features.data_as_of.isoformat(),
+                "source": props.POSITIONING_FEATURES,
+                "data": features.model_dump(mode="json"),
+            }
+        )
+    if card is not None:
+        card_meta = card.pop("meta", None) or {}
+        meta["corrections"] = list(card_meta.get("corrections") or [])
+        meta["unmatched_numbers"] = list(card_meta.get("unmatched_numbers") or [])
+        outputs.append(_positioning_judgments(card))
+    posted = [
+        str(args.get("content_md", ""))
+        for name, args in base.tool_calls
+        if name in props.POST_TOOLS and args.get("content_md")
+    ]
+    meta["posted"] = posted
+    text = "\n\n".join([str(message.get("content_md", "")), *posted]).strip()
+    return result, props.Transcript(
+        status=result.status,
+        text=text,
+        card=card,
+        tool_calls=base.tool_calls,
+        tool_outputs=outputs,
+        error=result.error,
+        prompt=base.prompt,
+        meta=meta,
+    )
+
+
 DRIVERS: dict[str, Driver] = {
     "market_scout": market_scout_driver,
     "technical_analyst": technical_analyst_driver,
     "strategist": strategist_driver,
+    "derivatives_sentiment": derivatives_sentiment_driver,
 }
 
 
@@ -480,6 +563,7 @@ __all__ = [
     "DRIVERS",
     "Driver",
     "default_driver",
+    "derivatives_sentiment_driver",
     "driver_for",
     "market_scout_driver",
     "technical_analyst_driver",
