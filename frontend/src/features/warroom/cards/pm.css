@@ -33,9 +33,9 @@
 }
 .an-rule-chip {
   justify-self: start; display: inline-flex; align-items: center; gap: 5px; height: 22px; padding-inline: 8px; border-radius: var(--radius-full);
-  font-size: var(--fs-footnote); line-height: 1; font-weight: 600; white-space: nowrap; background: var(--accent-wash); color: var(--accent-ink);
+  font-size: var(--fs-footnote); line-height: 1; font-weight: 600; white-space: nowrap; background: var(--accent-wash); color: var(--label);
 }
-.an-rule-chip .icon { width: 13px; height: 13px; stroke-width: 2; }
+.an-rule-chip .icon { width: 13px; height: 13px; stroke-width: 2; color: var(--accent-ink); }
 .an-rule-act { grid-column: 1; font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); font-weight: 500; text-wrap: pretty; }
 .an-link {
   grid-column: 2; grid-row: 1 / span 2; display: inline-flex; align-items: center; gap: 6px; padding: 4px 6px 4px 8px; border-radius: 8px;
@@ -135,3 +135,6 @@
 }
 .an-dur { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .an-fact .an-dur { color: var(--label); }
+
+/* direction-bearing icons (the equity arrow, the proposal chevron) mirror in RTL */
+[dir='rtl'] .an-daily .icon-dir, [dir='rtl'] .an-pu .icon-dir { transform: scaleX(-1); }

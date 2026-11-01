@@ -250,6 +250,8 @@ def status_card(plan: Plan, now: datetime, actions: Sequence[Mapping[str, Any]] 
         "entry": _p(s.entry_price),
         "mark": _p(s.mark_price),
         "stop": _p(s.stop),
+        "initial_stop": _p(pos.plan.stop) if pos.plan else None,
+        "targets": [_p(t.price) for t in (pos.plan.take_profits if pos.plan else ())],
         "tp1": _p(tp1),
         "tp1_filled": s.tp1_filled,
         "pnl_usd": _q(pos.upl),

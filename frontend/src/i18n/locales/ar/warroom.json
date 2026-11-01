@@ -843,7 +843,7 @@
       "exposure_peak": "ذروة التعرّض"
     },
     "of": "{{used}} من {{limit}}",
-    "exposureV": "{{usd}} ({{pct}} من الرصيد)",
+    "exposureV": "{{usd}}، أي {{pct}} من الرصيد",
     "noBreach": "لم يُتجاوز أي حد.",
     "breachTitle_one": "تم تجاوز أحد الحدود",
     "breachTitle_other": "تم تجاوز {{count}} من الحدود",
