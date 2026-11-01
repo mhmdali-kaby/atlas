@@ -10,7 +10,6 @@ verified connection, instrument with 1H candles, equity, balance, fresh market-d
 from __future__ import annotations
 
 import json
-import os
 import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
@@ -64,14 +63,14 @@ def engine() -> Engine:
 
 @pytest.fixture
 def rds() -> Iterator[redis.Redis]:
-    conn = bus.make_client({**os.environ, "REDIS_DB": os.environ.get("REDIS_TEST_DB", "15")})
+    conn = bus.make_client(testing.redis_settings())
     try:
         conn.ping()
     except redis.ConnectionError:
         pytest.fail("Redis is not running on REDIS_HOST:REDIS_PORT")
-    conn.delete("atlas.risk")
+    conn.delete(bus.stream_key("atlas.risk"))
     yield conn
-    conn.delete("atlas.risk")
+    conn.delete(bus.stream_key("atlas.risk"))
     conn.close()
 
 
@@ -196,7 +195,7 @@ def world(engine: Engine, rds: redis.Redis) -> Iterator[str]:
             )
         )
     rds.hset(
-        f"atlas:md:{ENV}:{inst_id}",
+        bus.redis_key(f"atlas:md:{ENV}:{inst_id}"),
         mapping={
             "last_msg_ms": int((AT - timedelta(seconds=2)).timestamp() * 1000),
             "tickers_ms": int((AT - timedelta(seconds=2)).timestamp() * 1000),
@@ -205,7 +204,7 @@ def world(engine: Engine, rds: redis.Redis) -> Iterator[str]:
         },
     )
     yield inst_id
-    rds.delete(f"atlas:md:{ENV}:{inst_id}")
+    rds.delete(bus.redis_key(f"atlas:md:{ENV}:{inst_id}"))
     with engine.begin() as c:
         c.execute(delete(Proposal).where(Proposal.inst_id == inst_id))
         c.execute(delete(Instrument).where(Instrument.env == ENV, Instrument.inst_id == inst_id))
@@ -347,7 +346,7 @@ def test_signed_proposal_returns_the_decision_and_stores_one_row_each(
     assert prop.status == "expired"  # draft → risk_checked by evaluate → closed: a what-if only
     assert str(prop.id) == out["proposal_id"] and str(check.id) == out["risk_check_id"]
     assert check.final_size == D(250)
-    assert rds.xlen("atlas.risk") == 1
+    assert rds.xlen(bus.stream_key("atlas.risk")) == 1
 
 
 # --- QA round 1: a manual what-if check must not leave a pending proposal behind -------------------
@@ -530,8 +529,12 @@ class _ExecutorSpy:
 
         self.calls.append((str(risk_check_id), approved_by))
         return ExecutionResult(
-            status="sent", reason="sent", detail="Order sent; stop confirmed on OKX.",
-            risk_check_id=str(risk_check_id), state="live", stop_verified=True,
+            status="sent",
+            reason="sent",
+            detail="Order sent; stop confirmed on OKX.",
+            risk_check_id=str(risk_check_id),
+            state="live",
+            stop_verified=True,
         )
 
 

@@ -20,6 +20,15 @@ decisions where the brief was silent, as the brief asks.
   it if missing; migrations then add the extensions. Python tests use `atlas_shared.testing.db_settings()`,
   which applies the same rule, so `php artisan test` migrates the database pytest reads. Exporting
   `DB_TEST_DATABASE` forces one name on both sides (e.g. `atlas_test`).
+- **Each checkout has its own Redis key prefix in Python tests** (ATL-186): every checkout shares the
+  test Redis DB (`REDIS_TEST_DB`, default 15), but `services/conftest.py` sets `ATLAS_REDIS_PREFIX` to
+  `atlas_shared.testing.redis_prefix()` = `test_<the same 8 hex>:` for the whole pytest run.
+  `atlas_shared.bus` puts it in front of every stream (`bus.stream_key`) and every other Python-written
+  key (`bus.redis_key`: `atlas:md:*`, `atlas:pws:*`, `atlas:breakers:*`); code keeps the logical
+  `atlas.*` names and consumers map keys back with `bus.logical_stream`. Unset (production) means the
+  plain names. Test clients come from `bus.make_client(testing.redis_settings())`, and fixtures read and
+  delete only `bus.stream_key(...)` keys; `shared/tests/test_redis_isolation.py` scans every test file
+  for an unprefixed stream. Exporting `REDIS_TEST_PREFIX` forces one prefix.
 - **Redis client is predis** (pure PHP), so no PHP extension is needed on the Mac.
 - **Redis Streams entry format:** every entry on an `atlas.*` stream has one field, `envelope`, holding the
   brief §3.2 envelope as JSON (the `atlas_shared.events.EventEnvelope` shape). PHP publishes with
