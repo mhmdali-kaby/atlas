@@ -26,7 +26,10 @@
     "trigger": "Trigger price",
     "actions": "Actions"
   },
-  "side": { "buy": "Buy", "sell": "Sell" },
+  "side": {
+    "buy": "Buy",
+    "sell": "Sell"
+  },
   "type": {
     "limit": "Limit",
     "market": "Market",
@@ -64,7 +67,10 @@
   "readOnlyTip": "Algo orders can’t be cancelled here. Cancel the entry order instead, and its stop and targets go with it.",
   "cancel": "Cancel",
   "cancelAria": "Cancel the {{inst}} {{what}}",
-  "what": { "buy": "buy order", "sell": "sell order" },
+  "what": {
+    "buy": "buy order",
+    "sell": "sell order"
+  },
   "sheet": {
     "title_buy": "Cancel the {{inst}} buy order?",
     "title_sell": "Cancel the {{inst}} sell order?",
@@ -88,5 +94,6 @@
   "error": {
     "title": "Couldn’t load your orders",
     "body": "Atlas’s server didn’t answer. Check that Atlas is running with ./atlas up, then try again."
-  }
+  },
+  "listSep": ", "
 }

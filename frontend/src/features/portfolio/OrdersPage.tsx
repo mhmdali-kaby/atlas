@@ -217,9 +217,11 @@ function AlgoRow({ a, lang }: { a: AlgoOrder; lang: Lang }) {
             <span className="block">{t(`kind.${a.kind}`)}</span>
             {a.kind === 'oco' && <span className="pf-cell-sub">{t('kind.ocoSub')}</span>}
             {a.protects && (
-              <span className="pf-cell-sub inline-flex items-center gap-1 [&_svg]:size-3">
-                <ShieldCheck aria-hidden="true" strokeWidth={2} />
-                {t('protects')}
+              <span className="pf-cell-sub">
+                <span className="inline-flex items-center gap-1 [&_svg]:size-3">
+                  <ShieldCheck aria-hidden="true" strokeWidth={2} />
+                  {t('protects')}
+                </span>
               </span>
             )}
           </span>
@@ -324,7 +326,7 @@ function CancelSheet({ order, lang, onClose }: { order: OpenOrder; lang: Lang; o
           {t('atlas')}
           {order.proposal_id && (
             <>
-              {', '}
+              {t('listSep')}
               {t('proposal', { id: '' })}
               <Fig>{shortId(order.proposal_id)}</Fig>
             </>
@@ -378,7 +380,9 @@ function CancelSheet({ order, lang, onClose }: { order: OpenOrder; lang: Lang; o
       <p className="text-subheadline text-label-secondary">{t(order.origin === 'atlas' ? 'sheet.atlas' : 'sheet.external')}</p>
       {cancel.isError && (
         <Notice tone="error" icon={CircleAlert} role="alert" title={t('sheet.failTitle')} data-testid="cancel-error">
-          {cancelErrorMessage(cancel.error, t('sheet.failGeneric'))}
+          <bdi dir="auto" className="block">
+            {cancelErrorMessage(cancel.error, t('sheet.failGeneric'))}
+          </bdi>
         </Notice>
       )}
     </Sheet>
