@@ -63,7 +63,12 @@ export function derivePorts(repoRoot: string, env: Record<string, string | undef
 
 export const PORTS = derivePorts(REPO_ROOT)
 
-if (!process.env.E2E_QUIET_STARTUP_LOG) {
+// Every Playwright worker process re-imports this module, so without the TEST_WORKER_INDEX guard
+// the line below printed once per worker (36 times in a run with that many workers) instead of
+// once per run. TEST_WORKER_INDEX is unset in the main process that loads playwright.config.ts and
+// set in every worker, so this prints exactly once. E2E_QUIET_STARTUP_LOG silences it entirely
+// (see docs/RUNBOOK.md).
+if (!process.env.TEST_WORKER_INDEX && !process.env.E2E_QUIET_STARTUP_LOG) {
   // eslint-disable-next-line no-console
   console.error(
     `[atlas e2e] ports for ${REPO_ROOT}: mocked=${PORTS.mocked} spa=${PORTS.spa} api=${PORTS.api} core=${PORTS.core} reverb=${PORTS.reverb}`,

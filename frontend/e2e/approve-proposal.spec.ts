@@ -66,7 +66,11 @@ async function fakeApi(page: Page, lang: 'en' | 'ar') {
 
 async function open(page: Page, lang: 'en' | 'ar', theme: 'light' | 'dark') {
   await page.setViewportSize({ width: 1280, height: 1400 })
-  await page.clock.install({ time: new Date('2026-10-28T11:32:00Z') })
+  // Date.now()/new Date() stay frozen at this instant for the whole test (real timers still fire,
+  // so useNow's setInterval keeps re-rendering, but always reads the same "now"). Without this the
+  // countdown drifted with real wall-clock time (6:00 -> 5:55) depending on how long the page took
+  // to load, which is what made the assertion below flaky.
+  await page.clock.setFixedTime(new Date('2026-10-28T11:32:00Z'))
   await page.addInitScript(
     ([l, th]) => {
       localStorage.setItem('atlas.lang', l)

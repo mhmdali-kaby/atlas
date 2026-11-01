@@ -94,3 +94,24 @@ for (const p of PAGES) {
     if (p.name !== 'overview') await page.screenshot({ path: `${SHOTS}/${info.project.name}-${p.name}.png`, fullPage: true })
   })
 }
+
+/**
+ * ATL-187 round 3 (TL review): the 1280px breakpoint above passed only because it matched the
+ * test viewport exactly, while Positions' eleventh column (Close, ATL-151) still overflowed
+ * <main> between 1281px and 1299px. Re-run the no-overflow check at a couple of widths inside
+ * that gap, in both LTR and RTL (ltr-* and rtl-* projects), so a breakpoint tuned to one pixel
+ * cannot pass this suite again.
+ */
+for (const width of [1290, 1300]) {
+  test(`Portfolio positions: no horizontal overflow at ${width}px`, async ({ page, lang }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/portfolio/positions')
+    await expect(page.locator('html')).toHaveAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr')
+    await expect(page.getByTestId('positions-summary')).toBeVisible()
+    await expect(page.locator('[data-testid$="-loading"]')).toHaveCount(0)
+
+    const overflow = await horizontalOverflow(page)
+    expect(overflow.document, `page scrolls sideways at ${width}px (px)`).toBeLessThanOrEqual(1)
+    expect(overflow.main, `main scrolls sideways at ${width}px (px)`).toBeLessThanOrEqual(1)
+  })
+}
