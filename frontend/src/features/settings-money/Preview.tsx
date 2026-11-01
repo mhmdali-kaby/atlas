@@ -25,10 +25,10 @@ function dailyCents(texts: MoneyTexts, doc: SettingsDoc): bigint {
   return (fieldError(f, texts[f]) ? null : toCents(texts[f])) ?? toCents(String(doc.settings[f] ?? '0')) ?? 0n
 }
 
-export function BindsBadge({ small }: { small?: boolean }) {
+export function BindsBadge({ small, fallback }: { small?: boolean; fallback?: boolean }) {
   const { t } = useTranslation('settings-money')
   return (
-    <span className={cx('ml-binds', small && 'is-sm')} data-testid="binds-badge">
+    <span className={cx('ml-binds', small && 'is-sm', fallback && 'is-fallback')} data-testid="binds-badge">
       <ArrowRightToLine aria-hidden="true" strokeWidth={2} className="rtl:-scale-x-100" />
       <span>{t('c.binds')}</span>
     </span>
@@ -109,7 +109,7 @@ function CutChart({ rows, use, p, doc, daily, lang }: { rows: CutRow[]; use: big
             </span>
             <span className="ml-cut-val">
               <Fig>{usd(r.cents, lang)}</Fig>
-              {r.binding && !badgeInBar && <BindsBadge small />}
+              {r.binding && <BindsBadge small fallback={badgeInBar} />}
             </span>
           </li>
         ))}

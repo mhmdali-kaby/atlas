@@ -125,8 +125,10 @@
 .ml-binds.is-sm { height: 18px; gap: 3px; padding-inline: 5px 7px; }
 .ml-binds.is-sm svg { width: 11px; height: 11px; }
 .ml-bar > .ml-binds { position: absolute; top: 50%; inset-inline-start: calc(var(--cut) * 100% + 10px); transform: translateY(-50%); }
+.ml-cut-val > .ml-binds.is-fallback { display: none; }
 @container (max-width: 560px) {
   .ml-bar > .ml-binds { display: none; }
+  .ml-cut-val > .ml-binds.is-fallback { display: inline-flex; }
 }
 
 .ml-invalid {
