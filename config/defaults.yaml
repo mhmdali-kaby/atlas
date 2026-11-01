@@ -637,6 +637,19 @@ backtest:
     SWAP: "0.0005"
     FUTURES: "0.0005"
 
+# ATL-208: /api/backtests. The owner starts a backtest (POST, throttled per user) and a queued job on
+# its own Horizon queue calls trading_core's synchronous POST /internal/backtest (≤ backtest.timeout_seconds).
+#   http_timeout_seconds: the HTTP client's wait, a little above backtest.timeout_seconds.
+#   job_timeout_seconds: the job's hard limit; must stay below the redis queue's retry_after (90 s) so a
+#     run is never handed to a second worker. Tries is 1: a failed backtest is stored, never retried.
+#   list_limit: how many recent runs GET /api/backtests returns.
+backtests_api:
+  starts_per_minute: 6
+  http_timeout_seconds: 70
+  job_timeout_seconds: 80
+  list_limit: 50
+  queue: backtests
+
 data_api:
   resync_per_minute: 1
   pause_per_minute: 5

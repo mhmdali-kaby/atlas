@@ -781,6 +781,13 @@ return [
             'FUTURES' => '0.0005',
         ],
     ],
+    'backtests_api' => [
+        'starts_per_minute' => 6,
+        'http_timeout_seconds' => 70,
+        'job_timeout_seconds' => 80,
+        'list_limit' => 50,
+        'queue' => 'backtests',
+    ],
     'data_api' => [
         'resync_per_minute' => 1,
         'pause_per_minute' => 5,
