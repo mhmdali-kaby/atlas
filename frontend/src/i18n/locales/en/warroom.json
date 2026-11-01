@@ -713,5 +713,59 @@
         "unknown": "{{inst}} is not an instrument in this account's universe."
       }
     }
+  },
+  "pos": {
+    "kind": "Positioning",
+    "regime": {
+      "new_longs": "New longs",
+      "short_covering": "Short covering",
+      "new_shorts": "New shorts",
+      "long_liquidation": "Long liquidation",
+      "flat": "Flat"
+    },
+    "meaning": {
+      "new_longs": "Price up with open interest up: fresh longs are opening.",
+      "short_covering": "Price up with open interest down: shorts are closing, not fresh buying. Rallies built on covering often fade.",
+      "new_shorts": "Price down with open interest up: fresh shorts are opening.",
+      "long_liquidation": "Price down with open interest down: longs are closing or being liquidated.",
+      "flat": "Neither price nor open interest moved enough to read a direction."
+    },
+    "q": {
+      "pu": "Price up",
+      "pd": "Price down",
+      "ou": "OI up",
+      "od": "OI down",
+      "now": "Now"
+    },
+    "quadAria": "Open interest against price: {{regime}}, now.",
+    "stance": "Positioning",
+    "st": {
+      "long": {
+        "supports": "Supports a long",
+        "neutral": "Neutral to a long",
+        "opposes": "Opposes a long"
+      },
+      "short": {
+        "supports": "Supports a short",
+        "neutral": "Neutral to a short",
+        "opposes": "Opposes a short"
+      }
+    },
+    "crowd": "Crowding",
+    "crowdV": {
+      "long": "{{pct}}, longs crowded",
+      "short": "{{pct}}, shorts crowded",
+      "none": "{{pct}}, neither side crowded"
+    },
+    "squeeze": "Squeeze risk",
+    "sqLong": "Long squeeze",
+    "sqShort": "Short squeeze",
+    "funding": "Funding",
+    "basis": "Basis",
+    "premium": "Premium to the underlying",
+    "senti": "Sentiment",
+    "evidence": "Key evidence",
+    "unrelTitle": "Unreliable data",
+    "unrelDefault": "Atlas does not read positioning from this data: neutral for both long and short."
   }
 }
