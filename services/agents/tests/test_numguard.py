@@ -241,3 +241,27 @@ def test_pair_derivation_can_be_switched_off() -> None:
     assert check("risk 52.5", None, tools).ok
     no_pairs = {**DEFAULTS["agents"]["numguard"], "derive_pairs": False}
     assert not check("risk 52.5", None, tools, config=no_pairs).ok
+
+
+def test_uuids_in_text_and_tool_strings_are_ids_not_numbers() -> None:
+    """ATL-170 QA: digit groups of a proposal_id UUID fed the difference/ratio pools, so an invented
+    figure could match by chance. A UUID, in either case, is an id and yields no number."""
+    ids = [
+        "3f2a1b9c-1234-4567-8901-0123456789ab",
+        "12345678-9012-4345-8678-901234567890",
+        "3F2A1B9C-1234-4567-8901-0123456789AB",
+    ]
+    for value in ids:
+        assert extract_numbers(f"proposal {value} closed") == []
+    tools = [envelope({"trades": [{"proposal_id": value, "usd": 12.34} for value in ids]})]
+    assert check("Realised 12.34 on three trades", None, tools).ok
+    invented = check("Realised PnL today was $777.77", None, tools)
+    assert [n.raw for n in invented.unmatched] == ["$777.77"]
+
+
+def test_random_uuids_never_yield_numbers() -> None:
+    import uuid
+
+    for _ in range(5000):
+        value = str(uuid.uuid4())
+        assert extract_numbers(value) == [], value
