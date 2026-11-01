@@ -1,4 +1,4 @@
-import { ArrowDownRight, ArrowUpRight, Layers, Unplug } from 'lucide-react'
+import { Layers, Unplug } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -9,7 +9,7 @@ import { Button, SignedValue, toast } from '../../ui'
 import { ClosePositionSheet } from './ClosePositionSheet'
 import { POLL_MS, usePositions, useSummary, type Position } from './api'
 import { useLang, useNow } from './hooks'
-import { ReconciledIndicator, Skeleton, StateBlock } from './parts'
+import { InstId, ReconciledIndicator, SideBadge, Skeleton, StateBlock } from './parts'
 import { formatDay, formatDayTime, formatDuration } from './time'
 import './portfolio.css'
 
@@ -27,28 +27,6 @@ const NUMERIC = new Set<Column>(['size', 'leverage', 'entry', 'mark', 'liq', 'up
 /** A fresh `n` per opening remounts the sheet clean; `open: false` keeps its position while it
  * animates out (the settings-data-sources key sheets use the same pattern). */
 type CloseSheetState = { position: Position; open: boolean; n: number } | null
-
-/** OKX instrument ID verbatim: the base asset carries the row, the rest recedes. */
-function InstId({ id }: { id: string }) {
-  const cut = id.indexOf('-')
-  return (
-    <span dir="ltr" className="pf-inst">
-      {cut < 0 ? id : id.slice(0, cut)}
-      {cut >= 0 && <span className="pf-inst-rest">{id.slice(cut)}</span>}
-    </span>
-  )
-}
-
-function SideBadge({ side }: { side: Position['side'] }) {
-  const { t } = useTranslation('portfolio')
-  const Icon = side === 'long' ? ArrowUpRight : ArrowDownRight
-  return (
-    <span className="pf-badge" data-side={side}>
-      <Icon aria-hidden="true" strokeWidth={2} className="rtl:-scale-x-100" />
-      {t(`positions.${side}`)}
-    </span>
-  )
-}
 
 function PositionRow({
   p,
@@ -71,7 +49,7 @@ function PositionRow({
         <InstId id={p.inst_id} />
       </td>
       <td data-col="side">
-        <SideBadge side={p.side} />
+        <SideBadge side={p.side} label={t(`positions.${p.side}`)} />
       </td>
       <td data-col="size" className="is-num">
         <span className="fig">{formatDecimal(p.size, lang, 0)}</span>
