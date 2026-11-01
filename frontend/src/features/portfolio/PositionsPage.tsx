@@ -1,8 +1,12 @@
-import { ArrowDownRight, ArrowUpRight, Layers } from 'lucide-react'
+import { ArrowDownRight, ArrowUpRight, Layers, Unplug } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
 import { useTradingEnv } from '../../app/shell/tradingEnv'
 import { formatDecimal, formatPrice, NO_VALUE, type Lang } from '../../lib/format'
-import { SignedValue } from '../../ui'
+import { isVerified, Notice, useConnection } from '../onboarding'
+import { Button, SignedValue, toast } from '../../ui'
+import { ClosePositionSheet } from './ClosePositionSheet'
 import { POLL_MS, usePositions, useSummary, type Position } from './api'
 import { useLang, useNow } from './hooks'
 import { ReconciledIndicator, Skeleton, StateBlock } from './parts'
@@ -11,13 +15,18 @@ import './portfolio.css'
 
 /*
  * Portfolio → Positions (brief §13, design: Positions). Every open position of the newest
- * synced positions tick, from /api/portfolio/positions (polled every 30 s). Stop, targets,
- * the opening agent/proposal and the Close action arrive with the Executor (Phase 2).
+ * synced positions tick, from /api/portfolio/positions (polled every 30 s). Stop, targets and
+ * the opening agent/proposal arrive with the Strategist (Phase 2); Close (ATL-151) goes
+ * through the Executor via ATL-148's POST /api/portfolio/positions/{id}/close.
  */
 
 const COLUMNS = ['instrument', 'side', 'size', 'leverage', 'mgnMode', 'entry', 'mark', 'liq', 'upl', 'time'] as const
 type Column = (typeof COLUMNS)[number]
 const NUMERIC = new Set<Column>(['size', 'leverage', 'entry', 'mark', 'liq', 'upl', 'time'])
+
+/** A fresh `n` per opening remounts the sheet clean; `open: false` keeps its position while it
+ * animates out (the settings-data-sources key sheets use the same pattern). */
+type CloseSheetState = { position: Position; open: boolean; n: number } | null
 
 /** OKX instrument ID verbatim: the base asset carries the row, the rest recedes. */
 function InstId({ id }: { id: string }) {
@@ -41,7 +50,19 @@ function SideBadge({ side }: { side: Position['side'] }) {
   )
 }
 
-function PositionRow({ p, lang, now }: { p: Position; lang: Lang; now: number }) {
+function PositionRow({
+  p,
+  lang,
+  now,
+  canClose,
+  onClose,
+}: {
+  p: Position
+  lang: Lang
+  now: number
+  canClose: boolean
+  onClose: (p: Position) => void
+}) {
   const { t } = useTranslation('portfolio')
   const mode = p.margin_mode === 'isolated' || p.margin_mode === 'cross' ? t(`positions.${p.margin_mode}`) : (p.margin_mode ?? NO_VALUE)
   return (
@@ -89,6 +110,18 @@ function PositionRow({ p, lang, now }: { p: Position; lang: Lang; now: number })
           <span className="text-label-secondary">{NO_VALUE}</span>
         )}
       </td>
+      {canClose && (
+        <td data-col="actions">
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => onClose(p)}
+            aria-label={t(`positions.close.aria.${p.side === 'short' ? 'short' : 'long'}`, { inst: p.inst_id })}
+          >
+            {t('positions.close.btn')}
+          </Button>
+        </td>
+      )}
     </tr>
   )
 }
@@ -130,6 +163,12 @@ export function PositionsPage() {
   const now = useNow(POLL_MS)
   const positions = usePositions(env)
   const summary = useSummary(env)
+  const { connection } = useConnection(env)
+  const canClose = isVerified(connection)
+  const [closeSheet, setCloseSheet] = useState<CloseSheetState>(null)
+  const showClose = (position: Position) =>
+    (prev: CloseSheetState): CloseSheetState => ({ position, open: true, n: (prev?.n ?? 0) + 1 })
+  const hideClose = (prev: CloseSheetState): CloseSheetState => (prev ? { ...prev, open: false } : prev)
 
   const retry = () => {
     void positions.refetch()
@@ -200,6 +239,19 @@ export function PositionsPage() {
   return (
     <div>
       {head}
+      {!canClose && (
+        <Notice
+          tone="info"
+          icon={Unplug}
+          className="mb-4"
+          title={t('positions.close.disconnected')}
+          actions={
+            <Button asChild size="sm" variant="plain">
+              <Link to="/settings/connections">{t('positions.close.connect')}</Link>
+            </Button>
+          }
+        />
+      )}
       <div className="pf-panel">
         <table className="pf-table pf-positions" data-testid="positions-table">
           <thead>
@@ -209,15 +261,36 @@ export function PositionsPage() {
                   {t(`positions.col.${c}`)}
                 </th>
               ))}
+              {canClose && (
+                <th scope="col" data-col="actions">
+                  <span className="sr-only">{t('positions.col.actions')}</span>
+                </th>
+              )}
             </tr>
           </thead>
           <tbody>
             {items.map((p) => (
-              <PositionRow key={p.id} p={p} lang={lang} now={now} />
+              <PositionRow key={p.id} p={p} lang={lang} now={now} canClose={canClose} onClose={(pos) => setCloseSheet(showClose(pos))} />
             ))}
           </tbody>
         </table>
       </div>
+      {closeSheet && (
+        <ClosePositionSheet
+          key={closeSheet.n}
+          position={closeSheet.position}
+          open={closeSheet.open}
+          lang={lang}
+          onOpenChange={(o) => {
+            if (!o) setCloseSheet(hideClose)
+          }}
+          onClosed={(position) => {
+            setCloseSheet(hideClose)
+            void positions.refetch()
+            toast({ tone: 'success', title: t('positions.close.toast', { inst: position.inst_id }) })
+          }}
+        />
+      )}
     </div>
   )
 }

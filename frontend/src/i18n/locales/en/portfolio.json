@@ -63,7 +63,8 @@
       "mark": "Mark",
       "liq": "Liq. price",
       "upl": "Unrealised PnL",
-      "time": "Time in trade"
+      "time": "Time in trade",
+      "actions": "Actions"
     },
     "contractsUnit": "contracts",
     "long": "Long",
@@ -75,6 +76,27 @@
     "empty": {
       "title": "No open positions",
       "body": "No open positions on the OKX demo account. Positions you open on OKX appear here within a minute."
+    },
+    "close": {
+      "btn": "Close",
+      "aria": {
+        "long": "Close the {{inst}} long",
+        "short": "Close the {{inst}} short"
+      },
+      "title": {
+        "long": "Close {{inst}} long?",
+        "short": "Close {{inst}} short?"
+      },
+      "text": "Atlas sends a reduce-only market order through the Executor. The fill can differ from the mark price.",
+      "algoNote": "Its stop and take profit on OKX are cancelled once the position is closed.",
+      "keep": "Keep position",
+      "do": "Close position",
+      "doing": "Closing…",
+      "toast": "{{inst}} closed",
+      "failTitle": "OKX didn’t close it",
+      "errorGeneric": "Atlas couldn’t reach the trading service. Try again.",
+      "disconnected": "Closing needs the OKX demo connection.",
+      "connect": "Open Connections"
     }
   },
   "laterPhase": "Available in a later phase",
