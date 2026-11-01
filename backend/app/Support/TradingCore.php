@@ -49,11 +49,14 @@ final class TradingCore
         $this->nonce = $nonce ?? static fn (): string => bin2hex(random_bytes(16));
     }
 
-    public static function fromConfig(): self
+    /**
+     * @param  int|null  $timeoutSeconds  overrides services.trading_core.timeout (e.g. a backtest's longer wait)
+     */
+    public static function fromConfig(?int $timeoutSeconds = null): self
     {
         $url = config('services.trading_core.url');
         $secret = config('services.trading_core.secret');
-        $timeout = config('services.trading_core.timeout');
+        $timeout = $timeoutSeconds ?? config('services.trading_core.timeout');
 
         return new self(
             app(HttpFactory::class),

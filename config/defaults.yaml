@@ -637,6 +637,19 @@ backtest:
     SWAP: "0.0005"
     FUTURES: "0.0005"
 
+# ATL-208: /api/backtests. The owner starts a backtest (POST, throttled per user) and a queued job on
+# its own Horizon queue calls trading_core's synchronous POST /internal/backtest (≤ backtest.timeout_seconds).
+#   http_timeout_seconds: the HTTP client's wait, a little above backtest.timeout_seconds.
+#   job_timeout_seconds: the job's hard limit; must stay below the redis queue's retry_after (90 s) so a
+#     run is never handed to a second worker. Tries is 1: a failed backtest is stored, never retried.
+#   list_limit: how many recent runs GET /api/backtests returns.
+backtests_api:
+  starts_per_minute: 6
+  http_timeout_seconds: 70
+  job_timeout_seconds: 80
+  list_limit: 50
+  queue: backtests
+
 data_api:
   resync_per_minute: 1
   pause_per_minute: 5
@@ -1295,6 +1308,31 @@ agents:
       price_bar: 5m
       max_price_lag_minutes: 30
       lookback_days: 5
+    # ATL-196, brief §7.6/§7.7 Scoring (atlas_agents.scorecards.paper/strategist/devils_advocate).
+    #   paper.statuses: an entry proposal's latest version in one of these, never filled by the
+    #     Executor, is simulated as a paper trade from that version's created_at.
+    #   paper.bars: candles walked, first that has bars in the window wins (1m, then 15m). In a bar
+    #     that touches both the stop and a target the stop is taken first. A limit/post_only entry
+    #     fills only when price trades through its limit (the entry, else the zone edge the Executor
+    #     uses) within executor.entry_timeout_minutes; a market entry fills at the next bar's open.
+    #     Exits: the stop (the bar's open when it gaps past), each TP at its price for its pct, the
+    #     rest at the close of the last bar ending by the time stop, else by max_hold_hours.
+    #   paper.fee_rate: taker fee per side from backtest.taker_fee_rates by instType (no trade-fee
+    #     rate is stored yet), backtest.fallback_taker_fee_rate otherwise.
+    #   lookback_days: these days are re-scored each run (a trade must close inside it to count).
+    #   devils_advocate.high_rating / low_rating: rated >= high is a "do not trade" call, <= low a
+    #     "clean" call; scratch_r: |R| below it is neither a win nor a loss.
+    paper:
+      statuses: ["rejected", "expired", "advise_only"]
+      bars: ["1m", "15m"]
+      max_hold_hours: 72
+    strategist:
+      lookback_days: 7
+    devils_advocate:
+      lookback_days: 7
+      high_rating: 4
+      low_rating: 2
+      scratch_r: "0.1"
   # ATL-132, brief §7.4: the Technical Analyst's deterministic precompute (atlas_agents.ta), per
   # timeframe. EMA/RSI/ATR/ADX are atlas_quant.indicators (the backtester's definitions).
   #   slope_bars: EMA slope = (EMA_t / EMA_{t-k} - 1) x 100 / k, in % per bar.

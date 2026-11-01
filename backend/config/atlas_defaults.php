@@ -781,6 +781,13 @@ return [
             'FUTURES' => '0.0005',
         ],
     ],
+    'backtests_api' => [
+        'starts_per_minute' => 6,
+        'http_timeout_seconds' => 70,
+        'job_timeout_seconds' => 80,
+        'list_limit' => 50,
+        'queue' => 'backtests',
+    ],
     'data_api' => [
         'resync_per_minute' => 1,
         'pause_per_minute' => 5,
@@ -1515,6 +1522,27 @@ return [
                 'price_bar' => '5m',
                 'max_price_lag_minutes' => 30,
                 'lookback_days' => 5,
+            ],
+            'paper' => [
+                'statuses' => [
+                    'rejected',
+                    'expired',
+                    'advise_only',
+                ],
+                'bars' => [
+                    '1m',
+                    '15m',
+                ],
+                'max_hold_hours' => 72,
+            ],
+            'strategist' => [
+                'lookback_days' => 7,
+            ],
+            'devils_advocate' => [
+                'lookback_days' => 7,
+                'high_rating' => 4,
+                'low_rating' => 2,
+                'scratch_r' => '0.1',
             ],
         ],
         'ta' => [
