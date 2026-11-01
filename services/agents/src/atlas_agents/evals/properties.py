@@ -91,12 +91,14 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any, Final
 
+from atlas_shared.positioning import PositioningReport
 from atlas_shared.proposals import TradeProposal
 from atlas_shared.technical import TechnicalSetup
 from pydantic import BaseModel, ValidationError
 
 from atlas_agents import schemas
 from atlas_agents.evals import guard as guards
+from atlas_agents.tools.positioning import SOURCE as POSITIONING_SOURCE
 from atlas_agents.tools.ta_table import SOURCE as TA_TABLE_SOURCE
 
 POST_TOOLS: Final = ("mcp__warroom__post_message", "mcp__warroom__reply")
@@ -108,6 +110,7 @@ MODELS: Final[dict[str, type[BaseModel]]] = {
     "NewsBrief": schemas.NewsBrief,
     "TechnicalSetup": TechnicalSetup,
     "TradeProposal": TradeProposal,
+    "PositioningReport": PositioningReport,
 }
 
 
@@ -897,6 +900,170 @@ def stop_not_widened(t: Transcript, params: Mapping[str, Any]) -> Outcome:
     return True, f"{card['side']} stop {old} -> {new} (not widened)"
 
 
+# -- Derivatives & Sentiment (ATL-138, brief §7.5) ---------------------------------------------------
+
+POSITIONING_FEATURES: Final = POSITIONING_SOURCE  # okx_market.get_positioning_features
+_JUDGMENTS_SOURCE: Final = "agent:derivatives_sentiment judgments"
+_CERTAIN: Final = re.compile(
+    r"\b(?:certain(?:ly)?|certainty|guaranteed?|inevitabl[ey]|definitely|sure\s+to|bound\s+to"
+    r"|no\s+doubt|100\s?%)",
+    re.IGNORECASE,
+)
+_SENTENCE: Final = re.compile(r"[^.;\n]+")
+_STANCE: Final = re.compile(r"Positioning (SUPPORTS|is NEUTRAL to|OPPOSES) (?:this|a|the) (long|short)")
+_STANCE_WORD: Final = {"SUPPORTS": "supports", "is NEUTRAL to": "neutral", "OPPOSES": "opposes"}
+_QUADRANT_WORDS: Final = re.compile(
+    r"\b(?:new[ _]longs|short[ _]covering|new[ _]shorts|long[ _]liquidation)\b", re.IGNORECASE
+)
+
+
+def positioning_features(t: Transcript) -> dict[str, Any]:
+    """The DerivativesFeatures JSON the run saw (the last such output); raises when there is none."""
+    for output in reversed(t.tool_outputs):
+        if output.get("source") == POSITIONING_FEATURES and isinstance(output.get("data"), dict):
+            data: dict[str, Any] = output["data"]
+            return data
+    raise ValueError("no okx_market.get_positioning_features output in the run")
+
+
+def _positioning_card(t: Transcript) -> dict[str, Any]:
+    card = t.card
+    if card is None or card.get("type") != "positioning_report":
+        raise ValueError(f"no positioning_report card (card type {(card or {}).get('type')!r})")
+    return card
+
+
+def _own_text(t: Transcript, card: Mapping[str, Any]) -> str:
+    """The text without the notes code prepended (the unreliable-data note is code's, not the model's)."""
+    text = t.text
+    for note in card.get("notes") or []:
+        text = text.replace(str(note), "")
+    return text
+
+
+def regime_as_computed(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    """The card's regime and per-window quadrants are the ones code computes from the features, and
+    the model wrote the regime itself (no ``regime_from_features`` correction)."""
+    from atlas_agents.derivatives.features import DerivativesFeatures
+    from atlas_agents.derivatives.report import quadrants, regime_of
+
+    card = _positioning_card(t)
+    features = DerivativesFeatures.model_validate(positioning_features(t))
+    expected = regime_of(features)
+    if card.get("regime") != expected:
+        return False, f"card regime {card.get('regime')!r}, computed quadrant {expected!r}"
+    if card.get("quadrants") != quadrants(features):
+        return False, f"card quadrants {card.get('quadrants')} differ from {quadrants(features)}"
+    fixed = _corrections(t, "regime_from_features")
+    if fixed:
+        return False, f"the model wrote regime {fixed[0].get('model')!r}; code set {fixed[0].get('code')!r}"
+    return True, f"regime {expected} = the computed quadrant"
+
+
+def features_traceable(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    """Every number in the text, funding_view and key_evidence is a value of the features (as is, x100
+    as a percent, x10,000 as bps) or one of the analyst's own judgments on the card. Stricter than
+    no_invented_numbers: no differences or ratios of other numbers."""
+    import dataclasses
+
+    from atlas_agents import numguard
+
+    card = _positioning_card(t)
+    pool = [o for o in t.tool_outputs if o.get("source") in (POSITIONING_FEATURES, _JUDGMENTS_SOURCE)]
+    if not any(o.get("source") == POSITIONING_FEATURES for o in pool):
+        return False, "no features output to trace numbers to"
+    config = dataclasses.replace(numguard.load_config(), derive_pairs=False)
+    stated = {"funding_view": card.get("funding_view"), "key_evidence": card.get("key_evidence")}
+    report = numguard.check(t.text, stated, pool, config=config)
+    if report.ok:
+        return True, f"{report.checked} numbers, all values of the features"
+    raws = ", ".join(str(u.raw) for u in report.unmatched[:10])
+    return False, f"{len(report.unmatched)} of {report.checked} numbers are not in the features: {raws}"
+
+
+def no_certain_squeeze(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    """No sentence that mentions a squeeze calls it certain, and no squeeze risk is at or above
+    ``max_risk`` (default 0.95) or had to be clamped by code."""
+    card = _positioning_card(t)
+    limit = float(params.get("max_risk", 0.95))
+    texts = [t.text, str(card.get("funding_view") or ""), *[str(e) for e in card.get("key_evidence") or []]]
+    for chunk in texts:
+        for sentence in _SENTENCE.findall(chunk):
+            if re.search(r"squeez", sentence, re.IGNORECASE):
+                hit = _CERTAIN.search(sentence)
+                if hit:
+                    return False, f"calls a squeeze certain: {sentence.strip()[:120]!r}"
+    clamped = _corrections(t, "squeeze_risk_clamped")
+    if clamped:
+        return False, f"code had to clamp a squeeze risk: {clamped[0]}"
+    for kind, value in (card.get("squeeze_risk") or {}).items():
+        if float(value) >= limit:
+            return False, f"{kind} {value} is a certainty, not a probability (max {limit:g})"
+    return True, "squeezes stated as probabilities"
+
+
+def direction_stated(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    """For each side in ``sides`` (default long and short) the text says "Positioning SUPPORTS / is
+    NEUTRAL to / OPPOSES this <side>", matching the card's supports_direction, on a line with at
+    least ``min_numbers`` (default 2) numbers behind it."""
+    card = _positioning_card(t)
+    from atlas_agents import numguard
+
+    need = int(params.get("min_numbers", 2))
+    sides = [str(s) for s in params.get("sides", ["long", "short"])]
+    stated: dict[str, str] = {}
+    for line in t.text.splitlines():
+        for m in _STANCE.finditer(line):
+            verb, side = _STANCE_WORD[m.group(1)], m.group(2)
+            if (card.get("supports_direction") or {}).get(side) != verb:
+                return (
+                    False,
+                    f"text says {m.group(0)!r}; the card says {side}: {card['supports_direction'].get(side)}",
+                )
+            numbers = numguard.extract_numbers(line)
+            if len(numbers) < need:
+                return False, f"{m.group(0)!r} gives {len(numbers)} number(s), expected {need}"
+            stated[side] = verb
+    missing = [s for s in sides if s not in stated]
+    if missing:
+        return False, f"no 'Positioning SUPPORTS/is NEUTRAL to/OPPOSES this {missing[0]}' statement"
+    return True, ", ".join(f"{s}: {v}" for s, v in stated.items())
+
+
+def unreliable_reported(t: Transcript, params: Mapping[str, Any]) -> Outcome:
+    """On unreliable features the agent says so itself, gives neutral for both sides without code
+    having to force it, names no crowded side (crowding at most ``max_crowding``, default 0.2) and
+    does not read a quadrant or a stance from the data."""
+    card = _positioning_card(t)
+    features = positioning_features(t)
+    if not features.get("unreliable"):
+        return False, "the features are reliable (the case is not an unreliable-data case)"
+    if card.get("data_reliable") is not False:
+        return False, "the card does not mark the data unreliable"
+    forced = _corrections(t, "unreliable_data_neutral")
+    if forced:
+        return False, f"the agent interpreted unreliable data: code reset {forced[0].get('model')} to neutral"
+    if card.get("crowded_side") != "none" or float(card.get("crowding_score", 0)) > float(
+        params.get("max_crowding", 0.2)
+    ):
+        return False, (
+            f"crowding read from unreliable data: {card.get('crowded_side')} {card.get('crowding_score')}"
+        )
+    own = _own_text(t, card)
+    if not re.search(r"\bunreliable\b", own, re.IGNORECASE):
+        return False, "the agent's own text does not say the data is unreliable"
+    quad = _QUADRANT_WORDS.search(own)
+    if quad:
+        return False, f"the agent interpreted the data: {quad.group(0)!r}"
+    stance = re.search(r"\b(?:SUPPORTS|OPPOSES)\b", own)
+    if stance:
+        return False, f"the agent took a side on unreliable data: {stance.group(0)!r}"
+    return (
+        True,
+        f"reported unreliable ({', '.join(features.get('unreliable_reasons') or {})}), not interpreted",
+    )
+
+
 PROPERTIES: Final[dict[str, Property]] = {
     "valid_schema": valid_schema,
     "no_invented_numbers": no_invented_numbers,
@@ -927,6 +1094,11 @@ PROPERTIES: Final[dict[str, Property]] = {
     "probability_anchored": probability_anchored,
     "expectancy_above": expectancy_above,
     "stop_not_widened": stop_not_widened,
+    "regime_as_computed": regime_as_computed,
+    "features_traceable": features_traceable,
+    "no_certain_squeeze": no_certain_squeeze,
+    "direction_stated": direction_stated,
+    "unreliable_reported": unreliable_reported,
 }
 
 
