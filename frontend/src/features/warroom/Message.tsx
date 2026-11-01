@@ -28,6 +28,10 @@ import { readTechnicalSetup } from './cards/technicalSetup'
 import { readProposalCard } from './cards/proposal'
 import { ProposalCard } from './cards/ProposalCard'
 import { TechnicalSetupCard } from './cards/TechnicalSetupCard'
+import { readDevilsReview, readRiskCheck, readVoteSummary } from './cards/debate'
+import { DevilsReviewCard } from './cards/DevilsReviewCard'
+import { RiskCheckCard } from './cards/RiskCheckCard'
+import { VoteSummaryCard } from './cards/VoteSummaryCard'
 import { HistoryVerdictCard } from './HistoryVerdictCard'
 import { readHistoryVerdict, readRegimeTable, unmatchedOf } from './historian'
 import { NewsAlertCard } from './NewsAlertCard'
@@ -81,7 +85,8 @@ const CARDS: Partial<Record<string, (m: WarroomMessage, lang: Lang, ctx: CardCtx
   },
   // The Historian's answer (design v7 Historian cards §5): its content_md above the card, with
   // untraced numbers marked in both (brief §7.11, ATL-91 unmatched_numbers).
-  research_report: (m, lang, { parent }) => {
+  research_report: (m, lang, ctx) => {
+    const { parent } = ctx
     // News Intelligence's brief (design v9 §B): its content_md above the card, as for the Historian.
     const brief = readNewsBrief(m.card, parent?.kind)
     if (brief) {
@@ -99,6 +104,17 @@ const CARDS: Partial<Record<string, (m: WarroomMessage, lang: Lang, ctx: CardCtx
         <>
           <AgentBody message={m} />
           <TechnicalSetupCard setup={setup} lang={lang} />
+        </>
+      )
+    }
+    // The Devil's Advocate's review (design v11 Phase 2 §6, ATL-165). A re-rate replies under the
+    // round-1 review, which gives it the rating it was and the items now OK.
+    const review = readDevilsReview(m.card)
+    if (review) {
+      return (
+        <>
+          <AgentBody message={m} />
+          <DevilsReviewCard review={review} previous={readDevilsReview(parent?.card)} target={m.reply_to} onJump={ctx.onJump} ts={m.created_at} lang={lang} />
         </>
       )
     }
@@ -132,6 +148,27 @@ const CARDS: Partial<Record<string, (m: WarroomMessage, lang: Lang, ctx: CardCtx
       <>
         <AgentBody message={m} />
         <ProposalCard cardRef={ref} lang={lang} onJump={ctx.onJump} />
+      </>
+    )
+  },
+  // The weighted vote and the Risk Engine's result (design v11 Phase 2 §6, ATL-165).
+  vote_summary: (m, lang, ctx) => {
+    const card = readVoteSummary(m.card)
+    if (!card) return null
+    return (
+      <>
+        <AgentBody message={m} />
+        <VoteSummaryCard card={card} target={m.reply_to} onJump={ctx.onJump} ts={m.created_at} lang={lang} />
+      </>
+    )
+  },
+  risk_check: (m, lang, ctx) => {
+    const card = readRiskCheck(m.card)
+    if (!card) return null
+    return (
+      <>
+        <AgentBody message={m} />
+        <RiskCheckCard card={card} target={m.reply_to} onJump={ctx.onJump} ts={m.created_at} lang={lang} />
       </>
     )
   },
