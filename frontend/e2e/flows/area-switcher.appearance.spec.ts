@@ -6,6 +6,10 @@ import arPortfolioOrders from '../../src/i18n/locales/ar/portfolio-orders.json' 
 import enPortfolioOrders from '../../src/i18n/locales/en/portfolio-orders.json' with { type: 'json' }
 import arPortfolioHistory from '../../src/i18n/locales/ar/portfolio-history.json' with { type: 'json' }
 import enPortfolioHistory from '../../src/i18n/locales/en/portfolio-history.json' with { type: 'json' }
+import arPortfolioPerformance from '../../src/i18n/locales/ar/portfolio-performance.json' with { type: 'json' }
+import enPortfolioPerformance from '../../src/i18n/locales/en/portfolio-performance.json' with { type: 'json' }
+import arMarkets from '../../src/i18n/locales/ar/settings-markets.json' with { type: 'json' }
+import enMarkets from '../../src/i18n/locales/en/settings-markets.json' with { type: 'json' }
 import arSettings from '../../src/i18n/locales/ar/settings.json' with { type: 'json' }
 import enSettings from '../../src/i18n/locales/en/settings.json' with { type: 'json' }
 import arAgents from '../../src/i18n/locales/ar/settings-agents.json' with { type: 'json' }
@@ -16,8 +20,6 @@ import arSources from '../../src/i18n/locales/ar/settings-data-sources.json' wit
 import enSources from '../../src/i18n/locales/en/settings-data-sources.json' with { type: 'json' }
 import arMoney from '../../src/i18n/locales/ar/settings-money.json' with { type: 'json' }
 import enMoney from '../../src/i18n/locales/en/settings-money.json' with { type: 'json' }
-import arMarkets from '../../src/i18n/locales/ar/settings-markets.json' with { type: 'json' }
-import enMarkets from '../../src/i18n/locales/en/settings-markets.json' with { type: 'json' }
 import arShell from '../../src/i18n/locales/ar/shell.json' with { type: 'json' }
 import enShell from '../../src/i18n/locales/en/shell.json' with { type: 'json' }
 import { EVIDENCE_DIR } from '../support/stack'
@@ -29,8 +31,8 @@ import { expect, test } from './appearance'
  */
 const SHOTS = path.join(EVIDENCE_DIR, 'ATL-41')
 const T = {
-  en: { shell: enShell, portfolio: enPortfolio, portfolioOrders: enPortfolioOrders, portfolioHistory: enPortfolioHistory, settings: enSettings, money: enMoney, markets: enMarkets, agents: enAgents, data: enData, sources: enSources },
-  ar: { shell: arShell, portfolio: arPortfolio, portfolioOrders: arPortfolioOrders, portfolioHistory: arPortfolioHistory, settings: arSettings, money: arMoney, markets: arMarkets, agents: arAgents, data: arData, sources: arSources },
+  en: { shell: enShell, portfolio: enPortfolio, portfolioOrders: enPortfolioOrders, portfolioHistory: enPortfolioHistory, portfolioPerformance: enPortfolioPerformance, settings: enSettings, money: enMoney, markets: enMarkets, agents: enAgents, data: enData, sources: enSources },
+  ar: { shell: arShell, portfolio: arPortfolio, portfolioOrders: arPortfolioOrders, portfolioHistory: arPortfolioHistory, portfolioPerformance: arPortfolioPerformance, settings: arSettings, money: arMoney, markets: arMarkets, agents: arAgents, data: arData, sources: arSources },
 }
 
 test.use({ viewport: { width: 1440, height: 900 } })
@@ -55,6 +57,7 @@ test('on /portfolio the switcher selects Portfolio and lists only its pages; Set
     t.portfolio.nav.holdings,
     t.portfolio.nav.cashflows,
     t.portfolioHistory.nav,
+    t.portfolioPerformance.nav,
   ])
   await expect(sidebar.getByRole('link', { name: t.settings.nav.risk })).toHaveCount(0)
 

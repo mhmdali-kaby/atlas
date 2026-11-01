@@ -138,7 +138,7 @@ describe('Portfolio History', () => {
   it('registers /portfolio/history with a History nav entry after Cash flows', () => {
     const nav = (Array.isArray(portfolio.nav) ? portfolio.nav : [portfolio.nav]).filter(Boolean)
     const sorted = [...nav].sort((a, b) => (a!.order ?? 0) - (b!.order ?? 0)).map((n) => n!.path)
-    expect(sorted.at(-1)).toBe('/portfolio/history')
+    expect(sorted.indexOf('/portfolio/history')).toBe(sorted.indexOf('/portfolio/cashflows') + 1)
     expect(portfolio.routes.map((r) => r.path)).toContain('portfolio/history')
   })
 
