@@ -19,7 +19,7 @@ final class TestRedis
 {
     public const OVERRIDE_VAR = 'REDIS_TEST_PREFIX';
 
-    /** Read by App\Support\Events\EventBus::keyPrefix() via config('services.event_bus.key_prefix'). */
+    /** Read by App\Support\Events\EventBus::keyPrefix() via config('database.redis.events.options.prefix'). */
     public const ENV_VAR = 'ATLAS_REDIS_PREFIX';
 
     public static function derivedPrefix(?string $repoRoot = null): string
@@ -43,11 +43,9 @@ final class TestRedis
     public static function configure(): string
     {
         $prefix = self::prefix();
-        foreach ([self::ENV_VAR => $prefix] as $key => $value) {
-            putenv($key.'='.$value);
-            $_ENV[$key] = $value;
-            $_SERVER[$key] = $value;
-        }
+        putenv(self::ENV_VAR.'='.$prefix);
+        $_ENV[self::ENV_VAR] = $prefix;
+        $_SERVER[self::ENV_VAR] = $prefix;
 
         return $prefix;
     }

@@ -79,7 +79,14 @@ it('publishes to this checkout\'s prefixed stream key, not the plain atlas.warro
     app(EventBus::class)->publish('atlas.warroom', 'warroom.message', 'demo', 'test', []);
 
     $prefix = TestRedis::prefix();
-    expect($prefix)->toMatch('/^test_[0-9a-f]{8}:$/')
-        ->and(EventBus::streamKey('atlas.warroom'))->toBe($prefix.'atlas.warroom')
+    expect(EventBus::streamKey('atlas.warroom'))->toBe($prefix.'atlas.warroom')
         ->and(Redis::connection('events')->command('executeRaw', [['XLEN', EventBus::streamKey('atlas.warroom')]]))->toBe(1);
+
+    // The `test_<8hex>:` shape only holds for the derived prefix. REDIS_TEST_PREFIX (a documented
+    // override, decision #252 criterion 2) replaces it with whatever value was exported, so that
+    // shape is only asserted when no override is in effect.
+    $override = $_SERVER[TestRedis::OVERRIDE_VAR] ?? $_ENV[TestRedis::OVERRIDE_VAR] ?? getenv(TestRedis::OVERRIDE_VAR);
+    if (! is_string($override) || $override === '') {
+        expect($prefix)->toMatch('/^test_[0-9a-f]{8}:$/');
+    }
 });
