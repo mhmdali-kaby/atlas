@@ -85,6 +85,8 @@
 .wk-table tbody th { font-weight: 500; }
 .wk-table tr.is-total th, .wk-table tr.is-total td { font-weight: 600; border-top: 1px solid var(--separator-strong); }
 .wk-table .lc-r .icon, .wk-table .an-sig .icon { width: 13px; height: 13px; }
+/* one row points one way: the P&L arrow mirrors with the Total R arrow (design v18, ar) */
+[dir="rtl"] .wk-table .an-sig .icon { transform: scaleX(-1); }
 
 .wk-change { display: grid; gap: 8px; padding: 16px 18px; border-radius: var(--radius-card); background: var(--accent-wash); }
 .wk-change-k { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 600; color: var(--accent-ink); }
