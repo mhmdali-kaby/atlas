@@ -47,6 +47,13 @@ return [
         'bin' => env('ATLAS_CLAUDE_BIN'),
     ],
 
+    // ATL-231, decision #255 (3): the pg_dump `php artisan atlas:backup` runs. Its major version
+    // must be at least the server's (PostgreSQL 16); Homebrew's libpq ships one
+    // (/opt/homebrew/opt/libpq/bin/pg_dump).
+    'pg_dump' => [
+        'bin' => env('PG_DUMP_BIN', 'pg_dump'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

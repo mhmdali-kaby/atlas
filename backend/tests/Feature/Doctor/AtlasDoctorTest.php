@@ -158,7 +158,8 @@ it('passes with everything up and a verified demo connection', function (): void
     foreach (array_diff(ATL13_CHECKS, ['backup']) as $name) {
         expect(lineFor($output, $name))->toStartWith('✓');
     }
-    expect(lineFor($output, 'backup'))->toStartWith('⚠')->toContain('not configured');
+    // ATL-231: no good backup yet is a warning, never a failure.
+    expect(lineFor($output, 'backup'))->toStartWith('⚠')->toContain('No good backup yet');
     expect(lineFor($output, 'demo_connection'))->toContain('UID …6123');
     expect(lineFor($output, 'okx_clock'))->toContain('120 ms');
     expectNoSecrets($output);

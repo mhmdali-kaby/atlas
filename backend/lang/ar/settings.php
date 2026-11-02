@@ -15,6 +15,11 @@ return [
     'inst_id_format' => 'يجب أن يكون كل عنصر رمز أداة OKX مثل "BTC-USDT-SWAP".',
     'blocklist_until_format' => 'يجب أن تربط كل صلاحية حظر رمزَ أداة بوقت ISO 8601 مع منطقة زمنية، مثل "2026-11-01T20:59:59Z".',
     'blocklist_until_past' => 'يجب أن يكون تاريخ انتهاء الحظر في المستقبل.',
+    // ATL-231: الإعدادات ← النسخ الاحتياطي.
+    'backup_folder_absolute' => 'يجب أن يكون :attribute مسارًا كاملًا يبدأ بـ "/"، مثل "/Users/you/Atlas Backups".',
+    'backup_folder_inside_repo' => 'يجب أن يكون :attribute خارج مجلد أطلس، حتى لا تُحفظ النسخ الاحتياطية بجانب الشيفرة.',
+    'backup_folder_unwritable' => 'لا يستطيع أطلس الكتابة في :attribute. اختر مجلدًا يمكنك الكتابة فيه أو يمكن إنشاؤه.',
+    'backup_time_format' => 'يجب أن يكون :attribute وقتًا بين 00:00 و23:59 بصيغة HH:MM، مثل "03:00".',
 
     'attr_agent_setting' => ':agent: :setting',
     'attr_notification' => ':event: :channel',
@@ -50,6 +55,7 @@ return [
         'agent_degraded' => 'تعطّل وكيل',
         'data_stale' => 'توقف بيانات السوق',
         'reconciliation_mismatch' => 'اختلاف أطلس وOKX',
+        'backup_failed' => 'فشل النسخ الاحتياطي لقاعدة البيانات',
     ],
 
     'notification_channel' => [
@@ -108,6 +114,13 @@ return [
         'emergency_stop_atr_mult' => 'مسافة وقف الطوارئ (×ATR)',
 
         'onboarding_completed' => 'اكتمال الإعداد الأولي',
+
+        'backup' => [
+            'enabled' => 'النسخ الاحتياطي اليومي',
+            'folder' => 'مجلد النسخ الاحتياطي',
+            'time' => 'وقت النسخ الاحتياطي',
+            'keep' => 'عدد النسخ الاحتياطية المحفوظة',
+        ],
 
         'agents' => [
             'web' => [

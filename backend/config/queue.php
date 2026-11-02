@@ -73,6 +73,18 @@ return [
             'after_commit' => false,
         ],
 
+        // ATL-231: POST /api/backup/run's RunBackup job. A pg_dump can take up to
+        // atlas_defaults.backup.job_timeout_seconds (1860 s); retry_after sits above it so the
+        // worker never hands a running dump to a second worker.
+        'redis-backups' => [
+            'driver' => 'redis',
+            'connection' => env('REDIS_QUEUE_CONNECTION', 'default'),
+            'queue' => 'backups',
+            'retry_after' => (int) env('REDIS_BACKUPS_RETRY_AFTER', 1920),
+            'block_for' => null,
+            'after_commit' => true,
+        ],
+
         'deferred' => [
             'driver' => 'deferred',
         ],

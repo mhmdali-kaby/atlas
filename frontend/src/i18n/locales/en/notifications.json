@@ -145,6 +145,9 @@
     },
     "daily_report": {
       "title": "Daily report"
+    },
+    "backup_failed": {
+      "title": "Database backup failed"
     }
   },
   "count": {

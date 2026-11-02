@@ -4,11 +4,13 @@ declare(strict_types=1);
 
 namespace App\Support\Doctor;
 
+use App\Models\Backup;
 use App\Models\Connection;
 use App\Support\Auditable;
 use App\Support\TradingCore;
 use Illuminate\Database\Migrations\Migrator;
 use Illuminate\Http\Client\Factory as HttpFactory;
+use Carbon\CarbonImmutable;
 use Illuminate\Process\Factory as ProcessFactory;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redis;
@@ -347,10 +349,32 @@ final class Doctor
         return CheckResult::pass('security', self::t('security_ok', ['lifetime' => $lifetime]));
     }
 
+    /**
+     * ATL-231, decision #255 (3): the newest good `atlas:backup` run. No good backup, or one older
+     * than backup.stale_after_hours (26 h: a daily run plus slack), is a warning, never a failure.
+     */
     private function backup(): CheckResult
     {
-        // The Backup feature (brief §14.12) does not exist yet: a warning, never a failure.
-        return CheckResult::warn('backup', self::t('backup_not_configured'));
+        if (! $this->databaseUp) {
+            return CheckResult::warn('backup', self::t('skipped_no_db'));
+        }
+        try {
+            $last = Backup::query()->where('status', Backup::OK)->orderByDesc('finished_at')->first();
+        } catch (Throwable $e) {
+            return CheckResult::warn('backup', self::t('query_failed', ['reason' => self::reason($e)]));
+        }
+        if ($last === null) {
+            return CheckResult::warn('backup', self::t('backup_none'));
+        }
+
+        $hours = $last->finished_at->diffInMinutes(CarbonImmutable::now('UTC'), true) / 60;
+        $stale = config('atlas_defaults.backup.stale_after_hours');
+        $stale = is_int($stale) ? $stale : 26;
+        $replace = ['hours' => number_format($hours, 1), 'max' => $stale, 'file' => basename($last->path)];
+
+        return $hours > $stale
+            ? CheckResult::warn('backup', self::t('backup_stale', $replace))
+            : CheckResult::pass('backup', self::t('backup_ok', $replace));
     }
 
     /**

@@ -85,12 +85,42 @@ and run again. Nothing is placed and nothing needs cleaning up in that case.
 
 ## Backup / restore
 
-- `./atlas backup [dir]` — `pg_dump -Fc` of the `atlas` database into `dir` (default
-  `../backups` next to the repository), named `atlas-<UTC timestamp>.dump`.
-- Restore: `docker exec -i <postgres container> pg_restore -U atlas -d atlas --clean
-  /path/to/the.dump` with the app stopped (`./atlas down`) first.
-- `atlas:doctor`'s `backup` check only warns today (the scheduled-backup feature is not built
-  yet); it never fails the command.
+Atlas backs up its whole database (demo and live) every day by itself (ATL-231, decision #255).
+
+- **Schedule.** `php artisan atlas:backup` runs daily at Settings → Backup's time (`backup.time`,
+  Asia/Baghdad, default 03:00) while `backup.enabled` is on. The Laravel scheduler that
+  `./atlas up` starts runs it; `php artisan schedule:list` shows it. "Back up now"
+  (`POST /api/backup/run`) queues one on Horizon's `backups` supervisor. Run it by hand any time
+  with `cd backend && php artisan atlas:backup` (exits 1 when the backup failed).
+- **What it writes.** `pg_dump -Fc` into `backup.folder` (default `../backups` next to the
+  repository; never inside it), named `atlas-<UTC yyyymmdd-HHMMSS>.dump`. It keeps the newest
+  `backup.keep` dumps (default 14) and deletes older ones; it never touches any other file in the
+  folder. Every run is a row in the `backups` table; `GET /api/backup` shows the last 10.
+- **pg_dump on the Mac.** Postgres runs in Docker, so the Mac needs its own client:
+  `brew install libpq`, then set `PG_DUMP_BIN=/opt/homebrew/opt/libpq/bin/pg_dump` in
+  `backend/.env`. Its major version must be at least the server's (16). The password reaches
+  pg_dump through `PGPASSWORD`, never on the command line.
+- **A failed run** keeps pg_dump's error on its row and raises a `backup_failed` notification.
+  Usual causes: `PG_DUMP_BIN` not found, a pg_dump older than the server, or the folder no longer
+  writable (an unplugged external disk). Fix it, then run `php artisan atlas:backup` or press
+  "Back up now".
+- **Doctor.** `atlas:doctor`'s `backup` line warns when there is no good backup, or when the
+  newest good one is older than 26 h. It never fails the command.
+- `./atlas backup [dir]` still takes a one-off dump through the Postgres container.
+
+**Restore.** This replaces the current database with the dump's contents.
+
+1. Stop every Atlas process so nothing writes during the restore: `./atlas down`. Postgres and
+   Redis keep running.
+2. Pick the dump (`ls -lt <backup folder>/atlas-*.dump`) and check it reads:
+   `pg_restore --list <file> | head`.
+3. Restore it into `atlas`, dropping each object first:
+   `PGPASSWORD=<DB_PASSWORD> /opt/homebrew/opt/libpq/bin/pg_restore --clean --if-exists -h 127.0.0.1 -p 5433 -U atlas -d atlas <file>`.
+   Without a Mac client, through the container:
+   `docker exec -i atlas-postgres pg_restore -U atlas --clean --if-exists -d atlas < <file>`.
+   TimescaleDB can print warnings about its own catalog during `--clean`; they are expected.
+4. Start again with `./atlas up`, then run `./atlas doctor`. trading_core reconciles with OKX
+   before it acts, so positions and orders that changed after the dump are repaired from OKX.
 
 ## Rotate keys
 

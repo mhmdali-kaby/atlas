@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Settings;
 
+use App\Support\Backup\BackupSettings;
 use Brick\Math\BigDecimal;
 use Carbon\CarbonImmutable;
 
@@ -151,6 +152,8 @@ final class SettingsSchema
             ...array_keys(self::agentFields()),
             ...self::WEB_DOMAIN_FIELDS,
             ...self::notificationFields(),
+            // ATL-231, decision #255 (3): Settings → Backup.
+            ...BackupSettings::fields(),
         ];
     }
 
@@ -404,7 +407,7 @@ final class SettingsSchema
             'stop_verify_seconds' => config('atlas_defaults.executor.stop_verify_seconds'),
             'order_max_retries' => config('atlas_defaults.executor.order_max_retries'),
             'emergency_stop_atr_mult' => config('atlas_defaults.executor.emergency_stop_atr_mult'),
-        ]), ...self::agentDefaults(), ...self::notificationDefaults()];
+        ]), ...self::agentDefaults(), ...self::notificationDefaults(), ...BackupSettings::defaults()];
     }
 
     /**
@@ -499,6 +502,11 @@ final class SettingsSchema
                     }
                 }
                 $out[$field] = $ids;
+
+                continue;
+            }
+            if (in_array($field, BackupSettings::fields(), true)) {
+                $out[$field] = BackupSettings::normalise($field, $value);
 
                 continue;
             }
