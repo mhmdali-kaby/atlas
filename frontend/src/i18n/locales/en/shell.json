@@ -24,6 +24,8 @@
   "toggleSidebar": "Show or hide the sidebar",
   "switchLang": "Switch to Arabic",
   "otherLang": "العربية",
+  "switchLangSr": ", switch language",
+  "more": "More",
   "theme": {
     "label": "Appearance",
     "system": "System",

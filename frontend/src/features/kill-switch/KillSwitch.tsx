@@ -43,6 +43,9 @@ export function KillSwitchButton() {
         >
           <OctagonX aria-hidden="true" />
           <span className="ks-stop-label">{t(stopped ? 'stopped' : 'stop')}</span>
+          <span className="ks-stop-short" aria-hidden="true">
+            {t(stopped ? 'stopped' : 'stopShort')}
+          </span>
         </button>
       }
     />

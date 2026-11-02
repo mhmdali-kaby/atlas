@@ -24,6 +24,8 @@
   "toggleSidebar": "إظهار الشريط الجانبي أو إخفاؤه",
   "switchLang": "التبديل إلى الإنجليزية",
   "otherLang": "English",
+  "switchLangSr": "، تبديل اللغة",
+  "more": "المزيد",
   "theme": {
     "label": "المظهر",
     "system": "حسب النظام",

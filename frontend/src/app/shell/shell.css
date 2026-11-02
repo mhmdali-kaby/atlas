@@ -116,17 +116,146 @@
   min-height: 0;
 }
 
+/* The toolbar is a size container (ATL-224, design v19 shell.css). It picks its full or compact
+   form from its own width, so a window with the sidebar (and the War Room inspector) open switches
+   at the same point as a phone. */
 .shell-toolbar {
   position: relative;
   z-index: 20;
+  min-width: 0;
+  container: toolbar / inline-size;
+  transition:
+    background-color var(--dur-base),
+    box-shadow var(--dur-base);
+}
+.shell-toolbar-row {
+  height: 100%;
   display: flex;
   align-items: center;
   gap: 8px;
   padding-inline: 12px 16px;
+}
+/* Only the heading gives way. Every control keeps its drawn size, so none can be drawn over its neighbour. */
+.shell-toolbar-row > *,
+.shell-tb-page > * {
+  flex-shrink: 0;
+}
+.shell-toolbar-row > .shell-toolbar-heading {
+  flex-shrink: 1;
+}
+.shell-toolbar-heading {
   min-width: 0;
-  transition:
-    background-color var(--dur-base),
-    box-shadow var(--dur-base);
+  display: grid;
+  align-content: center;
+  margin-inline-start: 4px;
+}
+.shell-toolbar-spacer {
+  flex: 1;
+}
+/* The environment under the title: the compact toolbar's form of the Demo badge. */
+.shell-toolbar-env {
+  display: none;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  width: max-content;
+  max-width: 100%;
+  font-size: var(--text-caption);
+  line-height: 14px;
+  font-weight: 600;
+  letter-spacing: var(--tr-caption);
+  color: var(--demo-ink);
+  border-radius: 4px;
+}
+.shell-toolbar-env .dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--demo);
+}
+.shell-toolbar-env > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shell-toolbar-env:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* ---- Compact toolbar (ATL-224): below 1000 px of toolbar --------------------------------------
+   The leading end says where you are: the page, and the environment under it. The trailing end
+   holds what may need you now: the approval pill, Stop, the bell. Every other control (page
+   actions, language, appearance, account) moves into More (⋯), in that order. 1000 px = the
+   widest full toolbar (Arabic, War Room, a trade waiting) plus room for a title; recompute it
+   when a toolbar control is added. */
+.shell-tb-more {
+  display: none;
+}
+@container toolbar (width < 1000px) {
+  .shell-toolbar-row {
+    gap: 6px;
+    padding-inline: 8px;
+  }
+  .shell-toolbar-row > .shell-toolbar-heading {
+    flex: 1 1 auto;
+    margin-inline: 2px 4px;
+  }
+  .shell-toolbar-heading > h1 {
+    line-height: 20px;
+  }
+  .shell-toolbar-env {
+    display: flex;
+  }
+  .shell-toolbar-spacer,
+  .shell-toolbar .shell-env-badge,
+  .shell-toolbar .shell-tb-prefs,
+  .shell-toolbar .shell-tb-page {
+    display: none;
+  }
+  .shell-toolbar .shell-tb-more {
+    display: inline-flex;
+  }
+}
+:root:lang(ar) .shell-toolbar-env {
+  line-height: 17px;
+}
+@container toolbar (width < 1000px) {
+  :root:lang(ar) .shell-toolbar-heading > h1 {
+    line-height: 24px;
+  }
+}
+
+/* The More menu: this page's actions, then language and appearance, then the account. */
+.shell-menu-more {
+  min-width: 272px;
+  max-height: calc(100dvh - var(--toolbar-height) - var(--footer-height) - 16px);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.shell-menu-more [role^='menuitem'] > span:not(.more-icon) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shell-menu-more .more-icon {
+  display: inline-flex;
+  color: var(--label-secondary);
+}
+.shell-menu-more [data-highlighted] .more-icon {
+  color: var(--on-solid);
+}
+.shell-menu-more .more-icon svg {
+  width: 16px;
+  height: 16px;
+}
+@media (max-width: 640px), (pointer: coarse) {
+  .shell-popover [role^='menuitem'] {
+    min-height: 44px; /* touch: every item a full 44 px row */
+  }
 }
 .shell-toolbar[data-scrolled='true'] {
   background-color: var(--material-bar);

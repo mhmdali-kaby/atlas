@@ -13,7 +13,7 @@ import { TradingBanner } from '../features/kill-switch/TradingBanner'
 import { activeArea, activeNavEntry, areaHome, type AreaId, type ShellRegistry } from './feature'
 import { shellRegistry as registeredShell } from './registry'
 import { EnvBadge } from './shell/EnvBadge'
-import { AccountMenu, LanguageButton, ThemeMenu, ToolbarGroup } from './shell/Prefs'
+import { AccountMenu, LanguageButton, MoreMenu, ThemeMenu, ToolbarGroup } from './shell/Prefs'
 import { toolbarIconButton } from './shell/toolbarClasses'
 import { RiskFooter } from './shell/RiskFooter'
 import { Sidebar } from './shell/Sidebar'
@@ -85,31 +85,41 @@ export function AppShell({ shell = registeredShell }: { shell?: ShellRegistry })
       <div className="shell-app" data-sidebar={sidebarHidden ? 'hidden' : 'shown'} data-narrow-open={narrowOpen}>
         <Sidebar registry={shell} area={area} active={active} areaHref={areaHref} onNavigate={() => setNarrowOpen(false)} />
         <div className="shell-main">
+          {/* The toolbar is a size container (ATL-224, design v19): below 1000 px of its own width it
+              takes its compact form — title over the environment, then the pill, Stop, the bell and
+              More (⋯); page actions, language, appearance and the account move into More. */}
           <header className="shell-toolbar" data-scrolled={scrolled} aria-label={t('toolbar')}>
-            <button
-              type="button"
-              className={toolbarIconButton}
-              aria-label={t('toggleSidebar')}
-              title={t('toggleSidebar')}
-              aria-expanded={!sidebarHidden}
-              onClick={toggleSidebar}
-            >
-              <PanelLeft aria-hidden="true" strokeWidth={1.5} className="rtl:-scale-x-100" />
-            </button>
-            <h1 className="ms-1 truncate text-headline font-semibold">{title}</h1>
-            <div className="flex-1" />
-            {/* ⌘K palette and the approval pill join this slot in later tasks. */}
-            <div data-slot="toolbar-actions" className="contents">
+            <div className="shell-toolbar-row">
+              <button
+                type="button"
+                className={toolbarIconButton}
+                aria-label={t('toggleSidebar')}
+                title={t('toggleSidebar')}
+                aria-expanded={!sidebarHidden}
+                onClick={toggleSidebar}
+              >
+                <PanelLeft aria-hidden="true" strokeWidth={1.5} className="rtl:-scale-x-100" />
+              </button>
+              <div className="shell-toolbar-heading">
+                <h1 className="truncate text-headline font-semibold">{title}</h1>
+                <EnvBadge variant="line" />
+              </div>
+              <div className="shell-toolbar-spacer" />
               <ApprovalPill />
               <KillSwitchButton />
+              {/* Pages portal their own actions here (each with data-menu-label, which More lists). */}
+              <div data-slot="toolbar-actions" className="shell-tb-page contents" />
+              <EnvBadge />
+              <ToolbarGroup>
+                <NotificationBell />
+                <MoreMenu pageTitle={title} user={user ?? undefined} onSignOut={signOut} />
+              </ToolbarGroup>
+              <ToolbarGroup className="shell-tb-prefs">
+                <LanguageButton />
+                <ThemeMenu />
+                {user && <AccountMenu name={user.name} email={user.email} onSignOut={signOut} />}
+              </ToolbarGroup>
             </div>
-            <EnvBadge />
-            <NotificationBell />
-            <ToolbarGroup>
-              <LanguageButton />
-              <ThemeMenu />
-              {user && <AccountMenu name={user.name} email={user.email} onSignOut={signOut} />}
-            </ToolbarGroup>
           </header>
           <TradingBanner />
           <main

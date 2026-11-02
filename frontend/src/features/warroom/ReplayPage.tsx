@@ -229,6 +229,7 @@ function ReplayDay({ day, now }: { day: string; now: number }) {
             className={toolbarIconButton}
             aria-label={t('rp.inspToggle')}
             title={t('rp.inspToggle')}
+            data-menu-label={t('rp.inspToggle')}
             aria-pressed={inspector.shown}
             aria-controls="rp-inspector"
             onClick={inspector.toggle}
