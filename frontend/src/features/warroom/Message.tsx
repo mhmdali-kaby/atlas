@@ -5,11 +5,11 @@ import {
   ChessKnight,
   CornerUpLeft,
   FileText,
-  History,
   Info,
   Layers,
   ListChecks,
   Newspaper,
+  NotebookPen,
   ShieldCheck,
   TriangleAlert,
   UsersRound,
@@ -34,6 +34,9 @@ import { DailyReportCard } from './cards/DailyReportCard'
 import { PositionUpdateCard } from './cards/PositionUpdateCard'
 import { readDailyReport, readPositionUpdate } from './cards/pm'
 import { PositioningCard } from './cards/PositioningCard'
+import { readPostMortem, readWeeklyReview } from './cards/learning'
+import { PostMortemCard } from './cards/PostMortemCard'
+import { WeeklyReviewCard } from './cards/WeeklyReviewCard'
 import { readDevilsReview, readRiskCheck, readVoteSummary } from './cards/debate'
 import { DevilsReviewCard } from './cards/DevilsReviewCard'
 import { RiskCheckCard } from './cards/RiskCheckCard'
@@ -72,7 +75,7 @@ const KIND_ICON: Record<string, LucideIcon> = {
   order: ArrowLeftRight,
   fill: CircleCheck,
   position_update: Layers,
-  post_mortem: History,
+  post_mortem: NotebookPen,
 }
 
 /**
@@ -93,6 +96,16 @@ const CARDS: Partial<Record<string, (m: WarroomMessage, lang: Lang, ctx: CardCtx
   // untraced numbers marked in both (brief §7.11, ATL-91 unmatched_numbers).
   research_report: (m, lang, ctx) => {
     const { parent } = ctx
+    // The Historian's Sunday weekly review (brief §7.3, design v16 §9, ATL-199 card, ATL-203).
+    const weekly = readWeeklyReview(m.card)
+    if (weekly) {
+      return (
+        <>
+          <AgentBody message={m} />
+          <WeeklyReviewCard review={weekly} lang={lang} />
+        </>
+      )
+    }
     // News Intelligence's brief (design v9 §B): its content_md above the card, as for the Historian.
     const brief = readNewsBrief(m.card, parent?.kind)
     if (brief) {
@@ -207,6 +220,18 @@ const CARDS: Partial<Record<string, (m: WarroomMessage, lang: Lang, ctx: CardCtx
       <>
         <AgentBody message={m} />
         <RiskCheckCard card={card} target={m.reply_to} onJump={ctx.onJump} ts={m.created_at} lang={lang} />
+      </>
+    )
+  },
+  // The Portfolio Manager's post-mortem of a closed trade (brief §7.8, design v16 §9, ATL-194 card,
+  // ATL-203), replying to the proposal's message.
+  post_mortem: (m, lang) => {
+    const pm = readPostMortem(m.card)
+    if (!pm) return null
+    return (
+      <>
+        <AgentBody message={m} />
+        <PostMortemCard pm={pm} lang={lang} />
       </>
     )
   },

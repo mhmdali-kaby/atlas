@@ -92,3 +92,19 @@
 .ladder:has(.ladder-liq):lang(ar) { padding-bottom: 106px; }
 .ladder.is-compact:lang(ar) { padding-bottom: 42px; }
 .ladder.is-compact:has(.ladder-liq):lang(ar) { padding-bottom: 72px; }
+
+/* A closed trade (design v16 §8, ATL-203): the ground the price covered from its worst point to
+   its best, painted under the entry zone, and the exit as an ink diamond ringed in the card's
+   colour. A diamond, never a dot: a dot is a price now or at a time. */
+.ladder-travel {
+  position: absolute; inset-block: -3px; left: calc(var(--a) * 1%); width: calc((var(--b) - var(--a)) * 1%); min-width: 2px;
+  background: color-mix(in srgb, var(--label) 30%, transparent);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--label) 55%, transparent), inset -2px 0 0 color-mix(in srgb, var(--label) 55%, transparent);
+}
+.dark .ladder-travel { background: color-mix(in srgb, var(--label) 34%, transparent); }
+.ladder-exit {
+  position: absolute; top: 50%; left: calc(var(--x) * 1%); width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px;
+  rotate: 45deg; border-radius: 1.5px; background: var(--label); box-shadow: 0 0 0 2.5px var(--bg-tertiary);
+}
+.dark .ladder-exit { box-shadow: 0 0 0 2.5px var(--bg-secondary); }
+.ladder.is-compact .ladder-exit { width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; }
