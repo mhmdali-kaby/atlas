@@ -107,9 +107,11 @@ for (const [lang, theme] of [['en', 'light'], ['en', 'dark'], ['ar', 'light'], [
     await expect(page.locator('section[data-step="autonomy"]')).toHaveCSS('opacity', '1')
     await page.screenshot({ path: `${SHOTS}/autonomy-${lang}-${theme}.png`, fullPage: true })
 
-    // Down from level 2 skips the disabled 3 and 4 and wraps to 1.
+    // Down from level 2 skips the disabled 3 and 4 and wraps to 1; arrows move focus, Space chooses (ATL-216).
     await levels.locator('[data-value="2"]').focus()
     await page.keyboard.press('ArrowDown')
+    await expect(levels.locator('[data-value="1"]')).toBeFocused()
+    await page.keyboard.press('Space')
     await expect(levels.locator('[data-value="1"]')).toHaveAttribute('aria-checked', 'true')
     await page.keyboard.press('Tab')
     await page.keyboard.press('Tab')

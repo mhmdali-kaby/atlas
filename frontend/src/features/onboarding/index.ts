@@ -24,6 +24,17 @@ export {
   type ConnectionValues,
   type TestOutcome,
 } from './connections'
+export {
+  askApiValue,
+  askInputText,
+  AskField,
+  AskLine,
+  AskSentence,
+  MoneyFig,
+  parseAsk,
+  TurnOnSheet,
+  type SheetNotice,
+} from './Autonomy'
 export { Notice, type NoticeTone } from './Notice'
 export { AFTER_ONBOARDING_PATH, onboardingPath, STEPS, type StepId } from './paths'
 export {
