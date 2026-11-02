@@ -1,3 +1,5 @@
+import { useTranslation } from 'react-i18next'
+
 /*
  * Readers for patch K's War Room cards (ATL-203): the Portfolio Manager's `post_mortem` card
  * (ATL-194, docs/handoff/ATL-194-post-mortems.md) and the Historian's `weekly_review` card
@@ -280,5 +282,15 @@ export function readWeeklyReview(card: unknown): WeeklyReview | null {
     paper: pt ? { filled: int(pt.filled) ?? 0, totalR: str(pt.total_r) } : null,
     verdict: str(card.verdict),
     suggestion: change ? { change, reason: s ? str(s.reason) : null, where } : null,
+  }
+}
+
+/** A tag's words (pmo.tag.<group>.<value>, the Journal's vocabulary), or the raw value when unknown. */
+export function useTagLabel() {
+  const { t, i18n } = useTranslation('warroom')
+  return (tag: string) => {
+    const { group, value } = splitTag(tag)
+    const key = group ? `pmo.tag.${group}.${value}` : ''
+    return group && i18n.exists(`warroom:${key}`) ? t(key) : value.replace(/_/g, ' ')
   }
 }

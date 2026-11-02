@@ -8,7 +8,7 @@ import { Duration } from '../../portfolio/parts'
 import { fillSlots, slot } from '../slots'
 import { Inline } from '../text'
 import { Ladder } from './Ladder'
-import { closeLabel, displayTags, num, planOf, splitTag, tp1Hit, type Outcome, type PostMortem } from './learning'
+import { closeLabel, displayTags, num, planOf, tp1Hit, useTagLabel, type Outcome, type PostMortem } from './learning'
 import { decimalsOf } from './pm'
 import { Fig, Signed } from './pmParts'
 import { rText } from './rText'
@@ -56,14 +56,6 @@ export function OutcomeLine({ pm }: { pm: PostMortem }) {
   )
 }
 
-export function useTagLabel() {
-  const { t, i18n } = useTranslation('warroom')
-  return (tag: string) => {
-    const { group, value } = splitTag(tag)
-    const key = group ? `pmo.tag.${group}.${value}` : ''
-    return group && i18n.exists(`warroom:${key}`) ? t(key) : value.replace(/_/g, ' ')
-  }
-}
 
 const pctText = (p: string, lang: Lang) => `${formatFixed(String(Math.round(Number(p) * 100)), 0, lang)}%`
 
@@ -106,12 +98,12 @@ export function PostMortemCard({ pm, lang }: { pm: PostMortem; lang: Lang }) {
       hit === null ? (
         '—'
       ) : hit ? (
-        <span className="lc-good">
+        <span key="yes" className="lc-good">
           <CircleCheck className="icon" aria-hidden="true" />
           {t('pmo.yes')}
         </span>
       ) : (
-        <span className="lc-bad">
+        <span key="no" className="lc-bad">
           <CircleX className="icon" aria-hidden="true" />
           {t('pmo.no')}
         </span>
