@@ -4,7 +4,6 @@ import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { toolbarIconButton } from '../../app/shell/toolbarClasses'
-import { ToolbarGroup } from '../../app/shell/Prefs'
 import { useTradingEnv } from '../../app/shell/tradingEnv'
 import { toast, useToasts } from '../../ui'
 import { cx } from '../../ui/cx'
@@ -92,29 +91,28 @@ export function NotificationBell() {
   const label = unread ? (urgent ? t('bellAriaUrgent', { n: unread, c: urgent }) : t('bellAria', { n: unread })) : t('bellNone')
   const Glyph = urgent ? BellRing : Bell
 
+  // The shell puts the bell in a glass group that also holds More (ATL-224).
   return (
-    <ToolbarGroup>
-      <Popover.Root open={open} onOpenChange={setOpen}>
-        <Popover.Trigger asChild>
-          <button
-            type="button"
-            className={cx(toolbarIconButton, 'nt-bell relative')}
-            aria-label={label}
-            title={t('title')}
-            data-testid="nt-bell"
-          >
-            <Glyph key={ring} aria-hidden="true" strokeWidth={1.5} className={ring ? 'nt-ring' : undefined} />
-            {unread > 0 && (
-              <span aria-hidden="true" data-testid="nt-badge" className={cx('nt-badge', urgent > 0 && 'is-urgent')}>
-                {unread > 9 ? '9+' : unread}
-              </span>
-            )}
-          </button>
-        </Popover.Trigger>
-        <Popover.Portal>
-          <NotificationPanel rows={rows} unread={unread} list={list} lang={lang} onOpenRow={openRow} onClose={close} />
-        </Popover.Portal>
-      </Popover.Root>
-    </ToolbarGroup>
+    <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Trigger asChild>
+        <button
+          type="button"
+          className={cx(toolbarIconButton, 'nt-bell relative')}
+          aria-label={label}
+          title={t('title')}
+          data-testid="nt-bell"
+        >
+          <Glyph key={ring} aria-hidden="true" strokeWidth={1.5} className={ring ? 'nt-ring' : undefined} />
+          {unread > 0 && (
+            <span aria-hidden="true" data-testid="nt-badge" className={cx('nt-badge', urgent > 0 && 'is-urgent')}>
+              {unread > 9 ? '9+' : unread}
+            </span>
+          )}
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <NotificationPanel rows={rows} unread={unread} list={list} lang={lang} onOpenRow={openRow} onClose={close} />
+      </Popover.Portal>
+    </Popover.Root>
   )
 }

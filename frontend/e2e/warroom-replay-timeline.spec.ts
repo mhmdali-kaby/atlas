@@ -141,7 +141,9 @@ test('below 1280px the inspector is an overlay opened from the toolbar', async (
   await open(page, 'en', 'light')
   await page.setViewportSize({ width: 1100, height: 900 })
   await expect(page.getByTestId('rp-inspector')).toHaveCount(0)
-  await page.getByTestId('rp-inspector-toggle').click()
+  // ATL-224: at 1100 px with the sidebar open the toolbar is compact, so its toggle is in More (⋯).
+  await page.getByTestId('toolbar-more').click()
+  await page.getByRole('menuitemcheckbox', { name: 'Show or hide the day’s moments' }).click()
   await expect(page.getByTestId('rp-inspector')).toBeVisible()
   await page.getByTestId('rp-moment').first().click()
   await expect(page.getByTestId('rp-inspector')).toHaveCount(0)

@@ -149,7 +149,7 @@ export function WarRoomPage() {
       {toolbarSlot &&
         createPortal(
           <>
-          <Link to={replayPath(lastReplayDay(now))} className={toolbarButton} title={t('rp.openTip')} data-testid="wr-replay-open">
+          <Link to={replayPath(lastReplayDay(now))} className={toolbarButton} title={t('rp.openTip')} data-menu-label={t('rp.open')} data-testid="wr-replay-open">
             <History aria-hidden="true" strokeWidth={1.5} />
             <span>{t('rp.open')}</span>
           </Link>
@@ -158,6 +158,7 @@ export function WarRoomPage() {
             className={toolbarIconButton}
             aria-label={t('toggleInspector')}
             title={t('toggleInspector')}
+            data-menu-label={t('toggleInspector')}
             aria-pressed={inspector.shown}
             aria-controls="wr-inspector"
             onClick={inspector.toggle}

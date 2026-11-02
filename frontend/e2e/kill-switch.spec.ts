@@ -106,7 +106,7 @@ for (const theme of ['light', 'dark'] as const) {
 
     const stop = page.getByRole('button', { name: 'إيقاف التداول: إلغاء الأوامر وإيقاف أطلس مؤقتًا' })
     await expect(stop).toBeVisible()
-    await expect(stop).toHaveText('إيقاف التداول')
+    await expect(stop.locator('.ks-stop-label')).toHaveText('إيقاف التداول')
 
     // Reach it with Tab only.
     let reached = false
@@ -147,7 +147,7 @@ for (const theme of ['light', 'dark'] as const) {
     await page.keyboard.press('Escape')
     await expect(sheet).toBeHidden()
     await expect(page.getByTestId('kill-switch')).toBeFocused()
-    await expect(page.getByTestId('kill-switch')).toHaveText('متوقف')
+    await expect(page.getByTestId('kill-switch').locator('.ks-stop-label')).toHaveText('متوقف')
     await page.waitForTimeout(400)
     await page.screenshot({ path: `${SHOTS}/banner-rtl-${theme}.png` })
   })
@@ -179,14 +179,17 @@ test('English, close-all on: a short press sends nothing, a 1.5 s hold sends fla
   expect(api.kills).toEqual([{ confirm: 'KILL', flatten: true }])
 })
 
-test('the 390 px toolbar keeps Stop as an icon circle', async ({ page }) => {
+test('the 390 px toolbar keeps Stop as its icon and one-word name', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await fakeApi(page)
   await page.addInitScript(() => localStorage.setItem('atlas.lang', 'ar'))
   await page.goto('/portfolio/positions')
   const stop = page.getByTestId('kill-switch')
   await expect(stop).toBeVisible()
+  // ATL-224 (design v19): the compact toolbar shows the octagon and "إيقاف" at the full 28 px height.
   const box = (await stop.boundingBox())!
-  expect(Math.round(box.width)).toBe(28)
+  expect(Math.round(box.height)).toBe(28)
+  await expect(stop.locator('.ks-stop-short')).toHaveText('إيقاف')
+  await expect(stop.locator('.ks-stop-label')).toBeHidden()
   await page.screenshot({ path: `${SHOTS}/toolbar-390-rtl.png` })
 })

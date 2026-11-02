@@ -1,5 +1,6 @@
 {
   "stop": "Stop trading",
+  "stopShort": "Stop",
   "stopped": "Stopped",
   "stopAria": "Stop trading: cancel orders and pause Atlas",
   "stoppedAria": "Stopped. Trading is paused; open to cancel orders again or close positions",

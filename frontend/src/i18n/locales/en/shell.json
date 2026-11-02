@@ -22,8 +22,9 @@
   },
   "toolbar": "Toolbar",
   "toggleSidebar": "Show or hide the sidebar",
-  "switchLangHint": "Switch language",
   "otherLang": "العربية",
+  "switchLangSr": ", switch language",
+  "more": "More",
   "theme": {
     "label": "Appearance",
     "system": "System",
@@ -37,5 +38,6 @@
   "notFound": {
     "title": "Nothing here yet",
     "body": "This page is not part of Atlas yet. Choose a page in the sidebar."
-  }
+  },
+  "switchLangHint": "Switch language"
 }

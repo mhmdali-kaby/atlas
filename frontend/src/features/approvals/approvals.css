@@ -13,7 +13,8 @@
 .ks-pill.is-warn { background: var(--warning-wash); color: var(--warning-ink); }
 .ks-pill.is-warn:hover { background: color-mix(in srgb, var(--warning) 24%, transparent); }
 
-@media (max-width: 760px) {
+/* Compact toolbar (ATL-224): the pill keeps its icon and countdown. */
+@container toolbar (width < 1000px) {
   .ks-pill-label { display: none; }
   .ks-pill { padding-inline: 8px 10px; }
 }
