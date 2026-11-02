@@ -67,7 +67,7 @@ export const FocusVisibleRightToLeft: Story = {
   play: ({ canvasElement }) => playFocusVisible(canvasElement, 'حفظ التغييرات', 'تم الحفظ'),
 }
 
-/** Success, warning, error and info, stacked. */
+/** Four toasts, newest on top: three show and the oldest folds into the "1 more" pill (design v18 §5.5). */
 export const Tones: Story = { args: { preset: true } }
 export const Dark: Story = { args: { preset: true }, globals: DARK }
 
@@ -76,7 +76,7 @@ export const RightToLeft: Story = {
   args: { preset: true },
   globals: RTL,
   play: async () => {
-    const card = (await within(document.body).findByText('تم الحفظ', { selector: 'li *' })).closest('li')!
+    const card = (await within(document.body).findByText('تم النسخ', { selector: 'li *' })).closest('li')!
     await waitFor(() => expect(card.getBoundingClientRect().left).toBeLessThan(40))
   },
 }
