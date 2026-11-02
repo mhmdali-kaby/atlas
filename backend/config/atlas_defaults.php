@@ -11,6 +11,7 @@ return [
             'demo',
             'live',
         ],
+        'watch_poll_seconds' => 30,
         'live_preflight' => [
             'min_demo_days' => 28,
             'max_live_autonomy' => 2,

@@ -179,6 +179,10 @@ class SettingsApplier:
         except Exception:  # Redis down must not stop settings from applying
             log.warning("agents: could not publish %s for %s", events.AGENT_STATE, slug, exc_info=True)
 
+    def retiring_tasks(self) -> set[asyncio.Task[None]]:
+        """Sessions still closing after a disable (the supervisor waits for them after a switch)."""
+        return set(self._retiring)
+
     async def settled(self) -> None:
         """Wait until every disabled agent's session has closed."""
         while self._retiring:

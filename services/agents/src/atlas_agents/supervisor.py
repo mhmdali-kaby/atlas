@@ -44,7 +44,7 @@ from typing import Any, Final
 from zoneinfo import ZoneInfo
 
 import redis
-from atlas_shared import bus
+from atlas_shared import active_env, bus
 from atlas_shared.db import AgentRun
 from atlas_shared.defaults import DEFAULTS
 from atlas_shared.events import EventEnvelope
@@ -162,22 +162,20 @@ class Supervisor:
         self._session_factory = sessionmaker(bind=engine)
         self._publish = publisher
         self._clock: Clock = clock or (lambda: datetime.now(UTC))
-        # The owner's settings merged over the default specs, and the sessions they enable (ATL-114).
-        self._applier = SettingsApplier(
-            env=env,
-            engine=engine,
-            base=registry,
-            replaying=replay_as_of is not None,
-            prompts_dir=prompts_dir,
-            publish=publisher,
-            clock=self._clock,
-        )
+        self._registry = registry
+        self._prompts_dir = prompts_dir
         # Mention handlers and schedule hooks by slug (atlas_agents.agents.*, ATL-101).
         self.hooks: dict[str, AgentHooks] = dict(hooks if hooks is not None else discover_hooks())
         self._scopes: dict[str, RunScope] = {}
         self._last_fired: dict[tuple[str, str], datetime] = {}
+        # Sessions of an env switched away from, closed once their in-flight run ends (ATL-237).
+        self._retiring: set[asyncio.Task[None]] = set()
+        self._switch_lock = asyncio.Lock()
 
         def build(spec: AgentSpec) -> AgentSession:
+            # Built for the env current when the session is made (self.env): after a switch every
+            # new session, its tools and its prompt preamble use the new env (ATL-237).
+            session_env = self.env
             # Tools come only from the §7.10 matrix (atlas_agents.access); replay bounds every query.
             ctx = self.tool_context(spec.slug)
             options = access.options_for(spec.slug, ctx)
@@ -186,11 +184,11 @@ class Supervisor:
                 # Live runs stream warroom.thinking (partial messages give the deltas) and post their
                 # final message; a replayed day (evals) never writes to the War Room.
                 options = dataclasses.replace(options, include_partial_messages=True)
-                observe = streaming.observer_factory(agent=spec.slug, env=env, publish=publisher)
+                observe = streaming.observer_factory(agent=spec.slug, env=session_env, publish=publisher)
             prompt = self.prompts.get(spec.slug)
             return AgentSession(
                 spec,
-                env=env,
+                env=session_env,
                 engine=engine,
                 options=options,
                 client_factory=client_factory,
@@ -201,8 +199,24 @@ class Supervisor:
                 clock=self._clock,
             )
 
-        self._applier.start(session_builder or build)
+        self._build: SessionBuilder = session_builder or build
+        # The owner's settings merged over the default specs, and the sessions they enable (ATL-114).
+        self._install_applier(env)
+
+    def _install_applier(self, env: str) -> None:
+        """Load ``env``'s settings and build its sessions. The applier is installed before its
+        sessions are built, because the builder reads its prompts and web policy."""
+        self._applier = SettingsApplier(
+            env=env,
+            engine=self._engine,
+            base=self._registry,
+            replaying=self._replay_as_of is not None,
+            prompts_dir=self._prompts_dir,
+            publish=self._publish,
+            clock=self._clock,
+        )
         self._locks = self._applier.locks
+        self._applier.start(self._build)
 
     @property
     def replaying(self) -> bool:
@@ -244,12 +258,64 @@ class Supervisor:
         return await self._applier.refresh(force=force)
 
     async def handle_system_envelope(self, envelope: EventEnvelope) -> bool:
-        """Apply settings on this env's ``system.settings_changed``; ignore every other event."""
+        """Follow ``system.env_changed`` (ATL-237) and apply settings on this env's
+        ``system.settings_changed``; ignore every other event."""
+        if envelope.type == active_env.ENV_CHANGED:
+            return await self.follow_stored_env()
         return await self._applier.handle_system_envelope(envelope)
 
+    # -- the active env (decision #255 (4), ATL-237) ----------------------------------------------
+
+    async def follow_stored_env(self) -> bool:
+        """Switch to ``system_state.active_env`` when it differs from this supervisor's env. The row
+        decides, not the event payload; no row or a database error keeps the current env."""
+        if self.replaying:
+            return False
+        try:
+            target = await asyncio.to_thread(active_env.stored_env, self._engine)
+        except Exception:
+            log.warning("agents: could not read system_state; staying in %s", self.env, exc_info=True)
+            return False
+        if target is None:
+            return False
+        return await self.switch_env(target)
+
+    async def switch_env(self, target: str) -> bool:
+        """Reload env, settings snapshot and prompts for ``target``. Runs started after this use the
+        new env; a run already in flight finishes in its old env, and its session is closed then."""
+        if self.replaying:
+            return False
+        async with self._switch_lock:
+            if target == self.env:
+                return False
+            old_env, old = self.env, self._applier
+            log.info("agents: env switch %s -> %s", old_env, target)
+            self.env = target
+            self._scopes = {}
+            self._last_fired = {}
+            self._install_applier(target)
+            for slug, session in old.sessions.items():
+                self._retire(session, old.locks.setdefault(slug, asyncio.Lock()))
+            self._retiring.update(old.retiring_tasks())
+            return True
+
+    def _retire(self, session: AgentSession, lock: asyncio.Lock) -> None:
+        async def retire() -> None:
+            async with lock:  # wait for an in-flight run of the old env to finish
+                await session.close()
+
+        task = asyncio.get_running_loop().create_task(retire())
+        self._retiring.add(task)
+        task.add_done_callback(self._retiring.discard)
+
     async def settled(self) -> None:
-        """Wait until every disabled agent's session has closed."""
+        """Wait until every disabled agent's session, and every session of an env switched away
+        from, has closed."""
         await self._applier.settled()
+        while self._retiring:
+            pending = list(self._retiring)
+            await asyncio.gather(*pending, return_exceptions=True)
+            self._retiring.difference_update(pending)
 
     async def consume_system(
         self,
@@ -499,6 +565,8 @@ class Supervisor:
         async def schedule() -> None:
             while not stop.is_set():
                 try:
+                    # A missed system.env_changed (Redis down when Laravel published) is caught here.
+                    await self.follow_stored_env()
                     await self.tick()
                 except Exception:
                     log.exception("agents: schedule tick failed")

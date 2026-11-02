@@ -33,7 +33,7 @@ from trading_core.execution.control_api import router as control_router
 from trading_core.execution.lifecycle import JOB as LIFECYCLE_JOB
 from trading_core.execution.lifecycle import EntryLifecycle, sweep_job
 from trading_core.execution.reconcile import JOB as RECONCILE_JOB
-from trading_core.execution.reconcile import ReconcileGate, reconcile_job
+from trading_core.execution.reconcile import NOT_RECONCILED, ReconcileGate, reconcile_job
 from trading_core.logs import AccessLogMiddleware
 from trading_core.marketdata.api import router as quality_router
 from trading_core.marketdata.derivatives import JOB as DERIVATIVES_POLLER_JOB
@@ -47,6 +47,7 @@ from trading_core.okx.errors import OkxClientError, OkxError, OkxNetworkError
 from trading_core.okx.ratelimit import RateLimiter
 from trading_core.risk.api import router as risk_router
 from trading_core.risk.breakers import BreakerMonitor, Breakers
+from trading_core.runtime import EnvRuntime, EnvSwitcher, RuntimeFactory
 from trading_core.scheduler import Scheduler
 from trading_core.security import PROTECTED_PREFIX, InternalSignatureMiddleware
 from trading_core.sync.account import STREAM as ACCOUNT_JOB
@@ -247,32 +248,30 @@ def default_scheduler(
     return scheduler
 
 
-def create_app(
-    settings: Settings | None = None,
-    extra_internal: APIRouter | None = None,
+def build_runtime(
+    settings: Settings,
+    db: Engine,
     *,
     scheduler: Scheduler | None = None,
-    engine: Engine | None = None,
     market_feed: MarketFeed | None = None,
     private_feed: PrivateFeed | None = None,
     breaker_monitor: BreakerMonitor | None = None,
     reconcile_gate: ReconcileGate | None = None,
-) -> FastAPI:
-    settings = settings or Settings.from_env()
-    if not settings.internal_shared_secret:
-        logger.warning("INTERNAL_SHARED_SECRET is empty; every /internal call will be rejected")
-    db = engine if engine is not None else make_engine()
+    gate_reason: str = NOT_RECONCILED,
+) -> EnvRuntime:
+    """Everything bound to the env in ``settings`` (ATL-237): the jobs, the sockets, the lifecycle and
+    the breaker monitor. Built once at startup and again on every env switch."""
     # Rule 8 (ATL-146): /execute is refused until reconciliation has run once. An injected scheduler
     # without the reconcile job (tests) starts with the gate open unless the test passes one in.
     if scheduler is None:
-        gate = reconcile_gate if reconcile_gate is not None else ReconcileGate()
+        gate = reconcile_gate if reconcile_gate is not None else ReconcileGate(reason=gate_reason)
         jobs = default_scheduler(settings, db, gate)
     else:
         jobs = scheduler
         gate = (
             reconcile_gate
             if reconcile_gate is not None
-            else ReconcileGate(ready=RECONCILE_JOB not in scheduler.jobs)
+            else ReconcileGate(ready=RECONCILE_JOB not in scheduler.jobs, reason=gate_reason)
         )
     # The live feed (ATL-125) is built only for the real app or when a test passes one in, so an
     # app made around an injected scheduler never opens a socket to OKX.
@@ -301,27 +300,68 @@ def create_app(
     monitor = breaker_monitor
     if monitor is None and scheduler is None:
         monitor = BreakerMonitor(Breakers(db, settings.env))
+    return EnvRuntime(
+        env=settings.env,
+        scheduler=jobs,
+        gate=gate,
+        feed=feed,
+        pfeed=pfeed,
+        lifecycle=lifecycle,
+        monitor=monitor,
+    )
+
+
+def create_app(
+    settings: Settings | None = None,
+    extra_internal: APIRouter | None = None,
+    *,
+    scheduler: Scheduler | None = None,
+    engine: Engine | None = None,
+    market_feed: MarketFeed | None = None,
+    private_feed: PrivateFeed | None = None,
+    breaker_monitor: BreakerMonitor | None = None,
+    reconcile_gate: ReconcileGate | None = None,
+    runtime_factory: RuntimeFactory | None = None,
+    follow_env: bool | None = None,
+) -> FastAPI:
+    """``follow_env`` (default: on for the real app, off around an injected scheduler) makes the app
+    switch to ``system_state.active_env`` at startup and on ``system.env_changed`` (ATL-237).
+    ``runtime_factory`` builds the runtime of the env switched to (default :func:`build_runtime`)."""
+    settings = settings or Settings.from_env()
+    if not settings.internal_shared_secret:
+        logger.warning("INTERNAL_SHARED_SECRET is empty; every /internal call will be rejected")
+    db = engine if engine is not None else make_engine()
+    runtime = build_runtime(
+        settings,
+        db,
+        scheduler=scheduler,
+        market_feed=market_feed,
+        private_feed=private_feed,
+        breaker_monitor=breaker_monitor,
+        reconcile_gate=reconcile_gate,
+    )
+
+    def _default_factory(env_settings: Settings, reason: str) -> EnvRuntime:
+        return build_runtime(env_settings, db, gate_reason=reason)
+
+    follow = follow_env if follow_env is not None else scheduler is None
 
     @asynccontextmanager
-    async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+    async def lifespan(app_: FastAPI) -> AsyncIterator[None]:
+        switcher: EnvSwitcher = app_.state.env_switcher
+        if follow and settings.run_scheduler:
+            # Startup: the stored env wins over ATLAS_ENV. Nothing has started yet, so the gate keeps
+            # the startup reason (not_reconciled).
+            await switcher.follow_stored_env(reason=NOT_RECONCILED)
         if settings.run_scheduler:
-            jobs.start()
-            if feed is not None:
-                await feed.start()
-            if pfeed is not None:
-                await pfeed.start()
-            if monitor is not None:
-                await monitor.start()
+            await app_.state.runtime.start()
+            if follow:
+                switcher.start()
         try:
             yield
         finally:
-            if monitor is not None:
-                await monitor.stop()
-            if pfeed is not None:
-                await pfeed.stop()
-            if feed is not None:
-                await feed.stop()
-            await jobs.stop()
+            await switcher.stop()
+            await app_.state.runtime.stop()
 
     application = FastAPI(
         title="Atlas trading_core",
@@ -332,17 +372,18 @@ def create_app(
         lifespan=lifespan,
     )
     application.state.settings = settings
-    application.state.scheduler = jobs
     application.state.engine = db
-    application.state.market_feed = feed
-    application.state.private_feed = pfeed
-    application.state.breaker_monitor = monitor
-    application.state.reconcile_gate = gate
-    application.state.entry_lifecycle = lifecycle
+    runtime.install(application.state)
+    application.state.env_switcher = EnvSwitcher(
+        application.state,
+        runtime_factory or _default_factory,
+        db,
+        start_runtimes=settings.run_scheduler,
+    )
 
     @application.get("/health")
-    async def health() -> dict[str, str]:
-        return {"status": "ok", "env": settings.env, "version": VERSION}
+    async def health(request: Request) -> dict[str, str]:
+        return {"status": "ok", "env": request.app.state.settings.env, "version": VERSION}
 
     application.include_router(internal_router)
     application.include_router(connection_test_router)
