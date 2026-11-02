@@ -20,8 +20,9 @@ use Illuminate\Notifications\Notifiable;
  * @property string $email
  * @property string $locale en|ar
  * @property string $theme system|light|dark
+ * @property string $timezone IANA name, display-only (ATL-226)
  */
-#[Fillable(['name', 'email', 'password', 'locale', 'theme'])]
+#[Fillable(['name', 'email', 'password', 'locale', 'timezone', 'theme'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -32,9 +33,12 @@ class User extends Authenticatable
 
     public const THEMES = ['system', 'light', 'dark'];
 
+    public const DEFAULT_TIMEZONE = 'Asia/Baghdad';
+
     /** @var array<string, mixed> */
     protected $attributes = [
         'locale' => 'en',
+        'timezone' => 'Asia/Baghdad',
         'theme' => 'system',
     ];
 
