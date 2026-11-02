@@ -68,6 +68,18 @@ return [
         'max_enabled_level' => 4,
         'ask_above_usd' => '1000',
     ],
+    'schedule' => [
+        'analysis_interval_minutes_min' => 15,
+        'analysis_interval_minutes_max' => 240,
+        'quiet_hours_enabled' => false,
+        'quiet_hours_start' => '23:00',
+        'quiet_hours_end' => '07:00',
+        'stock_perps_weekend' => 'allow',
+        'stock_perps_weekend_choices' => [
+            'allow',
+            'no_new_trades',
+        ],
+    ],
     'markets' => [
         'min_24h_volume_usd' => [
             'crypto_perp' => '20000000',
