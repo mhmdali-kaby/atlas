@@ -162,6 +162,11 @@ return [
                 5,
             ],
         ],
+        'stock_perps_weekend' => [
+            'timezone' => 'America/New_York',
+            'start' => 'Fri 20:00',
+            'end' => 'Sun 20:00',
+        ],
         'atr_bar' => '1H',
         'atr_window' => 14,
         'atr_lookback_bars' => 120,
@@ -857,6 +862,13 @@ return [
             'in_app' => true,
             'browser' => true,
             'telegram' => false,
+        ],
+        'quiet_hours_always_deliver' => [
+            'circuit_breaker',
+            'kill_switch',
+            'stop_hit',
+            'target_hit',
+            'proposal_awaiting_approval',
         ],
         'degraded_agent_states' => [
             'degraded',

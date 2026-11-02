@@ -436,14 +436,21 @@ class Supervisor:
             ).first()
         return found is not None
 
+    @property
+    def schedule_defaults(self) -> Mapping[str, Any]:
+        """DEFAULTS with the owner's ``schedule.*`` settings overlaid (ATL-229). Re-read with the
+        settings row, which :meth:`tick` refreshes first, so a changed time applies at the next tick."""
+        return self.settings.schedule_defaults
+
     def due(self, job: str, now: datetime, at: time | None = None, weekday: int | None = None) -> date | None:
         """The Baghdad day daily ``job`` is due for at ``now``, or None (not yet time today). ``at``
-        defaults to ``agents.schedule.<job>``. With ``weekday`` (0 = Monday) the job is weekly: due
-        only on that Baghdad weekday, from ``at`` to midnight."""
+        defaults to ``agents.schedule.<job>`` from the owner's settings (falling back to
+        config/defaults.yaml). With ``weekday`` (0 = Monday) the job is weekly: due only on that
+        Baghdad weekday, from ``at`` to midnight."""
         local = now.astimezone(owner_zone())
         if weekday is not None and local.weekday() != weekday:
             return None
-        if local.time() < (at if at is not None else job_time(job)):
+        if local.time() < (at if at is not None else job_time(job, self.schedule_defaults)):
             return None
         return local.date()
 
@@ -472,7 +479,8 @@ class Supervisor:
 
     async def _fire_if_due(self, slug: str, hook: ScheduleHook, at: datetime) -> ScheduleFire | None:
         if hook.every_seconds is None:
-            day = self.due(hook.name, at, hook.time_of_day(), hook.weekday())
+            defaults = self.schedule_defaults
+            day = self.due(hook.name, at, hook.time_of_day(defaults), hook.weekday(defaults))
             if day is None or await asyncio.to_thread(self._job_done, slug, hook.name, day):
                 return None
             correlation_id = job_correlation_id(hook.name, day)

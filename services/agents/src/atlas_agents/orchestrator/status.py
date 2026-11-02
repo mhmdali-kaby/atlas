@@ -20,6 +20,7 @@ from atlas_shared.db import Cycle, EquityPoint, owner_day
 from atlas_shared.defaults import DEFAULTS
 from sqlalchemy import select, text
 
+from atlas_agents import schedule
 from atlas_agents.registry import AgentHost
 from atlas_agents.tools import ToolContext
 from atlas_agents.tools.account import get_positions, get_today_budget_left
@@ -144,21 +145,24 @@ def next_step(now: datetime, cycle_state: str | None, defaults: Mapping[str, Any
 async def build(ctx: ToolContext, slot: datetime) -> tuple[str, dict[str, Any]]:
     """The card's text and JSON, from code only."""
 
-    def reads() -> tuple[list[str], str | None, Decimal | None, Decimal | None, str | None]:
+    def reads() -> tuple[
+        list[str], str | None, Decimal | None, Decimal | None, str | None, Mapping[str, Any]
+    ]:
         with ctx.session_factory() as session:
             wl = current_watchlist(session, ctx, owner_day(ctx.now()))
             ids = listed_ids(session, wl)
+            sched = schedule.load(session, ctx.env)
         change, pct = _pnl_today(ctx)
-        return ids, (wl.status if wl is not None else None), change, pct, _cycle_state(ctx)
+        return ids, (wl.status if wl is not None else None), change, pct, _cycle_state(ctx), sched
 
-    ids, wl_status, change, pct, state = await asyncio.to_thread(reads)
+    ids, wl_status, change, pct, state, sched = await asyncio.to_thread(reads)
     positions = (await get_positions(ctx, NoInput())).data
     budget = (await get_today_budget_left(ctx, NoInput())).data
     open_rows = [
         {"inst_id": p.inst_id, "pos_side": p.pos_side, "upl": str(p.upl) if p.upl is not None else None}
         for p in positions.positions
     ]
-    step = next_step(ctx.now(), state)
+    step = next_step(ctx.now(), state, sched)
     local = slot.astimezone(_zone())
     watch = (
         f"watchlist {len(ids)} ({', '.join(ids[:5])}{'…' if len(ids) > 5 else ''})"
