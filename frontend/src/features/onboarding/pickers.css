@@ -139,6 +139,19 @@
 .ob-au-later { display: inline-flex; align-items: center; gap: 5px; margin-top: 4px; font-size: var(--fs-footnote); color: var(--label-secondary); }
 .ob-au-later svg { width: 14px; height: 14px; }
 .ob-autonomy-row[aria-disabled='true'] .ob-choice-radio { opacity: 0.4; }
+.ob-autonomy-row[aria-busy='true'] { cursor: progress; }
+.ob-au-busy { width: 20px !important; height: 20px !important; color: var(--label-secondary); }
+.ob-tag.is-quiet { background: var(--fill-3); color: var(--label-secondary); }
+/* A chosen level 3 carries its amount in the same card (design autonomy.css .au-row-wrap). */
+.ob-au-wrap { display: grid; border-radius: var(--radius-card); }
+.ob-au-wrap.has-extra { background: var(--bg-grouped-row); box-shadow: 0 0 0 2px var(--accent), var(--ui-shadow-2); }
+.ob-au-wrap.has-extra > .ob-autonomy-row { box-shadow: none; background: transparent; border-end-start-radius: 0; border-end-end-radius: 0; }
+.ob-au-wrap.has-extra > .ob-autonomy-row:focus-visible { box-shadow: var(--ui-focus-ring); }
+.ob-au-extra { padding: 0 16px 16px calc(16px + 32px + 14px); }
+.ob-au-extra > * { border-top: 0.5px solid var(--separator); padding-top: 14px; }
+@media (max-width: 640px) {
+  .ob-au-extra { padding-inline-start: 16px; }
+}
 
 .ob-skeleton { display: block; border-radius: 6px; background: var(--fill-3); }
 

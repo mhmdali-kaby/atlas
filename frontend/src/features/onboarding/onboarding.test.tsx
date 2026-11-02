@@ -434,12 +434,16 @@ describe('onboarding steps 3–4 (ATL-19)', () => {
       await user.click(r)
       expect(r).toHaveAttribute('aria-checked', 'false')
     }
-    // Arrows skip the disabled levels: from 2, Down wraps to 1, and Down again comes back to 2.
+    // ATL-216: arrows move focus only (choosing 3 or 4 opens a sheet) and skip the disabled
+    // levels; Space chooses. From 2, Down wraps to 1, and Down again comes back to 2.
     radio('Autonomy', 'Approve each trade').focus()
     await user.keyboard('{ArrowDown}')
+    expect(radio('Autonomy', 'Advise only')).toHaveFocus()
+    expect(radio('Autonomy', 'Approve each trade')).toHaveAttribute('aria-checked', 'true')
+    await user.keyboard(' ')
     expect(radio('Autonomy', 'Advise only')).toHaveAttribute('aria-checked', 'true')
     await user.keyboard('{ArrowDown}')
-    expect(radio('Autonomy', 'Approve each trade')).toHaveAttribute('aria-checked', 'true')
+    expect(radio('Autonomy', 'Approve each trade')).toHaveFocus()
   })
 
   it('finishes on /portfolio and never reopens onboarding, even when every default is kept', async () => {

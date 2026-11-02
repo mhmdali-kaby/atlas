@@ -1,7 +1,7 @@
 {
   "nav": {
     "connections": "Connections",
-    "risk": "Risk & Autonomy"
+    "risk": "Risk"
   },
   "conn": {
     "intro": "Atlas reads your OKX account with these keys. They’re encrypted on this Mac and never shown again.",
@@ -65,7 +65,7 @@
   },
   "cancel": "Cancel",
   "risk": {
-    "intro": "The limits the risk engine applies to every trade, and how much Atlas may do without asking you.",
+    "intro": "The limits the risk engine applies to every trade.",
     "version": "Version {{v}}",
     "limits": "Limits",
     "limitsNote": "Percentages are of total equity. The risk engine applies these limits to every trade, and no agent can change them.",
@@ -73,7 +73,6 @@
     "about": "About {{label}}",
     "decrease": "Decrease {{label}}",
     "increase": "Increase {{label}}",
-    "autonomyNote": "At levels 1 and 2, nothing reaches OKX without your approval.",
     "activity": "Activity",
     "activityNote": "Every save is a new version, sent to the risk engine and the agents straight away.",
     "activityEmpty": "No saved versions yet.",
@@ -123,6 +122,8 @@
       "correlated": "The most equity in instruments that move together (30-day correlation above 0.8).",
       "minR": "A trade must aim to win at least this many times what it risks.",
       "lossStreak": "Trading pauses after this many losing trades in a row."
-    }
+    },
+    "autonomyRow": "Autonomy",
+    "autonomyValue": "Level {{n}}, {{name}}"
   }
 }
