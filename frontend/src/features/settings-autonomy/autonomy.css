@@ -1,0 +1,46 @@
+/* Settings → Autonomy pane (ATL-216; design css/autonomy.css "The pane"). */
+
+.au-now { display: grid; gap: 14px; padding: 20px 24px 18px; --au-halo: var(--bg-grouped-row); }
+.au-now.is-flash { animation: au-flash 1.4s var(--ease-out); }
+@keyframes au-flash {
+  0% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 55%, transparent), 0 0 0 0.5px var(--hairline-color); }
+  100% { box-shadow: 0 0 0 0.5px var(--hairline-color); }
+}
+.au-now-head { display: flex; align-items: center; gap: 8px; font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); font-weight: 600; }
+.au-now-name { font-weight: 400; color: var(--label-secondary); }
+.au-now-tile {
+  width: 24px; height: 24px; border-radius: 7px; display: grid; place-items: center;
+  background: var(--accent-solid); color: var(--on-solid); font-size: var(--fs-footnote);
+}
+.au-now-sentence {
+  max-width: 50ch; font-size: var(--fs-title-2); line-height: var(--lh-title-2); letter-spacing: var(--tr-title-2);
+  color: var(--label-secondary);
+}
+.au-now-note { font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.au-link { color: var(--accent-ink); text-decoration: underline; text-underline-offset: 2px; }
+.au-link:hover { text-decoration: underline; }
+.au-link:focus-visible { outline: none; border-radius: 4px; box-shadow: var(--ui-focus-ring); }
+
+.au-rows .au-row + .au-row { box-shadow: inset 0 0.5px 0 var(--separator); }
+.au-row {
+  display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 10px 16px;
+  font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); color: var(--label);
+}
+.au-row-icon { display: grid; place-items: center; flex-shrink: 0; color: var(--label-secondary); }
+.au-row-icon svg { width: 18px; height: 18px; }
+.au-row-label { flex: 1; min-width: 0; }
+.au-row-value { color: var(--label-secondary); text-align: end; }
+.au-row-value.is-strong { color: var(--label); font-weight: 500; }
+.au-row.is-link { text-decoration: none; }
+.au-row.is-link:hover { background: var(--fill-4); }
+.au-row.is-link:focus-visible { outline: none; box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--accent) 40%, transparent); }
+.au-row.is-link .au-row-value { color: var(--accent-ink); }
+.au-row-chev { width: 14px; height: 14px; flex-shrink: 0; color: var(--label-tertiary); }
+
+@media (max-width: 640px) {
+  .au-now { padding: 16px; }
+  .au-now-sentence { font-size: var(--fs-title-3); line-height: var(--lh-title-3); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .au-now.is-flash { animation: none; }
+}

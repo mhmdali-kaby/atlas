@@ -566,7 +566,7 @@ function Outcome({ p, shown, live, lang, P }: { p: ProposalDetail; shown: ShownS
         Eye,
         <>
           {t('l.advice')}{' '}
-          <Link className="pr-link" to="/settings/risk">
+          <Link className="pr-link" to="/settings/autonomy">
             {t('l.adviceLink')}
           </Link>
         </>,
