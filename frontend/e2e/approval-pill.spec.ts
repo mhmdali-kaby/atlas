@@ -2,7 +2,7 @@ import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
 
 /*
- * ATL-180: the approval pill in the toolbar and the "trade waiting for your approval" toast, against
+ * ATL-180: the approval pill in the toolbar (its toast moved to the notifications path, ATL-217), against
  * a fake Laravel serving ATL-162's GET /api/proposals?status=awaiting_owner. No Reverb here, so a new
  * proposal reaches the page through the list refetch (a visibility change stands in for the 15 s
  * poll). Screenshots go to ../../evidence/ATL-180/.
@@ -70,7 +70,7 @@ async function refetch(page: Page) {
 }
 
 for (const theme of ['light', 'dark'] as const) {
-  test(`Arabic ${theme}: the pill counts down beside Stop and a new proposal toasts, with no axe violations`, async ({ page }) => {
+  test(`Arabic ${theme}: the pill counts down beside Stop and a new proposal is counted, with no axe violations`, async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 })
     const api = await fakeApi(page, [waiting('p1', 354_500)])
     await page.addInitScript(
@@ -96,14 +96,13 @@ for (const theme of ['light', 'dark'] as const) {
     expect(pillBox.x).toBeGreaterThan(stopBox.x)
     expect(await axe(page, '[data-testid="approval-pill"]')).toEqual([])
 
-    // A second proposal arrives: a toast on this Portfolio page.
+    // A second proposal arrives: the pill counts it. Its toast is the notification's (ATL-217,
+    // e2e/notifications.spec.ts), so the pill raises none of its own.
     api.list = [...api.list, waiting('p2', 600_000, 'XAU-USDT-SWAP', 'sell')]
     await refetch(page)
-    const toast = page.getByRole('status').filter({ hasText: 'صفقة تنتظر موافقتك' })
-    await expect(toast).toBeVisible()
-    await expect(toast).toContainText(/XAU-USDT-SWAP بيع\. وافق عليها قبل \d\d:\d\d في غرفة العمليات\./)
     await expect(page.getByTestId('approval-pill-label')).toHaveText('صفقتان تنتظران موافقتك')
-    expect(await axe(page, '[data-testid="approval-pill"]', 'ol:has(li)')).toEqual([])
+    await expect(page.getByRole('status').filter({ hasText: 'صفقة تنتظر موافقتك' })).toHaveCount(0)
+    expect(await axe(page, '[data-testid="approval-pill"]')).toEqual([])
     await page.screenshot({ path: `${SHOTS}/pill-toast-rtl-${theme}.png` })
   })
 

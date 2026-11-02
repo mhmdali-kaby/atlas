@@ -14,7 +14,7 @@ import {
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cx } from '../../ui/cx'
-import type { EventId, Tone } from './model'
+import type { EventId, Tone } from '../notifications/events'
 
 /** The glyph that names each event (design §5.2): colour is never the only signal. */
 export const EVENT_ICON: Record<EventId, LucideIcon> = {
