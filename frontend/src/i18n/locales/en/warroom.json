@@ -667,7 +667,9 @@
     "ariaAt": " Price at {{time}}: {{price}}, {{r}}.",
     "long": "Long",
     "short": "Short",
-    "tgt": "target {{n}} {{price}} at {{r}}"
+    "tgt": "target {{n}} {{price}} at {{r}}",
+    "closed": "Closed",
+    "ariaTravel": " The price went from {{worst}} at worst to {{best}} at best, and the trade closed at {{exit}}."
   },
   "slash": {
     "pickerLabel": "Commands",
@@ -905,5 +907,71 @@
     "mkTip": "{{time}} {{what}}",
     "before": "Nothing yet. The first message of the day came at {{time}}.",
     "inspToggle": "Show or hide the day’s moments"
+  },
+  "pmo": {
+    "kind": "Post-mortem",
+    "ref": "Proposal {{id}}",
+    "lessonUpdate": "Lesson added",
+    "long": "Long",
+    "short": "Short",
+    "out": {
+      "win": "Won",
+      "loss": "Lost",
+      "scratch": "Scratch"
+    },
+    "held": "Held {{d}}",
+    "exp": "Expected",
+    "act": "What happened",
+    "compare": "Expected against what happened",
+    "result": "Result",
+    "tp1": "TP1 before the stop",
+    "time": "Time",
+    "expR": "{{r}} expected",
+    "prob": "{{p}} likely",
+    "yes": "Yes",
+    "no": "No",
+    "within": "Within {{d}}",
+    "noTimeStop": "No time stop",
+    "heldFor": "Held {{d}}",
+    "cap": "Best {{best}}, worst {{worst}}. It closed at {{exit}}, keeping {{kept}} of its best move.",
+    "capLoss": "Best {{best}}, worst {{worst}}. It closed at {{exit}}.",
+    "lesson": "Lesson",
+    "pending": "The lesson is still being written, and Atlas keeps trying until it is done. The figures are final.",
+    "tags": "Tags",
+    "open": "Open in the Journal",
+    "aria": "Post-mortem: {{inst}} {{side}}, {{outcome}}, {{r}}"
+  },
+  "wk": {
+    "kind": "Weekly review",
+    "span": "{{from}} to {{to}}",
+    "by": "By",
+    "bySetup": "Setup",
+    "byClass": "Market",
+    "byAgent": "Agent",
+    "col": {
+      "group": "Group",
+      "trades": "Trades",
+      "won": "Won",
+      "r": "Total R",
+      "usd": "P&L"
+    },
+    "total": "All trades",
+    "unknown": "Unknown",
+    "paperLost": "The {{ideas}} the team skipped would have lost {{r}} on paper, so skipping them was right.",
+    "paperMade": "The {{ideas}} the team skipped would have made {{r}} on paper; skipping them cost that much.",
+    "paperFlat": "The {{ideas}} the team skipped would have broken even on paper.",
+    "ideas_one": "{{count}} idea",
+    "ideas_other": "{{count}} ideas",
+    "change": "Suggested change",
+    "changeNote": "Agents can’t change settings. If you agree, change it yourself.",
+    "open": "Open {{where}}",
+    "where": {
+      "risk": "Settings → Risk profile",
+      "markets": "Settings → Markets",
+      "money": "Settings → Money limits"
+    },
+    "none": "No closed trades this week",
+    "noneBody": "Nothing closed between {{from}} and {{to}}, so there is nothing to review. Atlas wrote this without asking the Historian.",
+    "noVerdict": "The Historian couldn’t write this week’s verdict, so there is no suggested change. The figures are Atlas’s own."
   }
 }

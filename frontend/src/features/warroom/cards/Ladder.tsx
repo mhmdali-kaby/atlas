@@ -32,6 +32,15 @@ export interface LadderPriceAt {
   at: string
 }
 
+/** How a closed trade travelled (design v16 §8), all in R of the plan: its worst point, its best,
+ *  and where it closed, with the average exit price. */
+export interface LadderTravel {
+  mae: string | null
+  mfe: string | null
+  exit: string
+  price: string | null
+}
+
 export interface LadderProps {
   side: 'long' | 'short'
   entry: [string, string]
@@ -52,6 +61,8 @@ export interface LadderProps {
   priceAt?: LadderPriceAt | null
   /** Estimated liquidation price; shown as a caption under the rail when it lies beyond the stop. */
   liq?: string | null
+  /** A closed trade: the ground the price covered (MAE → MFE) and the exit diamond, over the plan. */
+  travel?: LadderTravel | null
   decimals: number
   compact?: boolean
   lang: Lang
@@ -141,7 +152,7 @@ function useCountedPrice(mark: string | null | undefined, decimals: number): str
   return mark ? (shown ?? mark) : null
 }
 
-export function Ladder({ side, entry, stop, riskStop, targets, mark, live = false, nowOnly = false, priceAt, liq, decimals, compact = false, lang }: LadderProps) {
+export function Ladder({ side, entry, stop, riskStop, targets, mark, live = false, nowOnly = false, priceAt, liq, travel, decimals, compact = false, lang }: LadderProps) {
   const { t } = useTranslation('warroom')
   const ref = useRef<HTMLElement>(null)
   const markShown = useCountedPrice(mark, decimals)
@@ -172,7 +183,9 @@ export function Ladder({ side, entry, stop, riskStop, targets, mark, live = fals
   const R = (p: string) => ((side === 'short' ? refPx - Number(p) : Number(p) - refPx) / unit)
   const rs = R(stop)
   const tR = targets.map((x) => R(x.price))
-  const pts = [rs, -1, ...tR, ...(mark ? [R(mark)] : []), ...(priceAt ? [R(priceAt.price)] : [])]
+  const tv = travel ? { mae: travel.mae === null ? null : Number(travel.mae), mfe: travel.mfe === null ? null : Number(travel.mfe), exit: Number(travel.exit) } : null
+  const tvPts = tv ? [tv.exit, ...(tv.mae !== null && Number.isFinite(tv.mae) ? [tv.mae] : []), ...(tv.mfe !== null && Number.isFinite(tv.mfe) ? [tv.mfe] : [])] : []
+  const pts = [rs, -1, ...tR, ...(mark ? [R(mark)] : []), ...(priceAt ? [R(priceAt.price)] : []), ...tvPts]
   const lo = Math.min(...pts) - 0.3
   const hi = Math.max(...pts) + 0.3
   const X = (r: number) => ((r - lo) / (hi - lo)) * 100
@@ -282,6 +295,25 @@ export function Ladder({ side, entry, stop, riskStop, targets, mark, live = fals
     }
   }
 
+  // A closed trade (design §8): the band under the entry zone, the diamond and its "Closed" label above.
+  let travelBand: ReactNode = null
+  let exitMark: ReactNode = null
+  if (travel && tv) {
+    const hasBand = tv.mae !== null && tv.mfe !== null && Number.isFinite(tv.mae) && Number.isFinite(tv.mfe)
+    if (hasBand) travelBand = <i className="ladder-travel" style={span(X(Math.min(tv.mae!, tv.mfe!)), X(Math.max(tv.mae!, tv.mfe!)))} data-testid="ld-travel" />
+    const xx = X(tv.exit)
+    exitMark = (
+      <>
+        <i className="ladder-exit" style={pos(xx)} data-testid="ld-exit" />
+        <span className={`ladder-label is-above is-line is-exit ${edge(xx)}`} style={pos(xx)} dir="auto">
+          <span className="ladder-k">{t('ld.closed')}</span>
+          {travel.price && <Isl className="num ladder-v">{P(travel.price)}</Isl>}
+          <Isl className="num ladder-r">{rText(travel.exit)}</Isl>
+        </span>
+      </>
+    )
+  }
+
   const aria =
     t('ld.aria', {
       side: t(side === 'short' ? 'ld.short' : 'ld.long'),
@@ -291,13 +323,15 @@ export function Ladder({ side, entry, stop, riskStop, targets, mark, live = fals
     }) +
     (mark ? t('ld.ariaNow', { now: P(mark), r: rText(R(mark)) }) : '') +
     (priceAt ? t('ld.ariaAt', { time: formatTime(priceAt.at, lang), price: P(priceAt.price), r: rText(R(priceAt.price)) }) : '') +
-    (liq && R(liq) < lo ? t('ld.ariaLiq', { liq: P(liq) }) : '')
+    (liq && R(liq) < lo ? t('ld.ariaLiq', { liq: P(liq) }) : '') +
+    (travel && travel.mae !== null && travel.mfe !== null ? t('ld.ariaTravel', { worst: rText(travel.mae), best: rText(travel.mfe), exit: rText(travel.exit) }) : '')
 
   return (
     <figure ref={ref} className={`ladder${compact ? ' is-compact' : ''}${live ? ' has-now-room' : ''}${nowOnly ? ' is-now-only' : ''}`} dir="ltr" role="img" aria-label={aria} data-testid={compact ? 'ladder-compact' : 'ladder'}>
       <div className="ladder-rail" aria-hidden="true">
         {rs < 0 && <i className="ladder-seg is-loss" style={span(xs, x0)} />}
         <i className="ladder-seg is-gain" style={span(x0, xLast)} />
+        {travelBand}
         <i className="ladder-zone" style={span(za, zb)} />
         <i className={`ladder-tick ${rs < -0.05 ? 'is-stop' : 'is-lock'}`} style={pos(xs)} />
         {!nowOnly && (
@@ -324,6 +358,7 @@ export function Ladder({ side, entry, stop, riskStop, targets, mark, live = fals
         })}
         {now}
         {then}
+        {exitMark}
         {!nowOnly && (
           <span className={`ladder-label is-above is-entry ${edge(xe)}`} style={pos(xe)} data-testid="ld-entry">
             {nowInline}
