@@ -13,6 +13,17 @@
 env:
   default: demo            # brief §1.4: demo first
   allowed: [demo, live]
+  # ATL-236, decision #255 (4)(5): the live pre-flight and the guarded switch.
+  #   min_demo_days: the earliest demo equity_curve point must be at least this old.
+  #   max_live_autonomy: live autonomy must be at or below this level to switch (first live month).
+  #   first_month_days: the first live month, counted from live_started_at.
+  #   switch_attempts_per_minute: POST /api/environment/switch limiter, per user.
+  live_preflight:
+    min_demo_days: 28
+    max_live_autonomy: 2
+    first_month_days: 30
+    switch_attempts_per_minute: 5
+    confirmation_text: TRADE LIVE
 
 timezone:
   display: Asia/Baghdad    # brief §1.9: UTC in DB, Asia/Baghdad in UI

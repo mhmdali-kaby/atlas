@@ -10,6 +10,13 @@ DEFAULTS: Final[dict[str, Any]] = {
             "demo",
             "live",
         ],
+        "live_preflight": {
+            "min_demo_days": 28,
+            "max_live_autonomy": 2,
+            "first_month_days": 30,
+            "switch_attempts_per_minute": 5,
+            "confirmation_text": "TRADE LIVE",
+        },
     },
     "timezone": {
         "display": "Asia/Baghdad",
