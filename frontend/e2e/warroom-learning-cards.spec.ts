@@ -163,6 +163,22 @@ test("Arabic RTL, dark: both cards in Arabic with no axe violations", async ({ p
     const head = week.locator(".wk-table thead th");
     expect((await head.nth(0).boundingBox())!.x).toBeGreaterThan((await head.nth(1).boundingBox())!.x);
     await expect(quiet.getByTestId("wk-quiet")).toContainText(arWarroom.wk.none);
+    // Every row's arrows point one way: the P&L icon is mirrored exactly like the Total R icon.
+    const rows = await week.locator(".wk-table tbody tr").evaluateAll((trs) =>
+        trs.map((tr) => {
+            const tf = (sel: string) => {
+                const el = tr.querySelector(sel);
+                return el ? getComputedStyle(el).transform : null;
+            };
+            return { r: tf(".lc-r .icon"), usd: tf(".an-sig .icon") };
+        }),
+    );
+    const both = rows.filter((x) => x.r !== null && x.usd !== null);
+    expect(both.length).toBeGreaterThan(0);
+    for (const x of both) {
+        expect(x.r).not.toBe("none");
+        expect(x.usd).toBe(x.r);
+    }
 
     await page.waitForTimeout(300);
     expect(await axeViolations(page)).toEqual([]);
