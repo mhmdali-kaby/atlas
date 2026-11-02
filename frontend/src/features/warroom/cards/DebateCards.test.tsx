@@ -192,6 +192,49 @@ describe('Risk check card', () => {
     expect(rc?.failedCheck).toBe(6)
     expect(rc?.contracts).toBeNull()
   })
+
+  it('autonomy 3, sent: step 9 shows "Autonomy 3" and the line is built from the check’s own values, not a hard-coded figure', () => {
+    draw(riskCheckMessage('approved', { autonomy_level: 3, notional_usd: '2997.79', ask_above_usd: '3000', decision: 'send_now' }))
+    const card = screen.getByTestId('db-risk')
+    const steps = within(card).getAllByTestId('db-rk-step')
+    const step9 = steps[8]!
+    expect(step9).toHaveAttribute('data-state', 'send_now')
+    expect(within(step9).getByTestId('db-rk-step-state')).toHaveTextContent('Sent without asking')
+    expect(step9).toHaveTextContent('Autonomy 3')
+    const reason = within(step9).getByTestId('db-rk-autonomy-reason')
+    expect(reason).toHaveTextContent('$2,997.79')
+    expect(reason).toHaveTextContent('$3,000.00')
+    expect(reason).toHaveTextContent('is within your')
+  })
+
+  it('autonomy 3, above the ask-above amount: step 9 waits for the owner with both amounts', () => {
+    draw(riskCheckMessage('approved', { autonomy_level: 3, notional_usd: '2997.79', ask_above_usd: '1000', note: 'above_ask_threshold', decision: 'awaiting_owner' }))
+    const card = screen.getByTestId('db-risk')
+    const step9 = within(card).getAllByTestId('db-rk-step')[8]!
+    expect(step9).toHaveAttribute('data-state', 'awaiting_owner')
+    const reason = within(step9).getByTestId('db-rk-autonomy-reason')
+    expect(reason).toHaveTextContent('$2,997.79')
+    expect(reason).toHaveTextContent('$1,000.00')
+    expect(reason).toHaveTextContent('is above your')
+  })
+
+  it('autonomy 4: step 9 is sent without asking, with the level-4 line', () => {
+    draw(riskCheckMessage('approved', { autonomy_level: 4, max_enabled_level: 4, notional_usd: '2997.79', ask_above_usd: '3000', decision: 'send_now' }))
+    const card = screen.getByTestId('db-risk')
+    const step9 = within(card).getAllByTestId('db-rk-step')[8]!
+    expect(step9).toHaveAttribute('data-state', 'send_now')
+    expect(step9).toHaveTextContent('Autonomy 4')
+    expect(within(step9).getByTestId('db-rk-autonomy-reason')).toHaveTextContent('Every trade the Risk Engine approves goes straight to OKX.')
+  })
+
+  it('autonomy 2 (unchanged): step 9 still reads "Awaiting you" with the plain autonomy-2 text', () => {
+    draw(riskCheckMessage('resized'))
+    const card = screen.getByTestId('db-risk')
+    const step9 = within(card).getAllByTestId('db-rk-step')[8]!
+    expect(step9).toHaveAttribute('data-state', 'awaiting_owner')
+    expect(within(step9).getByTestId('db-rk-step-state')).toHaveTextContent('Awaiting you')
+    expect(step9).toHaveTextContent('The owner approves each trade.')
+  })
 })
 
 describe('spacing inside flex chips', () => {

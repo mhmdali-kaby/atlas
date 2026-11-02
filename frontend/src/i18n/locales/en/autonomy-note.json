@@ -1,0 +1,28 @@
+{
+  "lead": {
+    "send_now": "Autonomy {{n}} didn’t ask.",
+    "awaiting_owner": "Autonomy {{n}} asks you.",
+    "notEnabled": "Atlas asks you.",
+    "advise_only": "Autonomy {{n}} never sends."
+  },
+  "l1": "This trade stays a suggestion.",
+  "l2": "You approve every trade.",
+  "within": "{{notional}} is within your {{ask}} ask‑above amount.",
+  "above": "{{notional}} is above your {{ask}} ask‑above amount.",
+  "withinPos": "The whole position, {{notional}}, is within your {{ask}} ask‑above amount.",
+  "abovePos": "The whole position, {{notional}}, is above your {{ask}} ask‑above amount.",
+  "closing": "Closing never waits, whatever its size.",
+  "l4": "Every trade the Risk Engine approves goes straight to OKX.",
+  "halted": "Trading is paused or a breaker is on, and autonomy never acts past either.",
+  "unknown": "Atlas couldn’t work out its size in dollars.",
+  "notEnabled": "Autonomy {{n}} isn’t available on this account yet.",
+  "step": "Autonomy {{n}}",
+  "link": "Autonomy settings",
+  "sent": {
+    "entry": "Sent to OKX at {{time}}, limit {{price}}.",
+    "amend_stop": "Stop moved on OKX at {{time}}.",
+    "amend_targets": "Targets moved on OKX at {{time}}.",
+    "close": "Close sent to OKX at {{time}}.",
+    "partial_close": "Partial close sent to OKX at {{time}}."
+  }
+}

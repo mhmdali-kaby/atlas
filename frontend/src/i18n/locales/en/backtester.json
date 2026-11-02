@@ -136,5 +136,76 @@
   "notFoundBody": "It may belong to the other environment. Start a new backtest instead.",
   "loadError": "Couldn’t load this run",
   "retry": "Try again",
-  "doneToast": "Backtest done"
+  "doneToast": "Backtest done",
+  "r": {
+    "ran": "Ran {{when}}, on {{env}} candles up to {{asof}}.",
+    "env": {
+      "demo": "demo",
+      "live": "live"
+    },
+    "fees": "Taker fee {{rate}} from {{src}}.",
+    "src": {
+      "config": "Atlas’s defaults (no fee rate is stored yet)",
+      "config_fallback": "the fallback rate"
+    },
+    "funding": "Funding included",
+    "noFunding": "No funding stored for this window",
+    "overfit": "Probably overfit",
+    "overfitBody": "On the data it was fitted on, this rule’s Sharpe averaged {{is}}. On data it hadn’t seen, {{oos}}: under half. Don’t base a decision on the full-period figures.",
+    "gap": "There’s a gap in the candles",
+    "gapBody": "{{inst}}: {{notes}} No claim can rest on this run, so its verdict is capped at “does not support”.",
+    "notes": "Data notes",
+    "excluded": "{{inst}} left out: {{reason}}",
+    "inst": "Instrument",
+    "metrics": "Results for {{inst}}",
+    "m": {
+      "total": "Total return",
+      "cagr": "CAGR",
+      "sharpe": "Sharpe",
+      "sortino": "Sortino",
+      "dd": "Max drawdown",
+      "win": "Win rate",
+      "pf": "Profit factor",
+      "trades": "Trades",
+      "fees": "Fees paid",
+      "funding": "Funding",
+      "none": "Not enough to say",
+      "pfNone": "No losing trades",
+      "subTotal": "Of starting equity, {{from}} to {{to}}",
+      "subWin": "{{w}} of {{n}} trades",
+      "subFees": "Of starting equity"
+    },
+    "curve": "Equity",
+    "curveSub": "Starting equity = 0%. Shaded blocks were tested out of sample.",
+    "curveAria": "Equity from {{from}} to {{to}}: {{end}} at the end.",
+    "oosBlock": "Split {{n}}, tested",
+    "noCurve": "No equity points in this result.",
+    "folds": "Fitted against tested",
+    "foldsSub": "Anchored walk-forward. Each split is fitted on the blocks before it (ring) and tested on the next block (dot).",
+    "fold": {
+      "n": "Split",
+      "is": "Fitted on",
+      "oos": "Tested on",
+      "sharpe": "Sharpe, fitted ○ and tested ●",
+      "ret": "Return, tested",
+      "trades": "Trades, tested",
+      "pairAria": "Sharpe fitted {{is}}, tested {{oos}}"
+    },
+    "noFolds": "No walk-forward splits in this result.",
+    "trades": "Trades",
+    "tradesSub_one": "{{n}} closed trade over the whole period",
+    "tradesSub_other": "{{n}} closed trades over the whole period",
+    "tradesCut": "Showing the first {{shown}} of {{total}}.",
+    "noTrades": "The rule didn’t trade in this period.",
+    "t": {
+      "side": "Side",
+      "in": "Entry",
+      "out": "Exit",
+      "ret": "Return",
+      "pnl": "P&L",
+      "fees": "Fees"
+    },
+    "unreadable": "This result can’t be shown",
+    "unreadableBody": "The stored result isn’t in the shape this screen reads. Run it again."
+  }
 }
