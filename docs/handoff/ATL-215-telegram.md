@@ -35,8 +35,9 @@ Not configured: every field null and `"configured": false`.
 
 `PUT /api/notifications/telegram` body `{"bot_token": "123456789:AAH…", "chat_id": "987654321"}` →
 201 (created) / 200 (replaced), same `data` shape. Validation 422: `bot_token` must match
-`^\d{3,20}:[A-Za-z0-9_-]{20,100}$`, `chat_id` `^-?\d{1,20}$` (string). Both required every time.
-A different token resets the stored update offset.
+`^\d{3,20}:[A-Za-z0-9_-]{20,100}$`, `chat_id` `^\d{1,20}$` (string) — a private chat only, no
+leading minus (ATL-221: a negative id is a group/channel, and group members are not the owner).
+Both required every time. A different token resets the stored update offset.
 
 `DELETE /api/notifications/telegram` → 200 `{"data": {"configured": false, …}}` (idempotent).
 
@@ -79,7 +80,12 @@ Only on `proposal_awaiting_approval`, and only while the proposal is `awaiting_o
 - Offset: `telegram_connections.update_offset` = last update_id taken, written under a row lock
   **before** handling; anything ≤ it is skipped. At-most-once (a crash mid-handle drops that press,
   the owner presses again or uses the web).
-- Callback from a chat other than the stored chat id: ignored, no answer, no audit (offset still advances).
+- Ownership (ATL-221): the press is refused unless `message.chat.id` is the stored chat id,
+  `message.chat.type` is `private`, **and** `callback_query.from.id` equals that same stored chat
+  id (`hash_equals`, not just `==`). A press from anyone else — a different `from.id`, or any
+  non-`private` chat (group, supergroup, channel) — is answered `telegram.callback.expired`
+  ("expired") and audited as `telegram.callback_refused` with reason `foreign_user`; nothing about
+  the proposal changes. Offset still advances.
 - Bad/tampered data, unknown proposal, `now ≥ expires_unix`, or the service says
   `approval_expired` / `not_awaiting_owner` / `not_rejectable`: answer `telegram.callback.expired`
   ("expired"), audit `telegram.callback_refused`, nothing else changes.
