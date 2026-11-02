@@ -1023,3 +1023,56 @@ def test_context_dataclass_replace_keeps_it_pure() -> None:
     # run_checks reads only the context: the same context gives the same checks.
     c = ctx()
     assert run_checks(c).checks == run_checks(replace(c)).checks
+
+
+# --- ATL-238, decision #255 (6): the first live month ------------------------------------------
+
+STARTED = NOW - timedelta(days=10)
+
+
+def _live(level: int, cap: str | None, started: datetime | None = STARTED) -> RiskContext:
+    return ctx(
+        settings={"autonomy_level": level, "bot_capital_cap_usdt": cap},
+        proposal=proposal(env="live"),
+        live_started_at=started,
+    )
+
+
+@pytest.mark.parametrize("level", [3, 4])
+def test_first_live_month_caps_autonomy_at_2_in_check_9(level: int) -> None:
+    out = run_checks(_live(level, "1000000"))
+    assert out.result != "rejected"
+    assert out.decision == "awaiting_owner"
+    assert out.checks[8]["values"]["note"] == "first_live_month"
+    assert out.checks[8]["values"]["first_live_month_max"] == 2
+
+
+def test_after_the_first_live_month_autonomy_4_sends_again() -> None:
+    out = run_checks(_live(4, None, started=NOW - timedelta(days=31)))
+    assert out.decision == "send_now"
+    assert out.checks[0]["status"] == "passed"
+
+
+def test_a_live_proposal_with_no_cap_in_the_first_month_is_rejected_at_check_1() -> None:
+    out = run_checks(_live(2, None))
+    _rejected_at(out, 1, "live_capital_cap_required")
+    assert out.checks[0]["values"]["capital_cap_set"] is False
+
+
+def test_a_live_proposal_with_a_cap_passes_check_1_in_the_first_month() -> None:
+    out = run_checks(_live(2, "1000000"))
+    assert out.checks[0]["status"] == "passed"
+    assert out.checks[0]["values"]["capital_cap_required"] is True
+
+
+def test_demo_is_unchanged_by_the_first_live_month() -> None:
+    demo = ctx(settings={"autonomy_level": 4}, live_started_at=STARTED)
+    out = run_checks(demo)
+    assert out.decision == "send_now"
+    assert "capital_cap_required" not in out.checks[0]["values"]
+    assert "note" not in out.checks[8]["values"]
+
+
+def test_live_before_any_switch_has_no_first_month() -> None:
+    out = run_checks(_live(4, None, started=None))
+    assert out.decision == "send_now"

@@ -12,6 +12,8 @@ return [
     'decimal_range_exclusive' => 'The :attribute must be greater than :min and at most :max.',
     'decimal_range_inclusive' => 'The :attribute must be between :min and :max.',
     'stale_version' => 'Settings were changed elsewhere. Reload them and apply your change again.',
+    'first_live_month_autonomy' => 'During the first live month (until :until) live autonomy can be at most level :max.',
+    'first_live_month_cap_required' => 'During the first live month (until :until) the live bot capital cap must stay set.',
     'autonomy_level_locked' => 'Autonomy level :max is the highest this build phase supports.',
     'hostname_format' => 'Each entry must be a bare hostname such as "coindesk.com", with no scheme, port or path.',
     'inst_id_format' => 'Each entry must be an OKX instrument ID such as "BTC-USDT-SWAP".',

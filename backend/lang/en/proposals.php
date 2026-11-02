@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 // Proposals API messages (ATL-162). Keys match the `error` slug in the response or a validation code.
 return [
+    'live_confirmation_required' => 'This is a live proposal with real money. Confirm the live approval to send it.',
     'not_awaiting_owner' => 'This proposal is not waiting for your approval.',
     'approval_expired' => 'The approval window for this proposal has closed.',
     'risk_check_missing' => 'This proposal has no passing risk check to approve.',

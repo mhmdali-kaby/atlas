@@ -602,3 +602,19 @@ def test_evaluate_still_refuses_a_position_action_that_is_not_evaluable(
     pid = _pm_proposal(engine, world, "close", status="under_review")
     resp = _evaluate(client(engine, rds), pid)
     assert resp.status_code == 409 and resp.json()["error"] == "risk_engine_error"
+
+
+# --- ATL-238: the first live month caps a live action's autonomy at 2 -------------------------
+
+
+def test_first_live_month_caps_a_live_close_at_autonomy_2() -> None:
+    data = {"risk_profile": "balanced", "autonomy_level": 4, "bot_capital_cap_usdt": None}
+    live = action("close", env="live")
+    inside = run_position_checks(actx(live, settings_data=data, live_started_at=NOW - timedelta(days=10)))
+    assert inside.result == "approved" and inside.decision == "awaiting_owner"
+    assert by_name(inside.checks)["autonomy"]["values"]["note"] == "first_live_month"
+    after = run_position_checks(actx(live, settings_data=data, live_started_at=NOW - timedelta(days=31)))
+    assert after.decision == "send_now"
+    demo_ctx = actx(action("close"), settings_data=data, live_started_at=NOW - timedelta(days=10))
+    demo = run_position_checks(demo_ctx)
+    assert demo.decision == "send_now"

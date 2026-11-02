@@ -60,6 +60,8 @@ from trading_core.risk.rules import (
     check_loss_limits,
     check_portfolio,
     decide_autonomy,
+    first_live_month_max_autonomy,
+    in_first_live_month,
     not_run,
     rules_config,
     sizing_equity,
@@ -159,6 +161,8 @@ def run_checks(ctx: RiskContext, config: Mapping[str, Any] | None = None) -> Out
     sizing: SizingResult | None = None
     entry: Decimal | None = None
     inst = ctx.instrument
+    # ATL-238, decision #255 (6): a live proposal inside the first live month.
+    first_month = in_first_live_month(p.env, ctx.live_started_at, ctx.now)
 
     def step(n: int) -> CheckResult:
         nonlocal sizing, entry
@@ -172,6 +176,8 @@ def run_checks(ctx: RiskContext, config: Mapping[str, Any] | None = None) -> Out
                 ticker_at=ctx.ticker_at,
                 now=ctx.now,
                 max_age_seconds=eng.market_data_max_age_seconds,
+                capital_cap_required=first_month,
+                capital_cap_set=eng.bot_capital_cap_usdt is not None,
             )
         if n == 2:
             return check_instrument(
@@ -299,6 +305,7 @@ def run_checks(ctx: RiskContext, config: Mapping[str, Any] | None = None) -> Out
                 int(DEFAULTS["autonomy"]["max_enabled_level"]),
                 notional_usd=None if sizing is None else sizing.final_notional_usd,
                 ask_above_usd=eng.autonomy_ask_above_usd,
+                first_live_month_max=first_live_month_max_autonomy() if first_month else None,
             )
         else:
             res = step(n)

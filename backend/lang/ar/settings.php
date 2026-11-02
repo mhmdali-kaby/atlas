@@ -10,6 +10,8 @@ return [
     'decimal_range_exclusive' => 'يجب أن تكون قيمة :attribute أكبر من :min وبحد أقصى :max.',
     'decimal_range_inclusive' => 'يجب أن تكون قيمة :attribute بين :min و:max.',
     'stale_version' => 'تم تغيير الإعدادات في مكان آخر. أعد تحميلها وطبّق تغييرك مرة أخرى.',
+    'first_live_month_autonomy' => 'خلال الشهر الأول من التداول الحقيقي (حتى :until) لا يمكن أن يتجاوز مستوى الاستقلالية الحقيقي المستوى :max.',
+    'first_live_month_cap_required' => 'خلال الشهر الأول من التداول الحقيقي (حتى :until) يجب أن يبقى حدّ رأس مال البوت الحقيقي محددًا.',
     'autonomy_level_locked' => 'المستوى :max هو أعلى مستوى استقلالية تدعمه هذه المرحلة من البناء.',
     'hostname_format' => 'يجب أن يكون كل عنصر اسم مضيف بسيطًا مثل "coindesk.com"، بلا بروتوكول أو منفذ أو مسار.',
     'inst_id_format' => 'يجب أن يكون كل عنصر رمز أداة OKX مثل "BTC-USDT-SWAP".',

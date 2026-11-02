@@ -28,6 +28,8 @@ use Illuminate\Support\Facades\Log;
  *   and audited as telegram.callback_refused / foreign_user. Nothing about the proposal changes.
  * - A malformed or wrongly signed callback, one past its expiry, or one for a proposal that is no
  *   longer waiting is answered "expired" and changes nothing.
+ * - Approve on a live proposal is refused with "approve in Atlas" and audited as
+ *   telegram.callback_refused / live_approve_in_atlas (ATL-238); Reject on it works.
  * - A valid press calls ProposalApprovalService (the same path as the web Approve / Reject) with
  *   actor "telegram", answers the callback and edits the message to show the outcome.
  */
@@ -123,6 +125,15 @@ final class TelegramPoller
         if ($proposal === null || Carbon::now()->getTimestamp() >= $data['expires_unix']) {
             $this->refused($data['proposal_id'], $proposal === null ? 'unknown_proposal' : 'expired');
             $client->answerCallbackQuery($query['id'], $expired);
+
+            return;
+        }
+
+        // ATL-238, decision #255 (7): a live proposal is approved only in Atlas, behind the second
+        // "real money" confirmation. Telegram Reject still works.
+        if ($data['action'] === CallbackData::APPROVE && $proposal->env === 'live') {
+            $this->refused($proposal->id, 'live_approve_in_atlas');
+            $client->answerCallbackQuery($query['id'], mb_substr((string) __('telegram.callback.approve_in_atlas', [], $locale), 0, 200));
 
             return;
         }

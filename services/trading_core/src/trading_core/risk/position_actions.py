@@ -40,12 +40,15 @@ from atlas_shared.proposals import POSITION_ACTION_KINDS
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
+from trading_core.risk.context import load_live_started_at
 from trading_core.risk.inputs import infer_contract_type
 from trading_core.risk.rules import (
     CheckResult,
     Decision,
     EngineSettings,
     decide_autonomy,
+    first_live_month_max_autonomy,
+    in_first_live_month,
     not_run,
     rules_config,
 )
@@ -148,6 +151,9 @@ class ActionContext:
     mark: Decimal | None = None
     mark_source: str | None = None
     spec: CloseSpec | None = None
+    live_started_at: datetime | None = None
+    """system_state.live_started_at (ATL-236): a live action inside the first live month waits for
+    the owner above autonomy 2 (ATL-238). No capital-cap check: a close must never be blocked."""
 
 
 @dataclass(frozen=True)
@@ -480,6 +486,11 @@ def run_position_checks(ctx: ActionContext, config: Mapping[str, Any] | None = N
                 ask_above_usd=eng.autonomy_ask_above_usd,
                 risk_reducing=kind in _RISK_REDUCING,
                 halted=ctx.paused or bool(ctx.active_breakers),
+                first_live_month_max=(
+                    first_live_month_max_autonomy()
+                    if in_first_live_month(ctx.action.env, ctx.live_started_at, ctx.now)
+                    else None
+                ),
             )
         else:
             assert pos is not None
@@ -649,6 +660,7 @@ def load_action_context(
         mark=mark,
         mark_source=source,
         spec=spec,
+        live_started_at=load_live_started_at(session) if env == "live" else None,
     )
 
 

@@ -37,9 +37,17 @@ final class ProposalApprovalService
 
     public function __construct(private readonly Auditable $audit, private readonly EventBus $bus) {}
 
-    public function approve(Proposal $proposal, string $actor, ?User $user = null): ApprovalOutcome
+    /**
+     * ATL-238, decision #255 (7): a live proposal needs `$liveConfirmed` (the owner's second
+     * "real money" confirmation, `live_confirmed: true` on the web API); without it nothing is
+     * sent and the answer is 422 live_confirmation_required.
+     */
+    public function approve(Proposal $proposal, string $actor, ?User $user = null, bool $liveConfirmed = false): ApprovalOutcome
     {
         $actor = self::actor($actor);
+        if ($proposal->env === 'live' && ! $liveConfirmed) {
+            return new ApprovalOutcome(false, 'live_confirmation_required', 422, $proposal);
+        }
         $check = $proposal->latestRiskCheck()->first();
         $blocked = ProposalView::approveBlocked($proposal, $check, ProposalView::settingsVersion($proposal->env));
         if ($blocked !== null) {
