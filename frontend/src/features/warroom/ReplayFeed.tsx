@@ -23,9 +23,15 @@ export interface ReplayJump {
   id: string
   /** Bumped on every request, so asking for the same message twice jumps twice. */
   seq: number
+  /** Move keyboard focus onto the message (default). An arrow-key step on the day line keeps focus on the playhead. */
+  focus?: boolean
 }
 
-export function ReplayFeed({ messages, label, jump }: { messages: WarroomMessage[]; label: string; jump: ReplayJump | null }) {
+/**
+ * `follow` (ATL-207): bumped whenever the day line moves the playhead by dragging or playing; the
+ * feed goes back to its newest shown message and stays pinned there.
+ */
+export function ReplayFeed({ messages, label, jump, follow = 0 }: { messages: WarroomMessage[]; label: string; jump: ReplayJump | null; follow?: number }) {
   const lang = useLang()
   const scrollRef = useRef<HTMLDivElement>(null)
   const byId = useMemo(() => new Map(messages.map((m) => [m.id, m])), [messages])
@@ -58,6 +64,14 @@ export function ReplayFeed({ messages, label, jump }: { messages: WarroomMessage
       el.scrollTop = el.scrollHeight
     }
   }, [messages.length, total, virtualizer])
+  // The day line moved the playhead: show the newest message it reaches.
+  const followed = useRef(follow)
+  useLayoutEffect(() => {
+    if (followed.current === follow || messages.length === 0) return
+    followed.current = follow
+    atBottom.current = true
+    virtualizer.scrollToIndex(messages.length - 1, { align: 'end' })
+  }, [follow, messages.length, virtualizer])
   const onScroll = () => {
     const el = scrollRef.current
     if (el) atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight <= BOTTOM_SLACK
@@ -79,10 +93,15 @@ export function ReplayFeed({ messages, label, jump }: { messages: WarroomMessage
     [indexOf, virtualizer],
   )
 
-  // A moment picked in the inspector: scroll there, flash it and move focus onto it.
+  // A moment picked in the inspector or on the day line: scroll there, flash it and move focus
+  // onto it. Each request is handled once: the shown list changing under playback recreates
+  // onJump, and that must not jump back to an old request.
+  const handled = useRef<ReplayJump | null>(null)
   useEffect(() => {
-    if (!jump) return
+    if (!jump || handled.current === jump) return
+    handled.current = jump
     onJump(jump.id)
+    if (jump.focus === false) return
     setFocusId(jump.id)
     pendingFocus.current = jump.id
   }, [jump, onJump])

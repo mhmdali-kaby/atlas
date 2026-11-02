@@ -893,6 +893,17 @@
       "fill": "Fill",
       "system_alert": "System alert",
       "post_mortem": "Post-mortem"
-    }
+    },
+    "days": "Recent days",
+    "timeline": "Replay time, Baghdad",
+    "timeAria": "{{time}} Baghdad, {{shown}} of {{total}} messages shown",
+    "play": "Play",
+    "pause": "Pause",
+    "speed": "Speed",
+    "keys": "Space plays or pauses. Arrow keys step from message to message.",
+    "shown": "{{shown}} of {{total}} messages so far",
+    "mkTip": "{{time}} {{what}}",
+    "before": "Nothing yet. The first message of the day came at {{time}}.",
+    "inspToggle": "Show or hide the day’s moments"
   }
 }

@@ -84,3 +84,29 @@ export function replayDayName(day: string, lang: Lang, short = false): string {
   return f.format(new Date(dayStartMs(day) + 12 * 3_600_000))
 }
 
+export interface ReplayDayCount {
+  date: string
+  count: number
+}
+
+/** Days the Replay sidebar lists under "Recent days" (design v18: the last seven finished days). */
+export const RECENT_DAYS = 7
+
+/**
+ * The message count of each of the RECENT_DAYS Baghdad days ending `to` (newest first), from
+ * GET /api/warroom/replay/days. Finished days don't change, so this is cached like the replay.
+ */
+export function useReplayDays(env: TradingEnv, to: string) {
+  return useQuery<{ data: ReplayDayCount[] }, ApiError>({
+    queryKey: ['warroom', 'replay-days', env, to] as const,
+    queryFn: ({ signal }) =>
+      api.get<{ data: ReplayDayCount[] }>(`/api/warroom/replay/days?${new URLSearchParams({ to, env, days: String(RECENT_DAYS) }).toString()}`, { signal }),
+    staleTime: Infinity,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  })
+}
+
+/** True on /warroom/replay and /warroom/replay/<day>. */
+export const isReplayPath = (pathname: string) => pathname === '/warroom/replay' || pathname.startsWith('/warroom/replay/')

@@ -1,5 +1,6 @@
 import type { FeatureModule } from '../../app/feature'
-import { AgentList, ThreadList } from './SidebarSections'
+import { isReplayPath } from './replay'
+import { AgentList, ReplaySidebar, ThreadList } from './SidebarSections'
 import { ReplayPage, ReplayRedirect } from './ReplayPage'
 import { WarRoomPage } from './WarRoomPage'
 
@@ -16,8 +17,9 @@ const warroom: FeatureModule = {
     { path: 'warroom/replay/:date', element: <ReplayPage /> },
   ],
   sidebar: [
-    { id: 'agents', order: 10, component: AgentList },
-    { id: 'threads', order: 20, labelKey: 'warroom:sidebar.threads', component: ThreadList },
+    { id: 'replay', order: 5, component: ReplaySidebar, showOn: isReplayPath },
+    { id: 'agents', order: 10, component: AgentList, showOn: (p) => !isReplayPath(p) },
+    { id: 'threads', order: 20, labelKey: 'warroom:sidebar.threads', component: ThreadList, showOn: (p) => !isReplayPath(p) },
   ],
 }
 

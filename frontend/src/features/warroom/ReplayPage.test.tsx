@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, render, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import i18n from '../../i18n'
 import type { WarroomMessage, WarroomThread } from './api'
 import { proposalKey, type ProposalDetail } from './cards/proposal'
@@ -264,5 +264,179 @@ describe('War Room Replay', () => {
     expect(await screen.findByTestId('rp-error')).toHaveTextContent('This day didn’t load')
     await user.click(screen.getByTestId('rp-back-live'))
     await waitFor(() => expect(router.state.location.pathname).toBe('/warroom'))
+  })
+})
+
+/*
+ * ATL-207: the day line. Fixture times sit around the UTC/Baghdad offset: 00:00 Baghdad on
+ * 28 Oct is 21:00 UTC on 27 Oct, and 12:00 Baghdad is 09:00 UTC.
+ */
+describe('Replay day line', () => {
+  const DAY = '2026-10-28'
+  const AROUND_NOON = [
+    msg('d-0000', '2026-10-27T21:00:00.000000Z', { content_md: 'Midnight in Baghdad, still 27 Oct in UTC' }),
+    msg('d-1159', '2026-10-28T08:59:59.000000Z', { content_md: 'One second before noon' }),
+    msg('d-1200', '2026-10-28T09:00:00.000000Z', { content_md: 'Noon exactly' }),
+    msg('d-1201', '2026-10-28T09:00:01.000000Z', { content_md: 'One second after noon' }),
+    msg('d-1500', '2026-10-28T12:00:00.000000Z', { content_md: 'Afternoon' }),
+  ]
+  /** The track is 1,440 px wide in these tests: one pixel per minute of the day. */
+  const trackRect = () =>
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      const w = this.matches('[data-testid="rp-track"]') ? 1440 : 100
+      return { x: 0, y: 0, left: 0, top: 0, right: w, bottom: 34, width: w, height: 34, toJSON: () => ({}) } as DOMRect
+    })
+  const clock = () => screen.getByTestId('rp-time').textContent ?? ''
+  const seconds = (hms: string) => hms.split(':').reduce((s, p) => s * 60 + Number(p), 0)
+
+  it('pure helpers: shown at 12:00 Baghdad, steps and the pointer maths in both directions', async () => {
+    const { shownCount, stepIndex, messageTimes, atFromPointer, densityBuckets } = await import('./replayTime')
+    const { dayStartMs } = await import('./replay')
+    const start = dayStartMs(DAY)
+    expect(new Date(start).toISOString()).toBe('2026-10-27T21:00:00.000Z')
+    const times = messageTimes(AROUND_NOON)
+    expect(shownCount(times, start + 12 * 3_600_000)).toBe(3)
+    expect(shownCount(times, start - 1)).toBe(0)
+    expect(stepIndex(times, start + 12 * 3_600_000, 1)).toBe(3)
+    expect(stepIndex(times, start + 12 * 3_600_000, -1)).toBe(1)
+    expect(stepIndex(times, start, -1)).toBeNull()
+    expect(atFromPointer(360, { left: 0, width: 1440 }, false, start)).toBe(start + 6 * 3_600_000)
+    expect(atFromPointer(360, { left: 0, width: 1440 }, true, start)).toBe(start + 18 * 3_600_000)
+    expect(densityBuckets(times, start).reduce((a, b) => a + b, 0)).toBe(5)
+  })
+
+  it('setting the scrubber to 12:00 Baghdad shows only messages created at or before 12:00 Baghdad', async () => {
+    fakeBackend({ [DAY]: AROUND_NOON })
+    trackRect()
+    renderAt(`/warroom/replay/${DAY}`)
+    await waitFor(() => expect(feedIds()).toEqual(AROUND_NOON.map((m) => m.id)))
+    expect(clock()).toBe('23:59:59')
+
+    const track = screen.getByTestId('rp-track')
+    act(() => {
+      fireEvent.pointerDown(track, { clientX: 720, button: 0, pointerId: 1 })
+      fireEvent.pointerUp(track, { clientX: 720, pointerId: 1 })
+    })
+    expect(clock()).toBe('12:00:00')
+    await waitFor(() => expect(feedIds()).toEqual(['d-0000', 'd-1159', 'd-1200']))
+    expect(screen.getByTestId('rp-count')).toHaveTextContent('3 of 5 messages so far')
+    expect(screen.getByTestId('rp-head')).toHaveAttribute('aria-valuenow', '720')
+
+    // Dragging before the first message: the feed says when talk began.
+    act(() => {
+      fireEvent.pointerDown(track, { clientX: 0, button: 0, pointerId: 1 })
+      fireEvent.pointerUp(track, { clientX: 0, pointerId: 1 })
+    })
+    // 00:00:00 is the first message's own instant, so it is shown.
+    await waitFor(() => expect(feedIds()).toEqual(['d-0000']))
+  })
+
+  it('shows "Nothing yet" before the first message of the day', async () => {
+    fakeBackend({ [DAY]: AROUND_NOON.slice(1) })
+    renderAt(`/warroom/replay/${DAY}`)
+    const head = await screen.findByTestId('rp-head')
+    act(() => head.focus())
+    await userEvent.setup({ advanceTimers: vi.advanceTimersByTime }).keyboard('{Home}')
+    expect(await screen.findByTestId('rp-before')).toHaveTextContent('Nothing yet. The first message of the day came at 11:59.')
+    expect(screen.queryByTestId('rp-feed')).toBeNull()
+    const moments = screen.queryAllByTestId('rp-moment')
+    moments.forEach((b) => expect(b).toHaveClass('is-future'))
+  })
+
+  it('clicking a proposal marker jumps the time to that message and scrolls it into view', async () => {
+    const later = msg('t-late', '2026-10-28T15:00:00.000000Z', { content_md: 'Evening' })
+    fakeBackend({ [DAY]: [msg('t-1', '2026-10-28T05:00:00.000000Z'), proposalMessage({ thread_id: 'main-1' }), later] }, proposalDetail())
+    // jsdom has no scrolling: record where the virtualised feed is asked to scroll.
+    const scrollTo = vi.fn(function (this: Element, opts?: ScrollToOptions | number) {
+      if (typeof opts === 'object' && typeof opts.top === 'number') (this as HTMLElement).scrollTop = opts.top
+    })
+    Object.defineProperty(Element.prototype, 'scrollTo', { configurable: true, writable: true, value: scrollTo })
+    onTestFinished(() => {
+      delete (Element.prototype as Partial<Element>).scrollTo
+    })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    renderAt(`/warroom/replay/${DAY}`)
+    await waitFor(() => expect(feedIds()).toContain('t-late'))
+
+    const marker = screen.getAllByTestId('rp-marker').find((b) => b.dataset.kind === 'proposal')!
+    expect(marker).toHaveAccessibleName('14:19 Proposal')
+    scrollTo.mockClear()
+    await user.click(marker)
+
+    expect(clock()).toBe('14:19:00')
+    await waitFor(() => expect(feedIds()).toEqual(['t-1', 'm-prop-412']))
+    await waitFor(() => expect(document.activeElement?.getAttribute('data-msg-id')).toBe('m-prop-412'))
+    expect(scrollTo).toHaveBeenCalled()
+    expect(marker).toHaveClass('is-past')
+    // The inspector's moment follows the playhead: reached, and current.
+    const moment = screen.getByTestId('rp-moment')
+    expect(moment).toHaveClass('is-past')
+    expect(moment).toHaveAttribute('aria-current', 'step')
+  })
+
+  it('plays at 60× (60 s of replay per second), Space toggles play/pause and ArrowRight steps to the next message', async () => {
+    fakeBackend({ [DAY]: AROUND_NOON })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    renderAt(`/warroom/replay/${DAY}`)
+    const head = await screen.findByTestId('rp-head')
+    await waitFor(() => expect(feedIds()).toHaveLength(5))
+    expect(screen.getByRole('radio', { name: '60×' })).toBeChecked()
+
+    // Home puts the playhead at 00:00; 60× is the default speed.
+    act(() => head.focus())
+    await user.keyboard('{Home}')
+    expect(clock()).toBe('00:00:00')
+    const play = screen.getByTestId('rp-play')
+    await user.click(play)
+    expect(play).toHaveAttribute('aria-pressed', 'true')
+    expect(play).toHaveAccessibleName('Pause')
+    const t0 = seconds(clock())
+    act(() => vi.advanceTimersByTime(1000))
+    expect(seconds(clock()) - t0).toBe(60)
+    act(() => vi.advanceTimersByTime(2000))
+    expect(seconds(clock()) - t0).toBe(180)
+
+    // Space toggles play/pause from anywhere that is not a control.
+    act(() => (document.activeElement as HTMLElement | null)?.blur())
+    await user.keyboard(' ')
+    expect(play).toHaveAttribute('aria-pressed', 'false')
+    const paused = clock()
+    act(() => vi.advanceTimersByTime(2000))
+    expect(clock()).toBe(paused)
+    await user.keyboard(' ')
+    expect(play).toHaveAttribute('aria-pressed', 'true')
+    await user.keyboard(' ')
+    expect(play).toHaveAttribute('aria-pressed', 'false')
+
+    // ArrowRight on the playhead steps to the next message (11:59:59), then the next (12:00).
+    act(() => head.focus())
+    await user.keyboard('{ArrowRight}')
+    expect(clock()).toBe('11:59:59')
+    await waitFor(() => expect(feedIds()).toEqual(['d-0000', 'd-1159']))
+    await user.keyboard('{ArrowRight}')
+    expect(clock()).toBe('12:00:00')
+    expect(document.activeElement).toBe(head)
+    await user.keyboard('{ArrowLeft}')
+    expect(clock()).toBe('11:59:59')
+
+    // 10× advances ten seconds per second.
+    await user.click(screen.getByRole('radio', { name: '10×' }))
+    await user.click(play)
+    const t1 = seconds(clock())
+    act(() => vi.advanceTimersByTime(1000))
+    expect(seconds(clock()) - t1).toBe(10)
+  })
+
+  it('in Arabic, ArrowLeft goes forward in time, as the line runs right to left', async () => {
+    await i18n.changeLanguage('ar')
+    fakeBackend({ [DAY]: AROUND_NOON })
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    renderAt(`/warroom/replay/${DAY}`)
+    const head = await screen.findByTestId('rp-head')
+    act(() => head.focus())
+    await user.keyboard('{Home}{ArrowLeft}')
+    expect(clock()).toBe('11:59:59')
+    await user.keyboard('{ArrowRight}')
+    expect(clock()).toBe('00:00:00')
   })
 })

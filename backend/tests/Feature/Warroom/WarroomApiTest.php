@@ -230,6 +230,30 @@ it('replays one Baghdad day: 21:00 UTC the day before to 20:59:59 UTC, oldest fi
     $this->getJson('/api/warroom/replay')->assertStatus(422);
 });
 
+it('counts messages per Baghdad day for the replay sidebar, newest first, empty days as 0', function (): void {
+    $other = atl38Thread('demo', 'instrument', 'XAU-USDT-SWAP');
+    atl38Message($this->thread, CarbonImmutable::parse('2026-10-26T20:59:59Z'), 'oct26-last');
+    atl38Message($this->thread, CarbonImmutable::parse('2026-10-26T21:00:00Z'), 'oct27-first');
+    atl38Message($other, CarbonImmutable::parse('2026-10-27T12:00:00Z'), 'oct27-noon');
+    atl38Message($this->thread, CarbonImmutable::parse('2026-10-28T20:59:59Z'), 'oct28-last');
+    atl38Message($this->thread, CarbonImmutable::parse('2026-10-28T21:00:00Z'), 'oct29-first');
+    atl38Message(atl38Thread('live'), CarbonImmutable::parse('2026-10-28T08:00:00Z'), 'live');
+
+    $this->getJson('/api/warroom/replay/days?to=2026-10-28&days=3')->assertOk()
+        ->assertExactJson([
+            'data' => [
+                ['date' => '2026-10-28', 'count' => 1],
+                ['date' => '2026-10-27', 'count' => 2],
+                ['date' => '2026-10-26', 'count' => 1],
+            ],
+            'meta' => ['timezone' => 'Asia/Baghdad'],
+        ]);
+
+    expect($this->getJson('/api/warroom/replay/days?to=2026-10-28')->json('data'))->toHaveCount(7);
+    $this->getJson('/api/warroom/replay/days?to=2026-10-28&days=32')->assertStatus(422);
+    $this->getJson('/api/warroom/replay/days')->assertStatus(422);
+});
+
 it('lists the env threads with last_message_at, main first', function (): void {
     $empty = atl38Thread('demo', 'agent', 'historian');
     $btc = atl38Thread('demo', 'instrument', 'BTC-USDT-SWAP');
@@ -252,6 +276,7 @@ it('returns 401 for every endpoint when signed out', function (): void {
     $this->getJson('/api/warroom/messages?thread_id='.$this->thread->id)->assertUnauthorized();
     $this->postJson('/api/warroom/messages', ['thread_id' => $this->thread->id, 'content_md' => 'x'])->assertUnauthorized();
     $this->getJson('/api/warroom/replay?date=2026-10-28')->assertUnauthorized();
+    $this->getJson('/api/warroom/replay/days?to=2026-10-28')->assertUnauthorized();
     expect(atl38Envelopes())->toBe([]);
 });
 

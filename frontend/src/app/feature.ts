@@ -58,6 +58,8 @@ export interface SidebarSection {
   /** Optional visible heading (i18n key). Also the group's accessible name. */
   labelKey?: string
   component: ComponentType<SidebarSectionProps>
+  /** Draw the section only on these URLs (the War Room's Replay swaps agents and threads for its days). Default: every page of the area. */
+  showOn?: (pathname: string) => boolean
 }
 
 /** What every src/features/<name>/routes.tsx default-exports. */
