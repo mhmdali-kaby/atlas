@@ -23,9 +23,9 @@ for (const url of PAGES) {
   test(`${url} at 390px: axe reports no label-content-name-mismatch`, async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await settle(page, url)
-    const button = page.locator('header.shell-toolbar button').last()
-    await expect(button).toBeVisible()
-    await expect(button).toHaveAccessibleName(/^[A-Z]{1,2}/)
+    // ATL-224: at 390 px the account moves into More (⋯), the toolbar's last visible control; the
+    // account button's initials-first name is unit-tested in Prefs.test.tsx and checked at 1280 below.
+    await expect(page.getByTestId('toolbar-more')).toBeVisible()
 
     // Scoped to the shell's toolbar: a page's own content (e.g. the War Room's reply-quote link,
     // ATL-223 round 2 note) is a different task's finding, not this one's.
@@ -33,3 +33,10 @@ for (const url of PAGES) {
     expect(results.violations.flatMap((v) => v.nodes.map((n) => `${v.id} ${n.target.join(' ')} ${n.html}`))).toEqual([])
   })
 }
+
+test('the full toolbar at 1280 px names the account button with its initials first', async ({ page }) => {
+  await settle(page, '/portfolio')
+  const button = page.locator('header.shell-toolbar button').last()
+  await expect(button).toBeVisible()
+  await expect(button).toHaveAccessibleName(/^[A-Z]{1,2}/)
+})
