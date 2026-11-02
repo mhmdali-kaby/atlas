@@ -1,9 +1,11 @@
-import { CircleCheck, PanelRight, WifiOff } from 'lucide-react'
+import { CircleCheck, History, PanelRight, WifiOff } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { toolbarIconButton } from '../../app/shell/toolbarClasses'
+import { Link } from 'react-router'
+import { toolbarButton, toolbarIconButton } from '../../app/shell/toolbarClasses'
 import { useSession } from '../auth/session'
+import { useNow } from '../portfolio/hooks'
 import { Button, Spinner } from '../../ui'
 import { flattenMessages, useMessages, type WarroomMessage } from './api'
 import { Composer } from './Composer'
@@ -11,6 +13,7 @@ import { Feed } from './Feed'
 import { FeedEmpty, FeedError, FeedNotFound, FeedSkeleton } from './FeedStates'
 import { Inspector } from './Inspector'
 import { localMessages, useOutbox } from './live'
+import { lastReplayDay, replayPath } from './replay'
 import { runsForThread, useRuns } from './runs'
 import { useLiveFeed, type BannerState } from './useLiveFeed'
 import { useSelectedThread } from './selection'
@@ -86,6 +89,7 @@ export function WarRoomPage() {
   const nameOf = useThreadName()
   const messages = useMessages(env, selected?.id)
   const inspector = useInspector()
+  const now = useNow(60_000)
   // The shell's toolbar has a slot for page actions; the inspector toggle goes there.
   const [toolbarSlot, setToolbarSlot] = useState<Element | null>(null)
   const findSlot = (el: HTMLDivElement | null) => {
@@ -159,6 +163,11 @@ export function WarRoomPage() {
       )}
       {toolbarSlot &&
         createPortal(
+          <>
+          <Link to={replayPath(lastReplayDay(now))} className={toolbarButton} title={t('rp.openTip')} data-testid="wr-replay-open">
+            <History aria-hidden="true" strokeWidth={1.5} />
+            <span>{t('rp.open')}</span>
+          </Link>
           <button
             type="button"
             className={toolbarIconButton}
@@ -170,7 +179,8 @@ export function WarRoomPage() {
             data-testid="wr-inspector-toggle"
           >
             <PanelRight aria-hidden="true" strokeWidth={1.5} className="rtl:-scale-x-100" />
-          </button>,
+          </button>
+          </>,
           toolbarSlot,
         )}
     </div>

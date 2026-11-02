@@ -23,6 +23,7 @@ import { Button, Spinner } from '../../ui'
 import type { WarroomMessage } from './api'
 import { discardMessage, isLocal, retryMessage, type LocalMessage } from './live'
 import { MessageActions, MessageMenu } from './MessageActions'
+import { useReadOnly } from './readOnly'
 import { Medallion, SystemMedallion } from './Medallion'
 import { readPositioningReport } from './cards/positioning'
 import { readTechnicalSetup } from './cards/technicalSetup'
@@ -329,7 +330,8 @@ export function Message({ message: m, prev, parent, lang, active, tabbable, flas
   // are not still sending or failed. The context menu is the same two items, opened by right-click,
   // the context-menu key or Shift-F10 (all of which the browser turns into a native "contextmenu"
   // event on the focused element) — so one handler on the article covers all three.
-  const canAct = (shape === 'agent' || shape === 'owner') && !isLocal(m)
+  const readOnly = useReadOnly()
+  const canAct = (shape === 'agent' || shape === 'owner') && !isLocal(m) && !readOnly
   const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null)
   const closeMenu = () => {
     setMenuAt(null)

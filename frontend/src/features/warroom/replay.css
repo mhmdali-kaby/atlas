@@ -1,0 +1,88 @@
+/* ==========================================================================
+   War Room Replay (ATL-206; design v18 css/replay.css). A full-bleed page like the War Room: the
+   replay bar, then the read-only feed beside the day's inspector. The day line (ATL-207) goes
+   between the two. No new colours or type sizes.
+   ========================================================================== */
+/* Full-bleed like the live War Room (warroom.css): the page fills the content area and the feed scrolls. */
+.shell-content:has(> .shell-page > .rp) { overflow: hidden; }
+.shell-page:has(> .rp) { height: 100%; padding: 0; }
+.rp { display: flex; flex-direction: column; height: 100%; min-width: 0; min-height: 0; }
+.rp-bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
+  margin: 10px var(--page-gutter) 0; padding-block: 10px; padding-inline: 14px 12px; border-radius: var(--radius-card);
+  background: var(--accent-wash); box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--accent) 30%, transparent);
+}
+.rp-bar-ic { width: 30px; height: 30px; border-radius: 8px; display: grid; place-items: center; background: var(--accent-solid); color: var(--on-solid); flex: none; }
+.rp-bar-ic svg { width: 17px; height: 17px; }
+.rp-bar-text { flex: 1 1 260px; min-width: 0; display: grid; gap: 1px; }
+.rp-bar-title { font-size: var(--text-headline); line-height: var(--lh-headline); letter-spacing: var(--tr-headline); font-weight: 600; }
+.rp-bar-sub { font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.rp-bar-nav { display: inline-flex; align-items: center; gap: 6px; }
+.rp-icon-btn { width: 28px; padding-inline: 0; }
+.rp-date { min-width: 128px; }
+
+/* ---- Body: the feed and the docked inspector, as in the live War Room ------------- */
+.rp-body { flex: 1; min-height: 0; }
+.rp-main { position: relative; flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
+.rp-body .inspector { margin-top: 8px; }
+@media (max-width: 1279px) { .rp-insp { display: none; } }
+
+.rp-foot {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 10px;
+  padding: 10px var(--page-gutter) 12px; border-top: 0.5px solid var(--separator);
+  font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary);
+}
+.rp-foot > svg { width: 14px; height: 14px; }
+
+/* ---- The day's moments: the day line's markers stood on end, joined by a hairline rail ---- */
+.rp-mo-sec { gap: 8px; }
+.rp-mos { position: relative; list-style: none; margin: 0 -8px; padding: 0; display: grid; }
+.rp-mos::before { content: ""; position: absolute; top: 20px; bottom: 20px; inset-inline-start: 67.5px; width: 1px; background: var(--separator); pointer-events: none; }
+.rp-mo {
+  position: relative; display: grid; grid-template-columns: 40px 24px minmax(0, 1fr); align-items: start; gap: 8px;
+  width: 100%; padding: 8px; border: 0; border-radius: 8px; background: transparent; color: var(--label); font: inherit; text-align: start; cursor: default;
+}
+.rp-mo:hover { background: var(--fill-4); }
+.rp-mo:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.rp-mo-time { font-family: var(--font-num); font-size: var(--text-footnote); line-height: 24px; font-variant-numeric: tabular-nums; color: var(--label-secondary); text-align: end; direction: ltr; }
+.rp-mo-ic { position: relative; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--bg); color: var(--label); box-shadow: inset 0 0 0 1.5px var(--label); }
+.rp-mo-ic svg { width: 12px; height: 12px; }
+.rp-mo.is-proposal .rp-mo-ic { color: var(--accent-ink); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.rp-mo.is-system_alert .rp-mo-ic { color: var(--warning-ink); box-shadow: inset 0 0 0 1.5px var(--warning); }
+.rp-mo-text { display: grid; gap: 1px; min-width: 0; padding-top: 3px; }
+.rp-mo-l1 { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.rp-mo-what { font-size: var(--text-footnote); line-height: var(--lh-footnote); font-weight: 600; white-space: nowrap; }
+.rp-mo-who { min-width: 0; font-size: var(--text-caption); line-height: var(--lh-caption); color: var(--label-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rp-mo-sub { font-size: var(--text-caption); line-height: var(--lh-caption); color: var(--label-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-wrap: pretty; }
+.rp-mo-skel { display: flex; align-items: flex-start; gap: 8px; padding: 8px; }
+
+/* ---- Date picker ---------------------------------------------------------------- */
+.rp-cal-pop {
+  z-index: 60; width: 300px; padding: 10px; border-radius: var(--radius-panel);
+  background: var(--material-popover); -webkit-backdrop-filter: var(--material-filter); backdrop-filter: var(--material-filter);
+  box-shadow: var(--shadow-popover), 0 0 0 0.5px var(--hairline-color);
+}
+.rp-cal-pop:focus-visible { outline: none; }
+.rp-cal { display: grid; gap: 8px; }
+.rp-cal-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+.rp-cal-title { font-size: var(--text-subheadline); line-height: var(--lh-subheadline); font-weight: 600; }
+.rp-cal-nav { width: 28px; height: 28px; border: 0; border-radius: 8px; display: grid; place-items: center; background: transparent; color: var(--label); }
+.rp-cal-nav svg { width: 16px; height: 16px; }
+.rp-cal-nav:hover:not(:disabled) { background: var(--fill-3); }
+.rp-cal-nav:disabled { opacity: 0.4; }
+.rp-cal-nav:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.rp-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.rp-cal-wd { text-align: center; font-size: var(--text-caption); line-height: 24px; color: var(--label-secondary); }
+.rp-cal-d { height: 34px; border: 0; border-radius: 8px; background: transparent; color: var(--label); font: inherit; font-size: var(--text-footnote); cursor: default; }
+.rp-cal-d:hover:not([aria-disabled="true"]) { background: var(--fill-3); }
+.rp-cal-d.is-sel { background: var(--accent-solid); color: var(--on-solid); font-weight: 600; }
+.rp-cal-d[aria-disabled="true"] { color: var(--label-tertiary); }
+.rp-cal-d.is-today { box-shadow: inset 0 0 0 1px var(--separator-strong); }
+.rp-cal-d:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.rp-cal-note { display: flex; gap: 6px; align-items: flex-start; font-size: var(--text-caption); line-height: var(--lh-caption); color: var(--label-secondary); padding: 4px 2px 0; }
+.rp-cal-note svg { width: 13px; height: 13px; flex: none; margin-top: 1px; }
+
+@media (max-width: 899px) {
+  .rp-bar-sub { display: none; }
+  .rp-bar { margin-inline: 12px; }
+}
