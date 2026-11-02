@@ -134,6 +134,110 @@ final class SettingsSchema
     public const WEB_DOMAIN_FIELDS = ['agents.web.allow_domains', 'agents.web.deny_domains'];
 
     /**
+     * ATL-228, decision #255 (2): Settings → Schedule, Asia/Baghdad wall-clock times "HH:MM".
+     * Field => config key of its default.
+     *
+     * @var array<string, string>
+     */
+    public const SCHEDULE_TIME_FIELDS = [
+        'schedule.news_morning_brief' => 'atlas_defaults.agents.schedule.news_morning_brief',
+        'schedule.historian_regime_table' => 'atlas_defaults.agents.schedule.historian_regime_table',
+        'schedule.scout_watchlist' => 'atlas_defaults.agents.schedule.scout_watchlist',
+        'schedule.pm_daily_report' => 'atlas_defaults.agents.schedule.pm_daily_report',
+        'schedule.analysis_first_slot' => 'atlas_defaults.agents.schedule.analysis_first_slot',
+        'schedule.analysis_last_slot' => 'atlas_defaults.agents.schedule.analysis_last_slot',
+        'schedule.quiet_hours_start' => 'atlas_defaults.schedule.quiet_hours_start',
+        'schedule.quiet_hours_end' => 'atlas_defaults.schedule.quiet_hours_end',
+    ];
+
+    /** ATL-228: weekly jobs, "<Mon..Sun> HH:MM" Asia/Baghdad. */
+    public const SCHEDULE_WEEKLY_FIELDS = ['schedule.historian_weekly_review' => 'atlas_defaults.agents.schedule.historian_weekly_review'];
+
+    public const SCHEDULE_INTERVAL_FIELD = 'schedule.analysis_interval_minutes';
+
+    public const SCHEDULE_QUIET_ENABLED_FIELD = 'schedule.quiet_hours_enabled';
+
+    public const SCHEDULE_WEEKEND_FIELD = 'schedule.stock_perps_weekend';
+
+    /** "HH:MM", 00:00-23:59. */
+    public const TIME_PATTERN = '/^([01]\d|2[0-3]):[0-5]\d$/';
+
+    /** "<Day> HH:MM", the day as Python's and Carbon's three-letter English abbreviation. */
+    public const WEEKLY_PATTERN = '/^(Mon|Tue|Wed|Thu|Fri|Sat|Sun) ([01]\d|2[0-3]):[0-5]\d$/';
+
+    /**
+     * ATL-228: every schedule.* field, in Settings → Schedule order.
+     *
+     * @return list<string>
+     */
+    public static function scheduleFields(): array
+    {
+        return [
+            'schedule.news_morning_brief',
+            'schedule.historian_regime_table',
+            'schedule.scout_watchlist',
+            'schedule.pm_daily_report',
+            'schedule.historian_weekly_review',
+            self::SCHEDULE_INTERVAL_FIELD,
+            'schedule.analysis_first_slot',
+            'schedule.analysis_last_slot',
+            self::SCHEDULE_QUIET_ENABLED_FIELD,
+            'schedule.quiet_hours_start',
+            'schedule.quiet_hours_end',
+            self::SCHEDULE_WEEKEND_FIELD,
+        ];
+    }
+
+    /**
+     * [min, max] of schedule.analysis_interval_minutes (schedule.analysis_interval_minutes_min/max).
+     *
+     * @return array{0: int, 1: int}
+     */
+    public static function scheduleIntervalBounds(): array
+    {
+        $min = config('atlas_defaults.schedule.analysis_interval_minutes_min');
+        $max = config('atlas_defaults.schedule.analysis_interval_minutes_max');
+
+        return [is_int($min) ? $min : 15, is_int($max) ? $max : 240];
+    }
+
+    /**
+     * The values schedule.stock_perps_weekend accepts.
+     *
+     * @return list<string>
+     */
+    public static function weekendChoices(): array
+    {
+        $list = config('atlas_defaults.schedule.stock_perps_weekend_choices');
+
+        return is_array($list) ? array_values(array_map(strval(...), $list)) : [];
+    }
+
+    /**
+     * The schedule a fresh env starts with.
+     *
+     * @return array<string, bool|int|string>
+     */
+    public static function scheduleDefaults(): array
+    {
+        $values = [];
+        foreach ([...self::SCHEDULE_TIME_FIELDS, ...self::SCHEDULE_WEEKLY_FIELDS] as $field => $key) {
+            $values[$field] = self::configString($key);
+        }
+        $interval = config('atlas_defaults.agents.schedule.analysis_interval_minutes');
+        $values[self::SCHEDULE_INTERVAL_FIELD] = is_int($interval) ? $interval : 30;
+        $values[self::SCHEDULE_QUIET_ENABLED_FIELD] = config('atlas_defaults.schedule.quiet_hours_enabled') === true;
+        $values[self::SCHEDULE_WEEKEND_FIELD] = self::configString('atlas_defaults.schedule.stock_perps_weekend');
+
+        $out = [];
+        foreach (self::scheduleFields() as $field) {
+            $out[$field] = $values[$field];
+        }
+
+        return $out;
+    }
+
+    /**
      * Every field the settings data holds, in display order.
      *
      * @return list<string>
@@ -151,6 +255,7 @@ final class SettingsSchema
             ...array_keys(self::agentFields()),
             ...self::WEB_DOMAIN_FIELDS,
             ...self::notificationFields(),
+            ...self::scheduleFields(),
         ];
     }
 
@@ -404,7 +509,7 @@ final class SettingsSchema
             'stop_verify_seconds' => config('atlas_defaults.executor.stop_verify_seconds'),
             'order_max_retries' => config('atlas_defaults.executor.order_max_retries'),
             'emergency_stop_atr_mult' => config('atlas_defaults.executor.emergency_stop_atr_mult'),
-        ]), ...self::agentDefaults(), ...self::notificationDefaults()];
+        ]), ...self::agentDefaults(), ...self::notificationDefaults(), ...self::scheduleDefaults()];
     }
 
     /**
@@ -499,6 +604,21 @@ final class SettingsSchema
                     }
                 }
                 $out[$field] = $ids;
+
+                continue;
+            }
+            if (isset(self::SCHEDULE_TIME_FIELDS[$field]) || isset(self::SCHEDULE_WEEKLY_FIELDS[$field]) || $field === self::SCHEDULE_WEEKEND_FIELD) {
+                $out[$field] = is_string($value) ? $value : '';
+
+                continue;
+            }
+            if ($field === self::SCHEDULE_INTERVAL_FIELD) {
+                $out[$field] = is_numeric($value) ? (int) $value : 0;
+
+                continue;
+            }
+            if ($field === self::SCHEDULE_QUIET_ENABLED_FIELD) {
+                $out[$field] = $value === true;
 
                 continue;
             }

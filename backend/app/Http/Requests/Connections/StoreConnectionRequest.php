@@ -11,7 +11,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 /**
- * POST /api/connections. Phase 0 accepts only env=demo; live is refused with 422 (brief §20).
+ * POST /api/connections. One OKX connection per env: demo and, since ATL-235 (decision #255), live.
  */
 class StoreConnectionRequest extends FormRequest
 {
@@ -46,11 +46,6 @@ class StoreConnectionRequest extends FormRequest
                     return;
                 }
                 $env = $this->input('env');
-                if ($env === 'live') {
-                    $validator->errors()->add('env', __('connections.live_disabled'));
-
-                    return;
-                }
                 $exists = Connection::query()
                     ->where('exchange', $this->exchange())
                     ->where('env', $env)

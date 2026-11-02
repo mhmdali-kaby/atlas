@@ -16,6 +16,14 @@ return [
     'blocklist_until_format' => 'يجب أن تربط كل صلاحية حظر رمزَ أداة بوقت ISO 8601 مع منطقة زمنية، مثل "2026-11-01T20:59:59Z".',
     'blocklist_until_past' => 'يجب أن يكون تاريخ انتهاء الحظر في المستقبل.',
 
+    // ATL-228: الإعدادات ← الجدول الزمني (بتوقيت بغداد).
+    'schedule_time_format' => 'يجب أن يكون :attribute وقتًا بين 00:00 و23:59 بصيغة HH:MM مثل "07:30".',
+    'schedule_weekly_format' => 'يجب أن يكون :attribute يومًا من الأسبوع ووقتًا، مثل "Sun 18:00".',
+    'schedule_first_before_last' => 'يجب أن يكون :earlier قبل :later.',
+    'schedule_scout_after_brief' => 'يجب أن يكون :later بعد :earlier، لأن مستكشف السوق يقرأ الموجز الصباحي.',
+    'schedule_scout_after_regime' => 'يجب أن يكون :later بعد :earlier، لأن مستكشف السوق يقرأ جدول أنظمة السوق.',
+    'schedule_quiet_empty' => 'يجب أن تبدأ ساعات الهدوء وتنتهي في وقتين مختلفين.',
+
     'attr_agent_setting' => ':agent: :setting',
     'attr_notification' => ':event: :channel',
 
@@ -108,6 +116,22 @@ return [
         'emergency_stop_atr_mult' => 'مسافة وقف الطوارئ (×ATR)',
 
         'onboarding_completed' => 'اكتمال الإعداد الأولي',
+
+        // ATL-228: الإعدادات ← الجدول الزمني.
+        'schedule' => [
+            'news_morning_brief' => 'وقت الموجز الإخباري الصباحي',
+            'historian_regime_table' => 'وقت جدول أنظمة السوق من المؤرّخ',
+            'scout_watchlist' => 'وقت قائمة المراقبة من مستكشف السوق',
+            'pm_daily_report' => 'وقت التقرير اليومي لمدير المحفظة',
+            'historian_weekly_review' => 'المراجعة الأسبوعية للمؤرّخ',
+            'analysis_interval_minutes' => 'الفاصل بين دورات التحليل',
+            'analysis_first_slot' => 'أول دورة تحليل',
+            'analysis_last_slot' => 'آخر دورة تحليل',
+            'quiet_hours_enabled' => 'ساعات الهدوء',
+            'quiet_hours_start' => 'بداية ساعات الهدوء',
+            'quiet_hours_end' => 'نهاية ساعات الهدوء',
+            'stock_perps_weekend' => 'عقود الأسهم الدائمة في عطلة نهاية الأسبوع',
+        ],
 
         'agents' => [
             'web' => [

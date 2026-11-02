@@ -81,6 +81,25 @@ autonomy:
   # waits for the owner; at or below it is sent. Settings key `autonomy_ask_above_usd` overrides it.
   ask_above_usd: "1000"
 
+# ATL-228, decision #255 (2): the owner's Settings → Schedule keys (`schedule.*` in the settings
+# table). The job times and analysis slots default from agents.schedule above/below
+# (news_morning_brief, historian_regime_table, scout_watchlist, pm_daily_report,
+# historian_weekly_review, analysis_interval_minutes, analysis_first_slot, analysis_last_slot);
+# agents.schedule.scoring/reliability/tick_seconds stay config-only. All times are Asia/Baghdad.
+#   analysis_interval_minutes_min/max: the range the owner may set.
+#   quiet_hours_*: no new analysis cycles and only critical notifications inside the window
+#     (start..end, which may cross midnight). Off by default.
+#   stock_perps_weekend: allow | no_new_trades (Risk Engine check 2 refuses stock/ETF perps from
+#     Friday 20:00 to Sunday 20:00 US/Eastern).
+schedule:
+  analysis_interval_minutes_min: 15
+  analysis_interval_minutes_max: 240
+  quiet_hours_enabled: false
+  quiet_hours_start: "23:00"
+  quiet_hours_end: "07:00"
+  stock_perps_weekend: allow
+  stock_perps_weekend_choices: [allow, no_new_trades]
+
 # Brief §7.1 / §14.5. Volumes are USD notional over 24h.
 markets:
   min_24h_volume_usd:
