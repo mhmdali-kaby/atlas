@@ -24,6 +24,7 @@ from sqlalchemy import Engine, Integer, String, column, select, table
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Session
 
+from atlas_agents import schedule
 from atlas_agents.registry import AgentSpec
 
 log = logging.getLogger(__name__)
@@ -60,6 +61,8 @@ class AgentSettings:
     version: int | None
     specs: dict[str, AgentSpec]
     web: WebPolicy = field(default_factory=WebPolicy)
+    schedule_defaults: Mapping[str, Any] = field(default_factory=lambda: DEFAULTS)
+    """DEFAULTS with the row's ``schedule.*`` keys overlaid (ATL-229, :mod:`atlas_agents.schedule`)."""
 
 
 def read_row(engine: Engine, env: str) -> tuple[int | None, dict[str, Any]]:
@@ -150,6 +153,7 @@ def merge(
         version=version,
         specs={slug: merge_spec(spec, data, defaults) for slug, spec in base.items()},
         web=merge_web(data, defaults),
+        schedule_defaults=schedule.effective(data, defaults),
     )
 
 
