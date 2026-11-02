@@ -3,7 +3,10 @@
 The cycle (ATL-160):
 
 * ``analysis_cycle`` (every ``agents.orchestrator.check_seconds``): starts the cycle of the slot due
-  now (:func:`atlas_agents.orchestrator.cycle.due_slot`: every 30 min from 08:10 to 23:00 Baghdad).
+  now (:func:`atlas_agents.orchestrator.cycle.due_slot`: every 30 min from 08:10 to 23:00 Baghdad by
+  default; the owner's ``schedule.*`` settings, read on every check, ATL-229). Inside quiet hours no
+  scheduled cycle starts and one "Quiet hours until HH:MM" line is posted per window; ``/cycle now``
+  is the owner's explicit request and still runs.
   A slot runs once (``cycles`` is unique on env + slot_at), and never while a cycle is running.
 * ``orchestrator.cycle_now`` on ``atlas.warroom`` (what ``/cycle now`` publishes, ATL-163, and the
   ``orchestration.start_cycle`` tool): starts a ``manual`` cycle at once, unless one is running
@@ -29,11 +32,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import uuid
-from collections.abc import Coroutine
+from collections.abc import Coroutine, Mapping
 from typing import Any, Final
 
 from atlas_shared.events import EventEnvelope
 
+from atlas_agents import schedule
 from atlas_agents.mentions import MentionRequest
 from atlas_agents.orchestrator import classify, cycle, loops, owner, status, why
 from atlas_agents.registry import HOOKS, AgentHost, ScheduleFire
@@ -72,9 +76,42 @@ async def settled() -> None:
 # -- the cycle (ATL-160) ------------------------------------------------------------------------------
 
 
+QUIET_CARD: Final = "quiet_hours"
+_quiet_announced: set[tuple[str, str]] = set()
+"""(env, window start) of every quiet-hours window already announced by this process."""
+
+
+def _schedule(host: AgentHost) -> Mapping[str, Any]:
+    """DEFAULTS with the env's ``schedule.*`` settings overlaid, read now (ATL-229)."""
+    ctx = host.tool_context(SLUG)
+    with ctx.session_factory() as session:
+        return schedule.load(session, host.env)
+
+
+def _announce_quiet(host: AgentHost, window: schedule.QuietWindow) -> bool:
+    """One system line in Main per quiet-hours window; True when this call posted it."""
+    key = (host.env, window.key)
+    if key in _quiet_announced:
+        return False
+    _quiet_announced.add(key)
+    runner = cycle.CycleRunner(host)
+    runner.system_line(None, QUIET_CARD, f"Quiet hours until {window.end:%H:%M}.", card_type=QUIET_CARD)
+    return True
+
+
 async def _start_slot(host: AgentHost, fire: ScheduleFire) -> uuid.UUID | None:
-    slot = cycle.due_slot(fire.at)
-    if slot is None or host.replaying or cycle.running(host.env):
+    """Start the cycle of the slot due at ``fire.at`` from the owner's schedule settings, read on
+    every check (so a change applies with no restart). Inside quiet hours no cycle starts; the
+    first check in the window posts one "Quiet hours until HH:MM" line."""
+    if host.replaying:
+        return None
+    defaults = await asyncio.to_thread(_schedule, host)
+    window = schedule.quiet_window(fire.at, defaults)
+    if window is not None:
+        _announce_quiet(host, window)
+        return None
+    slot = cycle.due_slot(fire.at, defaults)
+    if slot is None or cycle.running(host.env):
         return None
     runner = cycle.CycleRunner(host)
     exists = await asyncio.to_thread(runner.slot_taken, slot)
