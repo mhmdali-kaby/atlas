@@ -2,7 +2,7 @@ import { ChevronLeft, CircleCheck, CircleX, Lightbulb, MessagesSquare, OctagonAl
 import { forwardRef, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
-import { formatFixed, formatPrice, formatSigned, type Lang } from '../../lib/format'
+import { formatFixed, formatMoney, formatPrice, type Lang } from '../../lib/format'
 import { Button } from '../../ui'
 import { cx } from '../../ui/cx'
 import { formatDuration } from '../portfolio/time'
@@ -71,7 +71,7 @@ function CompareTable({ e, lang }: { e: JournalEntry; lang: Lang }) {
     row('entry', zone, a.avg_entry ? <T k="c.avg" nodes={{ p: P(a.avg_entry) }} /> : '—'),
     row(
       'stop',
-      x.stop ? a.initial_risk_usd ? <T k="c.stopPlan" nodes={{ p: P(x.stop), usd: <Fig>{formatSigned(a.initial_risk_usd, 'USD', lang).replace(/^\+/, '')}</Fig> }} /> : P(x.stop) : '—',
+      x.stop ? a.initial_risk_usd ? <T k="c.stopPlan" nodes={{ p: P(x.stop), risk: <Fig>{`1R = ${formatMoney(a.initial_risk_usd, 'USD', lang)}`}</Fig> }} /> : P(x.stop) : '—',
       a.close_reason === 'stop_loss' ? (
         <span className="jr-c-bad">
           <OctagonAlert aria-hidden="true" strokeWidth={2} />
@@ -185,7 +185,7 @@ function LessonBlock({ e, lang }: { e: JournalEntry; lang: Lang }) {
         <Lightbulb aria-hidden="true" strokeWidth={1.75} />
         <span>{t('lesson')}</span>
       </p>
-      <p className="jr-lesson-text">
+      <p className="jr-lesson-text" dir="auto">
         <Inline text={lesson} />
       </p>
       <p className="jr-lesson-by">

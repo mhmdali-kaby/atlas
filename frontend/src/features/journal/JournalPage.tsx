@@ -290,10 +290,10 @@ export function JournalPage() {
                 const label = current ? t('thisWeek') : t('weekTo', { date: formatDate(g.end, lang) })
                 return (
                   <section key={g.end} className="jr-group" aria-label={label}>
-                    <h3 className="jr-group-head">
+                    <h2 className="jr-group-head">
                       <span>{label}</span>
                       {current && <span className="jr-group-note">{t('nextReview')}</span>}
-                    </h3>
+                    </h2>
                     {g.items.map((e) => (
                       <JournalRow key={e.id} e={e} href={hrefFor(f, e.id)} selected={selected?.id === e.id} lang={lang} onOpen={() => open(e.id)} />
                     ))}

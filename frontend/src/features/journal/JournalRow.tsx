@@ -4,7 +4,6 @@ import { Link } from 'react-router'
 import type { Lang } from '../../lib/format'
 import { cx } from '../../ui/cx'
 import { Inline } from '../warroom/text'
-import { rText } from '../warroom/cards/rText'
 import type { JournalEntry } from './api'
 import { closedAt, closeLabel, displayTags, lessonPending, lessonText, miniGeometry, outcomeOf, realisedR, sideOf } from './model'
 import { usdText, useTagLabel, whenText } from './format'
@@ -25,21 +24,12 @@ export function JournalRow({ e, href, selected, lang, onOpen }: { e: JournalEntr
   const pending = lessonPending(e)
   const lesson = lessonText(e)
   const inst = e.inst_id ?? '—'
-  const aria = t('rowAria', {
-    inst,
-    side: side ? t(side) : '',
-    outcome: t(`out.${outcome}`),
-    r: r === null ? '—' : rText(r, 2),
-    usd,
-    when,
-  })
   return (
     <Link
       to={href}
       replace={false}
       className={cx('jr-row', `is-${outcome}`)}
       aria-current={selected ? 'true' : undefined}
-      aria-label={aria}
       data-testid="journal-row"
       data-id={e.id}
       onClick={(ev) => {
@@ -49,6 +39,7 @@ export function JournalRow({ e, href, selected, lang, onOpen }: { e: JournalEntr
       }}
     >
       <OutcomeBadge outcome={outcome} />
+      <span className="sr-only">{t(`out.${outcome}`)}</span>
       <span className="jr-row-main">
         <span className="jr-row-top">
           <Inst id={inst} />
@@ -67,7 +58,7 @@ export function JournalRow({ e, href, selected, lang, onOpen }: { e: JournalEntr
           </span>
         ) : (
           lesson && (
-            <span className="jr-row-lesson">
+            <span className="jr-row-lesson" dir="auto">
               <Inline text={lesson} flat />
             </span>
           )
