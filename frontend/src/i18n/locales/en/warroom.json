@@ -866,8 +866,8 @@
     "prevMonth": "Previous month",
     "nextMonth": "Next month",
     "todayOff": "Today is still live. Replay shows finished days.",
-    "msgs_one": "{{count}} message",
-    "msgs_other": "{{count}} messages",
+    "msgs_one": "{{n}} message",
+    "msgs_other": "{{n}} messages",
     "feed": "War Room on {{date}}",
     "readonly": "Replay is read-only. Messages, approvals and edits happen in the live War Room.",
     "empty": {

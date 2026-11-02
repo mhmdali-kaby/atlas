@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate, useNavigate, useParams } from 'react-router'
 import { useTradingEnv } from '../../app/shell/tradingEnv'
-import type { Lang } from '../../lib/format'
+import { formatFixed, type Lang } from '../../lib/format'
 import { Button, Skeleton } from '../../ui'
 import { useLang, useNow } from '../portfolio/hooks'
 import type { WarroomMessage } from './api'
@@ -114,9 +114,8 @@ function ReplayDay({ day, now }: { day: string; now: number }) {
       <ReplayBar day={day} now={now} lang={lang} dayName={dayName} />
       {/* ATL-207: the day line (timeline scrubber) sits here, between the bar and the body. */}
       <div className="wr rp-body">
-        <section className="rp-main" aria-label={t('rp.banner', { date: dayName })}>
-          {main}
-        </section>
+        {/* Not a second landmark: the bar names the day, the feed's log names its messages. */}
+        <div className="rp-main">{main}</div>
         <ReplayInspector day={day} lang={lang} status={status} messages={messages} onPick={(id) => setJump((j) => ({ id, seq: (j?.seq ?? 0) + 1 }))} />
       </div>
     </div>
@@ -179,7 +178,7 @@ function DayPicker({ day, now, lang, trigger = 'empty' }: { day: string; now: nu
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger asChild>
         {trigger === 'bar' ? (
-          <Button size="sm" className="rp-date" icon={<Calendar aria-hidden="true" strokeWidth={1.5} />} aria-label={`${t('rp.pick')}: ${replayDayName(day, lang)}`} data-testid="rp-date">
+          <Button size="sm" className="rp-date" icon={<Calendar aria-hidden="true" strokeWidth={1.5} />} aria-label={`${replayDayName(day, lang, true)}, ${t('rp.pick')}`} data-testid="rp-date">
             {replayDayName(day, lang, true)}
           </Button>
         ) : (
@@ -282,14 +281,14 @@ function ReplayInspector({
         <h2 className="text-title-3">{replayDayName(day, lang)}</h2>
         <p className="insp-kind">
           <History aria-hidden="true" strokeWidth={1.5} />
-          <span>{status === 'ok' || status === 'empty' ? t('rp.msgs', { count: messages.length }) : t('rp.title')}</span>
+          <span>{status === 'ok' || status === 'empty' ? t('rp.msgs', { count: messages.length, n: formatFixed(messages.length, 0, lang) }) : t('rp.title')}</span>
         </p>
       </header>
       <section className="insp-sec rp-mo-sec" aria-labelledby="rp-mo-h">
         <h3 className="insp-title" id="rp-mo-h">
           <span>
             {t('rp.moments')}
-            {status === 'ok' && moments.length > 0 && <span className="num"> {moments.length}</span>}
+            {status === 'ok' && moments.length > 0 && <span className="num"> {formatFixed(moments.length, 0, lang)}</span>}
           </span>
         </h3>
         {body}

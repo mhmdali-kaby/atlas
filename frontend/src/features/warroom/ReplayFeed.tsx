@@ -14,6 +14,8 @@ import { ReadOnlyContext } from './readOnly'
  */
 
 const FLASH_MS = 1600
+/** "At the end" tolerance (px), as in the live feed. */
+const BOTTOM_SLACK = 48
 const NO_REPLY = () => {}
 const NO_MENU = () => {}
 
@@ -41,13 +43,25 @@ export function ReplayFeed({ messages, label, jump }: { messages: WarroomMessage
     paddingEnd: 24,
   })
 
-  // The day as it ended: open at the last message.
+  // The day as it ended: open at the last message, and stay there while rows measure in (their
+  // real heights replace the estimate a frame later), until the reader scrolls away.
+  const atBottom = useRef(true)
   const opened = useRef(false)
+  const total = virtualizer.getTotalSize()
   useLayoutEffect(() => {
-    if (opened.current || messages.length === 0) return
-    opened.current = true
-    virtualizer.scrollToIndex(messages.length - 1, { align: 'end' })
-  }, [messages.length, virtualizer])
+    const el = scrollRef.current
+    if (!el || messages.length === 0) return
+    if (!opened.current) {
+      opened.current = true
+      virtualizer.scrollToIndex(messages.length - 1, { align: 'end' })
+    } else if (atBottom.current) {
+      el.scrollTop = el.scrollHeight
+    }
+  }, [messages.length, total, virtualizer])
+  const onScroll = () => {
+    const el = scrollRef.current
+    if (el) atBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight <= BOTTOM_SLACK
+  }
 
   const [flashId, setFlashId] = useState<string | null>(null)
   const [focusId, setFocusId] = useState<string | null>(null)
@@ -57,6 +71,7 @@ export function ReplayFeed({ messages, label, jump }: { messages: WarroomMessage
     (id: string) => {
       const index = indexOf.get(id)
       if (index === undefined) return
+      atBottom.current = false
       virtualizer.scrollToIndex(index, { align: 'center' })
       setFlashId(id)
       window.setTimeout(() => setFlashId((cur) => (cur === id ? null : cur)), FLASH_MS)
@@ -99,6 +114,7 @@ export function ReplayFeed({ messages, label, jump }: { messages: WarroomMessage
             ? current
             : Math.max(0, Math.min(messages.length - 1, current + (e.key === 'ArrowDown' ? 1 : -1)))
     e.preventDefault()
+    atBottom.current = next === messages.length - 1
     const id = messages[next]!.id
     virtualizer.scrollToIndex(next, { align: 'auto' })
     setFocusId(id)
@@ -116,6 +132,7 @@ export function ReplayFeed({ messages, label, jump }: { messages: WarroomMessage
         aria-live="off"
         tabIndex={0}
         onKeyDown={onKeyDown}
+        onScroll={onScroll}
         onFocus={(e) => {
           const id = (e.target as HTMLElement).closest<HTMLElement>('[data-msg-id]')?.dataset.msgId
           if (id) setFocusId(id)

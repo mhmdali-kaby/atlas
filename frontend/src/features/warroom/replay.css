@@ -3,6 +3,9 @@
    replay bar, then the read-only feed beside the day's inspector. The day line (ATL-207) goes
    between the two. No new colours or type sizes.
    ========================================================================== */
+/* Full-bleed like the live War Room (warroom.css): the page fills the content area and the feed scrolls. */
+.shell-content:has(> .shell-page > .rp) { overflow: hidden; }
+.shell-page:has(> .rp) { height: 100%; padding: 0; }
 .rp { display: flex; flex-direction: column; height: 100%; min-width: 0; min-height: 0; }
 .rp-bar {
   display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px;
