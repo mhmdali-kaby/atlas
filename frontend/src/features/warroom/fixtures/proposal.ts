@@ -198,3 +198,105 @@ export function sentDetail(): ProposalDetail {
     ],
   })
 }
+
+/*
+ * The Portfolio Manager's own proposal (brief §7.8, ATL-169/184/185; design v18 §4.6 "the
+ * Portfolio Manager's action card"; ATL-219 criterion 5): a stop change on XAU-USDT-SWAP or a
+ * close of TSLA-USDT-SWAP, with check 7's own autonomy values. Shared by the Vitest tests
+ * (PmActionCard.test.tsx) and e2e/warroom-pm-autonomy.spec.ts.
+ */
+export type PmActionKind = 'amend_stop' | 'close'
+export const PM_PROPOSAL_ID = '7c6b5a40-2e1d-4c9b-8a7f-1b2c3d4e5f60'
+
+export function pmActionMessage(kind: PmActionKind): WarroomMessage {
+  return {
+    id: `m-pm-${kind}`,
+    thread_id: 'thread-main',
+    author_type: 'agent',
+    author: 'portfolio_manager',
+    kind: 'proposal',
+    content_md: kind === 'amend_stop' ? '**Move the stop to 4,117.6**, breakeven plus fees.' : '**Close all 600 contracts at market.**',
+    card: {
+      type: 'proposal',
+      proposal_id: PM_PROPOSAL_ID,
+      version: 1,
+      parent_id: null,
+      kind,
+      author: 'portfolio_manager',
+      status: 'awaiting_owner',
+      inst_id: kind === 'amend_stop' ? 'XAU-USDT-SWAP' : 'TSLA-USDT-SWAP',
+      side: kind === 'amend_stop' ? 'sell' : 'buy',
+      order_type: null,
+      entry: null,
+      entry_zone: null,
+      stop: kind === 'amend_stop' ? '4117.6' : null,
+      take_profits: [],
+      time_stop_minutes: null,
+      close_pct: kind === 'close' ? '100' : null,
+      leverage_suggestion: null,
+      expected_r_multiple: null,
+      probability_estimate: null,
+      rationale_md: kind === 'amend_stop' ? 'Rule: breakeven. The short is at +1.0R.' : 'Rule: invalidation. The 1H candle closed under 440.00.',
+      invalidation: null,
+      evidence: [],
+      created_at: '2026-10-28T11:30:00+00:00',
+    },
+    reply_to: null,
+    mentions: [],
+    reasoning_md: null,
+    tool_calls: [],
+    tokens_in: 2200,
+    tokens_out: 180,
+    cost_usd: '0.004000',
+    unmatched_numbers: null,
+    created_at: '2026-10-28T11:30:00.000000Z',
+  }
+}
+
+export function pmActionDetail(kind: PmActionKind, over: Partial<ProposalDetail> = {}): ProposalDetail {
+  return {
+    id: PM_PROPOSAL_ID,
+    env: 'demo',
+    version: 1,
+    parent_id: null,
+    kind,
+    author: 'portfolio_manager',
+    inst_id: kind === 'amend_stop' ? 'XAU-USDT-SWAP' : 'TSLA-USDT-SWAP',
+    side: kind === 'amend_stop' ? 'sell' : 'buy',
+    order_type: null,
+    entry: null,
+    entry_zone: null,
+    stop: kind === 'amend_stop' ? '4117.6' : null,
+    take_profits: [],
+    time_stop_minutes: null,
+    close_pct: kind === 'close' ? '100' : null,
+    size_suggestion_pct: null,
+    leverage_suggestion: null,
+    expected_r: null,
+    probability: null,
+    rationale_md: kind === 'amend_stop' ? 'Rule: breakeven. The short is at +1.0R.' : 'Rule: invalidation. The 1H candle closed under 440.00.',
+    invalidation: null,
+    status: 'awaiting_owner',
+    status_reason: null,
+    owner_note: null,
+    decided_by: null,
+    decided_at: null,
+    approval_expires_at: '2026-10-28T11:45:00.000000Z',
+    created_at: '2026-10-28T11:30:00.000000Z',
+    updated_at: '2026-10-28T11:30:00.000000Z',
+    risk_check: {
+      id: 'rc-pm-1',
+      result: 'approved',
+      decision: 'awaiting_owner',
+      reason: 'OK.',
+      final_contracts: kind === 'close' ? '600' : null,
+      final_notional_usd: kind === 'close' ? '262830' : null,
+      leverage: null,
+      checks: [autonomyCheck(7, { autonomy_level: 2, max_enabled_level: 4, notional_usd: kind === 'close' ? '262830' : '163848', ask_above_usd: '3000' })],
+      created_at: '2026-10-28T11:30:05.000000Z',
+    },
+    actions: { approve: true, approve_blocked_reason: null, edit: false, reject: true, ask_team: true },
+    orders: [],
+    ...over,
+  }
+}
