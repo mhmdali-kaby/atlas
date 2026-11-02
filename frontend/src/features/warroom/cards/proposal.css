@@ -238,3 +238,7 @@ a.pr-chip:hover { background: var(--fill-2); }
 .pr-why > div > :first-child { margin-top: 0; }
 .pr-why .md, .pr-why p { font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); }
 .pr-da-head .medal { flex: none; }
+
+/* The proposal card's note in Replay, where its actions would be. */
+.pr-readonly { display: flex; align-items: center; gap: 6px; font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.pr-readonly .icon { width: 14px; height: 14px; flex: none; }

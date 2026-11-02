@@ -852,5 +852,47 @@
     "evidence": "Key evidence",
     "unrelTitle": "Unreliable data",
     "unrelDefault": "Atlas does not read positioning from this data: neutral for both long and short."
+  },
+  "rp": {
+    "title": "Replay",
+    "open": "Replay",
+    "openTip": "Replay a past day",
+    "banner": "Replay, {{date}}",
+    "bannerSub": "Read-only. This is the War Room as it was; nothing here can act.",
+    "live": "Back to live",
+    "pick": "Choose a day",
+    "prevDay": "Previous day",
+    "nextDay": "Next day",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "todayOff": "Today is still live. Replay shows finished days.",
+    "msgs_one": "{{n}} message",
+    "msgs_other": "{{n}} messages",
+    "feed": "War Room on {{date}}",
+    "readonly": "Replay is read-only. Messages, approvals and edits happen in the live War Room.",
+    "empty": {
+      "title": "Nothing was said on {{date}}",
+      "body": "No agent or person wrote in the War Room that day. Choose another day."
+    },
+    "err": {
+      "title": "This day didn’t load",
+      "bodyBefore": "Atlas couldn’t reach its own server. Check that Atlas is running with",
+      "bodyAfter": ", then try again."
+    },
+    "cardNote": "As posted. Actions are off in Replay.",
+    "insp": "The day",
+    "moments": "Moments",
+    "momentsNone": "Nothing was proposed, ordered or filled that day, and no alert was raised.",
+    "momentsWait": "The day’s moments appear when it loads.",
+    "first": "First message",
+    "last": "Last message",
+    "mk": {
+      "watchlist": "Watchlist",
+      "proposal": "Proposal",
+      "order": "Order",
+      "fill": "Fill",
+      "system_alert": "System alert",
+      "post_mortem": "Post-mortem"
+    }
   }
 }
