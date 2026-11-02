@@ -1,5 +1,5 @@
 import type { WarroomMessage } from '../api'
-import type { ProposalDetail } from '../cards/proposal'
+import type { ProposalDetail, RiskCheckEntry } from '../cards/proposal'
 
 /*
  * A Strategist proposal as the War Room API and /api/proposals return it (ATL-153 card,
@@ -70,6 +70,14 @@ export function proposalMessage(over: Partial<WarroomMessage> = {}): WarroomMess
 
 /** ATL-189: the Strategist's odds basis (design v11: "Historian analogs 48%, +4 for the ETF catalyst"). */
 export const BASIS = { analog_hit_rate: '0.48', n: 31, adjustment_pts: '4', reason: 'for the ETF catalyst' } as const
+
+/**
+ * The autonomy check's own stored values (decision 254, ATL-212/219): check 9 for an entry, the
+ * `autonomy` check for a position action. Raw, as trading_core writes `risk_checks.checks[*].values`.
+ */
+export function autonomyCheck(n: number, values: Record<string, unknown>): RiskCheckEntry {
+  return { n, check: 'autonomy', passed: true, code: null, detail: 'Autonomy (ATL-219 fixture).', values }
+}
 
 export function proposalDetail(over: Partial<ProposalDetail> = {}): ProposalDetail {
   return {

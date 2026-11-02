@@ -29,6 +29,7 @@ import { readPositioningReport } from './cards/positioning'
 import { readTechnicalSetup } from './cards/technicalSetup'
 import { readProposalCard } from './cards/proposal'
 import { ProposalCard } from './cards/ProposalCard'
+import { PmActionCard } from './cards/PmActionCard'
 import { TechnicalSetupCard } from './cards/TechnicalSetupCard'
 import { DailyReportCard } from './cards/DailyReportCard'
 import { PositionUpdateCard } from './cards/PositionUpdateCard'
@@ -170,10 +171,11 @@ const CARDS: Partial<Record<string, (m: WarroomMessage, lang: Lang, ctx: CardCtx
   proposal: (m, lang, ctx) => {
     const ref = readProposalCard(m.card)
     if (!ref) return null
+    const isEntry = ref.snapshot.kind === 'entry'
     return (
       <>
         <AgentBody message={m} />
-        <ProposalCard cardRef={ref} lang={lang} onJump={ctx.onJump} />
+        {isEntry ? <ProposalCard cardRef={ref} lang={lang} onJump={ctx.onJump} /> : <PmActionCard cardRef={ref} lang={lang} onJump={ctx.onJump} />}
       </>
     )
   },

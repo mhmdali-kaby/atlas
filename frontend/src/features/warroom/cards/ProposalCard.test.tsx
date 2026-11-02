@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import i18n from '../../../i18n'
 import en from '../../../i18n/locales/en/proposal.json'
 import type { Lang } from '../../../lib/format'
-import { BASIS, DA_MESSAGE_ID, PROPOSAL_ID, proposalDetail, proposalMessage, sentDetail } from '../fixtures/proposal'
+import { autonomyCheck, BASIS, DA_MESSAGE_ID, PROPOSAL_ID, proposalDetail, proposalMessage, sentDetail } from '../fixtures/proposal'
 import { Message } from '../Message'
 import { proposalKey, stakeOf, type ProposalDetail } from './proposal'
 import { editErrors } from './ProposalSheets'
@@ -145,6 +145,52 @@ describe('proposal card', () => {
     expect(c.queryByTestId('pr-approve')).toBeNull()
     expect(c.queryByTestId('pr-countdown')).toBeNull()
     expect(c.getByTestId('pr-ask')).toBeInTheDocument()
+  })
+
+  it('autonomy 1 with the check’s own values: the AutonomyNote replaces the old advice line', async () => {
+    const detail = proposalDetail({
+      status: 'advise_only',
+      status_reason: 'advise_only',
+      actions: { approve: false, approve_blocked_reason: 'not_awaiting_owner', edit: false, reject: true, ask_team: true },
+    })
+    detail.risk_check = { ...detail.risk_check!, decision: 'advise_only', checks: [...detail.risk_check!.checks!, autonomyCheck(9, { autonomy_level: 1, max_enabled_level: 4, notional_usd: '2997.79', ask_above_usd: '3000' })] }
+    backend({ detail })
+    draw()
+    await waitFor(() => expect(card()).toHaveAttribute('data-status', 'advice'))
+    const note = within(card()).getByTestId('au-note')
+    expect(note).toHaveTextContent('Autonomy 1 never sends.')
+    expect(note).toHaveTextContent('This trade stays a suggestion.')
+    expect(within(card()).queryByText('Change it in Settings → Autonomy')).toBeNull()
+  })
+
+  it('autonomy 3, awaiting: the note sits under the approve-by band, with the check’s own figures', async () => {
+    const detail = proposalDetail()
+    detail.risk_check = { ...detail.risk_check!, checks: [...detail.risk_check!.checks!, autonomyCheck(9, { autonomy_level: 3, max_enabled_level: 4, notional_usd: '2997.79', ask_above_usd: '1000', note: 'above_ask_threshold' })] }
+    backend({ detail })
+    draw()
+    await waitFor(() => expect(card()).toHaveAttribute('data-status', 'awaiting_owner'))
+    const c = within(card())
+    expect(c.getByTestId('pr-band')).toBeInTheDocument()
+    const note = c.getByTestId('au-note')
+    expect(note).toHaveTextContent('Autonomy 3 asks you.')
+    expect(note).toHaveTextContent('$2,997.79')
+    expect(note).toHaveTextContent('$1,000.00')
+  })
+
+  it('autonomy 3, sent by autonomy: the badge says "Sent without asking" and the note names the amounts', async () => {
+    const detail = sentDetail()
+    detail.decided_by = 'autonomy:3'
+    detail.risk_check = { ...detail.risk_check!, checks: [...detail.risk_check!.checks!, autonomyCheck(9, { autonomy_level: 3, max_enabled_level: 4, notional_usd: '2997.79', ask_above_usd: '3000' })] }
+    backend({ detail })
+    draw()
+    await waitFor(() => expect(card()).toHaveAttribute('data-status', 'sent'))
+    const c = within(card())
+    expect(c.getByTestId('pr-status')).toHaveTextContent('Sent without asking')
+    expect(c.queryByTestId('pr-actions')).toBeNull()
+    const note = c.getByTestId('au-note')
+    expect(note).toHaveTextContent('Autonomy 3 didn’t ask.')
+    expect(note).toHaveTextContent('$2,997.79')
+    expect(note).toHaveTextContent('$3,000.00')
   })
 
   it('Reject: submit stays disabled without a reason, and with one it POSTs reject', async () => {

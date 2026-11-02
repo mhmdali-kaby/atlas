@@ -175,7 +175,18 @@ const DETAILS = [
   'The owner approves each trade.',
 ]
 
-export function riskCheckCard(mode: Mode = 'resized'): Record<string, unknown> {
+/** Check 9's own stored autonomy values (decision 254, ATL-212/219), raw as trading_core writes
+ *  them (`risk_checks.checks[8].values`). Used to override the plain "autonomy 2" fixture below. */
+export interface AutonomyOverride {
+  autonomy_level: number
+  max_enabled_level?: number
+  notional_usd?: string | null
+  ask_above_usd?: string
+  note?: 'above_ask_threshold' | 'risk_reducing' | 'halted' | 'notional_unknown' | 'level_not_enabled'
+  decision?: string
+}
+
+export function riskCheckCard(mode: Mode = 'resized', autonomy?: AutonomyOverride): Record<string, unknown> {
   const rejectedAt = mode === 'rejected' ? 6 : null
   const caps = { notional_by_risk: '4210.55', max_position_pct: '5000', max_usdt_per_trade: '3000', max_new_exposure_per_day: '20000', max_share_per_instrument: '25000', strategist_suggestion: mode === 'approved' ? '2997.79' : '4000' }
   const checks = NAMES9.map((check, i) => {
@@ -185,6 +196,11 @@ export function riskCheckCard(mode: Mode = 'resized'): Record<string, unknown> {
     }
     if (n === rejectedAt) {
       return { n, check, status: 'failed', passed: false, code: 'daily_loss_limit', detail: 'Today’s loss is 4.1% of equity, over the 4% daily limit.', values: {} }
+    }
+    if (n === 9 && autonomy) {
+      const values: Record<string, unknown> = { autonomy_level: autonomy.autonomy_level, max_enabled_level: autonomy.max_enabled_level ?? 4, notional_usd: autonomy.notional_usd ?? null, ask_above_usd: autonomy.ask_above_usd ?? '3000' }
+      if (autonomy.note) values.note = autonomy.note
+      return { n, check, status: 'passed', passed: true, code: null, detail: 'Autonomy (ATL-219 fixture).', values }
     }
     const values: Record<string, unknown> = n === 4 ? { contracts: '12.02', final_notional_usd: '2997.79', margin_usd: '999.27', leverage: 3, caps, binding_cap: mode === 'approved' ? 'strategist_suggestion' : 'max_usdt_per_trade' } : {}
     const detail = n === 4 && mode === 'approved' ? '12.02 contracts, 2997.79 USD at 3×.' : DETAILS[i]
@@ -198,7 +214,7 @@ export function riskCheckCard(mode: Mode = 'resized'): Record<string, unknown> {
     env: 'demo',
     settings_version: 6,
     result: mode,
-    decision: rejected ? null : 'awaiting_owner',
+    decision: rejected ? null : autonomy?.decision ?? 'awaiting_owner',
     reason: rejected ? 'Today’s loss is 4.1% of equity, over the 4% daily limit.' : 'Resized by max_usdt_per_trade: 12.02 contracts, 2997.79 USD.',
     failed_check: rejected ? 'loss_limits' : null,
     binding_cap: rejected ? null : mode === 'approved' ? 'strategist_suggestion' : 'max_usdt_per_trade',
@@ -209,14 +225,14 @@ export function riskCheckCard(mode: Mode = 'resized'): Record<string, unknown> {
   }
 }
 
-export function riskCheckMessage(mode: Mode = 'resized'): WarroomMessage {
+export function riskCheckMessage(mode: Mode = 'resized', autonomy?: AutonomyOverride): WarroomMessage {
   return {
     ...BASE,
     id: `msg-risk-${mode}`,
     author: 'orchestrator',
     kind: 'risk_check',
     content_md: mode === 'rejected' ? '**Rejected at check 6.** Today’s loss is 4.1% of equity, over the 4% daily limit, so no order goes to OKX.' : '**Resized: $2,997.79 instead of $4,000.00.** Max per trade set the size.',
-    card: riskCheckCard(mode),
+    card: riskCheckCard(mode, autonomy),
     created_at: '2026-10-28T11:23:04.000000Z',
   }
 }
