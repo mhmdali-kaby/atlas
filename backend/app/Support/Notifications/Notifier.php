@@ -25,6 +25,8 @@ use Illuminate\Support\Str;
  * 2. The env's settings `notifications.<event>.<channel>` decide: every channel off → nothing is
  *    stored. Otherwise one row is inserted, keyed on the envelope id (ON CONFLICT DO NOTHING), so
  *    a replayed or re-drained envelope never stores a second row and is never re-announced.
+ *    During quiet hours (QuietHours, ATL-229) the browser and telegram flags are stored false for
+ *    every event outside notifications.quiet_hours_always_deliver, so neither delivers it.
  * 3. A new row is broadcast as `notification.created` on private-system when in_app or browser is
  *    on, and NotificationCreated is dispatched (the Telegram sender's hook, ATL-215).
  */
@@ -49,9 +51,15 @@ final class Notifier
             return null;
         }
 
-        $channels = $this->channels($envelope['env'], $draft['event']);
+        [$channels, $values] = $this->channels($envelope['env'], $draft['event']);
         if (! in_array(true, $channels, true)) {
             return null;
+        }
+        // Quiet hours (ATL-229): the row is still written; browser and Telegram stay silent
+        // unless the event is one that must always reach the owner.
+        if (QuietHours::active($values, Carbon::now()) && ! QuietHours::alwaysDelivered($draft['event'])) {
+            $channels['browser'] = false;
+            $channels['telegram'] = false;
         }
 
         $notification = $this->store($envelope, $draft, $channels);
@@ -68,7 +76,9 @@ final class Notifier
     }
 
     /**
-     * @return array{in_app: bool, browser: bool, telegram: bool}
+     * The event's channel switches, and the env's settings values they were read from.
+     *
+     * @return array{0: array{in_app: bool, browser: bool, telegram: bool}, 1: array<string, mixed>}
      */
     private function channels(string $env, string $event): array
     {
@@ -80,7 +90,7 @@ final class Notifier
             $out[$channel] = ($values[SettingsSchema::notificationField($event, $channel)] ?? false) === true;
         }
 
-        return $out;
+        return [$out, $values];
     }
 
     /**

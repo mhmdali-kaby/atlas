@@ -56,6 +56,7 @@ from trading_core.risk.rules import (
     ScheduledEvent,
     check_loss_limits,
     decide_autonomy,
+    stock_perps_weekend,
     us_session_open,
 )
 
@@ -256,6 +257,76 @@ def test_stock_perp_outside_hours_passes_when_the_setting_is_off() -> None:
         ctx(TSLA, now=DST_0300, ticker_at=DST_0300, settings={"avoid_stock_perps_outside_us_hours": False})
     )
     assert out.checks[1]["status"] == "passed"
+
+
+# --- check 2: weekend stock perps (ATL-229, decision #255) ---------------------------------------
+
+# Saturday 12:00 New York in a DST week (EDT, UTC-4) and a standard-time week (EST, UTC-5).
+SAT_NOON = {
+    "dst": datetime(2026, 7, 18, 16, 0, tzinfo=UTC),
+    "standard": datetime(2026, 1, 17, 17, 0, tzinfo=UTC),
+}
+WEEKEND_OFF_HOURS = {"avoid_stock_perps_outside_us_hours": False}
+
+
+@pytest.mark.parametrize("offset", ["dst", "standard"])
+def test_stock_perp_on_saturday_is_rejected_with_no_new_trades(offset: str) -> None:
+    at = SAT_NOON[offset]
+    settings = {**WEEKEND_OFF_HOURS, "schedule.stock_perps_weekend": "no_new_trades"}
+    out = run_checks(ctx(TSLA, now=at, ticker_at=at, settings=settings))
+    _rejected_at(out, 2, "stock_perps_weekend")
+    assert "Sat 12:00" in out.checks[1]["detail"]
+
+
+@pytest.mark.parametrize("offset", ["dst", "standard"])
+def test_stock_perp_on_saturday_passes_with_allow(offset: str) -> None:
+    at = SAT_NOON[offset]
+    for settings in ({**WEEKEND_OFF_HOURS, "schedule.stock_perps_weekend": "allow"}, WEEKEND_OFF_HOURS):
+        out = run_checks(ctx(TSLA, now=at, ticker_at=at, settings=settings))
+        assert out.checks[1]["status"] == "passed"
+
+
+@pytest.mark.parametrize("offset", ["dst", "standard"])
+@pytest.mark.parametrize("choice", ["allow", "no_new_trades"])
+def test_crypto_perp_on_saturday_passes_either_way(offset: str, choice: str) -> None:
+    at = SAT_NOON[offset]
+    btc = replace(XAU, inst_id="BTC-USDT-SWAP", asset_class="crypto")
+    out = run_checks(
+        ctx(
+            btc,
+            now=at,
+            ticker_at=at,
+            proposal=proposal(btc),
+            settings={"schedule.stock_perps_weekend": choice},
+        )
+    )
+    assert out.checks[1]["status"] == "passed"
+
+
+@pytest.mark.parametrize(
+    ("at", "inside"),
+    [
+        # EDT (UTC-4): Fri 19:59 / 20:00 and Sun 19:59 / 20:00 New York.
+        (datetime(2026, 7, 17, 23, 59, tzinfo=UTC), False),
+        (datetime(2026, 7, 18, 0, 0, tzinfo=UTC), True),
+        (datetime(2026, 7, 19, 23, 59, tzinfo=UTC), True),
+        (datetime(2026, 7, 20, 0, 0, tzinfo=UTC), False),
+        # EST (UTC-5): the same wall-clock edges are an hour later in UTC.
+        (datetime(2026, 1, 17, 0, 59, tzinfo=UTC), False),
+        (datetime(2026, 1, 17, 1, 0, tzinfo=UTC), True),
+        (datetime(2026, 1, 19, 0, 59, tzinfo=UTC), True),
+        (datetime(2026, 1, 19, 1, 0, tzinfo=UTC), False),
+        (datetime(2026, 7, 15, 14, 0, tzinfo=UTC), False),  # a Wednesday
+    ],
+)
+def test_weekend_window_edges_follow_new_york_dst(at: datetime, inside: bool) -> None:
+    assert stock_perps_weekend(at) is inside
+
+
+def test_an_unknown_weekend_setting_never_fails_open() -> None:
+    settings = EngineSettings.from_settings_data({"schedule.stock_perps_weekend": "sometimes"})
+    assert settings.stock_perps_weekend == "no_new_trades"
+    assert EngineSettings.from_settings_data({}).stock_perps_weekend == "allow"
 
 
 # --- checks 3-5 --------------------------------------------------------------------------------

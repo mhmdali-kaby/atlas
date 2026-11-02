@@ -116,6 +116,7 @@ class EngineSettings:
     autonomy_level: int
     bot_capital_cap_usdt: Decimal | None = None  # None = no cap (decision #250)
     autonomy_ask_above_usd: Decimal = Decimal(1000)  # level 3 asks the owner above this (#254)
+    stock_perps_weekend: str = "allow"  # allow | no_new_trades (ATL-229, decision #255)
 
     @classmethod
     def from_settings_data(cls, data: Mapping[str, Any]) -> EngineSettings:
@@ -163,7 +164,17 @@ class EngineSettings:
             autonomy_ask_above_usd=_ask_above(
                 get("autonomy_ask_above_usd", DEFAULTS["autonomy"], "ask_above_usd")
             ),
+            stock_perps_weekend=_weekend(
+                get("schedule.stock_perps_weekend", DEFAULTS["schedule"], "stock_perps_weekend")
+            ),
         )
+
+
+def _weekend(raw: Any) -> str:
+    """schedule.stock_perps_weekend: one of schedule.stock_perps_weekend_choices. An unknown value
+    never fails open: it is read as no_new_trades."""
+    choices = [str(c) for c in DEFAULTS["schedule"]["stock_perps_weekend_choices"]]
+    return str(raw) if isinstance(raw, str) and raw in choices else "no_new_trades"
 
 
 def _ask_above(raw: Any) -> Decimal:
@@ -298,6 +309,31 @@ def us_session_open(now: datetime, config: Mapping[str, Any] | None = None) -> b
     return _hhmm(str(session["open"])) <= local.time() < _hhmm(str(session["close"]))
 
 
+def _weekly(value: str) -> tuple[int, time]:
+    """A weekly time such as "Fri 20:00" as (ISO weekday, time)."""
+    day, clock = value.split()
+    names = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+    return names.index(day[:3].lower()) + 1, _hhmm(clock)
+
+
+def stock_perps_weekend(now: datetime, config: Mapping[str, Any] | None = None) -> bool:
+    """True inside the stock-perp weekend window (default Fri 20:00 to Sun 20:00 US/Eastern), read
+    in the window's own timezone so DST comes from the tz database."""
+    window = (config or rules_config())["stock_perps_weekend"]
+    local = now.astimezone(ZoneInfo(str(window["timezone"])))
+    start_day, start_at = _weekly(str(window["start"]))
+    end_day, end_at = _weekly(str(window["end"]))
+
+    def minute(day: int, at: time) -> int:  # minutes since Monday 00:00
+        return (day - 1) * 1440 + at.hour * 60 + at.minute
+
+    current = minute(local.isoweekday(), local.time())
+    start, end = minute(start_day, start_at), minute(end_day, end_at)
+    if start <= end:
+        return start <= current < end
+    return current >= start or current < end  # the window wraps past Sunday midnight
+
+
 def check_instrument(
     *,
     inst_id: str,
@@ -349,6 +385,20 @@ def check_instrument(
                 "outside_us_hours",
                 f"Stock perps are avoided outside US hours ({cfg['open']}-{cfg['close']} "
                 f"{cfg['timezone']}); it is {local:%a %H:%M} there.",
+                values,
+            )
+    if market == "stock_perp" and settings.stock_perps_weekend == "no_new_trades":
+        window = (config or rules_config())["stock_perps_weekend"]
+        local = now.astimezone(ZoneInfo(str(window["timezone"])))
+        values["stock_perps_weekend"] = settings.stock_perps_weekend
+        if stock_perps_weekend(now, config):
+            values["us_local_time"] = local.isoformat()
+            return CheckResult(
+                name,
+                False,
+                "stock_perps_weekend",
+                f"No new stock perp trades at the weekend ({window['start']} to {window['end']} "
+                f"{window['timezone']}); it is {local:%a %H:%M} there.",
                 values,
             )
     return CheckResult(name, True, None, f"{inst_id} is allowed.", values)
