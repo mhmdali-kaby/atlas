@@ -18,6 +18,7 @@ const PAGES = [
   '/portfolio/orders',
   '/portfolio/holdings',
   '/portfolio/cashflows',
+  '/portfolio/scorecards',
   '/settings/connections',
   '/settings/risk',
   '/settings/money',

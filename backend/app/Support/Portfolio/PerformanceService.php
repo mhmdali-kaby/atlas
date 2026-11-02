@@ -36,6 +36,30 @@ final class PerformanceService
     public function __construct(private readonly PortfolioService $portfolio) {}
 
     /**
+     * Realised USD P&L by agent, for trades closed in `[fromUtc, toUtc)` (ATL-204): the same
+     * trades and the same USD-stable filter as this service's own By-agent breakdown, so
+     * Portfolio → Scorecards and Portfolio → Performance always agree. Agents with no counted
+     * trade in the window are absent; a position Atlas did not open (`agent` null) is excluded.
+     *
+     * @return array<string, string>
+     */
+    public function pnlByAgent(string $env, CarbonImmutable $fromUtc, CarbonImmutable $toUtc): array
+    {
+        $trades = $this->trades($env, $fromUtc, $toUtc)['usd'];
+
+        /** @var array<string, BigDecimal> $sums */
+        $sums = [];
+        foreach ($trades as $t) {
+            if ($t['agent'] === null) {
+                continue;
+            }
+            $sums[$t['agent']] = ($sums[$t['agent']] ?? BigDecimal::zero())->plus($t['pnl']);
+        }
+
+        return array_map(static fn (BigDecimal $v): string => Money::str($v) ?? '0', $sums);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function performance(string $env, string $range): array
