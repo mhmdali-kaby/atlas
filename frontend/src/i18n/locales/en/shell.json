@@ -17,6 +17,7 @@
     "agents": "Agents",
     "portfolio": "Portfolio",
     "journal": "Journal",
+    "backtester": "Backtester",
     "settings": "Settings"
   },
   "toolbar": "Toolbar",
