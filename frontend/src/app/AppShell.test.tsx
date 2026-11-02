@@ -234,7 +234,9 @@ describe('language switch', () => {
     renderShell(['/portfolio'])
     await screen.findByText('Protected overview')
 
-    await user.click(screen.getByRole('button', { name: 'Switch to Arabic' }))
+    // ATL-225: the button's accessible name is the target language's own name plus a hidden
+    // hint, not a fixed "Switch to …" string, so the click target is its stable test id.
+    await user.click(screen.getByTestId('language-switch'))
     expect(html.dir).toBe('rtl')
     expect(html.lang).toBe('ar')
     expect(localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('ar')
@@ -242,7 +244,7 @@ describe('language switch', () => {
     expect(screen.getByRole('complementary', { name: 'الشريط الجانبي' })).toBeInTheDocument()
     expect(screen.getByRole('contentinfo')).toHaveTextContent('تجريبي/حقيقي: تجريبي')
 
-    await user.click(screen.getByRole('button', { name: 'التبديل إلى الإنجليزية' }))
+    await user.click(screen.getByTestId('language-switch'))
     expect(html.dir).toBe('ltr')
     expect(html.lang).toBe('en')
     expect(localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('en')
@@ -252,7 +254,7 @@ describe('language switch', () => {
     fakeBackend().signedIn = false
     const user = userEvent.setup()
     renderShell(['/login'])
-    await user.click(await screen.findByRole('button', { name: 'Switch to Arabic' }))
+    await user.click(await screen.findByTestId('language-switch'))
     expect(html.dir).toBe('rtl')
     expect(screen.getByRole('contentinfo')).toHaveTextContent('تجريبي/حقيقي: تجريبي')
   })

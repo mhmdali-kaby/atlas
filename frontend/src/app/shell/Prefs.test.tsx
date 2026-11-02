@@ -1,9 +1,9 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { act } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import i18n from '../../i18n'
-import { AccountMenu, MoreMenu } from './Prefs'
+import { AccountMenu, LanguageButton, MoreMenu } from './Prefs'
 
 /**
  * ATL-223: the account button's accessible name must contain the visible initials, so axe's
@@ -99,5 +99,34 @@ describe('MoreMenu', () => {
     expect(screen.queryByRole('group', { name: 'Positions' })).toBeNull()
     await user.click(await screen.findByRole('menuitem', { name: 'Sign out' }))
     expect(onSignOut).toHaveBeenCalledTimes(1)
+  })
+})
+
+/**
+ * ATL-225: the language switch's accessible name must start with the same text it shows on
+ * screen — the target language's own name, in its own script — instead of a separate aria-label
+ * translating "Switch to …" in the current language (which never shared a script with it).
+ */
+describe('LanguageButton', () => {
+  it('names the button starting with "العربية", its visible label, while in English', () => {
+    render(<LanguageButton />)
+    const button = screen.getByTestId('language-switch')
+    expect(button).toHaveTextContent('العربية')
+    expect(button).toHaveAccessibleName(/^العربية/)
+  })
+
+  it('names the button starting with "English", its visible label, while in Arabic', async () => {
+    await act(() => i18n.changeLanguage('ar'))
+    render(<LanguageButton />)
+    const button = screen.getByTestId('language-switch')
+    expect(button).toHaveTextContent('English')
+    expect(button).toHaveAccessibleName(/^English/)
+  })
+
+  it('still flips the language on click', async () => {
+    const user = userEvent.setup()
+    render(<LanguageButton />)
+    await user.click(screen.getByTestId('language-switch'))
+    await waitFor(() => expect(i18n.language).toBe('ar'))
   })
 })

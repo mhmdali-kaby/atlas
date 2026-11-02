@@ -193,8 +193,11 @@ describe('War Room', () => {
     expect(within(agents).getByText('All offline')).toBeInTheDocument()
     const rows = within(agents).getAllByRole('button')
     expect(rows).toHaveLength(9)
-    expect(rows[0]).toHaveAccessibleName('Orchestrator, Offline')
-    expect(rows[3]).toHaveAccessibleName('Historian, Offline')
+    // ATL-225: offline, the row's accessible name starts with the visible name and role
+    // (dropped the aria-label, which omitted the role), then adds the status word via a
+    // hidden span.
+    expect(rows[0]).toHaveAccessibleName('Orchestrator Runs the process and answers you first Offline')
+    expect(rows[3]).toHaveAccessibleName('Historian Answers with statistics from history Offline')
     expect(within(rows[3]!).getByText('Answers with statistics from history')).toBeInTheDocument()
 
     const threads = await screen.findByTestId('wr-threads')

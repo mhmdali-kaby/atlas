@@ -20,6 +20,8 @@ const T = { en: { shell: enShell, wr: enWarroom }, ar: { shell: arShell, wr: arW
 const LAST_OWNER_TEXT = 'Hold new entries until CPI at 15:30, then send me the plan.'
 const AGENT_SLUGS = Object.keys(enWarroom.agents)
 
+const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
 test.use({ viewport: { width: 1440, height: 900 } })
 
 const feedOf = (page: Page) => page.getByTestId('wr-feed')
@@ -46,9 +48,13 @@ test('"/" lands on the War Room with Main selected, the nine agents offline and 
   const rows = agents.getByRole('button')
   await expect(rows).toHaveCount(9)
   for (const [i, slug] of AGENT_SLUGS.entries()) {
-    const name = t.wr.agents[slug as keyof typeof t.wr.agents].name
+    const { name, role } = t.wr.agents[slug as keyof typeof t.wr.agents]
     await expect(rows.nth(i)).toHaveAttribute('data-status', 'offline')
-    await expect(rows.nth(i)).toHaveAccessibleName(t.wr.agentLabel.replace('{{name}}', name).replace('{{status}}', t.wr.status.offline))
+    // ATL-225: offline, the row's visible text is the name then the role (not the status word),
+    // so the accessible name must start with those and still carry the status via a hidden span.
+    await expect(rows.nth(i)).toHaveAccessibleName(
+      new RegExp(`^${escapeRegExp(name)}\\s+${escapeRegExp(role)}\\s+${escapeRegExp(t.wr.status.offline)}$`),
+    )
   }
 
   const threads = page.getByTestId('wr-threads').getByRole('link')

@@ -53,7 +53,6 @@
     "degraded": "متعثّر",
     "paused": "موقوف مؤقتًا"
   },
-  "agentLabel": "{{name}}، {{status}}",
   "tag": {
     "CONFIRMED": "مؤكَّد",
     "REPORTED": "منقول",

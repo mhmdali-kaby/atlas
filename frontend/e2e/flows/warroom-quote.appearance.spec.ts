@@ -16,15 +16,9 @@ import { expect, test } from './appearance'
  * flashes) the original message, unscoped (the account-menu spec's run stays scoped to the
  * toolbar; this one covers the page body).
  *
- * Excludes two pre-existing, unrelated mismatches that a full-page scan would otherwise also
- * catch (both flagged in the room for their own tasks, not fixed here):
- * - `[data-testid="wr-agents"]`: the sidebar's agent rows (SidebarSections.tsx AgentList) have
- *   aria-label "<name>, Offline", but the visible row also shows the agent's one-line
- *   role/status text, which the label omits.
- * - `[data-testid="language-switch"]`: the toolbar's language toggle (shell) shows the *target*
- *   language's own name as its visible text ("English" when the UI is in Arabic, "العربية" when
- *   it is in English) but its aria-label translates "Switch to …" in the *current* language, so
- *   the two never share a script.
+ * ATL-225 fixed the sidebar's AgentList rows and the toolbar's language switch, the two
+ * pre-existing mismatches this spec used to exclude, so the scan now runs with no
+ * include/exclude at all.
  */
 const QUESTION_TEXT = 'what usually happens after CPI'
 
@@ -49,11 +43,7 @@ for (const [label, size] of SIZES) {
     const leads = lang === 'ar' ? 'أنت' : 'You'
     await expect(quote).toHaveAccessibleName(new RegExp(`^${leads}`))
 
-    const results = await new AxeBuilder({ page })
-      .exclude('[data-testid="wr-agents"]')
-      .exclude('[data-testid="language-switch"]')
-      .withRules(['label-content-name-mismatch'])
-      .analyze()
+    const results = await new AxeBuilder({ page }).withRules(['label-content-name-mismatch']).analyze()
     expect(results.violations.flatMap((v) => v.nodes.map((n) => `${v.id} ${n.target.join(' ')} ${n.html}`))).toEqual([])
   })
 }
