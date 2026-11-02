@@ -31,6 +31,7 @@
     "dark": "داكن"
   },
   "account": "الحساب",
+  "accountAria": "{{initials}}، الحساب",
   "signOut": "تسجيل الخروج",
   "signedOut": "تم تسجيل الخروج",
   "notFound": {

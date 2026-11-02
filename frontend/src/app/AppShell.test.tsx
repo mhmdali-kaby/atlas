@@ -306,7 +306,8 @@ describe('sign out', () => {
     const router = renderShell(['/portfolio', '/portfolio/positions'])
     expect(await screen.findByText('Protected positions')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'Account' }))
+    // ATL-223: the accessible name now leads with the owner's initials ("MA, Account").
+    await user.click(screen.getByRole('button', { name: 'MA, Account' }))
     expect(await screen.findByText(OWNER.email)).toBeInTheDocument()
     await user.click(screen.getByRole('menuitem', { name: 'Sign out' }))
 
