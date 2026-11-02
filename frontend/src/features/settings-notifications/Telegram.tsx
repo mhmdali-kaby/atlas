@@ -6,7 +6,8 @@ import { Button, SecureField, Sheet, SheetClose, TextField, toast } from '../../
 import { Notice } from '../onboarding'
 import { useLang } from '../portfolio/hooks'
 import { formatClock, formatDayTime } from '../portfolio/time'
-import { iso, masked, serverFieldErrors, useRemoveBot, useSaveBot, useTestBot, validateBot, type TelegramState } from './model'
+import { iso } from '../notifications/events'
+import { masked, serverFieldErrors, useRemoveBot, useSaveBot, useTestBot, validateBot, type TelegramState } from './model'
 import { Fig } from './parts'
 
 /*

@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useCallback, useEffect, useState } from 'react'
 import { api, ApiError, useApiQuery } from '../../lib/api'
 import type { SettingsDoc } from '../onboarding'
+import { EVENTS, iso, type EventId } from '../notifications/events'
 
 /*
  * Settings → Notifications (brief §14.9, decision 254 (2)(3); design v18 §6,
@@ -9,26 +9,6 @@ import type { SettingsDoc } from '../onboarding'
  * flat settings keys notifications.<event>.<channel> (ATL-214), and the Telegram bot behind
  * GET/PUT/DELETE /api/notifications/telegram + POST …/test (ATL-215).
  */
-
-export const GROUPS = ['needs', 'trades', 'team'] as const
-export type Group = (typeof GROUPS)[number]
-
-export const EVENTS = [
-  { id: 'proposal_awaiting_approval', group: 'needs', tone: 'accent' },
-  { id: 'circuit_breaker', group: 'needs', tone: 'critical' },
-  { id: 'kill_switch', group: 'needs', tone: 'critical' },
-  { id: 'reconciliation_mismatch', group: 'needs', tone: 'critical' },
-  { id: 'order_filled', group: 'trades', tone: 'neutral' },
-  { id: 'stop_hit', group: 'trades', tone: 'warning' },
-  { id: 'target_hit', group: 'trades', tone: 'profit' },
-  { id: 'news_alert', group: 'team', tone: 'warning' },
-  { id: 'agent_degraded', group: 'team', tone: 'warning' },
-  { id: 'data_stale', group: 'team', tone: 'warning' },
-  { id: 'daily_report', group: 'team', tone: 'neutral' },
-] as const satisfies readonly { id: string; group: Group; tone: string }[]
-
-export type EventId = (typeof EVENTS)[number]['id']
-export type Tone = (typeof EVENTS)[number]['tone']
 
 export const CHANNELS = ['in_app', 'browser', 'telegram'] as const
 export type Channel = (typeof CHANNELS)[number]
@@ -177,47 +157,7 @@ export function useTestBot() {
   })
 }
 
-/* ---------------------------------------------------------- browser permission */
-
-export type Permission = 'granted' | 'denied' | 'default' | 'unsupported'
-
-function readPermission(): Permission {
-  if (typeof window === 'undefined' || !('Notification' in window)) return 'unsupported'
-  return window.Notification.permission
-}
-
-/**
- * The browser's notification permission, kept current when the owner changes it in site settings.
- * `ask()` is only ever called from a button press: nothing asks on page load (design §5.4).
- */
-export function useBrowserPermission(): {
-  permission: Permission
-  ask: () => Promise<void>
-} {
-  const [permission, setPermission] = useState<Permission>(readPermission)
-  useEffect(() => {
-    let status: PermissionStatus | undefined
-    const update = () => setPermission(readPermission())
-    void navigator.permissions
-      ?.query({ name: 'notifications' as PermissionName })
-      .then((s) => {
-        status = s
-        s.addEventListener('change', update)
-      })
-      .catch(() => undefined)
-    return () => status?.removeEventListener('change', update)
-  }, [])
-  const ask = useCallback(async () => {
-    if (readPermission() !== 'default') return
-    await window.Notification.requestPermission()
-    setPermission(readPermission())
-  }, [])
-  return { permission, ask }
-}
-
 /* ------------------------------------------------------------------ text */
 
-/** An LTR isolate inside running text (figures, times, IDs; design §7). */
-export const iso = (s: string) => `⁦${s}⁩`
 /** `•••• WXYZ` as one LTR isolate, so the dots stay with the last 4 in Arabic. */
 export const masked = (last4: string) => iso(`•••• ${last4}`)

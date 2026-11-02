@@ -2,7 +2,9 @@ import { AppWindow, ChevronsUpDown, CircleSlash, MonitorDot, Send } from 'lucide
 import { useTranslation } from 'react-i18next'
 import { AppIcon } from '../../ui'
 import { cx } from '../../ui/cx'
-import { EVENTS, prefKey, type Channel, type EventId, type Permission, type Prefs } from './model'
+import type { Permission } from '../notifications/browser'
+import { EVENTS, type EventId } from '../notifications/events'
+import { prefKey, type Channel, type Prefs } from './model'
 import { EventTile } from './parts'
 
 /*

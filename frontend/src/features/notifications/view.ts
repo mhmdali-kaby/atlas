@@ -17,6 +17,7 @@ import {
 import { formatDate, formatTime } from '../warroom/time'
 import { formatDecimal, formatMoney, type Lang } from '../../lib/format'
 import type { NotificationRow } from './api'
+import { isEventId, iso, toneOf, type EventId, type Tone } from './events'
 
 /*
  * One title, body and meta line per row, built only from `event` and `params` (design v18 §5.2),
@@ -25,27 +26,24 @@ import type { NotificationRow } from './api'
  * and its source) are first-strong isolates and are only ever rendered as text.
  */
 
-export type Tone = 'accent' | 'critical' | 'warning' | 'profit' | 'neutral'
-
-const EVENTS: Record<string, { tone: Tone; icon: LucideIcon; action: string }> = {
-  proposal_awaiting_approval: { tone: 'accent', icon: Hand, action: 'review' },
-  circuit_breaker: { tone: 'critical', icon: OctagonAlert, action: 'warroom' },
-  kill_switch: { tone: 'critical', icon: OctagonX, action: 'warroom' },
-  reconciliation_mismatch: { tone: 'critical', icon: Scale, action: 'positions' },
-  order_filled: { tone: 'neutral', icon: CheckCheck, action: 'order' },
-  stop_hit: { tone: 'warning', icon: ShieldX, action: 'position' },
-  target_hit: { tone: 'profit', icon: Target, action: 'position' },
-  news_alert: { tone: 'warning', icon: Newspaper, action: 'news' },
-  agent_degraded: { tone: 'warning', icon: Bot, action: 'agents' },
-  data_stale: { tone: 'warning', icon: WifiOff, action: 'data' },
-  daily_report: { tone: 'neutral', icon: FileText, action: 'report' },
+/** What each event adds to the shared catalogue (./events): its icon and its row action. */
+const EXTRA: Record<EventId, { icon: LucideIcon; action: string }> = {
+  proposal_awaiting_approval: { icon: Hand, action: 'review' },
+  circuit_breaker: { icon: OctagonAlert, action: 'warroom' },
+  kill_switch: { icon: OctagonX, action: 'warroom' },
+  reconciliation_mismatch: { icon: Scale, action: 'positions' },
+  order_filled: { icon: CheckCheck, action: 'order' },
+  stop_hit: { icon: ShieldX, action: 'position' },
+  target_hit: { icon: Target, action: 'position' },
+  news_alert: { icon: Newspaper, action: 'news' },
+  agent_degraded: { icon: Bot, action: 'agents' },
+  data_stale: { icon: WifiOff, action: 'data' },
+  daily_report: { icon: FileText, action: 'report' },
 }
 
 const BREAKERS = ['daily_loss', 'weekly_loss', 'consecutive_losses', 'okx_errors', 'volatility_halt', 'agent_budget']
 const KINDS = ['entry', 'close', 'partial_close', 'amend_stop', 'amend_targets']
 
-/** LTR isolate: figures, IDs, times. */
-export const ltr = (s: string) => `⁦${s}⁩`
 /** First-strong isolate: untrusted text keeps its own direction (dir="auto"). */
 const auto = (s: string) => `⁨${s}⁩`
 
@@ -78,14 +76,14 @@ export interface NotificationView {
 
 export function viewOf(n: NotificationRow, t: TFunction<'notifications'>, lang: Lang): NotificationView {
   const p = n.params ?? {}
-  const ev = EVENTS[n.event] ?? { tone: 'neutral' as Tone, icon: Bell, action: 'warroom' }
-  const inst = (v: unknown) => ltr(str(v))
-  const time = (v: unknown) => (str(v) ? ltr(formatTime(str(v), lang)) : '—')
+  const ev = isEventId(n.event) ? EXTRA[n.event] : { icon: Bell, action: 'warroom' }
+  const inst = (v: unknown) => iso(str(v))
+  const time = (v: unknown) => (str(v) ? iso(formatTime(str(v), lang)) : '—')
   let title = ''
   let body = ''
   let meta = ''
   let quote = false
-  let tone = ev.tone
+  let tone: Tone = toneOf(n.event)
 
   switch (n.event) {
     case 'proposal_awaiting_approval': {
@@ -94,19 +92,19 @@ export function viewOf(n: NotificationRow, t: TFunction<'notifications'>, lang: 
       body = t(`b.proposal.${kind}`, {
         dir: t(p.side === 'sell' ? 'dir.sell' : 'dir.buy'),
         inst: inst(p.inst_id),
-        notional: str(p.final_notional_usd) ? ltr(formatMoney(str(p.final_notional_usd), 'USD', lang)) : '—',
+        notional: str(p.final_notional_usd) ? iso(formatMoney(str(p.final_notional_usd), 'USD', lang)) : '—',
         time: time(p.approval_expires_at),
       })
       break
     }
     case 'order_filled':
       title = t('t.filled')
-      body = t(p.side === 'sell' ? 'b.filled.sell' : 'b.filled.buy', { sz: ltr(size(p.filled_sz, lang)), inst: inst(p.inst_id), px: ltr(price(p.avg_px, lang)) })
+      body = t(p.side === 'sell' ? 'b.filled.sell' : 'b.filled.buy', { sz: iso(size(p.filled_sz, lang)), inst: inst(p.inst_id), px: iso(price(p.avg_px, lang)) })
       break
     case 'stop_hit':
     case 'target_hit':
       title = t(n.event === 'stop_hit' ? 't.stop' : 't.target', { inst: inst(p.inst_id) })
-      body = t('b.trigger', { trigger: ltr(price(p.trigger_px, lang)), actual: ltr(price(p.actual_px, lang)), sz: ltr(size(p.sz, lang)) })
+      body = t('b.trigger', { trigger: iso(price(p.trigger_px, lang)), actual: iso(price(p.actual_px, lang)), sz: iso(size(p.sz, lang)) })
       break
     case 'circuit_breaker': {
       title = t('t.breaker')
@@ -142,17 +140,17 @@ export function viewOf(n: NotificationRow, t: TFunction<'notifications'>, lang: 
     }
     case 'daily_report':
       title = t('t.daily')
-      body = t('b.daily', { day: str(p.day) ? ltr(formatDate(`${str(p.day)}T12:00:00Z`, lang)) : '—' })
+      body = t('b.daily', { day: str(p.day) ? iso(formatDate(`${str(p.day)}T12:00:00Z`, lang)) : '—' })
       break
     case 'news_alert': {
       const ids = Array.isArray(p.inst_ids) ? p.inst_ids.map(str).filter(Boolean) : []
       title =
         ids.length > 1
-          ? t('t.newsMore', { inst: inst(ids[0]), n: ltr(String(ids.length - 1)) })
+          ? t('t.newsMore', { inst: inst(ids[0]), n: iso(String(ids.length - 1)) })
           : t('t.news', { inst: inst(ids[0] ?? '') })
       body = str(p.headline)
       quote = true
-      meta = t('m.news', { source: auto(str(p.source_name)), n: ltr(str(p.importance)) })
+      meta = t('m.news', { source: auto(str(p.source_name)), n: iso(str(p.importance)) })
       if (str(p.importance) === '5') tone = 'critical'
       break
     }
