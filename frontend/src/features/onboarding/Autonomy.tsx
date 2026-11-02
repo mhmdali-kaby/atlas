@@ -9,7 +9,7 @@ import '../settings-risk/risk.css'
 import './autonomy.css'
 
 /*
- * Autonomy (ATL-216, decision #254; design js/autonomy.js): the ask line, the "Ask me above"
+ * Autonomy (ATL-216, decision 254; design js/autonomy.js): the ask line, the "Ask me above"
  * money field and the turn-on sheet. Shared by Settings → Autonomy and the onboarding step.
  * Solid accent = goes to OKX on its own, hatched = waits for you (the Money limits grammar).
  */
@@ -265,7 +265,7 @@ export interface TurnOnSheetProps {
   onConfirm: (askText: string) => void
 }
 
-/** The turn-on sheet (design §4.4): says in plain words what changes, then saves on confirm. */
+/** The turn-on sheet (design §4.4): says in plain words what changes, then saves on confirm. Mount it when it opens: the field starts from `initialAsk`. */
 export function TurnOnSheet({ open, level, raise, mode, initialAsk, largest, pending, fieldError, notice, onAskEdited, onCancel, onConfirm }: TurnOnSheetProps) {
   const { t } = useTranslation('autonomy')
   const lang = useLang()
@@ -273,13 +273,6 @@ export function TurnOnSheet({ open, level, raise, mode, initialAsk, largest, pen
   const [clientError, setClientError] = useState<string | undefined>()
   const inputRef = useRef<HTMLInputElement>(null)
   const confirmRef = useRef<HTMLButtonElement>(null)
-
-  useEffect(() => {
-    if (open) {
-      setText(initialAsk)
-      setClientError(undefined)
-    }
-  }, [open, initialAsk])
 
   // A 422 puts focus back in the field; a server notice puts it on the primary button.
   useEffect(() => {
