@@ -1,10 +1,12 @@
 import { CircleAlert, CloudOff, Eye, Hand, Minus, OctagonX, Plus, RotateCcw, Route, Shield, ShieldCheck, CirclePause, SlidersHorizontal } from 'lucide-react'
-import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { formatFixed, formatMoney, NO_VALUE, type Lang } from '../../lib/format'
+import { formatFixed, formatMoney, NO_VALUE } from '../../lib/format'
 import { Button, Sheet } from '../../ui'
 import { cx } from '../../ui/cx'
 import { Notice } from './Notice'
+import { useLang } from '../portfolio/hooks'
+import { fill } from '../settings-money/parts'
 import '../settings-risk/risk.css'
 import './autonomy.css'
 
@@ -16,11 +18,6 @@ import './autonomy.css'
 
 /** Stepper step for the ask-above amount (design: step 100, never below 0). */
 export const ASK_STEP = 100
-
-function useLang(): Lang {
-  const { i18n } = useTranslation()
-  return i18n.language === 'ar' ? 'ar' : 'en'
-}
 
 /** What the owner typed, as a number; NaN when empty or not a number. Negatives parse (the API judges them). */
 export function parseAsk(text: string): number {
@@ -40,14 +37,6 @@ export function askInputText(value: string | number | null | undefined): string 
 export function askApiValue(text: string): string {
   const n = parseAsk(text)
   return Number.isNaN(n) ? text.trim() : String(Math.round(n * 100) / 100)
-}
-
-/** Splits "{{a}} … {{b}}" on its placeholders and drops nodes into them. */
-function fill(template: string, parts: Record<string, ReactNode>): ReactNode {
-  return template.split(/(\{\{\w+\}\})/).map((piece, i) => {
-    const name = /^\{\{(\w+)\}\}$/.exec(piece)?.[1]
-    return <Fragment key={i}>{name ? parts[name] : piece}</Fragment>
-  })
 }
 
 /** A money figure as an LTR island: "$1,000.00". */
