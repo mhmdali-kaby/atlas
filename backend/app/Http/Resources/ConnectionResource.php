@@ -37,6 +37,8 @@ class ConnectionResource extends JsonResource
             'position_mode' => $connection->position_mode,
             'uid_last4' => $connection->uid_last4,
             'last_verified_at' => $connection->last_verified_at?->toIso8601ZuluString('microsecond'),
+            // ATL-235: the live pre-flight's "withdraw permission OFF verified" item.
+            'withdraw_off_verified_at' => $connection->withdraw_off_verified_at?->toIso8601ZuluString('microsecond'),
             'last_test_error' => $connection->last_test_error,
             'created_at' => $connection->created_at->toIso8601ZuluString('microsecond'),
             'updated_at' => $connection->updated_at->toIso8601ZuluString('microsecond'),

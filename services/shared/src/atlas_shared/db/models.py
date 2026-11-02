@@ -120,6 +120,8 @@ class Connection(_Row, Base):
     position_mode: Mapped[str | None] = mapped_column(String(32), nullable=True)
     uid_last4: Mapped[str | None] = mapped_column(String(4), nullable=True)
     last_verified_at: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
+    # ATL-235: when the last test proved OKX reports no withdraw permission (live pre-flight).
+    withdraw_off_verified_at: Mapped[datetime | None] = mapped_column(_tz(), nullable=True)
     last_test_error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
