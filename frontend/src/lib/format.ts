@@ -41,7 +41,8 @@ const TYPOGRAPHIC_MINUS = '−'
 
 const formatters = new Map<string, Intl.NumberFormat>()
 
-function formatter(locale: string, options: Intl.NumberFormatOptions): Intl.NumberFormat {
+/** A cached Intl.NumberFormat for these options (shared by every figure formatter in Atlas). */
+export function formatter(locale: string, options: Intl.NumberFormatOptions): Intl.NumberFormat {
   const key = `${locale}|${JSON.stringify(options)}`
   let nf = formatters.get(key)
   if (!nf) {
@@ -61,7 +62,7 @@ function asIntlValue(value: string | number): Intl.StringNumericLiteral | number
 }
 
 /** The design's minus is U+2212; Intl's en-US data emits U+002D. */
-function typographicMinus(text: string): string {
+export function typographicMinus(text: string): string {
   return text.replace(HYPHEN_MINUS, TYPOGRAPHIC_MINUS)
 }
 

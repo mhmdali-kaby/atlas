@@ -1,35 +1,25 @@
-import { FIGURE_LOCALE, type Lang } from '../../../lib/format'
+import { FIGURE_LOCALE, formatFixed, formatter, typographicMinus, type Lang } from '../../../lib/format'
 import type { MetricSpec, Weight } from './model'
 
 /*
- * Figures on the scorecards. Scorer values are JSON numbers (rates, R, seconds), none of them
- * money, so they format straight through Intl. Minus is U+2212, as everywhere in Atlas.
+ * Figures on the scorecards, built on src/lib/format (its formatter cache and U+2212 minus).
+ * Scorer values are JSON numbers (rates, R, seconds), none of them money.
  */
 
-const cache = new Map<string, Intl.NumberFormat>()
-function nf(lang: Lang, o: Intl.NumberFormatOptions): Intl.NumberFormat {
-  const k = `${lang}|${JSON.stringify(o)}`
-  let f = cache.get(k)
-  if (!f) {
-    f = new Intl.NumberFormat(FIGURE_LOCALE[lang], o)
-    cache.set(k, f)
-  }
-  return f
-}
-const minus = (s: string) => s.replace(/-/g, '−')
-
+/** A 0–1 rate as a percentage: 0.42 → "42%". */
 export const fmtPct = (v: number, lang: Lang, digits = 0) =>
-  minus(nf(lang, { style: 'percent', minimumFractionDigits: digits, maximumFractionDigits: digits }).format(v))
-export const fmtInt = (v: number, lang: Lang) => nf(lang, { maximumFractionDigits: 0 }).format(Math.round(v))
-export const fmtFixed = (v: number, lang: Lang, digits: number) =>
-  minus(nf(lang, { minimumFractionDigits: digits, maximumFractionDigits: digits }).format(v))
+  typographicMinus(formatter(FIGURE_LOCALE[lang], { style: 'percent', minimumFractionDigits: digits, maximumFractionDigits: digits }).format(v))
+export const fmtInt = (v: number, lang: Lang) => formatFixed(Math.round(v), 0, lang)
+/** Fixed digits, signed except zero: "+0.42", "−1.10". */
 const fmtSigned = (v: number, lang: Lang, digits: number) =>
-  minus(nf(lang, { minimumFractionDigits: digits, maximumFractionDigits: digits, signDisplay: 'exceptZero' }).format(v))
+  typographicMinus(
+    formatter(FIGURE_LOCALE[lang], { minimumFractionDigits: digits, maximumFractionDigits: digits, signDisplay: 'exceptZero' }).format(v),
+  )
 
 export const fmtR = (v: number, lang: Lang) => `${fmtSigned(v, lang, 2)}R`
 export const fmtAtr = (v: number, lang: Lang) => `${fmtSigned(v, lang, 2)} ATR`
-export const fmtWeight = (v: number, lang: Lang) => `${fmtFixed(v, lang, 2)}×`
-export const fmtBrier = (v: number, lang: Lang) => fmtFixed(v, lang, 3)
+export const fmtWeight = (v: number, lang: Lang) => `${formatFixed(v, 2, lang)}×`
+export const fmtBrier = (v: number, lang: Lang) => formatFixed(v, 3, lang)
 
 /**
  * A metric's figure as plain text (aria labels, the LTR island of a value). Seconds are the bare
@@ -49,7 +39,7 @@ export function figureText(spec: MetricSpec, v: number, lang: Lang): string {
     case 'cal':
       return fmtBrier(v, lang)
     default:
-      return fmtFixed(v, lang, 2)
+      return formatFixed(v, 2, lang)
   }
 }
 
@@ -59,3 +49,7 @@ export function weightDetail(w: Weight, t: (k: string, o?: Record<string, unknow
   if (w.few) return t('w.few', { n: fmtInt(w.n, lang) })
   return t('w.right', { right: fmtInt(w.right ?? 0, lang), n: fmtInt(w.n, lang) })
 }
+
+/** A metric's value as text for aria labels and target words; seconds get the unit word after the number. */
+export const valueAria = (spec: MetricSpec, v: number, lang: Lang, unit: string) =>
+  spec.unit === 'sec' ? `${fmtInt(v, lang)} ${unit}` : figureText(spec, v, lang)
