@@ -46,11 +46,13 @@ export function OnboardingPage() {
   // The owner's picks; until they touch a card, the saved values (Balanced and level 2 on a new row).
   const [profilePick, setProfilePick] = useState<RiskProfile | null>(null)
   const [autonomyPick, setAutonomyPick] = useState<number | null>(null)
+  const [askPick, setAskPick] = useState<string | null>(null)
   const profile: RiskProfile = profilePick ?? (isPreset(doc?.settings.risk_profile) ? doc.settings.risk_profile : DEFAULT_PROFILE)
   const enabledAutonomy = enabledAutonomyLevels(doc)
   const savedLevel = doc?.settings.autonomy_level
   const autonomy =
     autonomyPick ?? (savedLevel !== undefined && enabledAutonomy.includes(savedLevel) ? savedLevel : DEFAULT_AUTONOMY)
+  const ask = askPick ?? String(doc?.settings.autonomy_ask_above_usd ?? '0')
 
   const session = useSession()
   const logout = useLogout()
@@ -88,7 +90,8 @@ export function OnboardingPage() {
     if (last) {
       // Finish always writes onboarding_completed, so the version moves past 1 even with defaults.
       patch.mutate(
-        { autonomy_level: autonomy, onboarding_completed: 1 },
+        // The ask-above amount goes only with level 3, the one level that reads it.
+        { autonomy_level: autonomy, ...(autonomy === 3 ? { autonomy_ask_above_usd: ask } : {}), onboarding_completed: 1 },
         {
           onSuccess: () => {
             toast({ title: t('complete.title'), body: t('complete.body'), tone: 'success' })
@@ -147,7 +150,18 @@ export function OnboardingPage() {
               {step === 'welcome' && <WelcomeStep autoFocus={moved} />}
               {step === 'connect' && <ConnectStep autoFocus={moved} onReplacingChange={setReplacing} />}
               {step === 'risk' && <RiskStep autoFocus={moved} value={profile} onChange={setProfilePick} />}
-              {step === 'autonomy' && <AutonomyStep autoFocus={moved} value={autonomy} onChange={setAutonomyPick} enabled={enabledAutonomy} />}
+              {step === 'autonomy' && (
+                <AutonomyStep
+                  autoFocus={moved}
+                  value={autonomy}
+                  ask={ask}
+                  onChange={(level, nextAsk) => {
+                    setAutonomyPick(level)
+                    setAskPick(nextAsk)
+                  }}
+                  enabled={enabledAutonomy}
+                />
+              )}
             </motion.section>
           </AnimatePresence>
         </main>

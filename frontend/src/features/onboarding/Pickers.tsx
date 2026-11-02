@@ -2,6 +2,7 @@ import { ChevronRight, Lock } from 'lucide-react'
 import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatFixed, type Lang } from '../../lib/format'
+import { Spinner } from '../../ui/Spinner'
 import { cx } from '../../ui/cx'
 import { useDir } from '../../ui/useDir'
 import { AUTONOMY_LEVELS, DEFAULT_AUTONOMY, DEFAULT_PROFILE, ENABLED_AUTONOMY, PRESET_IDS, type PresetId, type RiskLimits, type RiskProfile } from './settings'
@@ -204,49 +205,99 @@ export function CompareDisclosure({ children }: { children: ReactNode }) {
 export interface AutonomyPickerProps {
   value: number
   onChange: (level: number) => void
-  /** Levels the owner may pick; the rest show "Available in a later phase". Phase 0: 1 and 2. */
+  /** Levels the owner may pick; the rest show "Available in a later phase". */
   enabled?: readonly number[]
+  /** Settings → Autonomy: the saved level carries a quiet "Current" badge. */
+  savedLevel?: number
+  /** The level being saved: a spinner replaces its radio and the rows ignore presses. */
+  busyLevel?: number | null
+  /** Shown in the chosen level 3 card's joined lower part (the "Ask me above" field). */
+  extra?: ReactNode
 }
 
-/** Design forms.js autonomyList: levels 1–4, each explained; later-phase levels disabled. */
-export function AutonomyPicker({ value, onChange, enabled = ENABLED_AUTONOMY }: AutonomyPickerProps) {
+/**
+ * Design autonomy.js AU.list / mountPicker (ATL-216 §4.2): levels 1–4 as radio cards.
+ * Choosing 3 or 4 opens a sheet, so selection does not follow focus: arrows and Home/End
+ * move focus only, and Space, Return or a click chooses.
+ */
+export function AutonomyPicker({ value, onChange, enabled = ENABLED_AUTONOMY, savedLevel, busyLevel = null, extra }: AutonomyPickerProps) {
   const { t } = useTranslation('onboarding')
+  const { t: tAu } = useTranslation('autonomy')
   const lang = useLang()
+  const dir = useDir()
+  const refs = useRef(new Map<number, HTMLButtonElement>())
   const isDisabled = (n: number) => !enabled.includes(n)
-  const item = useRadioGroup<number>(AUTONOMY_LEVELS, value, onChange, isDisabled)
+  const choosable = AUTONOMY_LEVELS.filter((n) => !isDisabled(n))
   const uid = useId()
+
+  const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>, current: number) => {
+    const forward = ['ArrowDown', dir === 'rtl' ? 'ArrowLeft' : 'ArrowRight']
+    const back = ['ArrowUp', dir === 'rtl' ? 'ArrowRight' : 'ArrowLeft']
+    const i = Math.max(0, choosable.indexOf(current as (typeof choosable)[number]))
+    let next: number | undefined
+    if (forward.includes(event.key)) next = choosable[(i + 1) % choosable.length]
+    else if (back.includes(event.key)) next = choosable[(i - 1 + choosable.length) % choosable.length]
+    else if (event.key === 'Home') next = choosable[0]
+    else if (event.key === 'End') next = choosable[choosable.length - 1]
+    else return
+    event.preventDefault()
+    if (next !== undefined) refs.current.get(next)?.focus()
+  }
+
   return (
-    <div role="radiogroup" aria-label={t('au.label')} className="ob-autonomy-list">
-      {AUTONOMY_LEVELS.map((n) => (
-        <button
-          key={n}
-          {...item(n)}
-          aria-labelledby={`${uid}-${n}-title`}
-          aria-describedby={`${uid}-${n}-text${isDisabled(n) ? ` ${uid}-${n}-later` : ''}`}
-          data-value={n}
-          className="ob-choice ob-autonomy-row"
-        >
-          <span aria-hidden="true" className="ob-au-level ob-num">
-            {formatFixed(n, 0, lang)}
-          </span>
-          <span className="ob-au-main">
-            <span className="ob-choice-title">
-              <span id={`${uid}-${n}-title`}>{t(`au.l${n}`)}</span>
-              {n === DEFAULT_AUTONOMY && <span className="ob-tag">{t('rp.default')}</span>}
-            </span>
-            <span id={`${uid}-${n}-text`} className="ob-choice-text">
-              {t(`au.l${n}Text`)}
-            </span>
-            {isDisabled(n) && (
-              <span id={`${uid}-${n}-later`} className="ob-au-later">
-                <Lock aria-hidden="true" strokeWidth={1.5} />
-                {t('laterPhase')}
+    <div role="radiogroup" aria-label={t('au.label')} aria-busy={busyLevel !== null || undefined} className="ob-autonomy-list">
+      {AUTONOMY_LEVELS.map((n) => {
+        const checked = n === value
+        const busy = busyLevel === n
+        const withExtra = n === 3 && checked && extra !== undefined && extra !== null
+        const tabStop = checked || (!(AUTONOMY_LEVELS as readonly number[]).includes(value) && n === choosable[0])
+        return (
+          <div key={n} className={cx('ob-au-wrap', withExtra && 'has-extra')}>
+            <button
+              ref={(el) => {
+                if (el) refs.current.set(n, el)
+                else refs.current.delete(n)
+              }}
+              type="button"
+              role="radio"
+              aria-checked={checked}
+              aria-disabled={isDisabled(n) || undefined}
+              aria-busy={busy || undefined}
+              tabIndex={tabStop ? 0 : -1}
+              aria-labelledby={`${uid}-${n}-title`}
+              aria-describedby={`${uid}-${n}-text${isDisabled(n) ? ` ${uid}-${n}-later` : ''}`}
+              data-value={n}
+              className="ob-choice ob-autonomy-row"
+              onClick={() => {
+                if (!isDisabled(n) && busyLevel === null) onChange(n)
+              }}
+              onKeyDown={(e) => onKeyDown(e, n)}
+            >
+              <span aria-hidden="true" className="ob-au-level ob-num">
+                {formatFixed(n, 0, lang)}
               </span>
-            )}
-          </span>
-          <span aria-hidden="true" className="ob-choice-radio" />
-        </button>
-      ))}
+              <span className="ob-au-main">
+                <span className="ob-choice-title">
+                  <span id={`${uid}-${n}-title`}>{t(`au.l${n}`)}</span>
+                  {n === DEFAULT_AUTONOMY && <span className="ob-tag">{t('rp.default')}</span>}
+                  {n === savedLevel && <span className="ob-tag is-quiet">{tAu('current')}</span>}
+                </span>
+                <span id={`${uid}-${n}-text`} className="ob-choice-text">
+                  {t(`au.l${n}Text`)}
+                </span>
+                {isDisabled(n) && (
+                  <span id={`${uid}-${n}-later`} className="ob-au-later">
+                    <Lock aria-hidden="true" strokeWidth={1.5} />
+                    {t('laterPhase')}
+                  </span>
+                )}
+              </span>
+              {busy ? <Spinner className="ob-au-busy" /> : <span aria-hidden="true" className="ob-choice-radio" />}
+            </button>
+            {withExtra && <div className="ob-au-extra">{extra}</div>}
+          </div>
+        )
+      })}
     </div>
   )
 }

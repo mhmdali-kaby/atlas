@@ -1,0 +1,92 @@
+/* ==========================================================================
+   Autonomy (ATL-216; design css/autonomy.css): the ask line, the money field
+   and the turn-on sheet. No new colours or sizes: accent = goes to OKX on its
+   own, hatched = waits for you (the Money limits cut-line grammar).
+   ========================================================================== */
+
+/* ---- The money field --------------------------------------------------- */
+.au-field { display: grid; gap: 6px; justify-items: start; }
+.au-field-label { font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 600; color: var(--label); }
+.au-stepper { flex-wrap: wrap; row-gap: 8px; }
+.au-stepper .st-stepper-input { width: 164px; padding-inline-end: 58px; }
+.au-stepper.is-error .st-stepper-input { border-color: var(--loss); }
+.au-field .au-hint, .au-field .st-field-error { margin: 0; }
+.au-amount-actions { display: inline-flex; gap: 6px; margin-inline-start: 4px; }
+
+/* ---- The ask line ------------------------------------------------------ */
+.au-line { display: grid; gap: 6px; margin: 0; }
+.au-line-cutrow { position: relative; height: 26px; }
+.au-line:not(.is-l3) .au-line-cutrow { display: none; }
+.au-line-bar { position: relative; }
+.au-line-track {
+  position: relative; height: 12px; border-radius: 6px; overflow: hidden;
+  background: repeating-linear-gradient(135deg, var(--fill-1) 0 1.5px, transparent 1.5px 5px), var(--fill-4);
+  box-shadow: inset 0 0 0 0.5px var(--fill-2);
+}
+.au-line-auto {
+  position: absolute; inset: 0; background: var(--accent);
+  transform-origin: left center; transform: scaleX(var(--cut));
+  transition: transform var(--dur-slow) var(--ease-settle);
+}
+[dir='rtl'] .au-line-auto { transform-origin: right center; }
+.au-line.is-none .au-line-track { background: transparent; box-shadow: none; border: 1px dashed var(--separator-strong); }
+.au-line.is-none .au-line-auto { display: none; }
+
+/* The cut: a wrapper as wide as the bar, moved by transform only, so tick and label slide together. */
+.au-line-cutwrap {
+  position: absolute; inset: 0; pointer-events: none;
+  transform: translateX(calc(var(--cut) * 100%));
+  transition: transform var(--dur-slow) var(--ease-settle);
+}
+[dir='rtl'] .au-line-cutwrap { transform: translateX(calc(var(--cut) * -100%)); }
+.au-line-tick {
+  position: absolute; top: -5px; bottom: -5px; inset-inline-start: -1px; width: 2px; border-radius: 1px;
+  background: var(--label); box-shadow: 0 0 0 2px var(--au-halo, var(--bg-grouped-row));
+}
+.au-line-cutlabel {
+  position: absolute; bottom: 4px; inset-inline-start: 0; white-space: nowrap;
+  transform: translateX(-50%);
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 600; color: var(--label);
+  transition: transform var(--dur-slow) var(--ease-settle);
+}
+.au-line-cutlabel svg { width: 14px; height: 14px; color: var(--label-secondary); }
+.au-line-cutlabel.is-at-start { transform: translateX(-10px); }
+.au-line-cutlabel.is-at-end { transform: translateX(calc(-100% + 10px)); }
+[dir='rtl'] .au-line-cutlabel { transform: translateX(50%); }
+[dir='rtl'] .au-line-cutlabel.is-at-start { transform: translateX(10px); }
+[dir='rtl'] .au-line-cutlabel.is-at-end { transform: translateX(calc(100% - 10px)); }
+
+.au-line-ends { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.au-line-max { display: inline-flex; gap: 5px; align-items: baseline; }
+.au-line-max-fig { color: var(--label); font-weight: 600; }
+.au-line-keys { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.au-key { display: inline-flex; align-items: center; gap: 6px; }
+.au-key i { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.au-key.is-auto i { background: var(--accent); }
+.au-key.is-asks i { background: repeating-linear-gradient(135deg, var(--fill-1) 0 1.5px, transparent 1.5px 4px), var(--fill-4); box-shadow: inset 0 0 0 0.5px var(--fill-1); }
+.au-key svg { width: 14px; height: 14px; }
+
+/* ---- The sheet --------------------------------------------------------- */
+.au-sheet [aria-hidden='true'].grid.size-11 { background: var(--accent-wash); color: var(--accent-ink); }
+.au-sh-box {
+  display: grid; gap: 14px; padding: 16px 16px 14px; border-radius: var(--radius-card);
+  background: var(--fill-4); box-shadow: inset 0 0 0 0.5px var(--hairline-color);
+  --au-halo: var(--bg-elevated);
+}
+.au-sh-sentence { font-size: var(--fs-callout); line-height: var(--lh-callout); color: var(--label-secondary); }
+.au-sh-sentence b, .au-now-sentence b { color: var(--label); font-weight: 600; }
+.au-keep { display: grid; gap: 8px; }
+.au-keep-title { font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 600; color: var(--label-secondary); }
+.au-keep ul { display: grid; gap: 8px; }
+.au-keep li { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 10px; align-items: start; font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); }
+.au-keep li svg { width: 17px; height: 17px; margin-top: 1px; color: var(--label-secondary); }
+.au-sh-later { display: flex; gap: 6px; align-items: center; font-size: var(--fs-footnote); color: var(--label-secondary); }
+.au-sh-later svg { width: 14px; height: 14px; }
+
+@media (max-width: 640px) {
+  .au-line-max-words { display: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .au-line-auto, .au-line-cutwrap, .au-line-cutlabel { transition: none; }
+}

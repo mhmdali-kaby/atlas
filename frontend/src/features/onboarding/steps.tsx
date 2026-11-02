@@ -5,6 +5,8 @@ import { AppIcon, Button } from '../../ui'
 import { ConnectionForm, KeyHelp, SavedKey, TestFailure, TestSuccess } from './ConnectionForm'
 import { isVerified, useConnection, type TestOutcome } from './connections'
 import { Notice } from './Notice'
+import { useRiskPreview } from '../settings-money/model'
+import { askApiValue, askInputText, TurnOnSheet } from './Autonomy'
 import { AutonomyPicker, CompareDisclosure, LimitsCompare, RiskProfilePicker } from './Pickers'
 import { useSettings, type RiskProfile } from './settings'
 
@@ -278,23 +280,54 @@ export function RiskStep({
   )
 }
 
-/** Step 4 (design onboarding.js autonomy()): levels 1–4; Phase 0 allows only 1 and 2. */
+/**
+ * Step 4 (design onboarding.js autonomy(), ATL-216 §4.5): the same picker and turn-on sheet as
+ * Settings → Autonomy. Choosing 3 or 4 opens the sheet; its confirm sets the choice, and
+ * nothing is saved until Finish setup.
+ */
 export function AutonomyStep({
   autoFocus,
   value,
+  ask,
   onChange,
   enabled,
-}: StepProps & { value: number; onChange: (level: number) => void; enabled?: readonly number[] }) {
+}: StepProps & { value: number; ask: string; onChange: (level: number, ask: string) => void; enabled?: readonly number[] }) {
   const { t } = useTranslation('onboarding')
+  const [sheetLevel, setSheetLevel] = useState<number | null>(null)
+  const preview = useRiskPreview('env=demo', 'demo')
+  const largestRaw = preview.data?.data.max_notional_usd ?? null
+  const largest = largestRaw === null ? null : Number(largestRaw)
   return (
     <>
       <StepHead autoFocus={autoFocus} title={t('autonomy.title')} lead={t('autonomy.lead')} />
       <StepMain>
-        <AutonomyPicker value={value} onChange={onChange} enabled={enabled} />
+        <AutonomyPicker
+          value={sheetLevel ?? value}
+          onChange={(level) => {
+            if (level === value) return
+            if (level >= 3) setSheetLevel(level)
+            else onChange(level, ask)
+          }}
+          enabled={enabled}
+        />
         <p className="flex items-center gap-2 text-footnote text-label-secondary">
           <SlidersHorizontal aria-hidden="true" strokeWidth={1.5} className="size-3.5" />
           <span>{t('autonomy.note')}</span>
         </p>
+        {sheetLevel !== null && (
+          <TurnOnSheet
+            open
+            level={sheetLevel}
+            mode="onboarding"
+            initialAsk={askInputText(ask)}
+            largest={largest}
+            onCancel={() => setSheetLevel(null)}
+            onConfirm={(text) => {
+              onChange(sheetLevel, sheetLevel === 3 ? askApiValue(text) : ask)
+              setSheetLevel(null)
+            }}
+          />
+        )}
       </StepMain>
     </>
   )

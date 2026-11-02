@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
-/* ATL-21: Settings → Risk & Autonomy by keyboard alone, in English/Arabic × light/dark. */
+/* ATL-21: Settings → Risk by keyboard alone, in English/Arabic × light/dark. */
 
 const OWNER = { id: '01a18376-1d35-70c2-ad01-6d1d2cd870ad', name: 'Mohammed Ali', email: 'owner@atlas.test', locale: 'en', theme: 'system' }
 const SHOTS = '../../evidence/ATL-21'

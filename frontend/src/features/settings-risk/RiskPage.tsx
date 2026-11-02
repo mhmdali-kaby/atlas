@@ -1,16 +1,15 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { CircleAlert, RotateCcw, Shield } from 'lucide-react'
+import { ChevronRight, CircleAlert, RotateCcw, Shield } from 'lucide-react'
 import { Tooltip } from 'radix-ui'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
 import { ApiError } from '../../lib/api'
 import { formatFixed } from '../../lib/format'
 import { Button, Skeleton, toast } from '../../ui'
 import { useLang } from '../portfolio/hooks'
 import {
-  AutonomyPicker,
   CompareDisclosure,
-  enabledAutonomyLevels,
   LimitsCompare,
   LIMIT_DEFS,
   Notice,
@@ -42,8 +41,8 @@ import {
 import './risk.css'
 
 /*
- * Settings → Risk & Autonomy (brief §14.3, §14.6; design js/pages/settings.js `risk`):
- * profile cards, the ten limits as steppers, autonomy 1–2, and the Activity list of versions.
+ * Settings → Risk (brief §14.3; design js/pages/settings.js `risk`): profile cards, the ten
+ * limits as steppers, a link row to Settings → Autonomy (ATL-216), and the Activity list.
  * Nothing is saved until Save changes; a 409 reloads the current values and says so.
  */
 
@@ -255,9 +254,15 @@ export function RiskPage() {
           </Tooltip.Provider>
         </Section>
 
-        <Section id="st-au-title" title={tOb('au.label')} note={t('risk.autonomyNote')}>
-          <AutonomyPicker value={draft.autonomy} enabled={enabledAutonomyLevels(doc)} onChange={(level) => update({ ...draft, autonomy: level })} />
-        </Section>
+        <div className="st-group">
+          <Link to="/settings/autonomy" className="st-au-link" data-testid="autonomy-link">
+            <span className="st-au-link-label">{t('risk.autonomyRow')}</span>
+            <span className="st-au-link-value">
+              {t('risk.autonomyValue', { n: formatFixed(doc.settings.autonomy_level, 0, lang), name: tOb(`au.l${doc.settings.autonomy_level}`) })}
+            </span>
+            <ChevronRight aria-hidden="true" className="st-au-link-chev rtl:-scale-x-100" strokeWidth={2} />
+          </Link>
+        </div>
 
         <Section id="st-act-title" title={t('risk.activity')} note={t('risk.activityNote')}>
           <ActivityList entries={history.data?.data} loading={history.isPending} elsewhere={elsewhere} />
