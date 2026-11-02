@@ -1,12 +1,10 @@
 import { Hourglass, Timer } from 'lucide-react'
-import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { useTradingEnv } from '../../app/shell/tradingEnv'
-import { toast } from '../../ui'
-import { useLang, useNow } from '../portfolio/hooks'
-import { formatTime, mmss } from '../warroom/time'
-import { nearest, openForApproval, proposalHref, useAwaitingProposals, useProposalEvents, WARN_MS, type AwaitingProposal } from './api'
+import { useNow } from '../portfolio/hooks'
+import { mmss } from '../warroom/time'
+import { nearest, openForApproval, proposalHref, useAwaitingProposals, useProposalEvents, WARN_MS } from './api'
 import './approvals.css'
 
 /*
@@ -15,52 +13,21 @@ import './approvals.css'
  * countdown to the nearest deadline; under a minute it turns orange and its words say so too.
  * Hidden when nothing waits. Clicking opens the War Room on that proposal's card.
  *
- * It also owns the "trade waiting for your approval" toast (brief §17): a proposal that starts
- * waiting, seen through an atlas.proposals event or the 15 s poll, toasts once wherever the owner
- * is, plus a browser notification when permission was already granted (never asked for here).
+ * The "trade waiting for your approval" toast is the notifications path's now (ATL-217).
  */
 export function ApprovalPill() {
   const { t } = useTranslation('approvals')
-  const lang = useLang()
   const env = useTradingEnv()
   const navigate = useNavigate()
   const query = useAwaitingProposals(env)
   const now = useNow(1000)
 
-  // Toast each proposal once. What is already waiting when the app opens is not news: the first
-  // load only marks it seen (the pill shows it).
-  const seen = useRef(new Set<string>())
-  const primed = useRef(false)
-  const announce = useCallback(
-    (p: AwaitingProposal) => {
-      if (seen.current.has(p.id)) return
-      seen.current.add(p.id)
-      if (p.approval_expires_at && Date.parse(p.approval_expires_at) <= Date.now()) return
-      const side = t(`side.${p.side}`)
-      const time = p.approval_expires_at ? formatTime(p.approval_expires_at, lang) : null
-      const title = t('toast.title')
-      const body = time ? t('toast.body', { inst: p.inst_id, side, time }) : t('toast.bodyNoTime', { inst: p.inst_id, side })
-      toast({ title, body, tone: 'info' })
-      notify(title, body, p.id)
-    },
-    [t, lang],
-  )
-  useProposalEvents(env, announce)
+  // The "trade waiting for your approval" toast and browser banner now come from the
+  // proposal_awaiting_approval notification (ATL-217), so one event never shows two toasts.
+  // The proposal events still refetch the list at once.
+  useProposalEvents(env, ignore)
 
   const data = query.data?.data
-  useEffect(() => {
-    if (!data) return
-    if (!primed.current) {
-      primed.current = true
-      for (const p of data) seen.current.add(p.id)
-      return
-    }
-    for (const p of data) {
-      if (p.status === 'awaiting_owner' && p.author !== 'owner') announce(p)
-      else seen.current.add(p.id)
-    }
-  }, [data, announce])
-
   const open = openForApproval(data, now)
   const first = nearest(open)
   if (!first) return null
@@ -91,12 +58,4 @@ export function ApprovalPill() {
   )
 }
 
-function notify(title: string, body: string, tag: string) {
-  if (typeof window === 'undefined' || !('Notification' in window)) return
-  if (window.Notification.permission !== 'granted') return
-  try {
-    new window.Notification(title, { body, tag })
-  } catch {
-    // Some browsers only allow notifications from a service worker; the toast already showed it.
-  }
-}
+function ignore() {}

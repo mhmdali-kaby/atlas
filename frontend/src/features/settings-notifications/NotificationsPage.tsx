@@ -23,22 +23,18 @@ import '../settings-connections/settings.css'
 import '../settings-risk/risk.css'
 import {
   CHANNELS,
-  EVENTS,
-  GROUPS,
-  iso,
   masked,
   NEEDS,
   prefKey,
   prefsFrom,
-  useBrowserPermission,
   useSaveSwitches,
   useTelegram,
   type Channel,
-  type EventId,
-  type Permission,
   type Prefs,
   type TelegramState,
 } from './model'
+import { EVENTS, GROUPS, iso, type EventId } from '../notifications/events'
+import { useBrowserPermission, type Permission } from '../notifications/browser'
 import './notifications-settings.css'
 import { EventTile } from './parts'
 import { Preview } from './Preview'

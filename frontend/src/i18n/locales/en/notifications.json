@@ -1,0 +1,161 @@
+{
+  "title": "Notifications",
+  "bellAria": "Notifications, {{n}} unread",
+  "bellAriaUrgent": "Notifications, {{n}} unread, {{c}} urgent",
+  "bellNone": "Notifications, none unread",
+  "all": "All",
+  "unread": "Unread",
+  "markAll": "Mark all read",
+  "marked": "All read",
+  "settings": "Notification settings",
+  "today": "Today",
+  "yesterday": "Yesterday",
+  "older": "Show older",
+  "end": "That’s everything from the last 30 days.",
+  "empty": {
+    "title": "No notifications yet",
+    "body": "Atlas tells you here when a trade waits for you, an order fills or trading pauses.",
+    "link": "Choose what you’re told about"
+  },
+  "emptyUnread": {
+    "title": "You’re all caught up",
+    "body": "Nothing unread. Earlier notifications are under All."
+  },
+  "error": {
+    "title": "Couldn’t load notifications",
+    "body": "Atlas’s server didn’t answer. New ones still arrive as toasts."
+  },
+  "unreadSr": "Unread.",
+  "left": "{{t}} left",
+  "noLonger": "No longer waiting",
+  "now": "now",
+  "urgent": "Urgent",
+  "perm": {
+    "title": "Get alerts when Atlas is in the background",
+    "body": "Your browser asks you once. Choose which events use it in Settings → Notifications.",
+    "allow": "Allow browser alerts",
+    "later": "Not now",
+    "denied": {
+      "title": "Browser alerts are blocked",
+      "body": "Allow notifications for localhost:3000 in your browser’s site settings, then reload Atlas."
+    },
+    "hide": "Hide",
+    "asking": "Waiting for your browser…",
+    "okToast": "Browser alerts are on",
+    "okBody": "Atlas alerts you through your browser when it’s in the background.",
+    "noToast": "Browser alerts stay off",
+    "noBody": "You can allow them later in your browser’s site settings."
+  },
+  "t": {
+    "proposal": "Trade waiting for your approval",
+    "filled": "Order filled",
+    "stop": "Stop-loss hit on {{inst}}",
+    "target": "Target hit on {{inst}}",
+    "breaker": "Trading paused by a circuit breaker",
+    "stale": "Market data stopped updating",
+    "recon": "Atlas and OKX didn’t match",
+    "kill": "Trading stopped",
+    "killFlat": "Trading stopped and positions closed",
+    "agentLimit": "{{agent}} reached its usage limit",
+    "agentDegraded": "{{agent}} isn’t working properly",
+    "daily": "Daily report is ready",
+    "news": "News on {{inst}}",
+    "newsMore": "News on {{inst}} and {{n}} more"
+  },
+  "b": {
+    "proposal": {
+      "entry": "{{dir}} {{inst}}, {{notional}}. Approve by {{time}}.",
+      "close": "Close {{inst}}, {{notional}}. Approve by {{time}}.",
+      "partial_close": "Close part of {{inst}}, {{notional}}. Approve by {{time}}.",
+      "amend_stop": "Move the stop on {{inst}}. Approve by {{time}}.",
+      "amend_targets": "Change the targets on {{inst}}. Approve by {{time}}."
+    },
+    "filled": {
+      "buy": "Bought {{sz}} contracts of {{inst}} at {{px}}.",
+      "sell": "Sold {{sz}} contracts of {{inst}} at {{px}}."
+    },
+    "trigger": "Triggered at {{trigger}}, filled at {{actual}}, {{sz}} contracts.",
+    "breaker": {
+      "daily_loss": "Today’s losses reached your daily limit.",
+      "weekly_loss": "This week’s losses reached your weekly limit.",
+      "consecutive_losses": "Losses in a row reached your limit.",
+      "okx_errors": "OKX returned errors 3 times in 5 minutes.",
+      "volatility_halt": "A held instrument moved more than 6σ in a minute.",
+      "agent_budget": "An agent went over its daily budget."
+    },
+    "selfClear": "It clears by itself.",
+    "resume": "Resume trading when you’re ready.",
+    "stale": "New trades wait until prices are fresh again.",
+    "recon": "Atlas corrected its records from OKX. New trades wait until you resume.",
+    "kill": "{{cancelled}}, {{kept}} kept on OKX.",
+    "killClosed": "{{closed}} closed at market.",
+    "killFailed": "{{failed}} couldn’t be cancelled. Check Orders.",
+    "agentLimit": "It resumes at {{time}}. The team carries on without it.",
+    "agentDegraded": "The team carries on without it. Agents shows why.",
+    "daily": "The Portfolio Manager’s report for {{day}} is in the War Room."
+  },
+  "dir": {
+    "buy": "Long",
+    "sell": "Short"
+  },
+  "m": {
+    "news": "{{source}}, importance {{n}}"
+  },
+  "a": {
+    "review": "Review",
+    "order": "View order",
+    "position": "View position",
+    "positions": "View positions",
+    "warroom": "Open War Room",
+    "data": "Open Data",
+    "agents": "Open Agents",
+    "report": "Read report",
+    "news": "Read alert"
+  },
+  "events": {
+    "proposal_awaiting_approval": {
+      "title": "Trade waiting for approval"
+    },
+    "circuit_breaker": {
+      "title": "Circuit breaker"
+    },
+    "kill_switch": {
+      "title": "Trading stopped"
+    },
+    "reconciliation_mismatch": {
+      "title": "Atlas and OKX disagree"
+    },
+    "order_filled": {
+      "title": "Order filled"
+    },
+    "stop_hit": {
+      "title": "Stop-loss hit"
+    },
+    "target_hit": {
+      "title": "Target hit"
+    },
+    "news_alert": {
+      "title": "News on a position you hold"
+    },
+    "agent_degraded": {
+      "title": "Agent not working"
+    },
+    "data_stale": {
+      "title": "Market data stopped"
+    },
+    "daily_report": {
+      "title": "Daily report"
+    }
+  },
+  "count": {
+    "cancelled_one": "{{count}} order cancelled",
+    "cancelled_other": "{{count}} orders cancelled",
+    "kept_one": "{{count}} stop-loss",
+    "kept_other": "{{count}} stop-losses",
+    "closed_one": "{{count}} position",
+    "closed_other": "{{count}} positions",
+    "failed_one": "{{count}} order",
+    "failed_other": "{{count}} orders"
+  },
+  "retry": "Try again"
+}

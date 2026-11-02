@@ -10,7 +10,6 @@ import i18n from '../../i18n'
 import { API_URL, resetCsrfForTests } from '../../lib/api'
 import { Toaster, useToasts } from '../../ui'
 import { RequireAuth } from '../auth/RequireAuth'
-import { formatTime } from '../warroom/time'
 import { proposalParam } from '../warroom/useProposalFocus'
 import { type AwaitingProposal } from './api'
 
@@ -236,82 +235,20 @@ describe('the approval pill', () => {
 })
 
 describe('the approval toast', () => {
-  const expires = () => new Date(Date.now() + 360_000).toISOString()
-  const event = (id: string, at: string) => ({
-    id: 'evt-' + id,
-    type: 'proposal.awaiting_owner',
-    env: 'demo',
-    source: 'system:orchestrator',
-    payload: { proposal_id: id, version: 1, inst_id: 'XAU-USDT-SWAP', side: 'sell', decision: 'awaiting_owner', approval_expires_at: at },
-  })
-
-  it.each([
-    ['a Portfolio page', '/portfolio'],
-    ['the War Room', '/warroom'],
-  ])('shows the instrument, side and approve-by time on %s', async (_, url) => {
+  it('is no longer raised by the pill: a proposal event refetches the pill without a toast (ATL-217 sends it)', async () => {
     const state = fakeBackend([])
-    mount(url)
+    mount('/portfolio')
     await screen.findByTestId('kill-switch')
     await sleep(50)
-    const at = expires()
+    const at = new Date(Date.now() + 360_000).toISOString()
     state.list = [waiting('p9', 360_000, { inst_id: 'XAU-USDT-SWAP', side: 'sell', approval_expires_at: at })]
-    emit('warroom', '.proposal.awaiting_owner', event('p9', at))
-    const toast = await screen.findByText('Trade waiting for your approval')
-    const card = toast.closest('li') ?? toast.parentElement!
-    expect(card).toHaveTextContent(`XAU-USDT-SWAP short. Approve by ${formatTime(at, 'en')} in the War Room.`)
-    // The event also refetches the list, so the pill appears without waiting for the poll.
+    emit('warroom', '.proposal.awaiting_owner', {
+      type: 'proposal.awaiting_owner',
+      env: 'demo',
+      payload: { proposal_id: 'p9', version: 1, inst_id: 'XAU-USDT-SWAP', side: 'sell', decision: 'awaiting_owner', approval_expires_at: at },
+    })
     expect(await screen.findByTestId('approval-pill')).toHaveTextContent('1 to approve')
-    // One proposal, one toast: the refetch that finds it does not toast again.
     await sleep(100)
-    expect(useToasts.getState().toasts).toHaveLength(1)
-  })
-
-  it('toasts a proposal the poll finds, but not what was already waiting when the app opened', async () => {
-    const state = fakeBackend([waiting('p-old', 300_000)])
-    mount('/portfolio')
-    await screen.findByTestId('approval-pill')
     expect(useToasts.getState().toasts).toHaveLength(0)
-    state.list = [waiting('p-old', 300_000), waiting('p-new', 400_000, { inst_id: 'BTC-USDT-SWAP' })]
-    // Any proposal event refetches the list (here one that is not itself a new proposal).
-    emit('warroom', '.proposal.rejected', { type: 'proposal.rejected', env: 'demo', payload: { proposal_id: 'p-x', status: 'rejected' } })
-    expect(await screen.findByText(/^BTC-USDT-SWAP long\. Approve by/)).toBeInTheDocument()
-    expect(useToasts.getState().toasts).toHaveLength(1)
-  })
-
-  it("does not toast the owner's own edit", async () => {
-    const state = fakeBackend([waiting('p1', 300_000)])
-    mount('/portfolio')
-    await screen.findByTestId('approval-pill')
-    state.list = [waiting('p2', 300_000, { version: 2, parent_id: 'p1', author: 'owner' })]
-    emit('warroom', '.proposal.revised', { type: 'proposal.revised', env: 'demo', payload: { proposal_id: 'p2', parent_id: 'p1', status: 'awaiting_owner' } })
-    await sleep(150)
-    expect(useToasts.getState().toasts).toHaveLength(0)
-  })
-
-  it('sends a browser notification only when permission is already granted, and never asks', async () => {
-    const sent: { title: string; body?: string }[] = []
-    const requestPermission = vi.fn()
-    class FakeNotification {
-      static permission = 'granted'
-      static requestPermission = requestPermission
-      constructor(title: string, options?: { body?: string }) {
-        sent.push({ title, body: options?.body })
-      }
-    }
-    vi.stubGlobal('Notification', FakeNotification)
-    fakeBackend([])
-    mount('/portfolio')
-    await screen.findByTestId('kill-switch')
-    await sleep(50)
-    const at = expires()
-    emit('warroom', '.proposal.awaiting_owner', event('p9', at))
-    await screen.findByText('Trade waiting for your approval')
-    expect(sent).toEqual([{ title: 'Trade waiting for your approval', body: `XAU-USDT-SWAP short. Approve by ${formatTime(at, 'en')} in the War Room.` }])
-
-    FakeNotification.permission = 'default'
-    emit('warroom', '.proposal.awaiting_owner', event('p10', at))
-    await waitFor(() => expect(useToasts.getState().toasts).toHaveLength(2))
-    expect(sent).toHaveLength(1)
-    expect(requestPermission).not.toHaveBeenCalled()
   })
 })

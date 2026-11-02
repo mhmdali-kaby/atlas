@@ -12,10 +12,5 @@
   "side": {
     "buy": "long",
     "sell": "short"
-  },
-  "toast": {
-    "title": "Trade waiting for your approval",
-    "body": "{{inst}} {{side}}. Approve by {{time}} in the War Room.",
-    "bodyNoTime": "{{inst}} {{side}}. Approve it in the War Room."
   }
 }

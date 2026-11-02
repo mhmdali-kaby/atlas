@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { SettingsDoc } from '../onboarding'
-import { CHANNELS, EVENTS, NEEDS, masked, prefKey, prefsFrom, validateBot } from './model'
+import { EVENTS } from '../notifications/events'
+import { CHANNELS, NEEDS, masked, prefKey, prefsFrom, validateBot } from './model'
 
 const doc = (settings: Record<string, unknown>) => ({ id: 'x', env: 'demo', version: 3, settings, presets: {}, updated_at: '' }) as unknown as SettingsDoc
 
