@@ -2,7 +2,7 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { CircleMinus, FileWarning, SquareDashed, TriangleAlert } from 'lucide-react'
 import { useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { formatFixed, formatPrice, type Lang } from '../../lib/format'
+import { formatFixed, formatSigned, priceDecimals, type Lang } from '../../lib/format'
 import { SegmentedControl, SignedValue } from '../../ui'
 import { cx } from '../../ui/cx'
 import { formatDate, formatDateTime } from '../warroom/time'
@@ -34,6 +34,11 @@ function NoneText({ k = 'r.m.none' }: { k?: string }) {
 function SignedPct({ v }: { v: number | null | undefined }) {
   const p = pct(v)
   return p === null ? <NoneText /> : <SignedValue value={p.toFixed(2)} unit="percent" />
+}
+
+function CostPct({ v, lang }: { v: number | null | undefined; lang: Lang }) {
+  const p = pct(v)
+  return p === null ? <NoneText /> : <Fig>{formatSigned(p.toFixed(2), 'percent', lang)}</Fig>
 }
 
 function Plain({ v, digits = 2, lang }: { v: number | null | undefined; digits?: number; lang: Lang }) {
@@ -96,12 +101,12 @@ function Tiles({ inst, lang }: { inst: InstrumentResult; lang: Lang }) {
       <Tile id="trades" label={t('r.m.trades')}>
         <Fig>{formatFixed(n, 0, lang)}</Fig>
       </Tile>
+      {/* Costs, as the design draws them: what they took from (or added to) equity, signed but not coloured. */}
       <Tile id="fees" label={t('r.m.fees')} sub={t('r.m.subFees')}>
-        {/* A cost: shown as what it took from equity. */}
-        <SignedPct v={neg(f.fees_paid)} />
+        <CostPct v={neg(f.fees_paid)} lang={lang} />
       </Tile>
       <Tile id="funding" label={t('r.m.funding')} sub={t(inst.funding_included ? 'r.funding' : 'r.noFunding')}>
-        {inst.funding_included ? <SignedPct v={neg(f.funding_paid)} /> : <NoneText />}
+        {inst.funding_included ? <CostPct v={neg(f.funding_paid)} lang={lang} /> : <NoneText />}
       </Tile>
     </section>
   )
@@ -153,7 +158,7 @@ function FoldsTable({ inst, lang }: { inst: InstrumentResult; lang: Lang }) {
       {inst.folds.length === 0 ? (
         <p className="bt-sec-sub bt-empty">{t('r.noFolds')}</p>
       ) : (
-        <div className="bt-scroll" tabIndex={0} role="region" aria-labelledby="bt-folds-h">
+        <div className="bt-scroll" tabIndex={0} role="group" aria-labelledby="bt-folds-h">
           <table className="bt-table">
             <thead>
               <tr>
@@ -196,6 +201,9 @@ function FoldsTable({ inst, lang }: { inst: InstrumentResult; lang: Lang }) {
   )
 }
 
+/** A fill price at display precision: the API's floats carry slippage to 12+ places. */
+const priceText = (v: number, lang: Lang) => formatFixed(v, Math.abs(v) >= 100 ? priceDecimals(v) : Math.abs(v) >= 1 ? 4 : 6, lang)
+
 function TradeRow({ r, i, lang, style }: { r: Trade; i: number; lang: Lang; style?: CSSProperties }) {
   const { t } = useTranslation(NS)
   return (
@@ -207,12 +215,12 @@ function TradeRow({ r, i, lang, style }: { r: Trade; i: number; lang: Lang; styl
       <td>
         <span className="tabular-nums">{formatDateTime(r.entry_ts, lang)}</span>
         <br />
-        <Fig className="text-label-secondary">{formatPrice(r.entry_price, lang)}</Fig>
+        <Fig className="text-label-secondary">{priceText(r.entry_price, lang)}</Fig>
       </td>
       <td>
         <span className="tabular-nums">{formatDateTime(r.exit_ts, lang)}</span>
         <br />
-        <Fig className="text-label-secondary">{formatPrice(r.exit_price, lang)}</Fig>
+        <Fig className="text-label-secondary">{priceText(r.exit_price, lang)}</Fig>
       </td>
       <td>
         <SignedValue value={Number(r.return_pct).toFixed(2)} unit="percent" />
@@ -257,7 +265,7 @@ function TradesTable({ inst, lang }: { inst: InstrumentResult; lang: Lang }) {
       {rows.length === 0 ? (
         <p className="bt-sec-sub bt-empty">{t('r.noTrades')}</p>
       ) : (
-        <div ref={scroller} className={cx('bt-scroll', virtual && 'is-virtual')} tabIndex={0} role="region" aria-labelledby="bt-trades-h">
+        <div ref={scroller} className={cx('bt-scroll', virtual && 'is-virtual')} tabIndex={0} role="group" aria-labelledby="bt-trades-h">
           <table className="bt-table is-trades" aria-rowcount={rows.length + 1}>
             <thead>
               <tr>

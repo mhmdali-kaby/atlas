@@ -125,6 +125,9 @@ describe('a done result', () => {
     expect(tile('trades')).toBe('12')
     expect(tile('funding')).toContain('+0.12%')
     expect(screen.getAllByTestId('bt-trade')).toHaveLength(12)
+    // fill prices at display precision, not the float's 12 places
+    expect(plain(screen.getAllByTestId('bt-trade')[4]!)).toContain('2,440.00')
+    expect(plain(screen.getAllByTestId('bt-trade')[4]!)).not.toMatch(/\d{5,}/)
   })
 
   it('has one split row per fold with fitted and tested figures', () => {

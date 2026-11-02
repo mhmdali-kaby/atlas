@@ -43,6 +43,27 @@ function axisPct(v: number, digits: number, lang: Lang): string {
   return typographicMinus(nf.format(v))
 }
 
+interface XTickProps {
+  x?: number | string
+  y?: number | string
+  index?: number
+  payload?: { value: number }
+}
+
+/** A date under the plot. The first and last sit inside the plot's edges (design .bt-x span:first/last-child). */
+function XTick({ x, y, index = 0, payload, last, rtl, lang }: XTickProps & { last: number; rtl: boolean; lang: Lang }) {
+  if (payload === undefined) return <g />
+  const atStart = index === 0
+  const atEnd = index === last
+  // The oldest date is at the left in English and at the right in Arabic.
+  const anchor = atStart ? (rtl ? 'end' : 'start') : atEnd ? (rtl ? 'start' : 'end') : 'middle'
+  return (
+    <text x={Number(x)} y={Number(y)} dy="0.71em" textAnchor={anchor} className="bt-x-tick" {...AXIS_TICK}>
+      {formatDate(payload.value, lang)}
+    </text>
+  )
+}
+
 function FrostedTip({ active, payload, lang }: TooltipContentProps<number, string> & { lang: Lang }) {
   const row = payload?.[0]?.payload as Row | undefined
   if (!active || !row) return null
@@ -150,7 +171,7 @@ export function EquityCurve({ inst, lang }: { inst: InstrumentResult; lang: Lang
                 reversed={rtl}
                 axisLine={false}
                 tickLine={false}
-                tick={AXIS_TICK}
+                tick={(props: XTickProps) => <XTick {...props} last={xTicks.length - 1} rtl={rtl} lang={lang} />}
                 tickMargin={8}
                 height={26}
               />
@@ -164,7 +185,7 @@ export function EquityCurve({ inst, lang }: { inst: InstrumentResult; lang: Lang
                 tickFormatter={(v: number) => axisPct(v, axis.digits, lang)}
                 axisLine={false}
                 tickLine={false}
-                tick={AXIS_TICK}
+                tick={{ ...AXIS_TICK, className: 'bt-y-tick' }}
                 width={56}
               />
               <ReferenceLine y={0} stroke="var(--label-secondary)" strokeDasharray="3 3" strokeOpacity={0.6} />
