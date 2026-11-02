@@ -1,19 +1,11 @@
 import { CircleAlert, CircleCheck, CircleX, Minus, Plus } from 'lucide-react'
-import { Fragment, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Spinner } from '../../ui'
 import { cx } from '../../ui/cx'
 import type { RunStatus } from './api'
 
 export const NS = 'backtester'
-
-/** Splits "{{a}} … {{b}}" on its placeholders and drops nodes into them (the template stays in the locale file). */
-export function fill(template: string, parts: Record<string, ReactNode>): ReactNode {
-  return template.split(/(\{\{\w+\}\})/).map((piece, i) => {
-    const name = /^\{\{(\w+)\}\}$/.exec(piece)?.[1]
-    return <Fragment key={i}>{name ? parts[name] : piece}</Fragment>
-  })
-}
 
 /** A figure or identifier as an LTR island with tabular numerals (design §12.1). */
 export function Fig({ children, className }: { children: ReactNode; className?: string }) {

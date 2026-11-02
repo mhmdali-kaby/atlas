@@ -6,8 +6,12 @@
   "recent": "Recent runs",
   "noRuns": "No runs yet",
   "runsError": "Couldn’t load the runs",
-  "st": { "done": "Done", "running": "Running", "failed": "Failed", "queued": "Queued" },
-  "runRow": "{{name}}, {{insts}}, {{status}}, {{when}}",
+  "st": {
+    "done": "Done",
+    "running": "Running",
+    "failed": "Failed",
+    "queued": "Queued"
+  },
   "s": {
     "go": "Go {{side}} on {{insts}}, {{bar}} bars, {{from}} to {{to}}.",
     "enter": "Enter when {{conds}}.",
@@ -23,7 +27,12 @@
   "short": "short",
   "sideLong": "Long",
   "sideShort": "Short",
-  "op": { "crosses_above": "crosses above", "crosses_below": "crosses below", "above": "is above", "below": "is below" },
+  "op": {
+    "crosses_above": "crosses above",
+    "crosses_below": "crosses below",
+    "above": "is above",
+    "below": "is below"
+  },
   "close": "Close price",
   "bps": "{{n}} bps",
   "f": {

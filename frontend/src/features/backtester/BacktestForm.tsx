@@ -31,8 +31,9 @@ import {
   type Op,
   type Side,
 } from './model'
-import { FieldError, fill, NS, Stepper } from './parts'
-import { Sentence, useIndicatorLabel } from './Sentence'
+import { FieldError, NS, Stepper } from './parts'
+import { Sentence } from './Sentence'
+import { fill, useIndicatorLabel } from './text'
 
 /*
  * The Backtester form (ATL-209; design v18 backtester.js formHtml): the rule as a sentence on top,
@@ -197,9 +198,9 @@ export function BacktestForm({ initial }: { initial: FormState }) {
           className="bt-add"
           disabled={form[list].length >= (list === 'entry' ? LIMITS.maxEntry : LIMITS.maxExit)}
           onClick={() => update([list], (f) => ({ ...f, [list]: [...f[list], nextCondition(f)] }))}
+          icon={<Plus aria-hidden="true" />}
         >
-          <Plus aria-hidden="true" />
-          <span>{t('f.condAdd')}</span>
+          {t('f.condAdd')}
         </Button>
         {listError && <FieldError id={`bt-err-${list}`}>{listError}</FieldError>}
         {list === 'exit' && (
@@ -325,9 +326,9 @@ export function BacktestForm({ initial }: { initial: FormState }) {
         className="bt-add"
         disabled={form.indicators.length >= LIMITS.maxIndicators}
         onClick={() => update(['indicators'], (f) => ({ ...f, indicators: [...f.indicators, nextIndicator(f)] }))}
+        icon={<Plus aria-hidden="true" />}
       >
-        <Plus aria-hidden="true" />
-        <span>{t('f.indAdd')}</span>
+        {t('f.indAdd')}
       </Button>
       {indError && <FieldError id="bt-err-indicators">{indError}</FieldError>}
     </div>
@@ -507,9 +508,17 @@ export function BacktestForm({ initial }: { initial: FormState }) {
           <ShieldCheck aria-hidden="true" strokeWidth={1.5} />
           <span>{t('runNote')}</span>
         </p>
-        <Button type="submit" form="bt-form" variant="primary" size="lg" disabled={blocked} loading={start.isPending} data-testid="bt-run">
-          <Play aria-hidden="true" />
-          <span>{start.isPending ? t('starting') : t('run')}</span>
+        <Button
+          type="submit"
+          form="bt-form"
+          variant="primary"
+          size="lg"
+          disabled={blocked}
+          loading={start.isPending}
+          icon={<Play aria-hidden="true" className="rtl:-scale-x-100" />}
+          data-testid="bt-run"
+        >
+          {start.isPending ? t('starting') : t('run')}
         </Button>
       </div>
     </div>

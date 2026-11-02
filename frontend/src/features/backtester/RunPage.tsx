@@ -8,7 +8,8 @@ import { Button, Skeleton, Spinner, toast } from '../../ui'
 import { useLang, useNow } from '../portfolio/hooks'
 import { isActive, useRun, type RunDetail } from './api'
 import { fromRequest } from './model'
-import { fill, NS, StatusChip } from './parts'
+import { NS, StatusChip } from './parts'
+import { fill } from './text'
 import { Sentence } from './Sentence'
 import './backtester.css'
 
@@ -33,10 +34,12 @@ function Header({ run, again }: { run: RunDetail; again: boolean }) {
       <div className="bt-head-aside">
         <StatusChip status={run.status} />
         {again && (
-          <Link to={`/backtester?from=${encodeURIComponent(run.id)}`} className="bt-link-btn">
-            <Pencil aria-hidden="true" strokeWidth={1.75} />
-            <span>{t('again')}</span>
-          </Link>
+          <Button asChild size="sm">
+            <Link to={`/backtester?from=${encodeURIComponent(run.id)}`}>
+              <Pencil aria-hidden="true" strokeWidth={1.75} />
+              <span>{t('again')}</span>
+            </Link>
+          </Button>
         )}
       </div>
     </header>
@@ -84,10 +87,12 @@ function Failed({ run }: { run: RunDetail }) {
         </p>
       )}
       <p className="text-subheadline text-label-secondary">{t(`e.fix.${code}`)}</p>
-      <Link to={`/backtester?from=${encodeURIComponent(run.id)}`} className="bt-link-btn">
-        <Pencil aria-hidden="true" strokeWidth={1.75} />
-        <span>{t('again')}</span>
-      </Link>
+      <Button asChild size="sm">
+        <Link to={`/backtester?from=${encodeURIComponent(run.id)}`}>
+          <Pencil aria-hidden="true" strokeWidth={1.75} />
+          <span>{t('again')}</span>
+        </Link>
+      </Button>
     </section>
   )
 }
@@ -117,9 +122,9 @@ export function RunPage() {
           </div>
           <h3 className="text-title-3">{t('notFound')}</h3>
           <p className="text-subheadline text-label-secondary">{t('notFoundBody')}</p>
-          <Link to="/backtester" className="bt-link-btn">
-            <span>{t('new')}</span>
-          </Link>
+          <Button asChild size="sm">
+            <Link to="/backtester">{t('new')}</Link>
+          </Button>
         </section>
       </div>
     )

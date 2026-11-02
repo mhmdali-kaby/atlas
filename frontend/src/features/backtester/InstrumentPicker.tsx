@@ -25,7 +25,7 @@ interface Props {
 }
 
 export function InstrumentPicker({ env, value, error, onChange }: Props) {
-  const { t } = useTranslation(NS)
+  const { t, i18n } = useTranslation(NS)
   const id = useId()
   const input = useRef<HTMLInputElement>(null)
   const [q, setQ] = useState('')
@@ -99,7 +99,8 @@ export function InstrumentPicker({ env, value, error, onChange }: Props) {
             id="bt-inst"
             className="bt-inst-input"
             type="text"
-            dir="ltr"
+            // ids are Latin; the Arabic placeholder reads right to left until the owner types
+            dir={q === '' && i18n.language === 'ar' ? 'rtl' : 'ltr'}
             role="combobox"
             aria-label={t('f.add')}
             aria-expanded={showList}

@@ -80,7 +80,6 @@ export function RunsSidebar({ onNavigate }: SidebarSectionProps) {
                 data-nav-item=""
                 data-testid="bt-run-row"
                 aria-current={current === r.id ? 'page' : undefined}
-                aria-label={t('runRow', { name: r.rule_name, insts, status: t(`st.${r.status}`), when })}
                 onClick={onNavigate}
               >
                 <span className="bt-run-ic">

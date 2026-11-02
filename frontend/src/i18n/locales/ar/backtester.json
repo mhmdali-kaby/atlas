@@ -6,8 +6,12 @@
   "recent": "آخر الاختبارات",
   "noRuns": "لا اختبارات بعد",
   "runsError": "تعذّر تحميل الاختبارات",
-  "st": { "done": "اكتمل", "running": "قيد التشغيل", "failed": "فشل", "queued": "في الانتظار" },
-  "runRow": "{{name}}، {{insts}}، {{status}}، {{when}}",
+  "st": {
+    "done": "اكتمل",
+    "running": "قيد التشغيل",
+    "failed": "فشل",
+    "queued": "في الانتظار"
+  },
   "s": {
     "go": "{{side}} على {{insts}}، بشموع {{bar}}، من {{from}} إلى {{to}}.",
     "enter": "ادخل حين {{conds}}.",
@@ -23,7 +27,12 @@
   "short": "بِع",
   "sideLong": "شراء",
   "sideShort": "بيع",
-  "op": { "crosses_above": "يتقاطع صعودًا فوق", "crosses_below": "يتقاطع هبوطًا تحت", "above": "أعلى من", "below": "أدنى من" },
+  "op": {
+    "crosses_above": "يتقاطع صعودًا فوق",
+    "crosses_below": "يتقاطع هبوطًا تحت",
+    "above": "أعلى من",
+    "below": "أدنى من"
+  },
   "close": "سعر الإغلاق",
   "bps": "{{n}} نقطة أساس",
   "f": {

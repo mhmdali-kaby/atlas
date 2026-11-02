@@ -187,13 +187,7 @@ a.bt-run-row:hover { background: var(--fill-4); text-decoration: none; }
 }
 .bt-state-icon svg { width: 28px; height: 28px; }
 .bt-state-icon.is-error { background: var(--loss-wash); color: var(--loss-ink); box-shadow: none; }
-.bt-link-btn {
-  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding-inline: 12px; border-radius: var(--radius-control);
-  background: var(--fill-3); color: var(--label); font-size: var(--fs-footnote); font-weight: 500; text-decoration: none;
-}
-.bt-link-btn svg { width: 14px; height: 14px; }
-.bt-link-btn:hover { background: var(--fill-2); text-decoration: none; }
-.bt-link-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
 
 @media (max-width: 760px) {
   .bt-sentence { font-size: var(--fs-headline); }
