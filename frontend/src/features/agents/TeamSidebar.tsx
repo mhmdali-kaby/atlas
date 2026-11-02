@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { useLocation } from 'react-router'
 import type { SidebarSectionProps } from '../../app/feature'
 import { useTradingEnv } from '../../app/shell/tradingEnv'
 import { formatMoney } from '../../lib/format'
@@ -18,8 +19,12 @@ import './agents.css'
  * words and its task; a row jumps to that agent's row on the page. Shares the page's query.
  */
 
-function jumpTo(slug: string) {
-  const row = document.getElementById(`ag-row-${slug}`)
+/** The agent on whichever page is open: its scorecard on /agents/scorecards, else its Status row. */
+const targetId = (slug: string, pathname: string) =>
+  /\/agents\/scorecards\/?$/.test(pathname) ? `sc-${slug}` : `ag-row-${slug}`
+
+function jumpTo(id: string) {
+  const row = document.getElementById(id)
   if (!row) return
   const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
   row.scrollIntoView?.({ block: 'center', behavior: reduce ? 'auto' : 'smooth' })
@@ -32,6 +37,7 @@ function jumpTo(slug: string) {
 export function TeamSidebar({ onNavigate }: SidebarSectionProps) {
   const { t } = useTranslation(NS)
   const lang = useLang()
+  const { pathname } = useLocation()
   const names = useAgentName()
   const env = useTradingEnv()
   const q = useAgents(env)
@@ -89,10 +95,10 @@ export function TeamSidebar({ onNavigate }: SidebarSectionProps) {
             data-nav-item=""
             data-slug={d.slug}
             data-status={status}
-            aria-controls={`ag-row-${d.slug}`}
+            aria-controls={targetId(d.slug, pathname)}
             aria-label={t('rowSr', { name, state: t(`state.${st}`) })}
             onClick={() => {
-              jumpTo(d.slug)
+              jumpTo(targetId(d.slug, pathname))
               onNavigate()
             }}
           >
