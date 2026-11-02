@@ -1,6 +1,6 @@
 # ATL-203 — War Room post-mortem and weekly review cards
 
-Code: `frontend/src/features/warroom/cards/` — `learning.ts` (readers and rules), `PostMortemCard.tsx`,
+Code: `frontend/src/features/warroom/cards/` — `learning.ts` (card readers; `ladderOf`), `PostMortemCard.tsx`,
 `WeeklyReviewCard.tsx`, `learning.css`; wired in `warroom/Message.tsx`. Strings: `warroom.json` → `pmo.*`
 and `wk.*` (en/ar). Fixtures: `warroom/fixtures/learning.ts` (also used by `e2e/warroom-learning-cards.spec.ts`).
 
@@ -26,7 +26,9 @@ can swap its full-width mini ladder for this (ATL-202 handoff).
 
 ## Shared with the Journal
 
-ATL-202 was not on develop when this was built, so `learning.ts` mirrors its `closeLabel`, `tp1Hit`,
-`displayTags` and the outcome rule, and `pmo.rule.*` / `pmo.tag.*` copy `journal:rule.*` / `journal:tag.*`
-word for word. If one set of words changes, change the other, or fold both onto one module once both are merged.
-`useTagLabel()` and `SignedR`/`OutcomeLine` are exported for reuse (the Journal's weekly review rows).
+One copy of the trade rules: `frontend/src/features/journal/trade.ts` (`outcomeOf`, `realisedR`, `planOf`,
+`targetReached`, `tp1Hit`, `closeLabel`, `SCRATCH_R`) reads a `TradeRecord` — the `{side, outcome, tags,
+expected, actual}` shape that both `journal_entries.data` and the `post_mortem` card carry. `journal/model.ts`
+wraps it per JournalEntry (`tradeOf(e)`); the card passes `PostMortem.trade`. Close labels use
+`journal:rule.*`, tag chips use `journal/format` `useTagLabel()` (`journal:tag.*`); `warroom.json` has no copies.
+`SignedR`/`OutcomeLine` are exported for reuse (the Journal's weekly review rows).

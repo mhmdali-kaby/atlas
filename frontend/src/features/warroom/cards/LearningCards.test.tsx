@@ -7,7 +7,9 @@ import type { Lang } from '../../../lib/format'
 import type { WarroomMessage } from '../api'
 import { JOURNAL_ID, pendingPostMortemMessage, postMortemMessage, quietWeekMessage, weeklyReviewMessage } from '../fixtures/learning'
 import { Message } from '../Message'
-import { closeLabel, readPostMortem, readWeeklyReview } from './learning'
+import arJournal from '../../../i18n/locales/ar/journal.json'
+import { closeLabel } from '../../journal/trade'
+import { readPostMortem, readWeeklyReview } from './learning'
 
 /* ATL-203: the post_mortem and weekly_review cards in the War Room (design v16 §9). */
 
@@ -96,15 +98,16 @@ describe('PostMortemCard', () => {
   it('reads the same close labels as the Journal, verbatim, in Arabic too', () => {
     draw(postMortemMessage(), 'ar')
     expect(screen.getByTestId('pmo-close')).toHaveTextContent(/^ضُرب الوقف$/)
+    expect(screen.getByTestId('pmo-close').textContent).toBe(arJournal.rule.stop)
     expect(screen.getByTestId('pmo-outcome')).toHaveTextContent('خاسرة')
     expect(screen.getByTestId('pmo-journal')).toHaveTextContent('افتحها في السجل')
   })
 
   it('maps take_profit to the furthest target reached, and other reasons to their labels', () => {
     const tp = readPostMortem({ ...postMortemMessage().card!, outcome: 'win', actual: { ...(postMortemMessage().card!.actual as object), close_reason: 'take_profit', mfe_r: '2.4', realised_r: '2.10' } })!
-    expect(closeLabel(tp)).toBe('tp2')
+    expect(closeLabel(tp.trade)).toBe('tp2')
     const manual = readPostMortem({ ...postMortemMessage().card!, actual: { close_reason: 'manual', realised_r: '0.02' } })!
-    expect(closeLabel(manual)).toBe('owner')
+    expect(closeLabel(manual.trade)).toBe('owner')
     expect(manual.outcome).toBe('loss')
     expect(readPostMortem({ type: 'post_mortem' })).toBeNull()
   })

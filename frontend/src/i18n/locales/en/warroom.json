@@ -928,69 +928,7 @@
     "pending": "The lesson is still being written, and Atlas keeps trying until it is done. The figures are final.",
     "tags": "Tags",
     "open": "Open in the Journal",
-    "aria": "Post-mortem: {{inst}} {{side}}, {{outcome}}, {{r}}",
-    "rule": {
-      "stop": "Stopped out",
-      "tp1": "Closed at TP1",
-      "tp2": "Closed at TP2",
-      "tp3": "Closed at TP3",
-      "tp": "Closed at a target",
-      "time_stop": "Time stop",
-      "invalidation": "Invalidated",
-      "owner": "Closed by you",
-      "kill": "Kill switch",
-      "liquidation": "Liquidated",
-      "adl": "Auto-deleveraged",
-      "external": "Closed outside Atlas",
-      "pm": "Closed by the Portfolio Manager"
-    },
-    "tag": {
-      "setup": {
-        "breakout": "Breakout",
-        "pullback_to_support": "Pullback to support",
-        "breakdown": "Breakdown",
-        "rally_to_resistance": "Rally to resistance",
-        "range_fade": "Range fade",
-        "squeeze_expansion": "Squeeze expansion",
-        "reversal_divergence": "Reversal on divergence",
-        "other": "Other setup"
-      },
-      "asset": {
-        "crypto": "Crypto",
-        "stock": "Stocks",
-        "etf": "ETFs",
-        "index": "Indices",
-        "commodity": "Commodities",
-        "other": "Other market"
-      },
-      "regime": {
-        "trend": "Trending",
-        "range": "Ranging",
-        "high_vol": "High volatility",
-        "low_vol": "Low volatility"
-      },
-      "catalyst": {
-        "none": "No catalyst",
-        "earnings": "Earnings",
-        "guidance": "Guidance",
-        "macro_release": "Macro data",
-        "central_bank": "Central bank",
-        "regulation": "Regulation",
-        "hack_exploit": "Hack or exploit",
-        "listing": "Listing",
-        "delisting": "Delisting",
-        "etf_flow": "ETF flows",
-        "m_and_a": "Merger or acquisition",
-        "lawsuit": "Lawsuit",
-        "product": "Product news",
-        "partnership": "Partnership",
-        "token_unlock": "Token unlock",
-        "geopolitics": "Geopolitics",
-        "supply_shock": "Supply shock",
-        "funding": "Funding",
-        "other": "Other catalyst"
-      }
-    }
+    "aria": "Post-mortem: {{inst}} {{side}}, {{outcome}}, {{r}}"
   },
   "wk": {
     "kind": "Weekly review",

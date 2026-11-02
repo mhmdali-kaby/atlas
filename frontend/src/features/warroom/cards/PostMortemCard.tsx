@@ -8,7 +8,10 @@ import { Duration } from '../../portfolio/parts'
 import { fillSlots, slot } from '../slots'
 import { Inline } from '../text'
 import { Ladder } from './Ladder'
-import { closeLabel, displayTags, num, planOf, tp1Hit, useTagLabel, type Outcome, type PostMortem } from './learning'
+import { useTagLabel } from '../../journal/format'
+import { displayTags } from '../../journal/model'
+import { closeLabel, num, planOf, tp1Hit } from '../../journal/trade'
+import { ladderOf, type Outcome, type PostMortem } from './learning'
 import { decimalsOf } from './pm'
 import { Fig, Signed } from './pmParts'
 import { rText } from './rText'
@@ -40,16 +43,16 @@ export function SignedR({ value, digits = 2, className = '', testId }: { value: 
 
 /** "Won │ Closed at TP2": the outcome in its ink, then the close label verbatim as its own item. */
 export function OutcomeLine({ pm }: { pm: PostMortem }) {
-  const { t } = useTranslation('warroom')
+  const { t } = useTranslation(['warroom', 'journal'])
   const Icon = OUT_ICON[pm.outcome]
-  const label = closeLabel(pm)
+  const label = closeLabel(pm.trade)
   return (
     <span className={`lc-out is-${pm.outcome}`} data-testid="pmo-outcome">
       <Icon className="icon" aria-hidden="true" />
       <span>{t(`pmo.out.${pm.outcome}`)}</span>
       {label && (
         <span className="lc-rule" data-testid="pmo-close">
-          {t(`pmo.rule.${label}`)}
+          {t(`journal:rule.${label}`)}
         </span>
       )}
     </span>
@@ -62,13 +65,13 @@ const pctText = (p: string, lang: Lang) => `${formatFixed(String(Math.round(Numb
 export function PostMortemCard({ pm, lang }: { pm: PostMortem; lang: Lang }) {
   const { t } = useTranslation('warroom')
   const tagLabel = useTagLabel()
-  const plan = planOf(pm)
+  const plan = planOf(pm.trade) ? ladderOf(pm) : null
   const a = pm.actual
   const x = pm.expected
   const r = a.realisedR
   const side = t(pm.side === 'long' ? 'pmo.long' : 'pmo.short')
   const held = a.holdingMinutes === null ? null : <Duration ms={a.holdingMinutes * 60_000} lang={lang} />
-  const hit = tp1Hit(pm)
+  const hit = tp1Hit(pm.trade)
   const tags = displayTags(pm.tags)
 
   const decimals = decimalsOf([x.stop, ...(x.entryZone ?? [x.entry]), ...x.targets.map((tp) => tp.price), a.avgExit])

@@ -1,6 +1,8 @@
 import AxeBuilder from "@axe-core/playwright";
 import { expect, test, type Page } from "@playwright/test";
+import arJournal from "../src/i18n/locales/ar/journal.json" with { type: "json" };
 import arWarroom from "../src/i18n/locales/ar/warroom.json" with { type: "json" };
+import enJournal from "../src/i18n/locales/en/journal.json" with { type: "json" };
 import enWarroom from "../src/i18n/locales/en/warroom.json" with { type: "json" };
 import {
     JOURNAL_ID,
@@ -128,7 +130,7 @@ async function axeViolations(page: Page) {
 test("English light: both cards, the journal link and no axe violations", async ({ page }) => {
     const { pm, week, quiet } = await open(page, "en", "light");
     await expect(pm.getByTestId("pmo-outcome")).toContainText(enWarroom.pmo.out.loss);
-    await expect(pm.getByTestId("pmo-close")).toHaveText(enWarroom.pmo.rule.stop);
+    await expect(pm.getByTestId("pmo-close")).toHaveText(enJournal.rule.stop);
     await expect(pm.getByTestId("pmo-r")).toHaveText("−0.97R");
     await expect(pm.getByTestId("pmo-usd")).toContainText("−$20.55");
     await expect(pm.getByTestId("ld-exit")).toBeVisible();
@@ -152,7 +154,7 @@ test("Arabic RTL, dark: both cards in Arabic with no axe violations", async ({ p
     const { pm, week, quiet } = await open(page, "ar", "dark");
     await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
     await expect(page.locator("html")).toHaveClass(/dark/);
-    await expect(pm.getByTestId("pmo-close")).toHaveText(arWarroom.pmo.rule.stop);
+    await expect(pm.getByTestId("pmo-close")).toHaveText(arJournal.rule.stop);
     await expect(pm.getByTestId("pmo-outcome")).toContainText(arWarroom.pmo.out.loss);
     await expect(pm.getByTestId("ladder-compact")).toHaveAttribute("dir", "ltr");
     await expect(pm.getByTestId("pmo-journal")).toContainText(arWarroom.pmo.open);
