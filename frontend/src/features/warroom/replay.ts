@@ -84,7 +84,6 @@ export function replayDayName(day: string, lang: Lang, short = false): string {
   return f.format(new Date(dayStartMs(day) + 12 * 3_600_000))
 }
 
-
 export interface ReplayDayCount {
   date: string
   count: number
@@ -109,5 +108,5 @@ export function useReplayDays(env: TradingEnv, to: string) {
   })
 }
 
-/** The War Room sidebar sections that belong to Replay pages only (ATL-207), and those that don't. */
+/** True on /warroom/replay and /warroom/replay/<day>. */
 export const isReplayPath = (pathname: string) => pathname === '/warroom/replay' || pathname.startsWith('/warroom/replay/')
