@@ -161,6 +161,11 @@ DEFAULTS: Final[dict[str, Any]] = {
                 5,
             ],
         },
+        "stock_perps_weekend": {
+            "timezone": "America/New_York",
+            "start": "Fri 20:00",
+            "end": "Sun 20:00",
+        },
         "atr_bar": "1H",
         "atr_window": 14,
         "atr_lookback_bars": 120,

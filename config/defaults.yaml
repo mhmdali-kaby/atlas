@@ -152,6 +152,8 @@ risk_engine:
 # owner limits (those are in Settings above); these say how a check measures.
 #   us_session: the US cash session for avoid_stock_perps_outside_us_hours, in its own timezone, so
 #   DST comes from the tz database. weekdays are ISO (1 = Monday). Exchange holidays are not modelled.
+#   stock_perps_weekend (ATL-229, decision #255): with schedule.stock_perps_weekend = no_new_trades,
+#   check 2 rejects stock/ETF/index perps from start to end in that timezone (DST from the tz database).
 #   atr_bar/atr_window/atr_lookback_bars: ATR(1H) for check 3 (Wilder, atlas_quant), from closed bars.
 #   correlation_*: check 5's 30-day Pearson correlation of daily log returns; a pair with fewer
 #   overlapping returns than min_obs is "unknown" (not counted as correlated, listed in the check).
@@ -179,6 +181,10 @@ risk_rules:
     open: "09:30"
     close: "16:00"
     weekdays: [1, 2, 3, 4, 5]
+  stock_perps_weekend:
+    timezone: America/New_York
+    start: "Fri 20:00"
+    end: "Sun 20:00"
   atr_bar: 1H
   atr_window: 14
   atr_lookback_bars: 120
