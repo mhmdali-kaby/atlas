@@ -36,7 +36,7 @@ or aliases such as `US/Eastern`); `theme` `system|light|dark`.
 
 ```json
 {
-  "message": "The time zone must be a valid IANA time zone, such as Asia/Baghdad. (and 2 more errors)",
+  "message": "The selected language is invalid. (and 2 more errors)",
   "errors": {
     "locale": ["The selected language is invalid."],
     "timezone": ["The time zone must be a valid IANA time zone, such as Asia/Baghdad."],
