@@ -68,6 +68,7 @@ final class Doctor
             $this->tradingCore(),
             $this->okxClock(),
             $this->demoConnection(),
+            $this->liveConnection(),
             $this->withdrawPermission(),
             $this->diskSpace(),
             $this->security(),
@@ -267,6 +268,93 @@ final class Doctor
         return CheckResult::fail('demo_connection', self::t('connection_failed', [
             'message' => self::errorMessage($body['error'] ?? null), 'previously' => $previously,
         ]));
+    }
+
+    /**
+     * ATL-235 (decisions #240, #255): the live OKX connection, when one exists. Re-tests it through
+     * trading_core (live is called without the demo header) so the result is today's, and the
+     * row's verification columns are refreshed for withdrawPermission() below. A withdraw-enabled
+     * live key fails; any other failed test only warns, because live trading is not active until
+     * the owner switches env, and a missing live connection passes.
+     */
+    private function liveConnection(): CheckResult
+    {
+        if (! $this->databaseUp) {
+            return CheckResult::fail('live_connection', self::t('skipped_no_db'));
+        }
+        try {
+            $live = Connection::query()->where('exchange', 'okx')->where('env', 'live')->first();
+        } catch (Throwable $e) {
+            return CheckResult::fail('live_connection', self::t('query_failed', ['reason' => self::reason($e)]));
+        }
+        if ($live === null) {
+            return CheckResult::pass('live_connection', self::t('live_connection_none'));
+        }
+
+        $body = $this->tradingCoreUp ? $this->testLive($live) : null;
+        if ($body === null) {
+            // trading_core is unreachable or answered badly: report the last stored test.
+            if (in_array(self::WITHDRAW, self::stringList($live->permissions), true)) {
+                return CheckResult::fail('live_connection', self::t('live_connection_withdraw', ['source' => self::t('withdraw_source_stored')]));
+            }
+            if ($live->last_verified_at !== null && $live->withdraw_off_verified_at !== null) {
+                return CheckResult::pass('live_connection', self::t('live_connection_verified', [
+                    'summary' => self::summary($live, null), 'source' => self::t('withdraw_source_stored'),
+                ]));
+            }
+
+            return CheckResult::warn('live_connection', self::t('live_connection_unverified', [
+                'message' => self::errorMessage($live->last_test_error), 'source' => self::t('withdraw_source_stored'),
+            ]));
+        }
+
+        $error = $body['error'] ?? null;
+        $permissions = self::stringList($body['permissions'] ?? []);
+        if ($error === 'withdraw_permission_enabled' || in_array(self::WITHDRAW, $permissions, true)) {
+            return CheckResult::fail('live_connection', self::t('live_connection_withdraw', ['source' => self::t('withdraw_source_now')]));
+        }
+        if ($body['ok'] === true) {
+            return CheckResult::pass('live_connection', self::t('live_connection_verified', [
+                'summary' => self::summary($live, $body), 'source' => self::t('withdraw_source_now'),
+            ]));
+        }
+
+        return CheckResult::warn('live_connection', self::t('live_connection_unverified', [
+            'message' => self::errorMessage($error), 'source' => self::t('withdraw_source_now'),
+        ]));
+    }
+
+    /**
+     * @return array<string, mixed>|null trading_core's test body, or null when it could not be read
+     */
+    private function testLive(Connection $live): ?array
+    {
+        try {
+            $response = TradingCore::fromConfig()->post("/internal/connections/{$live->id}/test");
+        } catch (Throwable) {
+            return null;
+        }
+        $body = $response->json();
+        if (! $response->successful() || ! is_array($body) || ! array_key_exists('ok', $body)) {
+            return null;
+        }
+        /** @var array<string, mixed> $body */
+        $this->auditTest($live, $body);
+
+        return $body;
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $body
+     */
+    private static function summary(Connection $connection, ?array $body): string
+    {
+        return self::t('connection_summary', [
+            'label' => $connection->label,
+            'mode' => self::str($body === null ? $connection->account_mode : ($body['account_mode'] ?? null)),
+            'position' => self::str($body === null ? $connection->position_mode : ($body['position_mode'] ?? null)),
+            'uid' => self::str($body === null ? $connection->uid_last4 : ($body['uid_last4'] ?? null)),
+        ]);
     }
 
     /**

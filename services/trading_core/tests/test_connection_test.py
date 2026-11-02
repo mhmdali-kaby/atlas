@@ -104,6 +104,7 @@ def _insert_connection(engine: Engine, env: str) -> uuid.UUID:
                 api_secret=laravel_encrypt("test-secret"),
                 passphrase=laravel_encrypt("test-passphrase"),
                 last_verified_at=now,
+                withdraw_off_verified_at=now,
                 created_at=now,
                 updated_at=now,
             )
@@ -205,6 +206,7 @@ def test_read_trade_key_is_verified_and_only_uid_last4_is_kept(
     assert row.account_mode == "futures" and row.position_mode == "net_mode"
     assert row.permissions == ["read_only", "trade"] and row.uid_last4 == LAST4
     assert row.last_verified_at is not None and row.last_test_error is None
+    assert row.withdraw_off_verified_at == row.last_verified_at
 
     assert FULL_UID not in response.text
     assert FULL_UID not in row_text(row)
@@ -238,6 +240,7 @@ def test_demo_withdraw_key_is_verified_with_a_warning(
     row = load(engine, connection_id)
     assert row.last_verified_at is not None and row.last_test_error is None
     assert row.permissions == ["read_only", "trade", "withdraw"]
+    assert row.withdraw_off_verified_at is None  # demo warning: withdraw is on, never "verified off"
 
 
 @respx.mock(base_url=BASE, assert_all_called=False)
@@ -258,6 +261,42 @@ def test_live_withdraw_key_is_refused_and_not_verified(
     assert row.last_test_error == "withdraw_permission_enabled"
     assert row.permissions == ["read_only", "trade", "withdraw"]
     assert row.uid_last4 == LAST4
+    assert row.withdraw_off_verified_at is None  # the stale stamp is cleared too (ATL-235)
+
+
+@respx.mock(base_url=BASE, assert_all_called=False)
+def test_live_read_trade_key_is_verified_without_the_demo_header(
+    respx_mock: respx.MockRouter, engine: Engine, live_connection_id: uuid.UUID
+) -> None:
+    """ATL-235: a live Read+Trade key is verified, stamps withdraw_off_verified_at, and the
+    account/config call carries no x-simulated-trading header."""
+    respx_mock.route(host="testserver").pass_through()
+    route = mock_okx(respx_mock, config_body(perm="read_only,trade", uid=FULL_UID))
+
+    body = post_test(engine, live_connection_id).json()
+
+    assert body["ok"] is True and body["error"] is None and body["warnings"] == []
+    assert body["permissions"] == ["read_only", "trade"]
+    sent = route.calls.last.request.headers
+    assert sent["OK-ACCESS-KEY"] == "test-api-key-0000"
+    assert "x-simulated-trading" not in sent
+    row = load(engine, live_connection_id)
+    assert row.last_verified_at is not None and row.last_test_error is None
+    assert row.withdraw_off_verified_at == row.last_verified_at
+
+
+@respx.mock(base_url=BASE, assert_all_called=False)
+def test_failed_test_clears_withdraw_off_verified_at(
+    respx_mock: respx.MockRouter, engine: Engine, live_connection_id: uuid.UUID
+) -> None:
+    respx_mock.route(host="testserver").pass_through()
+    mock_okx(respx_mock, {"code": "50113", "msg": "Invalid Sign", "data": []})
+
+    body = post_test(engine, live_connection_id).json()
+
+    assert body["ok"] is False and body["error"] == "invalid_credentials"
+    row = load(engine, live_connection_id)
+    assert row.last_verified_at is None and row.withdraw_off_verified_at is None
 
 
 @respx.mock(base_url=BASE, assert_all_called=False)
