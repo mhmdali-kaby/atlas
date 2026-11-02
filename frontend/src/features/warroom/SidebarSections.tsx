@@ -36,26 +36,34 @@ export function AgentList(_props: SidebarSectionProps) {
       {AGENTS.map((agent) => {
         const status = agentStatus(agent.slug)
         const name = t(`agents.${agent.slug}.name`)
+        const statusWord = t(`status.${status}`)
+        // The row's second line shows the role while offline (agentStatus is always "offline"
+        // until the agent runtime ships) and the live status word otherwise. ATL-225: the
+        // accessible name must start with that same visible text (axe
+        // label-content-name-mismatch flagged aria-label "<name>, Offline", which dropped the
+        // role shown on screen), so there is no separate aria-label; a hidden span adds the
+        // status word on top only when the visible line is the role, not the status itself.
+        const task = status === 'offline' ? t(`agents.${agent.slug}.role`) : statusWord
         return (
           // The AgentCard popover (Mention, Private thread) arrives with the composer work; the
           // row is already the button that will open it.
-          <button
-            key={agent.slug}
-            type="button"
-            className="agent-row"
-            data-nav-item=""
-            data-slug={agent.slug}
-            data-status={status}
-            aria-label={t('agentLabel', { name, status: t(`status.${status}`) })}
-          >
+          <button key={agent.slug} type="button" className="agent-row" data-nav-item="" data-slug={agent.slug} data-status={status}>
             <Medallion slug={agent.slug} size={28} status={status} dot />
             <span className="agent-text">
               <span className={agent.hasShort ? 'agent-name has-short' : 'agent-name'}>
                 <span className="name-full">{name}</span>
                 {agent.hasShort && <span className="name-short">{t(`agents.${agent.slug}.short`)}</span>}
-              </span>
+              </span>{' '}
               <span className="agent-sub">
-                <span className="agent-task">{status === 'offline' ? t(`agents.${agent.slug}.role`) : t(`status.${status}`)}</span>
+                <span className="agent-task">{task}</span>
+                {/* A pure-whitespace text node is dropped from layout (grid/flex both ignore it)
+                    but still joins the accessible name with a word boundary. */}
+                {task !== statusWord && (
+                  <>
+                    {' '}
+                    <span className="sr-only">{statusWord}</span>
+                  </>
+                )}
               </span>
             </span>
           </button>

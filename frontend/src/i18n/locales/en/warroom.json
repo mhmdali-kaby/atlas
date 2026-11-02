@@ -53,7 +53,6 @@
     "degraded": "Degraded",
     "paused": "Paused"
   },
-  "agentLabel": "{{name}}, {{status}}",
   "tag": {
     "CONFIRMED": "CONFIRMED",
     "REPORTED": "REPORTED",

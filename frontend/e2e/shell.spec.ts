@@ -48,7 +48,7 @@ test('the risk footer is on the login page and the shell, in English and Arabic'
   await expect(footer(page)).toHaveText('Automated trading can lose money. Demo/Live: Demo')
   await page.screenshot({ path: `${SHOTS}/login-en.png` })
 
-  await page.getByRole('button', { name: 'Switch to Arabic' }).click()
+  await page.getByTestId('language-switch').click()
   await expect(footer(page)).toHaveText('قد يؤدي التداول الآلي إلى خسارة المال. تجريبي/حقيقي: تجريبي')
   await page.screenshot({ path: `${SHOTS}/login-ar.png` })
 })
@@ -63,7 +63,7 @@ test('Arabic flips <html> to rtl at once, puts the sidebar on the right, and sur
   expect((await sidebar.boundingBox())!.x).toBeLessThan(100)
   await page.screenshot({ path: `${SHOTS}/shell-en-light.png` })
 
-  await page.getByRole('button', { name: 'Switch to Arabic' }).click()
+  await page.getByTestId('language-switch').click()
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl')
   await expect(page.locator('html')).toHaveAttribute('lang', 'ar')
   const rtlSidebar = page.getByRole('complementary', { name: 'الشريط الجانبي' })

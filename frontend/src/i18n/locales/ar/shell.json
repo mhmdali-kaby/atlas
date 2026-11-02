@@ -22,7 +22,7 @@
   },
   "toolbar": "شريط الأدوات",
   "toggleSidebar": "إظهار الشريط الجانبي أو إخفاؤه",
-  "switchLang": "التبديل إلى الإنجليزية",
+  "switchLangHint": "تبديل اللغة",
   "otherLang": "English",
   "theme": {
     "label": "المظهر",
