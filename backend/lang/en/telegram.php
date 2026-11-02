@@ -31,6 +31,7 @@ return [
         'reject' => 'Reject',
     ],
     'callback' => [
+        'approve_in_atlas' => 'Live trade: approve it in Atlas. Reject still works here.',
         'expired' => 'expired',
         'approved' => 'Approved — the order was sent.',
         'approve_failed' => 'Not sent: :reason',

@@ -24,6 +24,7 @@ use App\Support\TradingCore;
 use App\Support\Warroom\MentionParser;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -96,10 +97,11 @@ class ProposalController extends Controller
         return response()->json(['data' => ['inst_id' => $proposal->inst_id, ...MarkPrice::of($proposal->env, $proposal->inst_id)]]);
     }
 
-    public function approve(Proposal $proposal): JsonResponse
+    public function approve(Request $request, Proposal $proposal): JsonResponse
     {
         Gate::authorize('act', $proposal);
-        $outcome = $this->approvals->approve($proposal, 'owner');
+        // ATL-238: only a JSON `true` counts as the live "real money" confirmation.
+        $outcome = $this->approvals->approve($proposal, 'owner', null, $request->input('live_confirmed') === true);
         if ($outcome->error !== null && $outcome->status === 409 && $outcome->execution === []) {
             return $this->conflict($outcome->error, $outcome->proposal);
         }

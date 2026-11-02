@@ -112,6 +112,8 @@ class RiskContext:
     week_base_usd: Decimal | None = None
     consecutive_losses: int = 0
     events: tuple[ScheduledEvent, ...] = ()
+    live_started_at: datetime | None = None
+    """system_state.live_started_at (ATL-236); with env live it starts the first live month."""
 
 
 # --- Loading (I/O) -----------------------------------------------------------------------------
@@ -386,6 +388,12 @@ def _used_today(session: Session, env: str, since: datetime, statuses: list[str]
     return Decimal(row[0]), int(row[1])
 
 
+def load_live_started_at(session: Session) -> datetime | None:
+    """system_state.live_started_at (the single row id 1, ATL-236); None while there is no row."""
+    value = session.execute(text("SELECT live_started_at FROM system_state WHERE id = 1")).scalar()
+    return value if isinstance(value, datetime) else None
+
+
 def load_context(
     session: Session, rds: Any, proposal: Proposal, now: datetime, config: Mapping[str, Any] | None = None
 ) -> RiskContext:
@@ -484,6 +492,7 @@ def load_context(
         week_base_usd=losses.week_base_usd,
         consecutive_losses=losses.consecutive_losses,
         events=tuple(ScheduledEvent(n, c, int(i), t) for n, c, i, t in events),
+        live_started_at=load_live_started_at(session) if env == "live" else None,
     )
 
 
@@ -495,5 +504,6 @@ __all__ = [
     "RiskEngineError",
     "ensure_trading_state",
     "load_context",
+    "load_live_started_at",
     "loss_figures",
 ]

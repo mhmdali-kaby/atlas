@@ -8,6 +8,7 @@ use App\Models\Setting;
 use App\Support\Settings\SettingsLabels;
 use App\Support\Settings\SettingsSchema;
 use App\Support\Settings\SettingsService;
+use App\Support\System\FirstLiveMonth;
 use Brick\Math\BigDecimal;
 use Carbon\CarbonImmutable;
 use Closure;
@@ -54,6 +55,12 @@ class UpdateSettingsRequest extends FormRequest
         // ATL-33 AC2: the schema's 1-4 range is every level the brief defines; levels above
         // autonomy.max_enabled_level are refused on top of it (4 since ATL-212, decision #254).
         $rules['changes.autonomy_level'][] = self::maxEnabledAutonomyLevel();
+
+        // ATL-238, decision #255 (6): during the first live month, live autonomy stays at or below
+        // max_live_autonomy and the live bot capital cap cannot be cleared.
+        if ($this->input('env') === 'live' && FirstLiveMonth::active()) {
+            $rules['changes.autonomy_level'][] = self::firstLiveMonthAutonomy();
+        }
 
         // ATL-113: agent settings. Their keys hold literal dots (`agents.historian.enabled`), so
         // the rule keys escape them; error keys come back unescaped (`changes.agents.historian.enabled`).
@@ -121,6 +128,14 @@ class UpdateSettingsRequest extends FormRequest
     public function after(): array
     {
         return [function (Validator $validator): void {
+            // ATL-238: a `nullable` field skips its closures on null, so clearing the live cap
+            // (null, or an empty string) is refused here rather than in rules().
+            $raw = $this->input('changes');
+            if ($this->input('env') === 'live' && is_array($raw) && array_key_exists('bot_capital_cap_usdt', $raw)
+                && ($raw['bot_capital_cap_usdt'] === null || $raw['bot_capital_cap_usdt'] === '') && FirstLiveMonth::active()) {
+                $validator->errors()->add('changes.bot_capital_cap_usdt', __('settings.first_live_month_cap_required', ['until' => self::untilLabel()]));
+            }
+        }, function (Validator $validator): void {
             $raw = $this->input('changes');
             if (! is_array($raw) || array_intersect(array_keys($raw), SettingsSchema::scheduleFields()) === []) {
                 return;
@@ -245,6 +260,27 @@ class UpdateSettingsRequest extends FormRequest
                 $fail(__('settings.inst_id_format'));
             }
         };
+    }
+
+    private static function firstLiveMonthAutonomy(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail): void {
+            $max = FirstLiveMonth::maxAutonomy();
+            if (is_int($value) && $value > $max) {
+                $fail(__('settings.first_live_month_autonomy', [
+                    'max' => $max,
+                    'until' => self::untilLabel(),
+                ]));
+            }
+        };
+    }
+
+    /** The end of the first live month in the owner's display zone, e.g. "2026-12-02 10:12". */
+    private static function untilLabel(): string
+    {
+        $zone = config('atlas_defaults.timezone.display');
+
+        return FirstLiveMonth::endsAt()?->setTimezone(is_string($zone) ? $zone : 'UTC')->format('Y-m-d H:i') ?? '';
     }
 
     private static function maxEnabledAutonomyLevel(): Closure

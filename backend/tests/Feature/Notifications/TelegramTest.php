@@ -467,3 +467,36 @@ it('keeps the token out of logs, exceptions and stored errors when Telegram fail
         expect(TelegramConnection::current()?->last_error)->toContain('[redacted]');
     }
 })->with(['network', 'http']);
+
+// ATL-238, decision #255 (7): a live proposal is approved only in Atlas; Reject still works.
+
+it('refuses Telegram Approve on a live proposal with "approve in Atlas", auditing it, and keeps it awaiting_owner', function (): void {
+    tgConnect();
+    $p = tgProposal(['env' => 'live']);
+    tgFake([tgCallback(700, CallbackData::encode('a', $p->id, $p->approval_expires_at->getTimestamp()))]);
+
+    $this->artisan('atlas:telegram-poll', ['--once' => true])->assertSuccessful();
+
+    expect($p->fresh()?->status)->toBe('awaiting_owner')
+        ->and(tgExecuteCalls($p->id))->toBe([])
+        ->and(AuditLog::query()->where('action', 'proposal.approved')->exists())->toBeFalse()
+        ->and(AuditLog::query()->where('action', 'telegram.callback_refused')->sole()->after)
+        ->toMatchArray(['actor' => 'telegram', 'reason' => 'live_approve_in_atlas'])
+        ->and(AuditLog::query()->where('action', 'telegram.callback_refused')->sole()->subject_id)->toBe($p->id);
+    expect(tgSent('answerCallbackQuery'))->toHaveCount(1)
+        ->and(tgSent('answerCallbackQuery')[0]->data()['text'])->toBe('Live trade: approve it in Atlas. Reject still works here.')
+        ->and(tgSent('editMessageText'))->toBe([]);
+});
+
+it('rejects a live proposal from Telegram', function (): void {
+    tgConnect();
+    $p = tgProposal(['env' => 'live']);
+    tgFake([tgCallback(701, CallbackData::encode('r', $p->id, $p->approval_expires_at->getTimestamp()))]);
+
+    $this->artisan('atlas:telegram-poll', ['--once' => true])->assertSuccessful();
+
+    expect($p->fresh()?->status)->toBe('rejected')
+        ->and(tgExecuteCalls($p->id))->toBe([])
+        ->and(AuditLog::query()->where('action', 'proposal.rejected')->sole()->after)->toMatchArray(['actor' => 'telegram', 'status' => 'rejected'])
+        ->and(tgSent('answerCallbackQuery')[0]->data()['text'])->toBe('Rejected.');
+});

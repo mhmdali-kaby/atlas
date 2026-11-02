@@ -30,6 +30,7 @@ return [
         'reject' => 'رفض',
     ],
     'callback' => [
+        'approve_in_atlas' => 'صفقة حقيقية: وافق عليها في Atlas. يمكنك الرفض من هنا.',
         'expired' => 'انتهت الصلاحية',
         'approved' => 'تمت الموافقة وأُرسل الأمر.',
         'approve_failed' => 'لم يُرسل: :reason',

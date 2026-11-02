@@ -203,7 +203,12 @@ def check_environment(
     ticker_at: datetime | None,
     now: datetime,
     max_age_seconds: int,
+    capital_cap_required: bool = False,
+    capital_cap_set: bool = True,
 ) -> CheckResult:
+    """Check 1. ``capital_cap_required`` is true for a live proposal inside the first live month
+    (ATL-238, decision #255 (6)); then a missing bot capital cap rejects with
+    ``live_capital_cap_required``."""
     name = "env_and_kill_switch"
     age = None if ticker_at is None else (now - ticker_at).total_seconds()
     values: dict[str, Any] = {
@@ -234,6 +239,17 @@ def check_environment(
         return CheckResult(
             name, False, "connection_not_verified", f"There is no verified OKX connection for {env}.", values
         )
+    if capital_cap_required:
+        values["capital_cap_required"] = True
+        values["capital_cap_set"] = capital_cap_set
+        if not capital_cap_set:
+            return CheckResult(
+                name,
+                False,
+                "live_capital_cap_required",
+                "The first live month needs a live bot capital cap. Set one in Settings -> Money limits.",
+                values,
+            )
     if age is None or age > max_age_seconds:
         what = "no ticker received" if age is None else f"last ticker {age:.1f} s ago"
         return CheckResult(
@@ -641,6 +657,20 @@ def check_event_blackout(
     )
 
 
+def in_first_live_month(
+    env: str, live_started_at: datetime | None, now: datetime, days: int | None = None
+) -> bool:
+    """True for env live within ``first_month_days`` of system_state.live_started_at (#255 (6))."""
+    if env != "live" or live_started_at is None:
+        return False
+    span = int(DEFAULTS["env"]["live_preflight"]["first_month_days"]) if days is None else days
+    return now < live_started_at + timedelta(days=span)
+
+
+def first_live_month_max_autonomy() -> int:
+    return int(DEFAULTS["env"]["live_preflight"]["max_live_autonomy"])
+
+
 # --- Check 9: autonomy -------------------------------------------------------------------------
 
 
@@ -652,6 +682,7 @@ def decide_autonomy(
     ask_above_usd: Decimal,
     risk_reducing: bool = False,
     halted: bool = False,
+    first_live_month_max: int | None = None,
 ) -> tuple[CheckResult, Decision]:
     """Check 9 (brief §14.6, decision #254).
 
@@ -660,7 +691,10 @@ def decide_autonomy(
     ``above_ask_threshold``; 4 send_now. A level above ``max_enabled_level`` falls back to
     awaiting_owner. ``halted`` (paused trading or an active breaker) never yields send_now: entries
     already reject at check 1, and a risk-reducing position action that passed check 1 while halted
-    still waits for the owner, so autonomy never acts on its own past a pause or a breaker."""
+    still waits for the owner, so autonomy never acts on its own past a pause or a breaker.
+
+    ``first_live_month_max`` (ATL-238, decision #255 (6)) is set for a live proposal inside the
+    first live month: a level above it waits for the owner, with note ``first_live_month``."""
     name = "autonomy"
     values: dict[str, Any] = {
         "autonomy_level": level,
@@ -672,6 +706,19 @@ def decide_autonomy(
         return CheckResult(name, True, None, "Advise only: the proposal is not sent.", values), "advise_only"
     if level == 2:
         return CheckResult(name, True, None, "The owner approves each trade.", values), "awaiting_owner"
+    if first_live_month_max is not None and level > first_live_month_max:
+        values["note"] = "first_live_month"
+        values["first_live_month_max"] = first_live_month_max
+        return (
+            CheckResult(
+                name,
+                True,
+                None,
+                f"First live month: autonomy is capped at {first_live_month_max}; the owner approves.",
+                values,
+            ),
+            "awaiting_owner",
+        )
     if level > max_enabled_level:
         values["note"] = "level_not_enabled"
         return (
