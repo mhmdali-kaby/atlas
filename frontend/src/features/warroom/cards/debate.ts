@@ -10,6 +10,7 @@
  */
 import { Check, Minus, Pencil, type LucideIcon } from 'lucide-react'
 import { formatFixed, type Lang } from '../../../lib/format'
+import { readAutonomyValues, resolveAutonomy, type AutonomyNoteValues } from './autonomyNote'
 
 /** The Devil's Advocate's checklist, in the brief's fixed order (§7.7). */
 export const DA_ITEMS = [
@@ -200,7 +201,7 @@ export const RISK_CHECKS = [
   'autonomy',
 ] as const
 
-export type StepState = 'pass' | 'resize' | 'fail' | 'not_run' | 'awaiting_owner'
+export type StepState = 'pass' | 'resize' | 'fail' | 'not_run' | 'awaiting_owner' | 'send_now' | 'advise_only'
 export type RiskResult = 'approved' | 'resized' | 'rejected'
 
 export interface RiskStep {
@@ -227,6 +228,9 @@ export interface RiskCheck {
   bindingValueUsd: string | null
   /** What the Strategist asked for, shown when the size was cut. */
   requestedUsd: string | null
+  /** Check 9's own stored autonomy values (decision 254, ATL-212/219), or null when it did not
+   *  run (the proposal was rejected before reaching it). */
+  autonomy: AutonomyNoteValues | null
 }
 
 /** Caps that come from the money limits (USDT); the others come from the risk profile (%). */
@@ -245,6 +249,8 @@ export function readRiskCheck(card: unknown): RiskCheck | null {
   const sizing = byN.get(4)
   const values = isObj(sizing?.values) ? sizing.values : {}
   const caps = isObj(values.caps) ? values.caps : {}
+  const autonomy = readAutonomyValues(byN.get(9)?.values)
+  const autonomyResolved = autonomy ? resolveAutonomy(autonomy, 'entry') : null
 
   let failedCheck: number | null = null
   const steps: RiskStep[] = RISK_CHECKS.map((_, i) => {
@@ -255,6 +261,7 @@ export function readRiskCheck(card: unknown): RiskCheck | null {
     if (!x || x.status === 'not_run' || x.status === 'not_applicable') state = 'not_run'
     else if (x.status === 'failed' || x.passed === false) state = 'fail'
     else if (n === 4 && result === 'resized') state = 'resize'
+    else if (n === 9 && autonomyResolved) state = autonomyResolved.decision
     else if (n === 9 && decision === 'awaiting_owner') state = 'awaiting_owner'
     else state = 'pass'
     if (state === 'fail' && failedCheck === null) failedCheck = n
@@ -278,5 +285,6 @@ export function readRiskCheck(card: unknown): RiskCheck | null {
     bindingCap: rejected ? null : bindingCap,
     bindingValueUsd: bindingCap ? decStr(caps[bindingCap]) : null,
     requestedUsd: result === 'resized' ? decStr(caps.strategist_suggestion) : null,
+    autonomy,
   }
 }

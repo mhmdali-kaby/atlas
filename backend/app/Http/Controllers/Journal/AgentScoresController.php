@@ -9,10 +9,12 @@ use App\Http\Requests\Journal\AgentScoresRequest;
 use App\Http\Requests\Journal\JournalApiRequest;
 use App\Http\Requests\Journal\NotebookRequest;
 use App\Http\Resources\JournalEntryResource;
+use App\Support\Portfolio\PerformanceService;
 use App\Support\Settings\SettingsSchema;
 use App\Support\System\ActiveEnv;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
@@ -22,6 +24,8 @@ use Illuminate\Support\Facades\DB;
  */
 class AgentScoresController extends Controller
 {
+    public function __construct(private readonly PerformanceService $performance) {}
+
     public function scores(AgentScoresRequest $request): JsonResponse
     {
         $env = ActiveEnv::get();
@@ -60,6 +64,13 @@ class AgentScoresController extends Controller
         $directory = config('atlas_defaults.warroom.agents');
         $directory = is_array($directory) ? $directory : [];
 
+        // ATL-204: the window's realised P&L by agent — the exact same trades and sum as
+        // Portfolio → Performance's By-agent breakdown, so the two pages always agree.
+        $tz = JournalApiRequest::timezone();
+        $fromUtc = CarbonImmutable::createFromFormat('!Y-m-d', $first, $tz)?->utc();
+        $toUtc = CarbonImmutable::createFromFormat('!Y-m-d', $last, $tz)?->addDay()->utc();
+        $pnlByAgent = $fromUtc !== null && $toUtc !== null ? $this->performance->pnlByAgent($env, $fromUtc, $toUtc) : [];
+
         $agents = [];
         foreach ($slugs as $slug) {
             $entry = is_array($directory[$slug] ?? null) ? $directory[$slug] : [];
@@ -69,6 +80,7 @@ class AgentScoresController extends Controller
                 'name' => is_string($entry['name'] ?? null) ? $entry['name'] : $slug,
                 'summary' => self::summary($agentRows),
                 'days' => $agentRows,
+                'pnl_attributed_usd' => $pnlByAgent[$slug] ?? null,
             ];
         }
 

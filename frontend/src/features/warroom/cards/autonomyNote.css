@@ -1,0 +1,69 @@
+/* AutonomyNote (ATL-219, decision 254, design v18 §4.6): who pressed send, and why. Ported from
+   the approved prototype's css/autonomy.css. No new colours, type sizes or radii. */
+.au-note {
+  display: grid;
+  grid-template-columns: 17px minmax(0, 1fr) auto;
+  column-gap: 8px;
+  row-gap: 1px;
+  align-items: start;
+  margin: 0;
+}
+.au-note-ic { grid-row: 1 / span 2; display: grid; place-items: center; height: 20px; }
+.au-note-ic .icon { width: 17px; height: 17px; flex: none; color: var(--accent); }
+.au-note.is-advise_only .au-note-ic .icon { color: var(--label-secondary); }
+.au-note.is-halted .au-note-ic .icon { color: var(--warning-ink); }
+.au-note-text {
+  grid-column: 2; margin: 0; font-size: var(--fs-subheadline); line-height: var(--lh-subheadline);
+  color: var(--label-secondary); text-wrap: pretty;
+}
+.au-note-text b { font-weight: 600; color: var(--label); }
+.au-note-text .fig { color: var(--label); font-weight: 500; }
+.au-note-text b .fig { font-weight: 600; }
+.au-note-meta { grid-column: 2 / span 2; margin: 0; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.au-note-link { white-space: nowrap; }
+.au-note > .au-gauge { grid-column: 3; grid-row: 1 / span 2; align-self: center; margin-inline-start: 16px; }
+:root:lang(ar) .au-note-text { line-height: 1.5; }
+@container (max-width: 470px) {
+  .au-note { grid-template-columns: 17px minmax(0, 1fr); }
+  .au-note > .au-gauge { grid-column: 2; grid-row: auto; margin: 5px 0 3px; }
+  .db-step-head .au-gauge { flex-basis: 100%; margin-inline-start: 0; margin-block: 3px 1px; }
+}
+
+/* The mini ask line: 112 × 14. Track 6 px, solid accent up to the ask-above amount, hatched past
+   it; a 2 px tick at the amount; a 10 px dot at this trade (accent when it goes on its own, ink
+   when it waits). Mirrors in Arabic, like the Settings → Autonomy ask line. aria-hidden: the
+   sentence beside it carries the figures. */
+.au-gauge { --au-halo: var(--bg-tertiary); position: relative; display: inline-block; flex: none; width: 112px; height: 14px; }
+.dark .au-gauge { --au-halo: var(--bg-secondary); }
+.au-gauge-track {
+  position: absolute; inset-inline: 0; top: 4px; height: 6px; border-radius: 3px; overflow: hidden;
+  background: repeating-linear-gradient(135deg, var(--fill-1) 0 1.5px, transparent 1.5px 4px), var(--fill-4);
+  box-shadow: inset 0 0 0 0.5px var(--fill-2);
+}
+.au-gauge-auto { position: absolute; inset-block: 0; inset-inline-start: 0; width: calc(var(--cut) * 100%); background: var(--accent); }
+.au-gauge-tick {
+  position: absolute; top: 0; bottom: 0; width: 2px; border-radius: 1px; inset-inline-start: calc(var(--cut) * 100% - 1px);
+  background: var(--label); box-shadow: 0 0 0 1.5px var(--au-halo);
+}
+.au-gauge-dot {
+  position: absolute; top: 2px; width: 10px; height: 10px; border-radius: 50%; inset-inline-start: calc(var(--at) * 100% - 5px);
+  background: var(--accent); box-shadow: 0 0 0 2px var(--au-halo);
+}
+.au-gauge.is-above .au-gauge-dot { background: var(--label); }
+
+/* The risk check step (RiskCheckCard): the Autonomy step can land on send_now or advise_only, not
+   only pass/awaiting_owner. */
+.db-step.is-send_now .db-step-n { background: var(--accent-wash); color: var(--accent-ink); }
+.db-step.is-send_now .db-step-st { color: var(--accent-ink); }
+.db-step.is-advise_only .db-step-n { background: var(--fill-3); color: var(--label-secondary); }
+.db-step.is-advise_only .db-step-st { color: var(--label-secondary); }
+.db-step.is-halted .db-step-st { color: var(--warning-ink); }
+.db-step-head .au-gauge { margin-inline-start: auto; align-self: center; }
+
+/* The proposal card's "Sent without asking" badge (entries and the Portfolio Manager's actions). */
+.pr-status.is-auto { background: var(--accent-wash); color: var(--accent-ink); }
+.pr-status.is-auto .icon { color: var(--accent-ink); }
+
+/* The Portfolio Manager's action card (stop change, target change, close). */
+.pr-card.is-pm .pr-pm-what { margin: 0; font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); font-weight: 600; color: var(--label); text-wrap: pretty; }
+.pr-card.is-pm .pr-pm-sub { margin: 0; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
