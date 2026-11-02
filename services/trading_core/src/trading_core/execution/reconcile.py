@@ -68,6 +68,8 @@ from trading_core.sync import history as history_sync
 log = logging.getLogger("trading_core.execution.reconcile")
 
 JOB = "reconcile"
+NOT_RECONCILED = "not_reconciled"
+RECONCILING = "reconciling"
 STREAM = "reconcile"  # sync_status.stream
 SOURCE = "service:trading_core.reconcile"
 WARROOM_SOURCE = "system:reconcile"
@@ -95,11 +97,13 @@ class ReconcileGate:
 
     Closed at startup when the app runs the reconcile job; opened by the first run that succeeded (or
     found no verified connection, where the Executor refuses anyway). It never closes again: later runs
-    that fail are reported in ``sync_status`` and retried on the next tick.
+    that fail are reported in ``sync_status`` and retried on the next tick. An env switch (ATL-237)
+    replaces the gate with a new closed one whose ``reason`` is ``reconciling``.
     """
 
-    def __init__(self, ready: bool = False) -> None:
+    def __init__(self, ready: bool = False, *, reason: str = NOT_RECONCILED) -> None:
         self._ready = ready
+        self.reason = reason
         self.opened_at: datetime | None = None
 
     @property
@@ -113,16 +117,21 @@ class ReconcileGate:
 
 
 NOT_RECONCILED_DETAIL = "Atlas is still reconciling with OKX after a restart; try again shortly."
+RECONCILING_DETAIL = "Atlas is reconciling with OKX after switching environment; try again shortly."
+_DETAILS = {NOT_RECONCILED: NOT_RECONCILED_DETAIL, RECONCILING: RECONCILING_DETAIL}
 
 
 def not_reconciled_refusal(state: Any) -> dict[str, Any] | None:
-    """The refusal body every route that calls the Executor returns (409) while the startup
-    reconciliation has not finished (rule 8), or None when it may proceed. ``state`` is the FastAPI
-    ``app.state``; an app without a gate (tests that do not run the reconcile job) is never blocked."""
+    """The refusal body every route that calls the Executor returns (409) while the startup (or
+    post-switch) reconciliation has not finished (rule 8), or None when it may proceed. ``state`` is
+    the FastAPI ``app.state``; an app without a gate (tests that do not run the reconcile job) is never
+    blocked. ``reason`` is ``not_reconciled`` after a restart and ``reconciling`` after an env switch."""
     gate = getattr(state, "reconcile_gate", None)
     if gate is None or gate.ready:
         return None
-    return {"ok": False, "status": "refused", "reason": "not_reconciled", "detail": NOT_RECONCILED_DETAIL}
+    reason = str(getattr(gate, "reason", NOT_RECONCILED))
+    detail = _DETAILS.get(reason, NOT_RECONCILED_DETAIL)
+    return {"ok": False, "status": "refused", "reason": reason, "detail": detail}
 
 
 # -- result ----------------------------------------------------------------------------------------
@@ -889,6 +898,8 @@ def reconcile_job(
 __all__ = [
     "BREAKER",
     "JOB",
+    "NOT_RECONCILED",
+    "RECONCILING",
     "ReconcileGate",
     "ReconcileResult",
     "fills_size",

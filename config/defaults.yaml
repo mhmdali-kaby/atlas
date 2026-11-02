@@ -13,6 +13,9 @@
 env:
   default: demo            # brief §1.4: demo first
   allowed: [demo, live]
+  # ATL-237: trading_core and the agents follow system_state.active_env on system.env_changed, and
+  # re-read it this often in case the event was missed (Redis down when Laravel published).
+  watch_poll_seconds: 30
   # ATL-236, decision #255 (4)(5): the live pre-flight and the guarded switch.
   #   min_demo_days: the earliest demo equity_curve point must be at least this old.
   #   max_live_autonomy: live autonomy must be at or below this level to switch (first live month).

@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 
-from atlas_shared.defaults import DEFAULTS
+from atlas_shared.active_env import fallback_env
 
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8100
@@ -29,10 +29,8 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> Settings:
-        env = os.environ.get("ATLAS_ENV") or os.environ.get("ATLAS_DEFAULT_ENV") or DEFAULTS["env"]["default"]
-        allowed: list[str] = DEFAULTS["env"]["allowed"]
-        if env not in allowed:
-            raise ValueError(f"ATLAS_ENV must be one of {allowed}")
+        # Only the fallback: the app switches to system_state.active_env at startup (ATL-237).
+        env = fallback_env()
         return cls(
             host=os.environ.get("TRADING_CORE_HOST", DEFAULT_HOST),
             port=int(os.environ.get("TRADING_CORE_PORT", str(DEFAULT_PORT))),
