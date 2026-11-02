@@ -31,16 +31,15 @@ export function LanguageButton() {
   const { t, i18n } = useTranslation('shell')
   const other = i18n.language === 'ar' ? 'en' : 'ar'
   return (
-    <button
-      type="button"
-      className={toolbarButton}
-      aria-label={t('switchLang')}
-      lang={other}
-      data-testid="language-switch"
-      onClick={() => void setLanguage(other)}
-    >
+    <button type="button" className={toolbarButton} data-testid="language-switch" onClick={() => void setLanguage(other)}>
       <Globe aria-hidden="true" strokeWidth={1.5} />
-      <span>{t('otherLang')}</span>
+      {/* ATL-225: the visible text is the target language's own name, in its own script
+          ("العربية"/"English"), so the accessible name must start with it (axe
+          label-content-name-mismatch) rather than a separate aria-label translating "Switch
+          to …" in the *current* language. lang marks the script for screen readers; the
+          hidden hint explains the action without repeating the language name. */}
+      <span lang={other}>{t('otherLang')}</span>
+      <span className="sr-only">{t('switchLangHint')}</span>
     </button>
   )
 }
