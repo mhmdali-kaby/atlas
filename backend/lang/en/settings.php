@@ -3,7 +3,12 @@
 declare(strict_types=1);
 
 return [
-    'decimal_format' => 'The :attribute must be a decimal number written as a string, e.g. "1.5".',
+    // ATL-222: the format rule fires before a value is even parsed as a number (e.g. "-1", which
+    // the pattern never allows), so it cannot yet show the field's upper bound — only its lower
+    // one. decimal_range_* below show the full range once the value parses.
+    'decimal_format_positive' => 'The :attribute must be a positive amount, written as a number such as "1.5".',
+    'decimal_format_exclusive' => 'The :attribute must be a decimal number greater than :min, such as "1.5".',
+    'decimal_format_inclusive' => 'The :attribute must be a decimal number of :min or more, such as "1.5".',
     'decimal_range_exclusive' => 'The :attribute must be greater than :min and at most :max.',
     'decimal_range_inclusive' => 'The :attribute must be between :min and :max.',
     'stale_version' => 'Settings were changed elsewhere. Reload them and apply your change again.',
@@ -12,4 +17,119 @@ return [
     'inst_id_format' => 'Each entry must be an OKX instrument ID such as "BTC-USDT-SWAP".',
     'blocklist_until_format' => 'Each blocklist expiry must map an instrument ID to an ISO 8601 time with a time zone, such as "2026-11-01T20:59:59Z".',
     'blocklist_until_past' => 'A blocklist expiry must be in the future.',
+
+    // ATL-222: SettingsLabels composes these two for agents.<slug>.<setting> and
+    // notifications.<event>.<channel>, so nine agents and eleven events don't need 69 separate
+    // attribute translations.
+    'attr_agent_setting' => ':agent: :setting',
+    'attr_notification' => ':event: :channel',
+
+    // The nine roster agents (config/defaults.yaml agents.roster; names match the War Room's
+    // @mention roster so an agent is called the same thing everywhere).
+    'agents' => [
+        'orchestrator' => 'Orchestrator',
+        'market_scout' => 'Market Scout',
+        'news_intelligence' => 'News Intelligence',
+        'historian' => 'Historian',
+        'technical_analyst' => 'Technical Analyst',
+        'derivatives_sentiment' => 'Derivatives & Sentiment',
+        'strategist' => 'Strategist',
+        'devils_advocate' => "Devil's Advocate",
+        'portfolio_manager' => 'Portfolio Manager',
+    ],
+
+    // SettingsSchema::AGENT_SETTINGS, each agent's four owner-editable settings.
+    'agent_setting' => [
+        'enabled' => 'on',
+        'model' => 'model',
+        'daily_tokens' => 'daily tokens',
+        'daily_turns' => 'daily turns',
+    ],
+
+    // Brief §17's eleven notification events (config/defaults.yaml notifications.events).
+    'notification_event' => [
+        'proposal_awaiting_approval' => 'trade waiting for approval',
+        'order_filled' => 'order filled',
+        'stop_hit' => 'stop-loss hit',
+        'target_hit' => 'target hit',
+        'circuit_breaker' => 'circuit breaker',
+        'kill_switch' => 'trading stopped',
+        'daily_report' => 'daily report',
+        'news_alert' => 'news on a held position',
+        'agent_degraded' => 'agent not working',
+        'data_stale' => 'market data stopped',
+        'reconciliation_mismatch' => 'Atlas and OKX disagreeing',
+    ],
+
+    'notification_channel' => [
+        'in_app' => 'in Atlas',
+        'browser' => 'browser',
+        'telegram' => 'Telegram',
+    ],
+
+    // Every plain settings field's human name (SettingsSchema::fields()), read by SettingsLabels.
+    'attr' => [
+        'risk_profile' => 'Risk profile',
+
+        // §14.3 risk profile fields.
+        'max_loss_per_trade_pct' => 'Max loss per trade',
+        'max_position_pct' => 'Max position size',
+        'max_daily_loss_pct' => 'Max daily loss',
+        'max_weekly_loss_pct' => 'Max weekly loss',
+        'max_leverage' => 'Max leverage',
+        'max_open_positions' => 'Max open positions',
+        'max_share_per_instrument_pct' => 'Max share in one instrument',
+        'max_correlated_exposure_pct' => 'Max correlated exposure',
+        'min_expected_r' => 'Min expected R',
+        'max_consecutive_losses' => 'Losses in a row before pause',
+
+        // §14.6 autonomy.
+        'autonomy_level' => 'Autonomy level',
+        'autonomy_ask_above_usd' => 'Ask me above',
+
+        // §14.5 markets.
+        'max_instruments_per_day' => 'Max instruments per day',
+        'max_spread_bps' => 'Max spread',
+        'min_24h_volume_usd_crypto_perp' => 'Minimum 24h volume (crypto perpetuals)',
+        'min_24h_volume_usd_stock_perp' => 'Minimum 24h volume (stock, ETF and index perpetuals)',
+        'min_24h_volume_usd_commodity_perp' => 'Minimum 24h volume (commodity perpetuals)',
+        'min_24h_volume_usd_spot' => 'Minimum 24h volume (spot)',
+        'avoid_stock_perps_outside_us_hours' => 'Avoid stock perpetuals outside US hours',
+        'enabled_markets' => 'Asset classes',
+        'whitelist' => 'Allowed instruments',
+        'blocklist' => 'Blocked instruments',
+        'blocklist_until' => 'Blocklist expiry times',
+
+        // §14.4 money limits.
+        'bot_capital_cap_usdt' => 'Bot capital cap',
+        'max_usdt_per_trade' => 'Max per trade',
+        'max_new_exposure_per_day_usdt' => 'Max new exposure per day',
+        'max_trades_per_day' => 'Max trades per day',
+
+        // §10 Risk Engine parameters.
+        'min_stop_atr_mult' => 'Minimum stop distance (×ATR)',
+        'max_stop_pct' => 'Maximum stop distance',
+        'slippage_bps' => 'Assumed slippage',
+        'liq_buffer_mult' => 'Liquidation safety buffer',
+        'block_new_trades_minutes_before_high_impact_event' => 'Event blackout window',
+        'volatility_halt_sigma' => 'Volatility halt threshold',
+        'market_data_max_age_seconds' => 'Max market data age',
+        'margin_buffer' => 'Margin safety buffer',
+
+        // §11 Executor parameters.
+        'entry_timeout_minutes' => 'Entry order timeout',
+        'td_mode_perps' => 'Perpetuals margin mode',
+        'stop_verify_seconds' => 'Stop verification window',
+        'order_max_retries' => 'Max order retries',
+        'emergency_stop_atr_mult' => 'Emergency stop distance (×ATR)',
+
+        'onboarding_completed' => 'Onboarding completed',
+
+        'agents' => [
+            'web' => [
+                'allow_domains' => 'Allowed web domains',
+                'deny_domains' => 'Blocked web domains',
+            ],
+        ],
+    ],
 ];
