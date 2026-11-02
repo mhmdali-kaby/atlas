@@ -74,7 +74,7 @@ export function useSaveSwitches(env: SettingsDoc['env'] = 'demo') {
 
 /** ATL-215's validation rules, checked here first so the owner sees the message before a round trip. */
 export const TOKEN_RE = /^\d{3,20}:[A-Za-z0-9_-]{20,100}$/
-export const CHAT_RE = /^-?\d{1,20}$/
+export const CHAT_RE = /^\d{1,20}$/
 
 export interface TelegramState {
   configured: boolean
