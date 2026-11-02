@@ -750,6 +750,8 @@ notifications:
     - agent_degraded
     - data_stale
     - reconciliation_mismatch
+    # ATL-231: `php artisan atlas:backup` failed (decision #255 (3)).
+    - backup_failed
   channels: [in_app, browser, telegram]
   channel_defaults:
     in_app: true
@@ -788,6 +790,35 @@ telegram:
   writes_per_minute: 30
   # bytes of HMAC-SHA256 kept in callback_data (base64url: 24 chars), so it fits Telegram's 64 bytes.
   callback_mac_bytes: 18
+
+# ATL-231, decision #255 (3): the daily database backup (`php artisan atlas:backup`, pg_dump -Fc).
+# The owner's settings keys `backup.enabled`, `backup.folder`, `backup.time` (HH:MM Asia/Baghdad)
+# and `backup.keep` default from enabled/folder/time/keep; an empty folder means `<repo>/../backups`.
+# The scheduler and the API read the active env's settings row.
+#   keep_min/keep_max: the range of backup.keep.
+#   timeout_seconds: pg_dump's hard limit; job_timeout_seconds sits above it.
+#   lock_minutes: the scheduler's withoutOverlapping expiry and the run lock (above timeout).
+#   stale_after_hours: atlas:doctor warns when the newest good backup is older.
+#   error_max_length: longest pg_dump error text stored on a failed run.
+#   queue/queue_connection: POST /api/backup/run's job runs on its own Horizon supervisor and redis
+#     connection, whose retry_after sits above job_timeout_seconds so a long dump is never re-run.
+backup:
+  enabled: true
+  folder: ""
+  default_folder_name: backups
+  time: "03:00"
+  keep: 14
+  keep_min: 1
+  keep_max: 90
+  timeout_seconds: 1800
+  job_timeout_seconds: 1860
+  lock_minutes: 40
+  stale_after_hours: 26
+  runs_listed: 10
+  error_max_length: 2000
+  queue: backups
+  queue_connection: redis-backups
+  runs_per_minute: 1
 
 data_sources_api:
   poll_seconds_min: 60

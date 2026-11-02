@@ -24,6 +24,7 @@ use Illuminate\Support\Str;
  * | agent_degraded              | atlas.system    | system.agent_state into degraded or rate_limited                  |
  * | daily_report                | atlas.warroom   | warroom.message from the PM with card.type daily_report           |
  * | news_alert                  | atlas.warroom   | news.alert on a held instrument (reason held_instrument)          |
+ * | backup_failed               | atlas.system    | system.backup_failed (BackupRunner, ATL-231)                      |
  *
  * params are an allow-list of scalar fields per event, cut to notifications.param_max_length:
  * nothing else in a payload (a connection key, secret, UID, an error text) can reach a row.
@@ -31,6 +32,9 @@ use Illuminate\Support\Str;
 final class NotificationMapper
 {
     public const TITLE_KEY = 'notifications.events.%s.title';
+
+    /** ATL-231: the envelope BackupRunner hands the Notifier when a backup fails. */
+    public const BACKUP_FAILED_EVENT = 'system.backup_failed';
 
     /**
      * @param  array{id: string, type: string, ts: string, env: string, source: string, correlation_id: string|null, payload: array<string, mixed>}  $envelope
@@ -48,6 +52,7 @@ final class NotificationMapper
             $stream === 'atlas.system' && $envelope['type'] === 'system.circuit_breaker' => $this->breaker($p),
             $stream === 'atlas.system' && $envelope['type'] === 'system.kill' => $this->kill($p),
             $stream === 'atlas.system' && $envelope['type'] === 'system.agent_state' => $this->agentState($p),
+            $stream === 'atlas.system' && $envelope['type'] === self::BACKUP_FAILED_EVENT => $this->backupFailed($p),
             $stream === 'atlas.warroom' && $envelope['type'] === BridgeEventHandler::MESSAGE_EVENT => $this->dailyReport($message),
             $stream === 'atlas.warroom' && $envelope['type'] === BridgeEventHandler::NEWS_ALERT_EVENT => $this->newsAlert($message),
             default => null,
@@ -271,6 +276,26 @@ final class NotificationMapper
             'importance' => $importance,
             'inst_ids' => array_slice(array_map(fn (string $id): string => (string) self::str($id), $held), 0, 20),
         ], '/warroom?message='.$message->id);
+    }
+
+    /**
+     * ATL-231: only the run's id and start time; pg_dump's error text stays on the backups row
+     * (GET /api/backup), never in a notification or a Telegram message.
+     *
+     * @param  array<string, mixed>  $p
+     * @return array{event: string, severity: 'info'|'warning'|'critical', params: array<string, bool|int|float|string|list<string>|null>, link: string|null}|null
+     */
+    private function backupFailed(array $p): ?array
+    {
+        $id = self::uuid($p['backup_id'] ?? null);
+        if ($id === null) {
+            return null;
+        }
+
+        return self::draft('backup_failed', 'warning', [
+            'backup_id' => $id,
+            'started_at' => self::str($p['started_at'] ?? null),
+        ], '/settings/backup');
     }
 
     /**

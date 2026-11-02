@@ -20,6 +20,7 @@ return [
         'agent_degraded' => "الوكيل :agent في حالة :state\nيواصل الفريق العمل بدونه.",
         'daily_report' => 'التقرير اليومي ليوم :day جاهز في غرفة العمليات.',
         'news_alert' => "خبر عن أداة تملكها (الأهمية :importance)\n:inst_ids — :headline (:source_name)",
+        'backup_failed' => "فشل النسخ الاحتياطي لقاعدة البيانات\nافتح الإعدادات ← النسخ الاحتياطي في أطلس لمعرفة السبب.",
     ],
     'open' => 'افتح: :url',
     'yes' => 'نعم',

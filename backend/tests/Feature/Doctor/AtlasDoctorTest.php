@@ -3,10 +3,12 @@
 declare(strict_types=1);
 
 use App\Models\AuditLog;
+use App\Models\Backup;
 use App\Models\Connection;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Process\PendingProcess;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Process;
@@ -158,7 +160,8 @@ it('passes with everything up and a verified demo connection', function (): void
     foreach (array_diff(ATL13_CHECKS, ['backup']) as $name) {
         expect(lineFor($output, $name))->toStartWith('✓');
     }
-    expect(lineFor($output, 'backup'))->toStartWith('⚠')->toContain('not configured');
+    // ATL-231: no good backup yet is a warning, never a failure.
+    expect(lineFor($output, 'backup'))->toStartWith('⚠')->toContain('No good backup yet');
     expect(lineFor($output, 'demo_connection'))->toContain('UID …6123');
     expect(lineFor($output, 'okx_clock'))->toContain('120 ms');
     expectNoSecrets($output);
@@ -545,4 +548,51 @@ it('never lets ANTHROPIC_API_KEY reach the claude subprocess calls', function ()
 
         return ($p->environment['ANTHROPIC_API_KEY'] ?? null) === false;
     });
+});
+
+/*
+ * ATL-231, decision #255 (3): the backup check reads the newest good `backups` run. Ok within 26 h;
+ * no good run, or one older than that, is a warning that never fails the command.
+ */
+function atl231BackupRow(string $status, Carbon $finished): Backup
+{
+    return Backup::query()->create([
+        'path' => '/Users/owner/Atlas Backups/atlas-'.$finished->format('Ymd-His').'.dump',
+        'bytes' => $status === 'ok' ? 123456 : null, 'status' => $status,
+        'started_at' => $finished->copy()->subMinutes(2), 'finished_at' => $finished,
+        'error' => $status === 'ok' ? null : 'pg_dump exited with code 1',
+    ]);
+}
+
+it('shows backup ok after a good run and warns once it is older than 26 h', function (): void {
+    fakeCore();
+    $this->travelTo(Carbon::parse('2026-11-02T00:05:00Z'));
+    atl231BackupRow('ok', now()->subMinutes(5));
+    // A newer failure does not hide the good run, and does not count as one.
+    atl231BackupRow('failed', now()->subMinute());
+
+    [$code, $output] = doctor();
+    expect($code)->toBe(0)
+        ->and(lineFor($output, 'backup'))->toStartWith('✓')->toContain('0.1 h ago')->toContain('atlas-20261102-000000.dump');
+
+    // Exactly 26 h old: still ok.
+    $this->travel(26 * 60 - 5)->minutes();
+    expect(lineFor(doctor()[1], 'backup'))->toStartWith('✓');
+
+    $this->travel(2)->minutes();
+    [$code, $output] = doctor();
+    expect($code)->toBe(0)
+        ->and(lineFor($output, 'backup'))->toStartWith('⚠')->toContain('26.0 h old (over 26 h)');
+});
+
+it('warns when the only backups failed', function (): void {
+    fakeCore();
+    atl231BackupRow('failed', now()->subHour());
+
+    [$code, $output] = doctor(json: true);
+
+    $byName = array_column(json_decode($output, true, flags: JSON_THROW_ON_ERROR), null, 'name');
+    expect($code)->toBe(0)
+        ->and($byName['backup'])->toMatchArray(['ok' => true, 'status' => 'warn'])
+        ->and($byName['backup']['detail'])->toContain('No good backup yet');
 });

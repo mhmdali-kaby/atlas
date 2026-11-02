@@ -225,6 +225,20 @@ return [
             'timeout' => 80,
             'nice' => 0,
         ],
+        // ATL-231: the owner's "Back up now", one at a time. Timeout matches RunBackup::$timeout
+        // (backup.job_timeout_seconds) and stays below the redis-backups connection's retry_after.
+        'supervisor-backups' => [
+            'connection' => 'redis-backups',
+            'queue' => ['backups'],
+            'balance' => 'simple',
+            'maxProcesses' => 1,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 128,
+            'tries' => 1,
+            'timeout' => 1860,
+            'nice' => 0,
+        ],
     ],
 
     'environments' => [

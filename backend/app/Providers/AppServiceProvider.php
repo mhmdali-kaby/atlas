@@ -79,6 +79,14 @@ class AppServiceProvider extends ServiceProvider
                 ->by('backtests-start|'.($user !== null ? (string) $user->getAuthIdentifier() : $request->ip()));
         });
 
+        // ATL-231: "Back up now". One for the whole app, not per user: every run dumps the same
+        // database into the same folder.
+        RateLimiter::for('backup-run', function (Request $request): Limit {
+            $perMinute = config('atlas_defaults.backup.runs_per_minute');
+
+            return Limit::perMinute(is_int($perMinute) ? $perMinute : 1)->by('backup-run');
+        });
+
         // ATL-103: owner watchlist pin/remove/restore, per user.
         RateLimiter::for('notifications-write', function (Request $request): Limit {
             $perMinute = config('atlas_defaults.notifications.writes_per_minute');

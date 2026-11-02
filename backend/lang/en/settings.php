@@ -17,6 +17,11 @@ return [
     'inst_id_format' => 'Each entry must be an OKX instrument ID such as "BTC-USDT-SWAP".',
     'blocklist_until_format' => 'Each blocklist expiry must map an instrument ID to an ISO 8601 time with a time zone, such as "2026-11-01T20:59:59Z".',
     'blocklist_until_past' => 'A blocklist expiry must be in the future.',
+    // ATL-231: Settings → Backup.
+    'backup_folder_absolute' => 'The :attribute must be a full path starting with "/", such as "/Users/you/Atlas Backups".',
+    'backup_folder_inside_repo' => 'The :attribute must be outside the Atlas folder, so backups are never stored next to the code.',
+    'backup_folder_unwritable' => 'Atlas cannot write to the :attribute. Choose a folder you can write to, or one that can be created.',
+    'backup_time_format' => 'The :attribute must be a time between 00:00 and 23:59, written as HH:MM such as "03:00".',
 
     // ATL-228: Settings → Schedule (Baghdad times).
     'schedule_time_format' => 'The :attribute must be a time between 00:00 and 23:59, written as HH:MM such as "07:30".',
@@ -67,6 +72,7 @@ return [
         'agent_degraded' => 'agent not working',
         'data_stale' => 'market data stopped',
         'reconciliation_mismatch' => 'Atlas and OKX disagreeing',
+        'backup_failed' => 'database backup failing',
     ],
 
     'notification_channel' => [
@@ -132,6 +138,13 @@ return [
         'emergency_stop_atr_mult' => 'Emergency stop distance (×ATR)',
 
         'onboarding_completed' => 'Onboarding completed',
+
+        'backup' => [
+            'enabled' => 'Daily backup',
+            'folder' => 'Backup folder',
+            'time' => 'Backup time',
+            'keep' => 'Number of backups to keep',
+        ],
 
         // ATL-228: Settings → Schedule.
         'schedule' => [

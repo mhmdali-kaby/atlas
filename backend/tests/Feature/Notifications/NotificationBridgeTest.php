@@ -114,6 +114,10 @@ function notifCases(): array
             'data_stale', '/settings/data', 'warning'],
         'reconciliation_mismatch' => ['atlas.system', notifEnvelope('system.circuit_breaker', 'service:trading_core.breakers', $breaker('reconciliation_mismatch', 'Reconciliation mismatch')),
             'reconciliation_mismatch', '/portfolio/positions', 'critical'],
+        // ATL-231: BackupRunner hands the Notifier this envelope when atlas:backup fails.
+        'backup_failed' => ['atlas.system', notifEnvelope('system.backup_failed', 'service:backend.backup', [
+            'backup_id' => (string) Str::uuid(), 'started_at' => '2026-11-02T00:00:00Z',
+        ]), 'backup_failed', '/settings/backup', 'warning'],
     ];
 }
 
@@ -134,7 +138,7 @@ beforeEach(function (): void {
 
 it('covers every brief §17 event, one case each', function (): void {
     expect(array_keys(notifCases()))->toEqualCanonicalizing(SettingsSchema::notificationEvents())
-        ->and(SettingsSchema::notificationEvents())->toHaveCount(11);
+        ->and(SettingsSchema::notificationEvents())->toHaveCount(12);
 });
 
 it('stores exactly one notification with the right event and link, and a replay stores none', function (string $case): void {

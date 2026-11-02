@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Settings;
 
 use App\Models\Setting;
+use App\Support\Backup\BackupSettings;
 use App\Support\Settings\SettingsLabels;
 use App\Support\Settings\SettingsSchema;
 use App\Support\Settings\SettingsService;
@@ -95,6 +96,12 @@ class UpdateSettingsRequest extends FormRequest
             $rules[$key] = ['sometimes', 'present', 'array', 'list', 'max:'.SettingsSchema::webDomainsMax()];
             $rules["{$key}.*"] = ['required', 'string', 'max:253', self::hostname()];
         }
+
+        // ATL-231, decision #255 (3): Settings → Backup (dotted keys escaped like the agents').
+        $rules['changes.'.self::escape(BackupSettings::ENABLED)] = ['sometimes', 'boolean:strict'];
+        $rules['changes.'.self::escape(BackupSettings::FOLDER)] = ['sometimes', 'string', 'max:'.BackupSettings::FOLDER_MAX_LENGTH, self::backupFolder()];
+        $rules['changes.'.self::escape(BackupSettings::TIME)] = ['sometimes', 'string', self::backupTime()];
+        $rules['changes.'.self::escape(BackupSettings::KEEP)] = ['sometimes', 'integer:strict', 'between:'.implode(',', BackupSettings::keepBounds())];
 
         // ATL-228, decision #255 (2): Settings → Schedule (Asia/Baghdad times; dotted keys escaped).
         foreach (array_keys(SettingsSchema::SCHEDULE_TIME_FIELDS) as $field) {
@@ -187,6 +194,27 @@ class UpdateSettingsRequest extends FormRequest
             $unknown = is_array($raw) ? array_diff(array_map(strval(...), array_keys($raw)), SettingsSchema::fields()) : [];
             if ($unknown !== []) {
                 $fail(__('validation.array', ['attribute' => $attribute]));
+            }
+        };
+    }
+
+    /** ATL-231: absolute, creatable or existing, writable, and outside the repository. */
+    private static function backupFolder(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail): void {
+            $problem = is_string($value) ? BackupSettings::folderProblem($value) : null;
+            if ($problem !== null) {
+                $fail(__($problem));
+            }
+        };
+    }
+
+    /** ATL-231: HH:MM, 00:00–23:59, Asia/Baghdad. */
+    private static function backupTime(): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail): void {
+            if (! is_string($value) || preg_match(BackupSettings::TIME_PATTERN, $value) !== 1) {
+                $fail(__('settings.backup_time_format'));
             }
         };
     }

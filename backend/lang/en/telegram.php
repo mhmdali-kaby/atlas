@@ -21,6 +21,7 @@ return [
         'agent_degraded' => "Agent :agent is :state\nThe team carries on without it.",
         'daily_report' => 'Daily report for :day is ready in the War Room.',
         'news_alert' => "News on a held instrument (importance :importance)\n:inst_ids — :headline (:source_name)",
+        'backup_failed' => "Database backup failed\nOpen Settings → Backup in Atlas to see why.",
     ],
     'open' => 'Open: :url',
     'yes' => 'yes',
