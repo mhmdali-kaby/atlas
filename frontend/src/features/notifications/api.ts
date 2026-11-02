@@ -5,7 +5,7 @@ import { getEcho } from '../../lib/echo'
 import type { TradingEnv } from '../../app/shell/tradingEnv'
 
 /*
- * Notifications (ATL-217, brief §17, decision #254 (2)) over ATL-214's API
+ * Notifications (ATL-217, brief §17, decision 254 (2)) over ATL-214's API
  * (docs/handoff/ATL-214-notifications.md): GET /api/notifications (cursor pages, newest first,
  * active env, meta.unread_count), POST /api/notifications/{id}/read and POST …/read-all, and the
  * `notification.created` broadcast on private-system whose payload is the same row.

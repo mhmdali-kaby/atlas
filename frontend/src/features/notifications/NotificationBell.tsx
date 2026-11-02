@@ -159,7 +159,7 @@ function Panel({
         title.current?.focus()
       }}
     >
-      <header className="nt-head">
+      <div className="nt-head">
         <h2 ref={title} id="nt-panel-title" tabIndex={-1} className="nt-head-title">
           {t('title')}
         </h2>
@@ -176,7 +176,7 @@ function Panel({
         <Link to="/settings/notifications" className={cx(toolbarIconButton, 'nt-gear')} aria-label={t('settings')} title={t('settings')} onClick={onClose}>
           <Settings aria-hidden="true" strokeWidth={1.5} />
         </Link>
-      </header>
+      </div>
       {ready && rows.length > 0 && (
         <div className="nt-filter-row">
           <SegmentedControl
