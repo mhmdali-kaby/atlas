@@ -1,0 +1,58 @@
+{
+  "current": "Current",
+  "askAbove": "Ask me above",
+  "askHint": "Larger trades wait for your approval. Closing a position never waits.",
+  "unit": "USDT",
+  "saveAmount": "Save",
+  "revertAmount": "Revert",
+  "decrease": "Decrease the amount",
+  "increase": "Increase the amount",
+  "now": {
+    "1": "Agents suggest trades and nothing goes to OKX.",
+    "2": "Every trade waits for your approval before it goes to OKX.",
+    "3": "Trades up to {{amount}} go to OKX on their own. Larger ones, up to your {{largest}} limit, wait for you.",
+    "3all": "Every trade goes to OKX on its own: your {{amount}} amount is above the largest trade your limits allow today, {{largest}}.",
+    "3zero": "Every new trade waits for you. Only closing a position goes on its own.",
+    "4": "Every trade goes to OKX on its own, up to your {{largest}} limit."
+  },
+  "line": {
+    "auto": "Goes on its own",
+    "asks": "Waits for you",
+    "none": "Suggested only, never sent",
+    "cut": "Ask me above {{amount}}",
+    "max": "largest trade today"
+  },
+  "sh": {
+    "title3": "Let Atlas send trades without asking?",
+    "title4": "Let Atlas send every trade without asking?",
+    "titleRaise": "Send larger trades without asking?",
+    "text3": "At level 3, a trade the risk engine approves goes straight to OKX when it’s this size or smaller. You won’t see an approval card for it, only a notification when it fills.",
+    "text4": "At level 4, every trade the risk engine approves goes straight to OKX, whatever its size. So do closes and stop changes. You won’t see approval cards, only notifications.",
+    "textRaise": "Trades up to the new amount go straight to OKX, with no approval card.",
+    "keep": "At every level",
+    "k1": "Every trade passes the risk engine’s nine checks first.",
+    "k2": "Every order carries a stop-loss on OKX’s own servers.",
+    "k3": "Stop trading, on every page, halts it all at once.",
+    "k4": "While trading is paused, nothing is sent without you.",
+    "confirm3": "Turn on level 3",
+    "confirm4": "Turn on level 4",
+    "confirmRaise": "Save new amount",
+    "use3": "Use level 3",
+    "use4": "Use level 4",
+    "cancel": "Cancel",
+    "saving": "Saving…",
+    "onboarding": "You can change this any time in Settings → Autonomy."
+  },
+  "err": {
+    "empty": "Enter an amount. 0 means Atlas asks you about every new trade.",
+    "min": "The ask-above amount must be 0 or more.",
+    "server": {
+      "title": "Couldn’t save",
+      "body": "Atlas’s server didn’t answer, so nothing changed. Try again."
+    },
+    "conflict": {
+      "title": "Settings changed in another window",
+      "body": "They were saved as version {{v}} while this sheet was open. Check the amount and confirm again."
+    }
+  }
+}

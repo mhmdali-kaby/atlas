@@ -51,8 +51,8 @@
   },
   "autonomy": {
     "title": "Choose how much Atlas does on its own",
-    "lead": "Start by approving each trade yourself. Levels 3 and 4 open in a later phase.",
-    "note": "You can change this at any time in Settings → Risk & Autonomy."
+    "lead": "Most owners start by approving each trade. Levels 3 and 4 let Atlas send trades without asking, always inside your limits.",
+    "note": "You can change this at any time in Settings → Autonomy."
   },
   "retry": "Try again",
   "cf": {
@@ -209,8 +209,8 @@
     "l4": "Full auto",
     "l1Text": "Agents research and suggest trades. Nothing is sent to OKX.",
     "l2Text": "Every trade waits for your approval in Atlas before it goes to OKX.",
-    "l3Text": "Trades inside your limits go through; larger ones ask you first.",
-    "l4Text": "Every trade inside your limits goes through without asking."
+    "l3Text": "Trades up to your amount go to OKX on their own. Larger ones ask you first.",
+    "l4Text": "Every trade the risk engine approves goes to OKX without asking."
   },
   "laterPhase": "Available in a later phase",
   "saveError": {

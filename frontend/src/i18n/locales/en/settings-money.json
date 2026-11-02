@@ -27,7 +27,7 @@
     "useX": "Set by {{limit}}, the smallest of these limits.",
     "tradesV": "{{n}} of {{max}}",
     "tradesX": "Every trade allowed today is made. The count resets at 00:00 Baghdad.",
-    "link": "Risk & Autonomy",
+    "link": "Risk",
     "was": "was {{v}}"
   },
   "c": {
@@ -81,7 +81,7 @@
   "capSet": "Set a cap",
   "note": "Limits apply to new trades. Open positions keep their size.",
   "noteProfile": "Your {{profile}} profile’s max position, {{pct}} or {{value}}, is below these limits, so it sets the size.",
-  "noteProfileLink": "Change it in Risk & Autonomy",
+  "noteProfileLink": "Change it in Risk",
   "err": {
     "empty": "Enter an amount in USDT.",
     "digits": "Use digits only, such as 3,000 or 2,500.50.",

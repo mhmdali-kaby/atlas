@@ -168,12 +168,12 @@ afterEach(async () => {
   await i18n.changeLanguage('en')
 })
 
-describe('Settings → Risk & Autonomy (ATL-21)', () => {
-  it('shows the current profile, all ten limits from GET /api/settings, autonomy and the Activity list', async () => {
+describe('Settings → Risk (ATL-21)', () => {
+  it('shows the current profile, all ten limits from GET /api/settings, the Autonomy link row and the Activity list', async () => {
     fakeBackend()
     renderPage()
-    expect(await screen.findByRole('heading', { level: 1, name: 'Risk & Autonomy' })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Risk & Autonomy' })).toHaveAttribute('aria-current', 'page')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Risk' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Risk' })).toHaveAttribute('aria-current', 'page')
     await screen.findByRole('radiogroup', { name: 'Risk profile' })
     expect(profiles().getByRole('radio', { name: 'Balanced' })).toHaveAttribute('aria-checked', 'true')
     expect(profiles().getByRole('radio', { name: 'Custom' })).toHaveAttribute('aria-checked', 'false')
@@ -188,10 +188,10 @@ describe('Settings → Risk & Autonomy (ATL-21)', () => {
     expect(field('Min expected R')).toHaveValue('1.8')
     expect(field('Losses in a row before pause')).toHaveValue('3')
     expect(screen.getByTestId('settings-version')).toHaveTextContent('Version 2')
-    const autonomy = within(screen.getByRole('radiogroup', { name: 'Autonomy' }))
-    expect(autonomy.getByRole('radio', { name: 'Approve each trade' })).toHaveAttribute('aria-checked', 'true')
-    expect(autonomy.getByRole('radio', { name: 'Auto within limits' })).toHaveAttribute('aria-disabled', 'true')
-    expect(autonomy.getByRole('radio', { name: 'Full auto' })).toHaveAttribute('aria-disabled', 'true')
+    // ATL-216: autonomy has its own pane; Risk keeps one link row to it.
+    expect(screen.queryByRole('radiogroup', { name: 'Autonomy' })).toBeNull()
+    expect(screen.getByTestId('autonomy-link')).toHaveAttribute('href', '/settings/autonomy')
+    expect(screen.getByTestId('autonomy-link')).toHaveTextContent('Level 2, Approve each trade')
     const activity = await screen.findByTestId('activity')
     expect(activity).toHaveTextContent('Version 2')
     expect(activity).toHaveTextContent('Setup finished')
@@ -199,16 +199,6 @@ describe('Settings → Risk & Autonomy (ATL-21)', () => {
     // 08:00 UTC → 11:00 Baghdad
     expect(activity).toHaveTextContent('Oct 28, 2026, 11:00')
     expect(screen.queryByTestId('save-bar')).toBeNull()
-  })
-
-  it('disables autonomy levels above GET /api/settings’s max_enabled_autonomy_level (ATL-33 AC2)', async () => {
-    fakeBackend({ maxAutonomy: 1 })
-    renderPage()
-    const autonomy = within(await screen.findByRole('radiogroup', { name: 'Autonomy' }))
-    expect(autonomy.getByRole('radio', { name: 'Advise only' })).not.toHaveAttribute('aria-disabled')
-    expect(autonomy.getByRole('radio', { name: 'Approve each trade' })).toHaveAttribute('aria-disabled', 'true')
-    expect(autonomy.getByRole('radio', { name: 'Auto within limits' })).toHaveAttribute('aria-disabled', 'true')
-    expect(autonomy.getByRole('radio', { name: 'Full auto' })).toHaveAttribute('aria-disabled', 'true')
   })
 
   it('Max leverage 5 → 3 on Balanced switches to Custom, and Save adds a version describing it', async () => {
@@ -306,7 +296,7 @@ describe('Settings → Risk & Autonomy (ATL-21)', () => {
     expect(profiles().getByRole('radio', { name: 'Balanced' })).toHaveAttribute('aria-checked', 'true')
   })
 
-  it('autonomy level 1 is saved; arrow keys in a field step it', async () => {
+  it('arrow keys in a field step it', async () => {
     const { state } = fakeBackend()
     const user = userEvent.setup()
     renderPage()
@@ -316,9 +306,9 @@ describe('Settings → Risk & Autonomy (ATL-21)', () => {
     expect(r).toHaveValue('1.9')
     await user.keyboard('{ArrowDown}')
     expect(r).toHaveValue('1.8')
-    await user.click(screen.getByRole('radio', { name: 'Advise only' }))
+    await user.keyboard('{ArrowUp}')
     await user.click(screen.getByRole('button', { name: 'Save changes' }))
-    await waitFor(() => expect(state.patches.at(-1)?.changes).toEqual({ autonomy_level: 1 }))
+    await waitFor(() => expect(state.patches.at(-1)?.changes).toMatchObject({ min_expected_r: '1.9' }))
   })
 
   it('a failed load shows the error with Try again', async () => {
