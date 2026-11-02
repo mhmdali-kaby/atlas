@@ -69,6 +69,8 @@ final class BackupRunner
             $wrote = true;
             $this->dump($file);
 
+            // The dump holds every table, encrypted keys included: owner-only, like the folder.
+            @chmod($file, 0600);
             clearstatcache(true, $file);
             $bytes = is_file($file) ? filesize($file) : false;
             if ($bytes === false || $bytes === 0) {

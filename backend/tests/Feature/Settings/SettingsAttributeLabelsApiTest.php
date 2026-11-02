@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\User;
+use App\Support\Backup\BackupSettings;
 use App\Support\Settings\SettingsSchema;
 
 /**
@@ -40,6 +41,11 @@ function atl222BadValueFor(string $field): mixed
         || in_array($field, SettingsSchema::INSTRUMENT_LIST_FIELDS, true)
         || $field === SettingsSchema::BLOCKLIST_UNTIL_FIELD) {
         return 'not-a-list';
+    }
+
+    // ATL-231: Settings → Backup.
+    if (in_array($field, BackupSettings::fields(), true)) {
+        return $field === BackupSettings::ENABLED ? 'not-a-bool' : true;
     }
 
     throw new RuntimeException("atl222BadValueFor: no case for settings field [{$field}].");

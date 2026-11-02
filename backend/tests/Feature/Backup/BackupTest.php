@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Process;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Testing\TestResponse;
 use Tests\Support\RecordingBroadcaster;
 
 /*
@@ -192,7 +193,7 @@ describe('PATCH /api/settings backup.*', function (): void {
     });
 
     /** @param  array<string, mixed>  $changes */
-    function atl231Patch(array $changes): Illuminate\Testing\TestResponse
+    function atl231Patch(array $changes): TestResponse
     {
         $version = Setting::query()->where('env', 'demo')->value('version');
 
