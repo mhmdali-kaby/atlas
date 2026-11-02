@@ -18,8 +18,11 @@ import './agents.css'
  * words and its task; a row jumps to that agent's row on the page. Shares the page's query.
  */
 
+/** The agent on whichever page is open: its scorecard, else its Status row. */
+const targetId = (slug: string) => (document.getElementById(`sc-${slug}`) ? `sc-${slug}` : `ag-row-${slug}`)
+
 function jumpTo(slug: string) {
-  const row = document.getElementById(`ag-row-${slug}`)
+  const row = document.getElementById(targetId(slug))
   if (!row) return
   const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false
   row.scrollIntoView?.({ block: 'center', behavior: reduce ? 'auto' : 'smooth' })
@@ -89,7 +92,7 @@ export function TeamSidebar({ onNavigate }: SidebarSectionProps) {
             data-nav-item=""
             data-slug={d.slug}
             data-status={status}
-            aria-controls={`ag-row-${d.slug}`}
+            aria-controls={targetId(d.slug)}
             aria-label={t('rowSr', { name, state: t(`state.${st}`) })}
             onClick={() => {
               jumpTo(d.slug)
