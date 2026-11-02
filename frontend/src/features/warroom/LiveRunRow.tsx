@@ -76,12 +76,13 @@ function Quote({ parent, onJump }: { parent: WarroomMessage; onJump: (id: string
     onJump(parent.id)
   }
   return (
-    <a className="msg-quote" href={`#${parent.id}`} onClick={jump} aria-label={t('jumpTo', { name })}>
+    <a className="msg-quote" href={`#${parent.id}`} onClick={jump}>
       <CornerUpLeft aria-hidden="true" strokeWidth={1.5} className="icon-dir" />
       <b>{name}</b>
       <span className="excerpt" dir="auto">
         <Excerpt text={parent.content_md} />
       </span>
+      <span className="sr-only">{t('jumpTo')}</span>
     </a>
   )
 }
