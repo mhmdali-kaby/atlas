@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Warroom;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Warroom\ListMessagesRequest;
+use App\Http\Requests\Warroom\ReplayDaysRequest;
 use App\Http\Requests\Warroom\ReplayRequest;
 use App\Http\Requests\Warroom\StoreMessageRequest;
 use App\Http\Requests\Warroom\ThreadsRequest;
@@ -146,6 +147,32 @@ class WarroomController extends Controller
                 'from' => $start->toIso8601ZuluString('microsecond'),
                 'to' => $end->toIso8601ZuluString('microsecond'),
             ],
+        ]);
+    }
+
+    /**
+     * Message counts per Baghdad day, newest first, for the Replay sidebar's "Recent days".
+     * Days with no messages are listed with count 0.
+     */
+    public function replayDays(ReplayDaysRequest $request): JsonResponse
+    {
+        [$start, $end] = $request->windowUtc();
+        $tz = $request->timezone();
+
+        /** @var array<string, int> $counts */
+        $counts = WarroomMessage::query()
+            ->where('env', $request->env())
+            ->where('created_at', '>=', $start->format('Y-m-d H:i:s.uP'))
+            ->where('created_at', '<', $end->format('Y-m-d H:i:s.uP'))
+            ->selectRaw("to_char(created_at AT TIME ZONE ?, 'YYYY-MM-DD') AS day, count(*) AS n", [$tz])
+            ->groupBy('day')
+            ->pluck('n', 'day')
+            ->map(fn (mixed $n): int => is_numeric($n) ? (int) $n : 0)
+            ->all();
+
+        return response()->json([
+            'data' => array_map(fn (string $day): array => ['date' => $day, 'count' => $counts[$day] ?? 0], $request->dayList()),
+            'meta' => ['timezone' => $tz],
         ]);
     }
 }

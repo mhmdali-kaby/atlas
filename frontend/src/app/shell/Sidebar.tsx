@@ -1,6 +1,6 @@
 import type { KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router'
+import { Link, useLocation } from 'react-router'
 import { AppIcon } from '../../ui'
 import type { AreaDef, AreaId, AreaNavEntry, ShellRegistry } from '../feature'
 
@@ -40,7 +40,8 @@ interface SidebarProps {
 export function Sidebar({ registry, area, active, areaHref, onNavigate }: SidebarProps) {
   const { t } = useTranslation(['shell', 'common'])
   const navigate = onNavigate ?? (() => {})
-  const sections = area ? registry.sections.filter((s) => s.area === area.id) : []
+  const { pathname } = useLocation()
+  const sections = area ? registry.sections.filter((s) => s.area === area.id && (s.kind !== 'custom' || (s.section.showOn?.(pathname) ?? true))) : []
   const tabStop = area?.id ?? registry.areas[0]?.id
 
   function onSwitcherKeyDown(event: KeyboardEvent<HTMLElement>) {

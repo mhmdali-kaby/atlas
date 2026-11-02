@@ -34,6 +34,11 @@ export function formatTime(ts: string | number, lang: Lang): string {
   return dtf(lang, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(ms(ts)))
 }
 
+/** "14:05:12" in Baghdad: the Replay day line's clock (ATL-207). */
+export function formatClock(ts: string | number, lang: Lang): string {
+  return dtf(lang, { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).format(new Date(ms(ts)))
+}
+
 /** The time's tooltip: "Wed, 28 Oct 2026, 14:05:12". */
 export function formatFullTime(ts: string | number, lang: Lang): string {
   return dtf(lang, {

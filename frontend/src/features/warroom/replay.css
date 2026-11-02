@@ -21,11 +21,62 @@
 .rp-icon-btn { width: 28px; padding-inline: 0; }
 .rp-date { min-width: 128px; }
 
+/* ---- The day line (ATL-207) --------------------------------------------------------
+   Positions are inline-start percentages (--x), so 00:00 sits on the right in Arabic. */
+.rp-line { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: end; gap: 6px 22px; padding: 14px var(--page-gutter) 10px; border-bottom: 0.5px solid var(--separator); }
+.rp-line.is-skel { display: block; }
+.rp-controls { display: grid; grid-template-columns: auto auto; grid-template-rows: auto auto; align-items: center; gap: 8px 12px; padding-bottom: 18px; }
+.rp-play {
+  grid-row: 1 / 3; width: 44px; height: 44px; border-radius: 50%; border: 0; display: grid; place-items: center;
+  background: var(--accent-solid); color: var(--on-solid); box-shadow: var(--shadow-1); cursor: default;
+}
+.rp-play:hover { background: var(--accent-solid-hover); }
+.rp-play:disabled { opacity: 0.4; }
+.rp-play:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.rp-play svg { width: 20px; height: 20px; fill: currentColor; }
+.rp-clock { display: grid; gap: 0; }
+.rp-time { font-family: var(--font-num); font-size: var(--text-title-2); line-height: var(--lh-title-2); font-weight: 600; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; direction: ltr; unicode-bidi: isolate; text-align: start; }
+.rp-count { font-size: var(--text-caption); line-height: var(--lh-caption); color: var(--label-secondary); white-space: nowrap; }
+.rp-speed { font-size: var(--text-footnote); }
+.rp-track-wrap { position: relative; display: grid; gap: 4px; min-width: 0; }
+.rp-marks { position: relative; height: 24px; }
+.rp-mk {
+  position: absolute; inset-inline-start: calc(var(--x) * 1%); top: 0; width: 22px; height: 22px; margin-inline-start: -11px;
+  border: 0; border-radius: 50%; display: grid; place-items: center; cursor: default;
+  background: var(--bg); color: var(--label-secondary); box-shadow: inset 0 0 0 1px var(--separator-strong);
+}
+.rp-mk svg { width: 12px; height: 12px; }
+.rp-mk.is-past { color: var(--label); box-shadow: inset 0 0 0 1.5px var(--label); }
+.rp-mk.is-proposal.is-past { color: var(--accent-ink); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.rp-mk.is-system_alert.is-past { color: var(--warning-ink); box-shadow: inset 0 0 0 1.5px var(--warning); }
+.rp-mk:hover { background: var(--fill-4); }
+.rp-mk:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.rp-track { position: relative; height: 34px; border-radius: 8px; background: var(--fill-4); cursor: pointer; touch-action: none; }
+.rp-strip { position: absolute; inset: 4px 0 4px; }
+.rp-d { position: absolute; bottom: 0; inset-inline-start: calc(var(--x) * 1%); width: calc(100% / 144 - 1px); height: calc(var(--h) * 100%); border-radius: 1.5px; background: var(--fill-1); }
+.rp-d.is-past { background: color-mix(in srgb, var(--accent) 55%, transparent); }
+.rp-past { position: absolute; inset-block: 0; inset-inline-start: 0; width: calc(var(--x) * 1%); border-start-start-radius: 8px; border-end-start-radius: 8px; background: color-mix(in srgb, var(--accent) 7%, transparent); pointer-events: none; }
+.rp-head { position: absolute; top: -8px; bottom: -8px; inset-inline-start: calc(var(--x) * 1%); width: 2px; margin-inline-start: -1px; background: var(--label); border-radius: 1px; }
+.rp-head:focus-visible { outline: none; }
+.rp-head:focus-visible .rp-knob { box-shadow: var(--focus-ring), var(--knob-shadow); }
+.rp-knob { position: absolute; top: -7px; inset-inline-start: 50%; width: 14px; height: 14px; margin-inline-start: -7px; border-radius: 50%; background: var(--label); box-shadow: 0 0 0 2.5px var(--bg), var(--knob-shadow); }
+.rp-hours { position: relative; height: 16px; }
+.rp-hr { position: absolute; inset-inline-start: calc(var(--x) * 1%); transform: translateX(-50%); font-size: var(--text-caption); line-height: var(--lh-caption); color: var(--label-secondary); white-space: nowrap; }
+[dir="rtl"] .rp-hr { transform: translateX(50%); }
+.rp-hr:first-child { transform: none; }
+.rp-hr:last-child { transform: translateX(-100%); }
+[dir="rtl"] .rp-hr:last-child { transform: translateX(100%); }
+
+/* Before the first message of the day: the feed says when talk began. */
+.rp-before-wrap { flex: 1; display: grid; align-content: start; justify-items: center; padding: 32px var(--page-gutter) 24px; }
+.rp-before { display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: var(--radius-full); background: var(--fill-4); font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.rp-before > svg { width: 15px; height: 15px; flex: none; }
+.rp-before .num { color: var(--label); }
+
 /* ---- Body: the feed and the docked inspector, as in the live War Room ------------- */
 .rp-body { flex: 1; min-height: 0; }
 .rp-main { position: relative; flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; }
 .rp-body .inspector { margin-top: 8px; }
-@media (max-width: 1279px) { .rp-insp { display: none; } }
 
 .rp-foot {
   display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 10px;
@@ -54,6 +105,11 @@
 .rp-mo-what { font-size: var(--text-footnote); line-height: var(--lh-footnote); font-weight: 600; white-space: nowrap; }
 .rp-mo-who { min-width: 0; font-size: var(--text-caption); line-height: var(--lh-caption); color: var(--label-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .rp-mo-sub { font-size: var(--text-caption); line-height: var(--lh-caption); color: var(--label-secondary); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-wrap: pretty; }
+.rp-mo[aria-current="step"] { background: var(--accent-wash); }
+/* not reached yet by the playhead: faint, like the markers still ahead on the day line */
+.rp-mo.is-future .rp-mo-time, .rp-mo.is-future .rp-mo-what { color: var(--label-secondary); }
+.rp-mo.is-future .rp-mo-sub, .rp-mo.is-future .rp-mo-who { color: var(--label-tertiary); }
+.rp-mo.is-future .rp-mo-ic { color: var(--label-secondary); box-shadow: inset 0 0 0 1px var(--separator-strong); }
 .rp-mo-skel { display: flex; align-items: flex-start; gap: 8px; padding: 8px; }
 
 /* ---- Date picker ---------------------------------------------------------------- */
@@ -83,6 +139,11 @@
 .rp-cal-note svg { width: 13px; height: 13px; flex: none; margin-top: 1px; }
 
 @media (max-width: 899px) {
+  .rp-line { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+  .rp-controls { padding-bottom: 4px; grid-template-columns: auto 1fr auto; grid-template-rows: auto; }
+  .rp-play { grid-row: auto; }
   .rp-bar-sub { display: none; }
   .rp-bar { margin-inline: 12px; }
+  .rp-hr:nth-child(even) { display: none; }
 }
+@media (prefers-reduced-motion: reduce) { .rp-d, .rp-past, .rp-head { transition: none; } }

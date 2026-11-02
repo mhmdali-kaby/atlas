@@ -8,6 +8,7 @@ import { SIGNED_OUT_KEY, useLogout, useSession } from '../features/auth/session'
 import { toast } from '../ui'
 import { ApprovalPill } from '../features/approvals/ApprovalPill'
 import { KillSwitchButton } from '../features/kill-switch/KillSwitch'
+import { NotificationBell } from '../features/notifications/NotificationBell'
 import { TradingBanner } from '../features/kill-switch/TradingBanner'
 import { activeArea, activeNavEntry, areaHome, type AreaId, type ShellRegistry } from './feature'
 import { shellRegistry as registeredShell } from './registry'
@@ -103,6 +104,7 @@ export function AppShell({ shell = registeredShell }: { shell?: ShellRegistry })
               <KillSwitchButton />
             </div>
             <EnvBadge />
+            <NotificationBell />
             <ToolbarGroup>
               <LanguageButton />
               <ThemeMenu />

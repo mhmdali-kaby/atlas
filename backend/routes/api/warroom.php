@@ -16,4 +16,5 @@ Route::prefix('warroom')
             ->middleware('throttle:warroom-post')
             ->name('messages.store');
         Route::get('/replay', [WarroomController::class, 'replay'])->name('replay');
+        Route::get('/replay/days', [WarroomController::class, 'replayDays'])->name('replay.days');
     });

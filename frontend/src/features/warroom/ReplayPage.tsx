@@ -1,18 +1,23 @@
-import { ArrowLeftRight, Calendar, ChevronLeft, ChevronRight, ChessKnight, CircleCheck, CloudOff, Flag, History, ListChecks, Lock, MessagesSquare, NotebookPen, RadioTower, RefreshCw, TriangleAlert, type LucideIcon } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, Clock, CloudOff, History, Lock, MessagesSquare, PanelRight, RadioTower, RefreshCw } from 'lucide-react'
 import { Popover } from 'radix-ui'
-import { useMemo, useState } from 'react'
+import { useEffect, useEffectEvent, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Link, Navigate, useNavigate, useParams } from 'react-router'
+import { toolbarIconButton } from '../../app/shell/toolbarClasses'
 import { useTradingEnv } from '../../app/shell/tradingEnv'
 import { formatFixed, type Lang } from '../../lib/format'
 import { Button, Skeleton } from '../../ui'
 import { useLang, useNow } from '../portfolio/hooks'
-import type { WarroomMessage } from './api'
+import { DayLine, DayLineSkeleton } from './DayLine'
 import { ReplayCalendar } from './ReplayCalendar'
 import { ReplayFeed, type ReplayJump } from './ReplayFeed'
-import { isMoment, isReplayable, lastReplayDay, replayDayName, replayPath, shiftDay, useReplay, type MomentKind } from './replay'
-import { useAuthorName } from './shape'
-import { plainText } from './tokens'
+import { ReplayInspector } from './ReplayInspector'
+import { dayStartMs, isReplayable, lastReplayDay, replayDayName, replayPath, shiftDay, useReplay } from './replay'
+import { clampAt, DAY_MS, messageTimes, shownCount, stepIndex } from './replayTime'
+import { useInspector } from './useInspector'
+import { usePlayback } from './usePlayback'
+import { fillSlots, slot } from './slots'
 import { formatTime } from './time'
 import './warroom.css'
 import './replay.css'
@@ -21,18 +26,9 @@ import './replay.css'
  * War Room Replay (ATL-206; brief §12 "Replay", design v18 Replay): /warroom/replay/<YYYY-MM-DD>
  * shows one finished Baghdad day read-only — the replay bar with the day and a way back to live,
  * the day's messages in order with the War Room's own cards, and the day's moments in the
- * inspector. No composer, no actions, no live messages. The timeline scrubber (ATL-207) goes
- * between the bar and the body.
+ * inspector. No composer, no actions, no live messages. The day line (ATL-207) sits between the
+ * bar and the body: the feed shows only what had been said by the playhead's time.
  */
-
-const MOMENT_ICON: Record<MomentKind, LucideIcon> = {
-  watchlist: ListChecks,
-  proposal: ChessKnight,
-  order: ArrowLeftRight,
-  fill: CircleCheck,
-  system_alert: TriangleAlert,
-  post_mortem: NotebookPen,
-}
 
 /** /warroom/replay without a valid finished day opens yesterday. */
 export function ReplayRedirect() {
@@ -53,9 +49,73 @@ function ReplayDay({ day, now }: { day: string; now: number }) {
   const env = useTradingEnv()
   const query = useReplay(env, day)
   const messages = useMemo(() => query.data?.data ?? [], [query.data])
+  const times = useMemo(() => messageTimes(messages), [messages])
+  const dayStart = dayStartMs(day)
+  const play = usePlayback(dayStart)
+  const { at } = play
+  const shown = shownCount(times, at)
+  // A prefix of the day, recomputed only when the playhead crosses a message.
+  const visible = useMemo(() => messages.slice(0, shown), [messages, shown])
   const [jump, setJump] = useState<ReplayJump | null>(null)
+  const [follow, setFollow] = useState(0)
+  const inspector = useInspector('atlas.rp.inspector')
   const dayName = replayDayName(day, lang)
   const status = query.isPending ? 'loading' : query.isError ? 'error' : messages.length === 0 ? 'empty' : 'ok'
+
+  // Screen readers hear how far the replay has got when the owner moves it, not on every playback tick.
+  const [announce, setAnnounce] = useState('')
+  const announceAt = (next: number) => {
+    const n = shownCount(times, clampAt(next, dayStart))
+    if (n !== shown) setAnnounce(t('rp.shown', { shown: formatFixed(n, 0, lang), total: formatFixed(messages.length, 0, lang) }))
+  }
+
+  /** Drag, track click, Home/End: the feed follows to the newest message shown. */
+  const seek = (next: number) => {
+    play.pause()
+    announceAt(next)
+    play.setAt(next)
+    setJump(null)
+    setFollow((f) => f + 1)
+  }
+  /** A marker, a moment, or an arrow-key step: the playhead goes to that message and the feed jumps to it. */
+  const goTo = (id: string, focus = true) => {
+    const i = messages.findIndex((m) => m.id === id)
+    if (i < 0) return
+    play.pause()
+    announceAt(times[i]!)
+    play.setAt(times[i]!)
+    setJump((j) => ({ id, seq: (j?.seq ?? 0) + 1, focus }))
+  }
+  const step = (dir: 1 | -1) => {
+    const i = stepIndex(times, at, dir)
+    if (i !== null) goTo(messages[i]!.id, false)
+  }
+  const togglePlay = () => {
+    if (!play.playing) setFollow((f) => f + 1)
+    play.toggle()
+  }
+
+  // Space plays or pauses anywhere on the page, except where it types or presses a control.
+  const onSpace = useEffectEvent(togglePlay)
+  const canPlay = status === 'ok'
+  useEffect(() => {
+    if (!canPlay) return
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      if (e.key !== ' ' || e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return
+      const el = e.target instanceof Element ? e.target : null
+      if (el?.closest('input, textarea, select, [contenteditable="true"], [role="dialog"], a, button, [role="radio"], [role="menuitem"]')) return
+      e.preventDefault()
+      onSpace()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [canPlay])
+
+  // The shell's toolbar has a slot for page actions; the inspector toggle goes there, as in the live War Room.
+  const [toolbarSlot, setToolbarSlot] = useState<Element | null>(null)
+  const findSlot = (el: HTMLDivElement | null) => {
+    if (el) setToolbarSlot(document.querySelector('[data-slot="toolbar-actions"]'))
+  }
 
   let main
   if (status === 'loading') {
@@ -97,7 +157,16 @@ function ReplayDay({ day, now }: { day: string; now: number }) {
   } else {
     main = (
       <>
-        <ReplayFeed messages={messages} label={t('rp.feed', { date: dayName })} jump={jump} />
+        {shown === 0 ? (
+          <div className="rp-before-wrap" data-testid="rp-before">
+            <p className="rp-before">
+              <Clock aria-hidden="true" strokeWidth={1.5} />
+              <span>{fillSlots(t('rp.before', { time: slot('time') }), { time: <bdi dir="ltr" className="num">{formatTime(times[0]!, lang)}</bdi> })}</span>
+            </p>
+          </div>
+        ) : (
+          <ReplayFeed messages={visible} label={t('rp.feed', { date: dayName })} jump={jump} follow={follow} />
+        )}
         <p className="rp-foot" data-testid="rp-foot">
           <Lock aria-hidden="true" strokeWidth={1.5} />
           <span>{t('rp.readonly')}</span>
@@ -110,18 +179,68 @@ function ReplayDay({ day, now }: { day: string; now: number }) {
   }
 
   return (
-    <div className="rp" data-testid="rp-page" aria-busy={status === 'loading' || undefined}>
+    <div ref={findSlot} className="rp" data-testid="rp-page" aria-busy={status === 'loading' || undefined}>
       <ReplayBar day={day} now={now} lang={lang} dayName={dayName} />
-      {/* ATL-207: the day line (timeline scrubber) sits here, between the bar and the body. */}
-      <div className="wr rp-body">
+      {status === 'loading' ? (
+        <DayLineSkeleton />
+      ) : status === 'ok' || status === 'empty' ? (
+        <DayLine
+          dayStart={dayStart}
+          messages={messages}
+          times={times}
+          at={at}
+          shown={shown}
+          playing={play.playing}
+          speed={play.speed}
+          lang={lang}
+          onSeek={seek}
+          onTogglePlay={togglePlay}
+          onSpeed={play.setSpeed}
+          onStep={step}
+          onEdge={(edge) => seek(edge === 'start' ? dayStart : dayStart + DAY_MS - 1)}
+          onMarker={(id) => goTo(id)}
+        />
+      ) : null}
+      <div className="wr rp-body" data-inspector={inspector.shown ? 'open' : 'closed'} data-overlay={inspector.overlay || undefined}>
         {/* Not a second landmark: the bar names the day, the feed's log names its messages. */}
         <div className="rp-main">{main}</div>
-        <ReplayInspector day={day} lang={lang} status={status} messages={messages} onPick={(id) => setJump((j) => ({ id, seq: (j?.seq ?? 0) + 1 }))} />
+        {inspector.shown && (
+          <ReplayInspector
+            day={day}
+            lang={lang}
+            status={status}
+            messages={messages}
+            times={times}
+            at={at}
+            onPick={(id) => {
+              goTo(id)
+              if (inspector.overlay) inspector.closeOverlay()
+            }}
+          />
+        )}
       </div>
+      <div className="sr-only" aria-live="polite" data-testid="rp-live">
+        {announce}
+      </div>
+      {toolbarSlot &&
+        createPortal(
+          <button
+            type="button"
+            className={toolbarIconButton}
+            aria-label={t('rp.inspToggle')}
+            title={t('rp.inspToggle')}
+            aria-pressed={inspector.shown}
+            aria-controls="rp-inspector"
+            onClick={inspector.toggle}
+            data-testid="rp-inspector-toggle"
+          >
+            <PanelRight aria-hidden="true" strokeWidth={1.5} className="rtl:-scale-x-100" />
+          </button>,
+          toolbarSlot,
+        )}
     </div>
   )
 }
-
 function ReplayBar({ day, now, lang, dayName }: { day: string; now: number; lang: Lang; dayName: string }) {
   const { t } = useTranslation('warroom')
   const navigate = useNavigate()
@@ -201,109 +320,6 @@ function DayPicker({ day, now, lang, trigger = 'empty' }: { day: string; now: nu
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>
-  )
-}
-
-function ReplayInspector({
-  day,
-  lang,
-  status,
-  messages,
-  onPick,
-}: {
-  day: string
-  lang: Lang
-  status: 'loading' | 'error' | 'empty' | 'ok'
-  messages: WarroomMessage[]
-  onPick: (id: string) => void
-}) {
-  const { t } = useTranslation('warroom')
-  const authorName = useAuthorName()
-  const moments = useMemo(() => messages.filter(isMoment), [messages])
-  const first = messages[0]
-  const last = messages[messages.length - 1]
-
-  let body
-  if (status === 'loading') {
-    body = (
-      <div className="rp-mos" aria-hidden="true">
-        {[0, 1, 2, 3].map((i) => (
-          <span key={i} className="rp-mo-skel">
-            <Skeleton style={{ width: 34, height: 11 }} />
-            <Skeleton style={{ width: 24, height: 24, borderRadius: '50%' }} />
-            <span className="grid flex-1 gap-1.5">
-              <Skeleton style={{ width: '70%', height: 12 }} />
-              <Skeleton style={{ width: '90%', height: 10 }} />
-            </span>
-          </span>
-        ))}
-      </div>
-    )
-  } else if (status === 'error' || moments.length === 0) {
-    body = (
-      <div className="insp-empty">
-        {status === 'error' ? <CloudOff aria-hidden="true" strokeWidth={1.5} /> : <Flag aria-hidden="true" strokeWidth={1.5} />}
-        <p>{status === 'error' ? t('rp.momentsWait') : t('rp.momentsNone')}</p>
-      </div>
-    )
-  } else {
-    body = (
-      <ol className="rp-mos" data-testid="rp-moments">
-        {moments.map((m) => {
-          const Icon = MOMENT_ICON[m.kind]
-          return (
-            <li key={m.id}>
-              <button type="button" className={`rp-mo is-${m.kind}`} onClick={() => onPick(m.id)} data-testid="rp-moment">
-                <span className="rp-mo-time num">{formatTime(m.created_at, lang)}</span>
-                <span className="rp-mo-ic" aria-hidden="true">
-                  <Icon strokeWidth={2} />
-                </span>
-                <span className="rp-mo-text">
-                  <span className="rp-mo-l1">
-                    <span className="rp-mo-what">{t(`rp.mk.${m.kind}`)}</span>
-                    <span className="rp-mo-who">{authorName(m)}</span>
-                  </span>
-                  <span className="rp-mo-sub" dir="auto">
-                    {plainText(m.content_md, (tag) => t(`tag.${tag}`))}
-                  </span>
-                </span>
-              </button>
-            </li>
-          )
-        })}
-      </ol>
-    )
-  }
-
-  return (
-    <aside className="inspector rp-insp" aria-label={t('rp.insp')} data-testid="rp-inspector">
-      <header className="insp-head">
-        <h2 className="text-title-3">{replayDayName(day, lang)}</h2>
-        <p className="insp-kind">
-          <History aria-hidden="true" strokeWidth={1.5} />
-          <span>{status === 'ok' || status === 'empty' ? t('rp.msgs', { count: messages.length, n: formatFixed(messages.length, 0, lang) }) : t('rp.title')}</span>
-        </p>
-      </header>
-      <section className="insp-sec rp-mo-sec" aria-labelledby="rp-mo-h">
-        <h3 className="insp-title" id="rp-mo-h">
-          <span>
-            {t('rp.moments')}
-            {status === 'ok' && moments.length > 0 && <span className="num"> {formatFixed(moments.length, 0, lang)}</span>}
-          </span>
-        </h3>
-        {body}
-      </section>
-      {first && last && (
-        <section className="insp-sec">
-          <dl className="insp-facts">
-            <dt>{t('rp.first')}</dt>
-            <dd className="num">{formatTime(first.created_at, lang)}</dd>
-            <dt>{t('rp.last')}</dt>
-            <dd className="num">{formatTime(last.created_at, lang)}</dd>
-          </dl>
-        </section>
-      )}
-    </aside>
   )
 }
 

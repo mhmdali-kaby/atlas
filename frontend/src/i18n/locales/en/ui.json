@@ -10,5 +10,7 @@
   "loading": "Loading",
   "close": "Close",
   "dismiss": "Dismiss",
-  "notifications": "Notifications ({hotkey})"
+  "notifications": "Notifications ({hotkey})",
+  "more_one": "{{count}} more in Notifications",
+  "more_other": "{{count}} more in Notifications"
 }

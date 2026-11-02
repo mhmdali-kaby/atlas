@@ -1,4 +1,17 @@
 import type { JournalEntry, Outcome } from './api'
+import {
+  closeLabel as tradeCloseLabel,
+  num,
+  outcomeOf as tradeOutcome,
+  planOf as tradePlan,
+  realisedR as tradeRealisedR,
+  sideOf as tradeSide,
+  targetReached as tradeTargetReached,
+  tp1Hit as tradeTp1Hit,
+  type CloseLabel,
+  type Plan,
+  type TradeRecord,
+} from './trade'
 
 /*
  * What the Journal draws, derived from one journal_entries row. Decimal strings stay strings for
@@ -10,35 +23,20 @@ export function isoMs(ts: string): number {
   return Date.parse(ts.replace(/(\.\d{3})\d+/, '$1'))
 }
 
-const num = (v: unknown): number | null => {
-  if (typeof v === 'number') return Number.isFinite(v) ? v : null
-  if (typeof v !== 'string' || v.trim() === '') return null
-  const n = Number(v)
-  return Number.isFinite(n) ? n : null
+/** The trade fields ATL-194 writes on the row, in the shape the shared rules read (trade.ts). */
+export function tradeOf(e: JournalEntry): TradeRecord {
+  return { ...e.data, tags: e.tags }
 }
 
-/** |R| under this is a scratch (design §7 "Scratch means |R| < 0.1"; ATL-194 scratch_r). */
-const SCRATCH_R = 0.1
+export type { CloseLabel, Plan }
 
-export function outcomeOf(e: JournalEntry): Outcome {
-  const o = e.data.outcome
-  if (o === 'win' || o === 'loss' || o === 'scratch') return o
-  for (const t of ['win', 'loss', 'scratch'] as const) if (e.tags.includes(t) || e.tags.includes(`outcome:${t}`)) return t
-  const r = num(realisedR(e))
-  if (r !== null) return Math.abs(r) < SCRATCH_R ? 'scratch' : r > 0 ? 'win' : 'loss'
-  const pnl = num(e.data.actual?.realised_pnl_usd)
-  return pnl === null || pnl === 0 ? 'scratch' : pnl > 0 ? 'win' : 'loss'
-}
-
-export function realisedR(e: JournalEntry): string | null {
-  const v = e.data.actual?.realised_r ?? e.data.realised_r
-  return typeof v === 'string' && v.trim() !== '' ? v : null
-}
-
-export function sideOf(e: JournalEntry): 'long' | 'short' | null {
-  const s = e.data.side
-  return s === 'long' || s === 'short' ? s : null
-}
+export const outcomeOf = (e: JournalEntry): Outcome => tradeOutcome(tradeOf(e))
+export const realisedR = (e: JournalEntry): string | null => tradeRealisedR(tradeOf(e))
+export const sideOf = (e: JournalEntry): 'long' | 'short' | null => tradeSide(tradeOf(e))
+export const closeLabel = (e: JournalEntry): CloseLabel | null => tradeCloseLabel(tradeOf(e))
+export const planOf = (e: JournalEntry): Plan | null => tradePlan(tradeOf(e))
+export const targetReached = (e: JournalEntry): number => tradeTargetReached(tradeOf(e))
+export const tp1Hit = (e: JournalEntry): boolean | null => tradeTp1Hit(tradeOf(e))
 
 /** When the trade closed (the row's own time when the post-mortem carries none). */
 export function closedAt(e: JournalEntry): string {
@@ -52,103 +50,6 @@ export function lessonPending(e: JournalEntry): boolean {
 export function lessonText(e: JournalEntry): string | null {
   const v = e.lessons_md ?? e.data.lesson
   return typeof v === 'string' && v.trim() !== '' ? v : null
-}
-
-/*
- * How the trade closed, as one verbatim label key (design §2 "A label is used verbatim wherever it
- * appears"). ATL-194 close_reason values: liquidation, adl, kill, a PM rule (time_stop,
- * invalidation, pm_close, …), stop_loss, take_profit, manual, external.
- */
-export type CloseLabel =
-  | 'stop'
-  | 'tp1'
-  | 'tp2'
-  | 'tp3'
-  | 'tp'
-  | 'time_stop'
-  | 'invalidation'
-  | 'owner'
-  | 'kill'
-  | 'liquidation'
-  | 'adl'
-  | 'external'
-  | 'pm'
-
-export function closeLabel(e: JournalEntry): CloseLabel | null {
-  const reason = e.data.actual?.close_reason
-  switch (reason) {
-    case null:
-    case undefined:
-    case '':
-      return null
-    case 'stop_loss':
-      return 'stop'
-    case 'take_profit': {
-      const n = targetReached(e)
-      return n === 1 ? 'tp1' : n === 2 ? 'tp2' : n === 3 ? 'tp3' : 'tp'
-    }
-    case 'time_stop':
-      return 'time_stop'
-    case 'invalidation':
-      return 'invalidation'
-    case 'manual':
-      return 'owner'
-    case 'kill':
-      return 'kill'
-    case 'liquidation':
-      return 'liquidation'
-    case 'adl':
-      return 'adl'
-    case 'external':
-      return 'external'
-    default:
-      return 'pm'
-  }
-}
-
-/** The geometry of the plan in R: the entry the risk is measured from, 1R in price, and the targets. */
-export interface Plan {
-  ref: number
-  unit: number
-  dir: 1 | -1
-  targetsR: number[]
-}
-
-export function planOf(e: JournalEntry): Plan | null {
-  const x = e.data.expected
-  const side = sideOf(e)
-  if (!x || !side) return null
-  const zone = (x.entry_zone ?? []).map(num).filter((v): v is number => v !== null)
-  const ref = num(x.entry) ?? (zone.length === 2 ? (zone[0]! + zone[1]!) / 2 : num(e.data.actual?.avg_entry))
-  const stop = num(x.stop)
-  if (ref === null || stop === null || ref === stop) return null
-  const dir = side === 'long' ? 1 : -1
-  const unit = Math.abs(ref - stop)
-  const targetsR = (x.take_profits ?? [])
-    .map((tp) => num(tp.price))
-    .filter((v): v is number => v !== null)
-    .map((p) => (dir * (p - ref)) / unit)
-  return { ref, unit, dir, targetsR }
-}
-
-/** The furthest target the price reached at its best (1-based), or 0. */
-export function targetReached(e: JournalEntry): number {
-  const plan = planOf(e)
-  const mfe = num(e.data.actual?.mfe_r)
-  if (!plan || mfe === null) return 0
-  let n = 0
-  plan.targetsR.forEach((r, i) => {
-    if (mfe >= r - 1e-9) n = i + 1
-  })
-  return n
-}
-
-/** TP1 before the stop: the best point reached TP1 and the stop did not close it (prototype rule). */
-export function tp1Hit(e: JournalEntry): boolean | null {
-  const plan = planOf(e)
-  const mfe = num(e.data.actual?.mfe_r)
-  if (!plan || mfe === null || plan.targetsR.length === 0) return null
-  return mfe >= plan.targetsR[0]! - 1e-9 && e.data.actual?.close_reason !== 'stop_loss'
 }
 
 /** Where the mini ladder puts each mark, in percent of its width (left to right in both languages). */
