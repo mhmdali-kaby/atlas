@@ -26,7 +26,8 @@ describe('settings-notifications model', () => {
   it('validates the bot token and chat id with ATL-215’s rules', () => {
     expect(validateBot('', '')).toEqual({ token: 'tokenEmpty', chat: 'chatEmpty' })
     expect(validateBot('123:short', 'abc')).toEqual({ token: 'token', chat: 'chat' })
-    expect(validateBot('123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsWXYZ', '-1001234')).toEqual({})
+    expect(validateBot('123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsWXYZ', '-1001234')).toEqual({ chat: 'chat' })
+    expect(validateBot('123456789:AAHdqTcvCH1vGWJxfSeofSAs0K5PALDsWXYZ', '987654321')).toEqual({})
   })
 
   it('masks a saved value as one LTR isolate', () => {

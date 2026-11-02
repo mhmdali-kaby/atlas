@@ -145,7 +145,7 @@
     "e": {
       "token": "That doesn’t look like a bot token. It’s a number and a code joined by a colon, like 123456789:AAH…",
       "tokenEmpty": "Paste the token @BotFather gave you.",
-      "chat": "A chat ID is a number, like 987654321. Group chats start with a minus sign.",
+      "chat": "A chat ID is your own private chat with the bot, a positive number like 987654321. Group chats aren’t supported.",
       "chatEmpty": "Enter your chat ID.",
       "server": "Couldn’t save the bot. Atlas’s server didn’t answer, so nothing changed. Try again."
     },
