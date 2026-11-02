@@ -118,7 +118,7 @@ def test_effective_overlays_valid_values_and_keeps_defaults_for_bad_ones() -> No
     assert top["quiet_hours_enabled"] is True and top["quiet_hours_start"] == "22:00"
     assert top["stock_perps_weekend"] == "allow"
     assert DEFAULTS["agents"]["schedule"]["scout_watchlist"] == "08:00"  # DEFAULTS untouched
-    assert schedule.effective({}) ["agents"]["schedule"] == DEFAULTS["agents"]["schedule"]
+    assert schedule.effective({})["agents"]["schedule"] == DEFAULTS["agents"]["schedule"]
 
 
 @pytest.mark.parametrize("value", [True, 5, 241, "60"])
@@ -150,7 +150,9 @@ def test_quiet_window_crosses_midnight() -> None:
 
 
 def test_a_same_day_quiet_window() -> None:
-    defaults = schedule.effective({**QUIET, "schedule.quiet_hours_start": "12:00", "schedule.quiet_hours_end": "14:00"})
+    defaults = schedule.effective(
+        {**QUIET, "schedule.quiet_hours_start": "12:00", "schedule.quiet_hours_end": "14:00"}
+    )
     window = schedule.quiet_window(baghdad(13, 0), defaults)
     assert window is not None and window.end == datetime(2099, 3, 4, 14, 0, tzinfo=BAGHDAD)
     assert schedule.quiet_window(baghdad(14, 0), defaults) is None
@@ -241,7 +243,9 @@ async def test_a_weekly_job_day_comes_from_settings(
 
 
 @pytest.fixture
-def orch_sup(engine: Engine, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[tuple[Supervisor, Recorder, list[Any]]]:
+def orch_sup(
+    engine: Engine, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> Iterator[tuple[Supervisor, Recorder, list[Any]]]:
     _wipe(engine, ORCH)
     orch_hooks._quiet_announced.clear()
     started: list[Any] = []
@@ -272,7 +276,9 @@ def _quiet_lines(rec: Recorder) -> list[str]:
 
 
 async def _check(sup: Supervisor, at: datetime) -> None:
-    fire = ScheduleFire(name=orch_hooks.SCHEDULE_JOB, at=at, day=at.astimezone(BAGHDAD).date(), correlation_id="x")
+    fire = ScheduleFire(
+        name=orch_hooks.SCHEDULE_JOB, at=at, day=at.astimezone(BAGHDAD).date(), correlation_id="x"
+    )
     await orch_hooks.on_schedule(sup, fire)
 
 

@@ -752,6 +752,14 @@ notifications:
     in_app: true
     browser: true
     telegram: false
+  # ATL-229, decision #255 (2): during quiet hours (schedule.quiet_hours_*) only these events still
+  # go to browser and Telegram; every other event keeps its in-app row but is not delivered there.
+  quiet_hours_always_deliver:
+    - circuit_breaker
+    - kill_switch
+    - stop_hit
+    - target_hit
+    - proposal_awaiting_approval
   # agent states that count as "agent degraded" (system.agent_state).
   degraded_agent_states: [degraded, rate_limited]
   # longest string kept in a notification param (headlines, reasons).

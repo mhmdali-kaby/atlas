@@ -292,7 +292,13 @@ def test_crypto_perp_on_saturday_passes_either_way(offset: str, choice: str) -> 
     at = SAT_NOON[offset]
     btc = replace(XAU, inst_id="BTC-USDT-SWAP", asset_class="crypto")
     out = run_checks(
-        ctx(btc, now=at, ticker_at=at, proposal=proposal(btc), settings={"schedule.stock_perps_weekend": choice})
+        ctx(
+            btc,
+            now=at,
+            ticker_at=at,
+            proposal=proposal(btc),
+            settings={"schedule.stock_perps_weekend": choice},
+        )
     )
     assert out.checks[1]["status"] == "passed"
 

@@ -863,6 +863,13 @@ return [
             'browser' => true,
             'telegram' => false,
         ],
+        'quiet_hours_always_deliver' => [
+            'circuit_breaker',
+            'kill_switch',
+            'stop_hit',
+            'target_hit',
+            'proposal_awaiting_approval',
+        ],
         'degraded_agent_states' => [
             'degraded',
             'rate_limited',

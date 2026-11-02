@@ -145,7 +145,9 @@ def next_step(now: datetime, cycle_state: str | None, defaults: Mapping[str, Any
 async def build(ctx: ToolContext, slot: datetime) -> tuple[str, dict[str, Any]]:
     """The card's text and JSON, from code only."""
 
-    def reads() -> tuple[list[str], str | None, Decimal | None, Decimal | None, str | None, Mapping[str, Any]]:
+    def reads() -> tuple[
+        list[str], str | None, Decimal | None, Decimal | None, str | None, Mapping[str, Any]
+    ]:
         with ctx.session_factory() as session:
             wl = current_watchlist(session, ctx, owner_day(ctx.now()))
             ids = listed_ids(session, wl)

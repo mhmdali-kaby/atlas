@@ -294,7 +294,7 @@ def us_session_open(now: datetime, config: Mapping[str, Any] | None = None) -> b
 
 
 def _weekly(value: str) -> tuple[int, time]:
-    """"Fri 20:00" as (ISO weekday, time)."""
+    """A weekly time such as "Fri 20:00" as (ISO weekday, time)."""
     day, clock = value.split()
     names = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
     return names.index(day[:3].lower()) + 1, _hhmm(clock)
