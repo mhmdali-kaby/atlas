@@ -1,0 +1,99 @@
+/* Patch K's War Room cards (ATL-203, design v16 §9): the Portfolio Manager's post-mortem and the
+   Historian's weekly review, on the Historian card container (.hv-card, .hv-head). No new colours,
+   sizes or radii: outcomes use the profit/loss inks with an icon and a word, the lesson sits on
+   the secondary background, the suggested change on the accent wash. */
+
+.lc-head { flex-wrap: wrap; row-gap: 2px; }
+.lc-ref { color: var(--label-secondary); white-space: nowrap; }
+
+/* signed R: an icon and a sign beside the colour */
+.lc-r { display: inline-flex; align-items: center; gap: 3px; font-weight: 600; white-space: nowrap; }
+.lc-r .icon { width: 14px; height: 14px; flex: none; stroke-width: 2.25; }
+.lc-r.is-pos { color: var(--profit-ink); }
+.lc-r.is-neg { color: var(--loss-ink); }
+.lc-r.is-zero { color: var(--label-secondary); }
+[dir="rtl"] .lc-r .icon { transform: scaleX(-1); }
+
+/* "↘ Lost │ Stopped out": the outcome in its ink at 600, a 1px rule, the close label verbatim */
+.lc-out { display: inline-flex; flex-wrap: wrap; align-items: center; column-gap: 5px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 600; }
+.lc-out .icon { width: 14px; height: 14px; stroke-width: 2.25; flex: none; }
+[dir="rtl"] .lc-out .icon { transform: scaleX(-1); }
+.lc-out.is-win { color: var(--profit-ink); }
+.lc-out.is-loss { color: var(--loss-ink); }
+.lc-out.is-scratch { color: var(--label-secondary); }
+.lc-rule { margin-inline-start: 4px; padding-inline-start: 9px; border-inline-start: 1px solid var(--separator-strong); font-weight: 500; color: var(--label-secondary); }
+
+.lc-good, .lc-bad { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; }
+.lc-good { color: var(--profit-ink); }
+.lc-bad { color: var(--loss-ink); }
+.lc-good .icon, .lc-bad .icon { width: 13px; height: 13px; stroke-width: 2; flex: none; }
+
+.lc-tag {
+  display: inline-flex; align-items: center; height: 20px; padding-inline: 8px; border-radius: var(--radius-full);
+  background: var(--fill-3); color: var(--label); font-size: var(--fs-caption); line-height: var(--lh-caption); white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------- post-mortem */
+.pmo-card { gap: 12px; }
+.pmo-top { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 8px 16px; }
+.pmo-what { display: grid; gap: 4px; min-width: 0; }
+.pmo-inst { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-headline); line-height: var(--lh-headline); font-weight: 600; }
+.pmo-inst .an-inst { margin-inline-start: -6px; }
+.pmo-side { font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 400; color: var(--label-secondary); }
+.pmo-how { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 12px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.pmo-how .fig, .pmo-how [data-testid="duration"] { color: var(--label); }
+.pmo-figs { display: grid; justify-items: end; }
+.pmo-r { font-size: var(--fs-title-2); line-height: var(--lh-title-2); }
+.pmo-r .lc-r .icon { width: 18px; height: 18px; stroke-width: 2; }
+.pmo-usd { font-size: var(--fs-footnote); line-height: var(--lh-footnote); }
+.pmo-usd .an-sig .icon { display: none; }
+.pmo-ladder .ladder { margin-inline: 4px; }
+.pmo-cap { margin-top: -4px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.pmo-cap .fig { color: var(--label); }
+
+.pmo-cmp { width: 100%; border-collapse: collapse; font-size: var(--fs-footnote); line-height: var(--lh-footnote); }
+.pmo-cmp th, .pmo-cmp td { text-align: start; padding-block: 7px; padding-inline: 0 10px; border-top: 0.5px solid var(--separator); vertical-align: top; }
+.pmo-cmp thead th { border-top: 0; padding-top: 0; font-weight: 600; color: var(--label-secondary); }
+.pmo-cmp tbody th { width: 34%; font-weight: 500; color: var(--label-secondary); }
+.pmo-cmp td:nth-child(2) { color: var(--label-secondary); }
+.pmo-cmp td:nth-child(2) .fig { color: var(--label); }
+.pmo-cmp .lc-r .icon { width: 12px; height: 12px; }
+
+.pmo-lesson { display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; border-radius: var(--radius-control); background: var(--bg-secondary); }
+.dark .pmo-lesson { background: var(--bg-tertiary); }
+.pmo-lesson > .icon { width: 16px; height: 16px; flex: none; margin-top: 2px; color: var(--label-secondary); }
+.pmo-lesson-k { font-size: var(--fs-caption); line-height: var(--lh-caption); font-weight: 600; color: var(--label-secondary); }
+.pmo-lesson-text { font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); font-weight: 600; text-wrap: pretty; }
+.pmo-lesson.is-pending { background: transparent; box-shadow: inset 0 0 0 1px var(--separator-strong); font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+
+.pmo-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.pmo-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+
+/* ------------------------------------------------------------- weekly review */
+.wk-card { gap: 12px; }
+.wk-verdict { font-size: var(--fs-headline); line-height: var(--lh-headline); letter-spacing: var(--tr-headline); font-weight: 600; max-width: 62ch; text-wrap: pretty; }
+.wk-noverdict, .wk-paper { display: inline-flex; align-items: flex-start; gap: 6px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.wk-noverdict .icon, .wk-paper .icon { width: 15px; height: 15px; flex: none; margin-top: 1px; }
+.wk-paper .fig { color: var(--label); }
+.wk-table-wrap { display: grid; gap: 10px; min-width: 0; overflow-x: auto; }
+.wk-by { display: flex; }
+.wk-table { width: 100%; border-collapse: collapse; font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); min-width: 440px; }
+.wk-table th, .wk-table td { padding-block: 9px; padding-inline: 12px; border-top: 0.5px solid var(--separator); text-align: end; white-space: nowrap; }
+.wk-table th:first-child, .wk-table td:first-child { text-align: start; padding-inline-start: 0; }
+.wk-table th:last-child, .wk-table td:last-child { padding-inline-end: 0; }
+.wk-table thead th { border-top: 0; padding-top: 0; font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 600; color: var(--label-secondary); }
+.wk-table tbody th { font-weight: 500; }
+.wk-table tr.is-total th, .wk-table tr.is-total td { font-weight: 600; border-top: 1px solid var(--separator-strong); }
+.wk-table .lc-r .icon, .wk-table .an-sig .icon { width: 13px; height: 13px; }
+
+.wk-change { display: grid; gap: 8px; padding: 16px 18px; border-radius: var(--radius-card); background: var(--accent-wash); }
+.wk-change-k { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 600; color: var(--accent-ink); }
+.wk-change-k .icon { width: 15px; height: 15px; }
+.wk-change-text { font-size: var(--fs-headline); line-height: var(--lh-headline); letter-spacing: var(--tr-headline); font-weight: 600; max-width: 62ch; text-wrap: pretty; }
+.wk-change-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 2px; }
+.wk-change-note { font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+
+.wk-quiet { display: flex; align-items: flex-start; gap: 12px; padding: 16px; border-radius: var(--radius-card); background: var(--fill-4); font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); }
+.wk-quiet .icon { width: 20px; height: 20px; flex: none; margin-top: 1px; color: var(--label-secondary); }
+.wk-quiet-t { font-weight: 600; }
+.wk-quiet-b { margin-top: 2px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }

@@ -1,12 +1,15 @@
-import { Lock, MessagesSquare } from 'lucide-react'
+import { History, Lock, MessagesSquare } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router'
+import { Link, useLocation } from 'react-router'
+import { useTradingEnv } from '../../app/shell/tradingEnv'
+import { formatFixed } from '../../lib/format'
 import type { SidebarSectionProps } from '../../app/feature'
 import { Skeleton } from '../../ui'
 import { useLang, useNow } from '../portfolio/hooks'
 import { AGENTS, agentStatus } from './agents'
 import type { WarroomThread } from './api'
 import { Medallion } from './Medallion'
+import { lastReplayDay, RECENT_DAYS, replayDayName, replayPath, shiftDay, useReplayDays } from './replay'
 import { threadPath, useSelectedThread } from './selection'
 import { InstrumentId } from './text'
 import { dayOrTime } from './time'
@@ -132,5 +135,59 @@ export function ThreadList({ onNavigate }: SidebarSectionProps) {
         )
       })}
     </div>
+  )
+}
+
+/**
+ * Replay's sidebar (ATL-207; design v18 Replay): a way back to the live War Room, then the last
+ * seven finished Baghdad days with their message counts, the open day marked current.
+ */
+export function ReplaySidebar({ onNavigate }: SidebarSectionProps) {
+  const { t } = useTranslation('warroom')
+  const lang = useLang()
+  const env = useTradingEnv()
+  const now = useNow(60_000)
+  const { pathname } = useLocation()
+  const latest = lastReplayDay(now)
+  const counts = useReplayDays(env, latest)
+  const byDay = new Map((counts.data?.data ?? []).map((d) => [d.date, d.count]))
+  const open = /^\/warroom\/replay\/(\d{4}-\d{2}-\d{2})$/.exec(pathname)?.[1] ?? latest
+  const days = Array.from({ length: RECENT_DAYS }, (_, i) => shiftDay(latest, -i))
+  return (
+    <>
+      <div className="side-section" data-testid="rp-side-live">
+        <Link to="/warroom" className="thread-row" data-nav-item="" onClick={onNavigate}>
+          <span className="thread-lead">
+            <MessagesSquare aria-hidden="true" strokeWidth={1.5} className="thread-lead-icon" />
+          </span>
+          <span className="thread-text">
+            <span className="thread-title">{t('rp.live')}</span>
+          </span>
+        </Link>
+      </div>
+      <div className="side-section" role="group" aria-labelledby="rp-head-days" data-testid="rp-side-days">
+        <h2 className="side-head" id="rp-head-days">
+          <span>{t('rp.days')}</span>
+        </h2>
+        {days.map((d) => {
+          const n = byDay.get(d)
+          return (
+            <Link key={d} to={replayPath(d)} className="thread-row rp-side-day" data-nav-item="" aria-current={d === open ? 'page' : undefined} onClick={onNavigate}>
+              <span className="thread-lead">
+                <History aria-hidden="true" strokeWidth={1.5} className="thread-lead-icon" />
+              </span>
+              <span className="thread-text">
+                <span className="thread-title">{replayDayName(d, lang, true)}</span>
+                {n !== undefined && (
+                  <span className="thread-time num" aria-label={t('rp.msgs', { count: n, n: formatFixed(n, 0, lang) })}>
+                    {formatFixed(n, 0, lang)}
+                  </span>
+                )}
+              </span>
+            </Link>
+          )
+        })}
+      </div>
+    </>
   )
 }

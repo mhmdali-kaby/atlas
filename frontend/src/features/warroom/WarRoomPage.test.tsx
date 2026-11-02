@@ -168,7 +168,7 @@ describe('War Room', () => {
   it('registers the War Room area with its agents and threads sections', () => {
     expect(warroom.area).toBe('warroom')
     const sections = Array.isArray(warroom.sidebar) ? warroom.sidebar : [warroom.sidebar]
-    expect(sections.map((s) => s?.id)).toEqual(['agents', 'threads'])
+    expect(sections.map((s) => s?.id)).toEqual(['replay', 'agents', 'threads'])
     expect(warroom.routes.map((r) => r.path)).toEqual(['warroom', 'warroom/threads/:threadId', 'warroom/replay', 'warroom/replay/:date'])
   })
 
