@@ -114,10 +114,16 @@ Atlas backs up its whole database (demo and live) every day by itself (ATL-231, 
    Redis keep running.
 2. Pick the dump (`ls -lt <backup folder>/atlas-*.dump`) and check it reads:
    `pg_restore --list <file> | head`.
-3. Restore it into `atlas`, dropping each object first:
-   `PGPASSWORD=<DB_PASSWORD> /opt/homebrew/opt/libpq/bin/pg_restore --clean --if-exists -h 127.0.0.1 -p 5433 -U atlas -d atlas <file>`.
-   Without a Mac client, through the container:
-   `docker exec -i atlas-postgres pg_restore -U atlas --clean --if-exists -d atlas < <file>`.
+3. Put TimescaleDB into restore mode, restore into `atlas` dropping each object first, then
+   leave restore mode (TimescaleDB requires the two wrapper calls, or hypertable catalogs can
+   fail to restore):
+   `PGPASSWORD=<DB_PASSWORD> psql -h 127.0.0.1 -p 5433 -U atlas -d atlas -c "SELECT timescaledb_pre_restore();"`
+   `PGPASSWORD=<DB_PASSWORD> /opt/homebrew/opt/libpq/bin/pg_restore --clean --if-exists -h 127.0.0.1 -p 5433 -U atlas -d atlas <file>`
+   `PGPASSWORD=<DB_PASSWORD> psql -h 127.0.0.1 -p 5433 -U atlas -d atlas -c "SELECT timescaledb_post_restore();"`
+   Without a Mac client, run the same three through the container, e.g.
+   `docker exec -i atlas-postgres pg_restore -U atlas --clean --if-exists -d atlas < <file>`
+   between `docker exec atlas-postgres psql -U atlas -d atlas -c "SELECT timescaledb_pre_restore();"`
+   and the matching `timescaledb_post_restore()`.
    TimescaleDB can print warnings about its own catalog during `--clean`; they are expected.
 4. Start again with `./atlas up`, then run `./atlas doctor`. trading_core reconciles with OKX
    before it acts, so positions and orders that changed after the dump are repaired from OKX.

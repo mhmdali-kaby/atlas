@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Settings;
 
-use App\Support\Backup\BackupSettings;
 use App\Models\Setting;
+use App\Support\Backup\BackupSettings;
 use App\Support\Settings\SettingsLabels;
 use App\Support\Settings\SettingsSchema;
 use App\Support\Settings\SettingsService;
