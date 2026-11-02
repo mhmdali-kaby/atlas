@@ -1,14 +1,15 @@
 import { CircleCheck, History, PanelRight, WifiOff } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { toolbarButton, toolbarIconButton } from '../../app/shell/toolbarClasses'
 import { useSession } from '../auth/session'
 import { useNow } from '../portfolio/hooks'
 import { Button, Spinner } from '../../ui'
 import { flattenMessages, useMessages, type WarroomMessage } from './api'
 import { Composer } from './Composer'
+import { messageParam, useMessageById } from './deepLink'
 import { Feed } from './Feed'
 import { FeedEmpty, FeedError, FeedNotFound, FeedSkeleton } from './FeedStates'
 import { Inspector } from './Inspector'
@@ -17,7 +18,7 @@ import { localMessages, useOutbox } from './live'
 import { lastReplayDay, replayPath } from './replay'
 import { runsForThread, useRuns } from './runs'
 import { useLiveFeed, type BannerState } from './useLiveFeed'
-import { useSelectedThread } from './selection'
+import { threadPath, useSelectedThread } from './selection'
 import { useThreadName } from './shape'
 import './warroom.css'
 
@@ -52,11 +53,28 @@ function ConnectionBanner({ banner, onReconnect }: { banner: BannerState; onReco
 
 export function WarRoomPage() {
   const { t } = useTranslation('warroom')
-  const { env, threads, selected } = useSelectedThread()
+  const { env, threads, list: threadList, selected } = useSelectedThread()
   const nameOf = useThreadName()
   const messages = useMessages(env, selected?.id)
   const inspector = useInspector()
   const now = useNow(60_000)
+  const location = useLocation()
+  const navigate = useNavigate()
+
+  // A `?message=<id>` link (ATL-220) may point at a message in a thread other than the one the
+  // URL's path already names (daily reports and news alerts are Main; a Strategist proposal can
+  // be posted to an instrument thread). Resolve its thread once and switch there first; the Feed
+  // then only has to find the message within whatever thread it is already looking at.
+  const msgTarget = messageParam(location.search)
+  const targetMessage = useMessageById(env, msgTarget)
+  useEffect(() => {
+    if (!targetMessage.data || threads.isPending) return
+    const want = targetMessage.data.thread_id
+    if (selected?.id === want) return
+    const thread = threadList.find((th) => th.id === want)
+    if (!thread) return
+    navigate(`${threadPath(thread)}${location.search}`, { replace: true })
+  }, [targetMessage.data, threads.isPending, selected, threadList, location.search, navigate])
   // The shell's toolbar has a slot for page actions; the inspector toggle goes there.
   const [toolbarSlot, setToolbarSlot] = useState<Element | null>(null)
   const findSlot = (el: HTMLDivElement | null) => {
@@ -104,7 +122,7 @@ export function WarRoomPage() {
     feed = <FeedEmpty thread={selected} />
   } else {
     // Keyed by thread so a new thread starts at its own bottom with fresh scroll state.
-    feed = <Feed key={selected.id} thread={selected} threadName={threadName} query={messages} pending={pending} runs={runs} onReply={setReplyTo} />
+    feed = <Feed key={selected.id} env={env} thread={selected} threadName={threadName} query={messages} pending={pending} runs={runs} onReply={setReplyTo} />
   }
 
   return (

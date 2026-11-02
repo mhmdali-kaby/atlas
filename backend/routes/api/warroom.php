@@ -15,6 +15,9 @@ Route::prefix('warroom')
         Route::post('/messages', [WarroomController::class, 'store'])
             ->middleware('throttle:warroom-post')
             ->name('messages.store');
+        // ATL-220: a notification link's target message, fetched directly when it is not (yet)
+        // in a loaded page. whereUuid() means a malformed id 404s instead of reaching Postgres.
+        Route::get('/messages/{message}', [WarroomController::class, 'show'])->whereUuid('message')->name('messages.show');
         Route::get('/replay', [WarroomController::class, 'replay'])->name('replay');
         Route::get('/replay/days', [WarroomController::class, 'replayDays'])->name('replay.days');
     });

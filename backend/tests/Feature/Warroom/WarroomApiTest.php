@@ -277,6 +277,7 @@ it('returns 401 for every endpoint when signed out', function (): void {
     $this->postJson('/api/warroom/messages', ['thread_id' => $this->thread->id, 'content_md' => 'x'])->assertUnauthorized();
     $this->getJson('/api/warroom/replay?date=2026-10-28')->assertUnauthorized();
     $this->getJson('/api/warroom/replay/days?to=2026-10-28')->assertUnauthorized();
+    $this->getJson('/api/warroom/messages/0b8f3c2e-6a51-4f0e-9a43-1c2d7e5b9f10')->assertUnauthorized();
     expect(atl38Envelopes())->toBe([]);
 });
 
@@ -335,4 +336,24 @@ it('lists the nine agents with slug, name, handle and aliases in brief order', f
     foreach ($data as $agent) {
         expect(array_keys($agent))->toBe(['slug', 'name', 'handle', 'aliases']);
     }
+});
+
+it('fetches a single message by id, for a notification link not yet on a loaded page (ATL-220)', function (): void {
+    $other = atl38Thread('demo', 'instrument', 'BTC-USDT-SWAP');
+    $message = atl38Message($other, CarbonImmutable::parse('2026-10-29T00:00:00Z'), 'the target');
+
+    $this->getJson("/api/warroom/messages/{$message->id}")
+        ->assertOk()
+        ->assertJsonPath('data.id', $message->id)
+        ->assertJsonPath('data.thread_id', $other->id)
+        ->assertJsonPath('data.content_md', 'the target');
+});
+
+it('404s an unknown message id, a malformed one, or another env’s message (ATL-220)', function (): void {
+    $live = atl38Message(atl38Thread('live'), CarbonImmutable::parse('2026-10-29T00:00:00Z'));
+
+    $this->getJson('/api/warroom/messages/0b8f3c2e-6a51-4f0e-9a43-1c2d7e5b9f10')->assertNotFound();
+    $this->getJson('/api/warroom/messages/not-a-uuid')->assertNotFound();
+    $this->getJson("/api/warroom/messages/{$live->id}")->assertNotFound();
+    $this->getJson("/api/warroom/messages/{$live->id}?env=live")->assertOk();
 });

@@ -2,6 +2,7 @@ import { useVirtualizer } from '@tanstack/react-virtual'
 import { motion, useReducedMotion } from 'motion/react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type KeyboardEvent, type PointerEvent } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { TradingEnv } from '../../app/shell/tradingEnv'
 import { Button, Spinner } from '../../ui'
 import { useLang, useNow } from '../portfolio/hooks'
 import { AGENTS } from './agents'
@@ -13,7 +14,7 @@ import { Medallion } from './Medallion'
 import { Message } from './Message'
 import type { LiveRun } from './runs'
 import { ARRIVE, useArrivals } from './useArrivals'
-import { useProposalFocus } from './useProposalFocus'
+import { useDeepLinkFocus } from './useProposalFocus'
 import { InstrumentId } from './text'
 import { around } from './tokens'
 import { baghdadDay, dayLabel, formatDate } from './time'
@@ -94,6 +95,7 @@ function Origin({ thread, threadName }: { thread: WarroomThread; threadName: str
 }
 
 export interface FeedProps {
+  env: TradingEnv
   thread: WarroomThread
   threadName: string
   query: ReturnType<typeof useMessages>
@@ -108,7 +110,7 @@ export interface FeedProps {
 const NO_PENDING: LocalMessage[] = []
 const NO_RUNS: LiveRun[] = []
 
-export function Feed({ thread, threadName, query, pending = NO_PENDING, runs = NO_RUNS, onReply }: FeedProps) {
+export function Feed({ env, thread, threadName, query, pending = NO_PENDING, runs = NO_RUNS, onReply }: FeedProps) {
   const { t } = useTranslation('warroom')
   const lang = useLang()
   const now = useNow(60_000)
@@ -187,16 +189,39 @@ export function Feed({ thread, threadName, query, pending = NO_PENDING, runs = N
 
   // ---- Jumping to a quoted parent ------------------------------------------------------------
   const [flashId, setFlashId] = useState<string | null>(null)
+  // Reduced motion: no `.is-flash` animation; `.is-marked` draws a still ring instead, cleared by
+  // the owner's next press, key, wheel or touch (design v18 §5.6), not by a timer.
+  const [markedId, setMarkedId] = useState<string | null>(null)
   const onJump = useCallback(
     (id: string) => {
       const index = rows.findIndex((r) => r.key === id)
       if (index < 0) return
       virtualizer.scrollToIndex(index, { align: 'center' })
-      setFlashId(id)
-      window.setTimeout(() => setFlashId((cur) => (cur === id ? null : cur)), FLASH_MS)
+      if (reduceMotion) {
+        setMarkedId(id)
+      } else {
+        setFlashId(id)
+        window.setTimeout(() => setFlashId((cur) => (cur === id ? null : cur)), FLASH_MS)
+      }
     },
-    [rows, virtualizer],
+    [rows, virtualizer, reduceMotion],
   )
+
+  useEffect(() => {
+    if (!markedId) return
+    const clear = () => setMarkedId(null)
+    const opts = { once: true } as const
+    window.addEventListener('keydown', clear, opts)
+    window.addEventListener('pointerdown', clear, opts)
+    window.addEventListener('wheel', clear, opts)
+    window.addEventListener('touchstart', clear, opts)
+    return () => {
+      window.removeEventListener('keydown', clear)
+      window.removeEventListener('pointerdown', clear)
+      window.removeEventListener('wheel', clear)
+      window.removeEventListener('touchstart', clear)
+    }
+  }, [markedId])
 
   // ---- Roving focus and the one active message ----------------------------------------------
   const messageIndexes = useMemo(() => rows.flatMap((r, i) => (r.kind === 'msg' ? [i] : [])), [rows])
@@ -259,8 +284,8 @@ export function Feed({ thread, threadName, query, pending = NO_PENDING, runs = N
     }
   })
 
-  // ---- Opening on a proposal (ATL-180): the approval pill links to /warroom?proposal=<id> ------
-  const focusProposal = useCallback(
+  // ---- Opening on a notification's target (ATL-180 ?proposal=, ATL-220 ?message=) --------------
+  const focusTarget = useCallback(
     (id: string) => {
       atBottom.current = false
       onJump(id)
@@ -269,7 +294,7 @@ export function Feed({ thread, threadName, query, pending = NO_PENDING, runs = N
     },
     [onJump],
   )
-  useProposalFocus(messages, focusProposal)
+  const { finding } = useDeepLinkFocus(env, thread, messages, query, focusTarget)
 
   function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
@@ -381,6 +406,7 @@ export function Feed({ thread, threadName, query, pending = NO_PENDING, runs = N
                     active={activeId === row.key}
                     tabbable={tabbableId === row.key}
                     flash={flashId === row.key}
+                    marked={markedId === row.key}
                     onJump={onJump}
                     onReply={onReply}
                     onMenuChange={(open) => onMenuChange(row.key, open)}
@@ -393,6 +419,12 @@ export function Feed({ thread, threadName, query, pending = NO_PENDING, runs = N
         </div>
       </div>
     </div>
+    {finding && (
+      <div className="wr-finding" role="status" data-testid="wr-finding">
+        <Spinner />
+        <span>{t(finding === 'message' ? 'land.findingMessage' : 'land.findingProposal')}</span>
+      </div>
+    )}
     <JumpToLatest unread={arrivals.unread} scrolledUp={arrivals.scrolledUp} onJump={arrivals.scrollToLatest} />
     </>
   )

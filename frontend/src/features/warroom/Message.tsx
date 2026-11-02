@@ -326,6 +326,8 @@ export interface MessageProps {
   active: boolean
   tabbable: boolean
   flash: boolean
+  /** Reduced motion's still ring in place of the flash (ATL-220, design v18 §5.6). */
+  marked?: boolean
   onJump: (id: string) => void
   /** Starts a reply to this message: the ReplyChip appears above the composer. */
   onReply: (message: WarroomMessage) => void
@@ -336,7 +338,7 @@ export interface MessageProps {
 /** How far the menu stays clear of the viewport edge, so it never renders off-screen. */
 const MENU_MARGIN = { x: 200, y: 90 }
 
-export function Message({ message: m, prev, parent, lang, active, tabbable, flash, onJump, onReply, onMenuChange }: MessageProps) {
+export function Message({ message: m, prev, parent, lang, active, tabbable, flash, marked, onJump, onReply, onMenuChange }: MessageProps) {
   const { t } = useTranslation('warroom')
   const authorName = useAuthorName()
   const shape = shapeOf(m)
@@ -349,7 +351,9 @@ export function Message({ message: m, prev, parent, lang, active, tabbable, flas
     'aria-label': label,
   }
   const cls = (...extra: Array<string | false>) =>
-    ['msg', `is-${shape}`, active && shape !== 'event' && shape !== 'alert' && 'is-active', flash && 'is-flash', ...extra].filter(Boolean).join(' ')
+    ['msg', `is-${shape}`, active && shape !== 'event' && shape !== 'alert' && 'is-active', flash && 'is-flash', marked && 'is-marked', ...extra]
+      .filter(Boolean)
+      .join(' ')
 
   // MessageActions (design v4 War Room §7): Reply and Copy text, on agent and owner messages that
   // are not still sending or failed. The context menu is the same two items, opened by right-click,
