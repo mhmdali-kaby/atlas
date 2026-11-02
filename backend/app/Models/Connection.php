@@ -28,12 +28,13 @@ use Illuminate\Support\Carbon;
  * @property string|null $position_mode
  * @property string|null $uid_last4
  * @property Carbon|null $last_verified_at
+ * @property Carbon|null $withdraw_off_verified_at set by Test connection when OKX reports no withdraw permission (ATL-235)
  * @property string|null $last_test_error
  * @property Carbon $created_at
  * @property Carbon $updated_at
  */
 #[Table(name: 'connections')]
-#[Fillable(['exchange', 'env', 'label', 'api_key', 'api_secret', 'passphrase', 'permissions', 'account_mode', 'position_mode', 'uid_last4', 'last_verified_at', 'last_test_error'])]
+#[Fillable(['exchange', 'env', 'label', 'api_key', 'api_secret', 'passphrase', 'permissions', 'account_mode', 'position_mode', 'uid_last4', 'last_verified_at', 'withdraw_off_verified_at', 'last_test_error'])]
 #[Hidden(self::SECRET_FIELDS)]
 class Connection extends Model
 {
@@ -43,7 +44,7 @@ class Connection extends Model
     public const SECRET_FIELDS = ['api_key', 'api_secret', 'passphrase'];
 
     /** Columns that describe the verified key; cleared when any secret changes. */
-    public const VERIFICATION_FIELDS = ['permissions', 'account_mode', 'position_mode', 'uid_last4', 'last_verified_at', 'last_test_error'];
+    public const VERIFICATION_FIELDS = ['permissions', 'account_mode', 'position_mode', 'uid_last4', 'last_verified_at', 'withdraw_off_verified_at', 'last_test_error'];
 
     public function apiKeyLast4(): string
     {
@@ -76,6 +77,7 @@ class Connection extends Model
             'passphrase' => 'encrypted',
             'permissions' => 'array',
             'last_verified_at' => 'datetime',
+            'withdraw_off_verified_at' => 'datetime',
         ];
     }
 }

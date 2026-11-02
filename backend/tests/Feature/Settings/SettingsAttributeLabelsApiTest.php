@@ -48,6 +48,11 @@ function atl222BadValueFor(string $field): mixed
         return $field === BackupSettings::ENABLED ? 'not-a-bool' : true;
     }
 
+    // ATL-228: Settings → Schedule.
+    if (in_array($field, SettingsSchema::scheduleFields(), true)) {
+        return $field === SettingsSchema::SCHEDULE_QUIET_ENABLED_FIELD ? 'not-a-bool' : true;
+    }
+
     throw new RuntimeException("atl222BadValueFor: no case for settings field [{$field}].");
 }
 

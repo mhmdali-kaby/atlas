@@ -5,13 +5,16 @@ declare(strict_types=1);
 namespace App\Http\Requests\Settings;
 
 use App\Support\Backup\BackupSettings;
+use App\Models\Setting;
 use App\Support\Settings\SettingsLabels;
 use App\Support\Settings\SettingsSchema;
+use App\Support\Settings\SettingsService;
 use Brick\Math\BigDecimal;
 use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 /**
  * PATCH /api/settings: {env, version, changes}. Every field is checked against its §14 range;
@@ -100,7 +103,88 @@ class UpdateSettingsRequest extends FormRequest
         $rules['changes.'.self::escape(BackupSettings::TIME)] = ['sometimes', 'string', self::backupTime()];
         $rules['changes.'.self::escape(BackupSettings::KEEP)] = ['sometimes', 'integer:strict', 'between:'.implode(',', BackupSettings::keepBounds())];
 
+        // ATL-228, decision #255 (2): Settings → Schedule (Asia/Baghdad times; dotted keys escaped).
+        foreach (array_keys(SettingsSchema::SCHEDULE_TIME_FIELDS) as $field) {
+            $rules['changes.'.self::escape($field)] = ['sometimes', 'string', self::pattern(SettingsSchema::TIME_PATTERN, 'settings.schedule_time_format')];
+        }
+        foreach (array_keys(SettingsSchema::SCHEDULE_WEEKLY_FIELDS) as $field) {
+            $rules['changes.'.self::escape($field)] = ['sometimes', 'string', self::pattern(SettingsSchema::WEEKLY_PATTERN, 'settings.schedule_weekly_format')];
+        }
+        $rules['changes.'.self::escape(SettingsSchema::SCHEDULE_INTERVAL_FIELD)] = ['sometimes', 'integer:strict', 'between:'.implode(',', SettingsSchema::scheduleIntervalBounds())];
+        $rules['changes.'.self::escape(SettingsSchema::SCHEDULE_QUIET_ENABLED_FIELD)] = ['sometimes', 'boolean:strict'];
+        $rules['changes.'.self::escape(SettingsSchema::SCHEDULE_WEEKEND_FIELD)] = ['sometimes', 'string', Rule::in(SettingsSchema::weekendChoices())];
+
         return $rules;
+    }
+
+    /**
+     * ATL-228: the schedule's cross-field rules, checked on the stored values with the changes on
+     * top: the first analysis slot is before the last, Scout's watchlist is after both 07:30 jobs
+     * (it reads their output), and quiet hours are not an empty window. Quiet hours may cross
+     * midnight. The error goes on the field the request changed (the later one when both did).
+     *
+     * @return list<Closure(Validator): void>
+     */
+    public function after(): array
+    {
+        return [function (Validator $validator): void {
+            $raw = $this->input('changes');
+            if (! is_array($raw) || array_intersect(array_keys($raw), SettingsSchema::scheduleFields()) === []) {
+                return;
+            }
+            foreach (SettingsSchema::scheduleFields() as $field) {
+                if ($validator->errors()->has("changes.{$field}")) {
+                    return;
+                }
+            }
+            $merged = [...$this->storedSchedule(), ...array_intersect_key($raw, array_flip(SettingsSchema::scheduleFields()))];
+            $time = fn (string $field): string => is_string($merged[$field] ?? null) ? $merged[$field] : '';
+
+            $order = [
+                ['schedule.analysis_first_slot', 'schedule.analysis_last_slot', 'settings.schedule_first_before_last'],
+                ['schedule.news_morning_brief', 'schedule.scout_watchlist', 'settings.schedule_scout_after_brief'],
+                ['schedule.historian_regime_table', 'schedule.scout_watchlist', 'settings.schedule_scout_after_regime'],
+            ];
+            foreach ($order as [$earlier, $later, $message]) {
+                if ($time($earlier) < $time($later)) {
+                    continue;
+                }
+                $field = array_key_exists($later, $raw) || ! array_key_exists($earlier, $raw) ? $later : $earlier;
+                $validator->errors()->add("changes.{$field}", __($message, [
+                    'earlier' => SettingsLabels::forField($earlier),
+                    'later' => SettingsLabels::forField($later),
+                ]));
+            }
+
+            if ($time('schedule.quiet_hours_start') === $time('schedule.quiet_hours_end')) {
+                $field = array_key_exists('schedule.quiet_hours_end', $raw) ? 'schedule.quiet_hours_end' : 'schedule.quiet_hours_start';
+                $validator->errors()->add("changes.{$field}", __('settings.schedule_quiet_empty'));
+            }
+        }];
+    }
+
+    /**
+     * The env's stored schedule values (defaults for any field added since, or with no row yet).
+     * Read without creating the row: validation must not write.
+     *
+     * @return array<string, mixed>
+     */
+    private function storedSchedule(): array
+    {
+        $env = $this->input('env');
+        $setting = is_string($env) ? Setting::query()->where('env', $env)->first() : null;
+        $values = $setting !== null ? app(SettingsService::class)->values($setting) : SettingsSchema::defaults();
+
+        return array_intersect_key($values, array_flip(SettingsSchema::scheduleFields()));
+    }
+
+    private static function pattern(string $pattern, string $message): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail) use ($pattern, $message): void {
+            if (! is_string($value) || preg_match($pattern, $value) !== 1) {
+                $fail(__($message));
+            }
+        };
     }
 
     private function knownFields(): Closure

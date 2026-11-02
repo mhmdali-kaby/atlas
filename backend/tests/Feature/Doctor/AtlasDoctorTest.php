@@ -25,7 +25,7 @@ const ATL95_API_KEY = 'atl95-test-only-anthropic-api-key';
 
 const ATL13_CHECKS = [
     'postgres', 'postgres_extensions', 'migrations', 'redis', 'trading_core', 'okx_clock',
-    'demo_connection', 'withdraw_permission', 'disk_space', 'security', 'reverb_secret',
+    'demo_connection', 'live_connection', 'withdraw_permission', 'disk_space', 'security', 'reverb_secret',
     'claude_cli', 'claude_cli_login', 'claude_api_key', 'backup',
 ];
 
@@ -230,6 +230,102 @@ it('fails on a withdraw-enabled live key even when the demo key can withdraw too
 
     expect($code)->not->toBe(0);
     expect(lineFor($output, 'withdraw_permission'))->toStartWith('✗')->toContain('live');
+});
+
+/**
+ * ATL-235: fake trading_core so the demo key answers with $demo and the live key with $live.
+ *
+ * @param  array<string, mixed>  $live  overrides for the live connection's test body
+ * @param  array<string, mixed>  $demo  overrides for the demo connection's test body
+ */
+function fakeCoreWithLive(string $liveId, array $live, array $demo = []): void
+{
+    Http::fake(function (Request $request) use ($liveId, $live, $demo) {
+        $path = (string) parse_url($request->url(), PHP_URL_PATH);
+        if ($path === '/health') {
+            return Http::response(['status' => 'ok', 'env' => 'demo', 'version' => '0.1.0']);
+        }
+        if ($path === '/internal/time') {
+            return Http::response(['ok' => true, 'env' => 'demo', 'offset_ms' => 120, 'drift_ms' => 120,
+                'server_time' => '2026-10-28T08:00:00.120Z', 'local_time' => '2026-10-28T08:00:00.000Z']);
+        }
+        $base = ['ok' => true, 'acct_lv' => '2', 'account_mode' => 'futures', 'position_mode' => 'net_mode',
+            'permissions' => ['read_only', 'trade'], 'warnings' => [], 'uid_last4' => '6123', 'error' => null,
+            'okx_code' => null, 'verified_at' => '2026-10-28T08:00:00.000000Z'];
+        if ($path === "/internal/connections/{$liveId}/test") {
+            return Http::response([...$base, 'uid_last4' => '9876', ...$live]);
+        }
+        if (preg_match('#^/internal/connections/[0-9a-f-]+/test$#', $path) === 1) {
+            return Http::response([...$base, ...$demo]);
+        }
+
+        return Http::response(['detail' => 'not found'], 404);
+    });
+}
+
+it('passes live_connection when there is no live connection', function (): void {
+    fakeCore();
+
+    [$code, $output] = doctor();
+
+    expect($code)->toBe(0);
+    expect(lineFor($output, 'live_connection'))->toStartWith('✓')->toContain('No live OKX connection');
+});
+
+it('fails live_connection for a withdraw-enabled live key and audits the re-test (ATL-235)', function (): void {
+    $live = liveWithdrawConnection();
+    fakeCoreWithLive($live->id, [
+        'ok' => false, 'permissions' => ['read_only', 'trade', 'withdraw'],
+        'error' => 'withdraw_permission_enabled', 'verified_at' => null,
+    ]);
+
+    [$code, $output] = doctor();
+
+    expect($code)->not->toBe(0);
+    expect(lineFor($output, 'live_connection'))->toStartWith('✗')->toContain('withdraw permission')->toContain('Read + Trade');
+    expect(lineFor($output, 'withdraw_permission'))->toStartWith('✗');
+    expect(lineFor($output, 'demo_connection'))->toStartWith('✓');
+    expect(AuditLog::query()->where('action', 'connection.tested')->where('subject_id', $live->id)->sole()->after)
+        ->toMatchArray(['env' => 'live', 'error' => 'withdraw_permission_enabled', 'source' => 'atlas:doctor']);
+    expectNoSecrets($output);
+});
+
+it('passes live_connection for a verified live Read+Trade key, and demo withdraw stays a warning (ATL-235)', function (): void {
+    $live = Connection::query()->create([
+        'exchange' => 'okx', 'env' => 'live', 'label' => 'OKX Live',
+        'api_key' => 'atl235-live-key', 'api_secret' => 'atl235-live-secret', 'passphrase' => 'atl235-live-pass',
+        'permissions' => ['read_only', 'trade'], 'last_verified_at' => now(), 'withdraw_off_verified_at' => now(),
+    ]);
+    fakeCoreWithLive($live->id, [], [
+        'permissions' => ['read_only', 'trade', 'withdraw'], 'warnings' => ['withdraw_permission_enabled'],
+    ]);
+
+    [$code, $output] = doctor();
+
+    expect($code)->toBe(0);
+    expect(lineFor($output, 'live_connection'))->toStartWith('✓')->toContain('Verified')->toContain('OKX Live')->toContain('…9876');
+    expect(lineFor($output, 'withdraw_permission'))->toStartWith('⚠')->toContain('demo');
+    expect($output)->not->toContain('atl235-live-secret')->not->toContain('atl235-live-key');
+});
+
+it('warns, not fails, when the live key test fails for another reason', function (): void {
+    $live = liveWithdrawConnection();
+    $live->update(['permissions' => null, 'last_test_error' => null]);
+    fakeCoreWithLive($live->id, ['ok' => false, 'account_mode' => null, 'permissions' => [], 'error' => 'ip_not_allowed', 'verified_at' => null]);
+
+    [$code, $output] = doctor();
+
+    expect($code)->toBe(0);
+    expect(lineFor($output, 'live_connection'))->toStartWith('⚠')->toContain('Not verified');
+});
+
+it('fails live_connection from the stored permissions when trading_core is down', function (): void {
+    liveWithdrawConnection();
+    Http::fake(fn () => throw new ConnectionException('Connection refused'));
+
+    [, $output] = doctor();
+
+    expect(lineFor($output, 'live_connection'))->toStartWith('✗')->toContain('last stored test');
 });
 
 it('warns on the demo withdraw permission from the stored permissions when trading_core is down', function (): void {

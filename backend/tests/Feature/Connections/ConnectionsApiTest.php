@@ -102,13 +102,50 @@ it('refuses a second connection for the same exchange and env', function (): voi
     expect(Connection::query()->count())->toBe(1);
 });
 
-it('refuses live connections in Phase 0', function (): void {
-    $this->postJson('/api/connections', demoConnectionPayload(['env' => 'live']))
-        ->assertUnprocessable()
-        ->assertJsonPath('message', 'Live connections are enabled in Phase 4')
-        ->assertJsonValidationErrors(['env' => 'Live connections are enabled in Phase 4']);
+it('saves a live connection beside the demo one and returns only masked secrets (ATL-235)', function (): void {
+    $this->postJson('/api/connections', demoConnectionPayload())->assertCreated();
 
-    expect(Connection::query()->count())->toBe(0);
+    $response = $this->postJson('/api/connections', demoConnectionPayload(['env' => 'live', 'label' => 'OKX Live']))
+        ->assertCreated()
+        ->assertJsonPath('data.env', 'live')
+        ->assertJsonPath('data.label', 'OKX Live')
+        ->assertJsonPath('data.api_key_last4', 'ab12')
+        ->assertJsonPath('data.has_secret', true)
+        ->assertJsonPath('data.has_passphrase', true)
+        ->assertJsonPath('data.last_verified_at', null)
+        ->assertJsonPath('data.withdraw_off_verified_at', null)
+        ->assertJsonMissingPath('data.api_key')
+        ->assertJsonMissingPath('data.api_secret')
+        ->assertJsonMissingPath('data.passphrase');
+    assertNoSecretsIn((string) $response->getContent());
+
+    $list = $this->getJson('/api/connections')
+        ->assertOk()
+        ->assertJsonCount(2, 'data')
+        ->assertJsonPath('data.1.env', 'live')
+        ->assertJsonPath('data.1.api_key_last4', 'ab12');
+    assertNoSecretsIn((string) $list->getContent());
+
+    $live = Connection::query()->where('env', 'live')->sole();
+    expect(Crypt::decryptString(DB::selectOne('select api_secret from connections where id = ?', [$live->id])->api_secret))
+        ->toBe(ATL4_SECRET);
+    expect(AuditLog::query()->where('action', 'connection.created')->where('subject_id', $live->id)->exists())->toBeTrue();
+
+    // Still one per env.
+    $this->postJson('/api/connections', demoConnectionPayload(['env' => 'live', 'label' => 'Second']))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['env' => __('connections.already_exists')]);
+});
+
+it('clears withdraw_off_verified_at with the other verification fields when a secret changes', function (): void {
+    $id = $this->postJson('/api/connections', demoConnectionPayload(['env' => 'live', 'label' => 'OKX Live']))->json('data.id');
+    Connection::query()->whereKey($id)->update(['last_verified_at' => now(), 'withdraw_off_verified_at' => now()]);
+    $this->getJson('/api/connections')->assertJsonPath('data.0.withdraw_off_verified_at', fn ($v): bool => is_string($v) && $v !== '');
+
+    $this->patchJson("/api/connections/{$id}", ['api_secret' => 'a-new-live-secret'])
+        ->assertOk()
+        ->assertJsonPath('data.last_verified_at', null)
+        ->assertJsonPath('data.withdraw_off_verified_at', null);
 });
 
 it('rejects an unknown env and missing fields', function (): void {

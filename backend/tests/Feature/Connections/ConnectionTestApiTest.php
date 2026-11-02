@@ -109,7 +109,27 @@ it('reports a withdraw-enabled live key as refused', function (): void {
         ->assertJsonPath('error', 'withdraw_permission_enabled')
         ->assertJsonPath('warnings', [])
         ->assertJsonPath('message', 'This key can withdraw funds. Create a key with Read + Trade only.')
-        ->assertJsonPath('connection.last_verified_at', null);
+        ->assertJsonPath('connection.last_verified_at', null)
+        ->assertJsonPath('connection.withdraw_off_verified_at', null);
+});
+
+it('relays a verified live Read+Trade key with withdraw_off_verified_at (ATL-235)', function (): void {
+    $this->connection->update(['env' => 'live', 'label' => 'OKX Live']);
+    Http::fake(function () {
+        Connection::query()->whereKey($this->connection->id)->update([
+            'permissions' => json_encode(['read_only', 'trade']), 'last_verified_at' => now(), 'withdraw_off_verified_at' => now(),
+        ]);
+
+        return Http::response(coreResult());
+    });
+
+    $this->postJson($this->url)
+        ->assertOk()
+        ->assertJsonPath('ok', true)
+        ->assertJsonPath('warnings', [])
+        ->assertJsonPath('connection.env', 'live')
+        ->assertJsonPath('connection.last_verified_at', fn ($v): bool => is_string($v) && $v !== '')
+        ->assertJsonPath('connection.withdraw_off_verified_at', fn ($v): bool => is_string($v) && $v !== '');
 });
 
 it('relays a withdraw-enabled demo key as verified with a warning (ATL-30)', function (): void {

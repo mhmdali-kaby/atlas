@@ -398,6 +398,37 @@ async def test_without_a_verified_connection_nothing_is_written_and_one_info_lin
     assert len(mine) == 1 and mine[0].levelno == logging.INFO
 
 
+@respx.mock(base_url=BASE, assert_all_called=False)
+async def test_a_verified_live_key_is_not_synced_while_demo_is_active(
+    respx_mock: respx.MockRouter, clean: Engine
+) -> None:
+    """ATL-235: a live connection can be saved and verified, but the account sync for the active
+    env (demo) never picks it up; live sync waits for the active-env switch (ATL-237)."""
+    now = datetime.now(UTC)
+    live_id = uuid.uuid4()
+    with clean.begin() as conn:
+        conn.execute(delete(Connection).where(Connection.exchange == "okx", Connection.env == "live"))
+        conn.execute(
+            insert(Connection).values(
+                id=live_id, exchange="okx", env="live", label="OKX Live",
+                api_key=laravel_encrypt("live-api-key-0000"), api_secret=laravel_encrypt("live-secret"),
+                passphrase=laravel_encrypt("live-passphrase"), last_verified_at=now,
+                withdraw_off_verified_at=now, permissions=["read_only", "trade"],
+                created_at=now, updated_at=now,
+            )
+        )
+    routes = mock_okx(respx_mock)
+    try:
+        result = await account_job(ENV, clean, APP_KEY, now=clock(T0))()
+    finally:
+        with clean.begin() as conn:
+            conn.execute(delete(Connection).where(Connection.id == live_id))
+
+    assert result == {"env": ENV, "skipped": True, "reason": "no_verified_connection"}
+    assert not any(r.called for r in routes.values())
+    assert counts(clean) == (0, 0, 0)
+
+
 async def test_wrong_app_key_records_the_failure(clean: Engine) -> None:
     _connection(clean, verified=True)
     other = "base64:" + base64.b64encode(b"another-test-only-app-key-32byte").decode()

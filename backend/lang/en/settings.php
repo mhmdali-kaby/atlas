@@ -23,6 +23,14 @@ return [
     'backup_folder_unwritable' => 'Atlas cannot write to the :attribute. Choose a folder you can write to, or one that can be created.',
     'backup_time_format' => 'The :attribute must be a time between 00:00 and 23:59, written as HH:MM such as "03:00".',
 
+    // ATL-228: Settings → Schedule (Baghdad times).
+    'schedule_time_format' => 'The :attribute must be a time between 00:00 and 23:59, written as HH:MM such as "07:30".',
+    'schedule_weekly_format' => 'The :attribute must be a weekday and a time, such as "Sun 18:00".',
+    'schedule_first_before_last' => 'The :earlier must be earlier than the :later.',
+    'schedule_scout_after_brief' => 'The :later must be later than the :earlier, because Market Scout reads the morning brief.',
+    'schedule_scout_after_regime' => 'The :later must be later than the :earlier, because Market Scout reads the regime table.',
+    'schedule_quiet_empty' => 'Quiet hours must start and end at different times.',
+
     // ATL-222: SettingsLabels composes these two for agents.<slug>.<setting> and
     // notifications.<event>.<channel>, so nine agents and eleven events don't need 69 separate
     // attribute translations.
@@ -136,6 +144,22 @@ return [
             'folder' => 'Backup folder',
             'time' => 'Backup time',
             'keep' => 'Number of backups to keep',
+        ],
+
+        // ATL-228: Settings → Schedule.
+        'schedule' => [
+            'news_morning_brief' => 'News morning brief time',
+            'historian_regime_table' => 'Historian regime table time',
+            'scout_watchlist' => 'Market Scout watchlist time',
+            'pm_daily_report' => 'Portfolio Manager daily report time',
+            'historian_weekly_review' => 'Historian weekly review',
+            'analysis_interval_minutes' => 'Analysis interval',
+            'analysis_first_slot' => 'First analysis cycle',
+            'analysis_last_slot' => 'Last analysis cycle',
+            'quiet_hours_enabled' => 'Quiet hours',
+            'quiet_hours_start' => 'Quiet hours start',
+            'quiet_hours_end' => 'Quiet hours end',
+            'stock_perps_weekend' => 'Stock perpetuals at the weekend',
         ],
 
         'agents' => [

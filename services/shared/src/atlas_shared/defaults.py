@@ -10,6 +10,13 @@ DEFAULTS: Final[dict[str, Any]] = {
             "demo",
             "live",
         ],
+        "live_preflight": {
+            "min_demo_days": 28,
+            "max_live_autonomy": 2,
+            "first_month_days": 30,
+            "switch_attempts_per_minute": 5,
+            "confirmation_text": "TRADE LIVE",
+        },
     },
     "timezone": {
         "display": "Asia/Baghdad",
@@ -66,6 +73,18 @@ DEFAULTS: Final[dict[str, Any]] = {
         "approval_timeout_minutes": 15,
         "max_enabled_level": 4,
         "ask_above_usd": "1000",
+    },
+    "schedule": {
+        "analysis_interval_minutes_min": 15,
+        "analysis_interval_minutes_max": 240,
+        "quiet_hours_enabled": False,
+        "quiet_hours_start": "23:00",
+        "quiet_hours_end": "07:00",
+        "stock_perps_weekend": "allow",
+        "stock_perps_weekend_choices": [
+            "allow",
+            "no_new_trades",
+        ],
     },
     "markets": {
         "min_24h_volume_usd": {

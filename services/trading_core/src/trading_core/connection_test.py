@@ -8,6 +8,9 @@ POST /internal/connections/{id}/test loads the ``connections`` row, decrypts its
 - A demo key with ``withdraw`` is verified (CEO instruction, ATL-30) and the answer carries
   ``warnings: ["withdraw_permission_enabled"]`` so the UI and doctor can say so. Atlas still has no
   withdrawal or transfer code (brief rule 5).
+- ``withdraw_off_verified_at`` is stamped when the test passes and OKX lists no ``withdraw``
+  permission, and cleared otherwise; the live pre-flight reads it (ATL-235, decision #255). A live
+  key is called without ``x-simulated-trading`` (OkxClient sends that header in demo only).
 - Spot mode (acctLv "1") still passes; the raw ``acct_lv`` is returned so the UI can warn.
 - The full UID is never stored, logged or returned: only its last 4 characters leave this module.
 
@@ -137,8 +140,10 @@ async def run_connection_test(
     if result.ok:
         result.verified_at = now()
 
+    withdraw_off = result.ok and WITHDRAW_PERMISSION not in result.permissions
     values: dict[str, Any] = {
         "last_verified_at": result.verified_at,
+        "withdraw_off_verified_at": result.verified_at if withdraw_off else None,
         "last_test_error": result.error,
         "updated_at": now(),
     }
