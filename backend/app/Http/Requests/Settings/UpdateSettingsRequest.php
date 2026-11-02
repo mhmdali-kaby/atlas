@@ -175,7 +175,12 @@ class UpdateSettingsRequest extends FormRequest
 
     /**
      * ATL-222: every field's error names it in plain words, never as its raw underscored key
-     * (security round 16 / QA on ATL-216).
+     * (security round 16 / QA on ATL-216). QA round 1: the same holds for the `changes.<field>.*`
+     * element rules on list fields (whitelist, blocklist, enabled_markets, agents.web's domain
+     * lists) — without an entry for the wildcard key, Laravel falls back to the raw path
+     * ("changes.whitelist.0"). The wildcard attribute key keeps every dot literal: the escaped
+     * rule key (`self::escape()`) is only for building the rule, and the validator reports the
+     * error back against the unescaped path.
      *
      * @return array<string, string>
      */
@@ -185,8 +190,25 @@ class UpdateSettingsRequest extends FormRequest
         foreach (SettingsSchema::fields() as $field) {
             $attributes["changes.{$field}"] = SettingsLabels::forField($field);
         }
+        foreach ($this->listFieldsWithElementRules() as $field) {
+            $attributes["changes.{$field}.*"] = SettingsLabels::forListElement($field);
+        }
 
         return $attributes;
+    }
+
+    /**
+     * Every field validated with a `changes.<field>.*` element rule, per rules() above.
+     *
+     * @return list<string>
+     */
+    private function listFieldsWithElementRules(): array
+    {
+        return [
+            ...SettingsSchema::MARKET_LIST_FIELDS,
+            ...SettingsSchema::INSTRUMENT_LIST_FIELDS,
+            ...SettingsSchema::WEB_DOMAIN_FIELDS,
+        ];
     }
 
     public function env(): string

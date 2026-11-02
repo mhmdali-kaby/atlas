@@ -132,4 +132,19 @@ return [
             ],
         ],
     ],
+
+    // ATL-222 (QA round 1): the singular name of one entry in a list field, read by
+    // SettingsLabels::forListElement so "changes.whitelist.0 field is required" instead reads
+    // "The Allowed instrument field is required."
+    'attr_element' => [
+        'enabled_markets' => 'Asset class',
+        'whitelist' => 'Allowed instrument',
+        'blocklist' => 'Blocked instrument',
+        'agents' => [
+            'web' => [
+                'allow_domains' => 'Allowed web domain',
+                'deny_domains' => 'Blocked web domain',
+            ],
+        ],
+    ],
 ];

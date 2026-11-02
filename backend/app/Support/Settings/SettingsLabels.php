@@ -40,6 +40,22 @@ final class SettingsLabels
         return self::flat($field);
     }
 
+    /**
+     * ATL-222 (QA round 1): the singular label for one entry of a list field — whitelist,
+     * blocklist, enabled_markets and agents.web.allow_domains/deny_domains all validate each
+     * element with its own `changes.<field>.*` rule (required, max length, distinct, ...), and
+     * without an attribute for that wildcard key Laravel names the error after the raw path
+     * ("changes.whitelist.0"). Falls back to the field's own (plural) label if no singular
+     * translation exists, so a new list field never regresses to a raw key either.
+     */
+    public static function forListElement(string $field): string
+    {
+        $key = "settings.attr_element.{$field}";
+        $label = __($key);
+
+        return $label === $key ? self::forField($field) : $label;
+    }
+
     /** The `attr.<field>` translation, or the field with underscores turned to spaces if it is missing. */
     private static function flat(string $field): string
     {
