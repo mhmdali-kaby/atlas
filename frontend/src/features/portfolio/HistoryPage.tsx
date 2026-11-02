@@ -1,6 +1,7 @@
 import { Download, History, SearchX } from 'lucide-react'
-import { useCallback, useMemo, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router'
 import { useTradingEnv } from '../../app/shell/tradingEnv'
 import { Button, SegmentedControl, toast } from '../../ui'
 import { POLL_MS, useSummary } from './api'
@@ -36,10 +37,28 @@ export function HistoryPage() {
   const now = useNow(60_000)
   const reconNow = useNow(POLL_MS)
   const summary = useSummary(env)
-  const [type, setType] = useState<HistoryType>('fills')
-  const [f, setF] = useState<HistoryFilters>(BLANK_FILTERS)
+  // A notification's `?inst_id=` (ATL-220, design v18 §5.6) lands on Closed positions, pre-filtered
+  // to that instrument, then drops the query: a reload starts over blank, like every other filter here.
+  const [params, setParams] = useSearchParams()
+  const linkedInst = useRef(params.get('inst_id')).current
+  const [type, setType] = useState<HistoryType>(linkedInst ? 'closed' : 'fills')
+  const [f, setF] = useState<HistoryFilters>(() => (linkedInst ? { ...BLANK_FILTERS, inst: linkedInst.trim().toUpperCase() } : BLANK_FILTERS))
   const [exporting, setExporting] = useState(false)
   const history = useHistory<ClosedRow | FillRow>(type, f, env, now)
+
+  useEffect(() => {
+    if (!params.has('inst_id')) return
+    setParams(
+      (p) => {
+        const next = new URLSearchParams(p)
+        next.delete('inst_id')
+        return next
+      },
+      { replace: true },
+    )
+    // Reads `inst_id` once, on arrival; it must not re-run as `params` itself changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const rows = useMemo(() => history.data?.pages.flatMap((p) => p.data) ?? [], [history.data])
   const onNearEnd = useCallback(() => {

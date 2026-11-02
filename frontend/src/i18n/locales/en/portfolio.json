@@ -53,6 +53,11 @@
     "retry": "Try again"
   },
   "loading": "Loading your portfolio",
+  "filter": {
+    "remove": "Remove the {{inst}} filter",
+    "removeTip": "Show every instrument",
+    "showing": "Showing {{n}} of {{total}}"
+  },
   "positions": {
     "col": {
       "instrument": "Instrument",
@@ -77,6 +82,12 @@
     "empty": {
       "title": "No open positions",
       "body": "No open positions on the OKX demo account. Positions you open on OKX appear here within a minute."
+    },
+    "filteredEmpty": {
+      "title": "No open position on {{inst}}",
+      "body": "It has closed since the notification. Its closed trades are in History.",
+      "history": "Show in History",
+      "showAll": "Show all positions"
     },
     "close": {
       "btn": "Close",

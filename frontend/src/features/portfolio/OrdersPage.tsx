@@ -5,6 +5,7 @@ import { useTradingEnv } from '../../app/shell/tradingEnv'
 import { CancelOrderSheet } from './CancelOrderSheet'
 import { POLL_MS, useOrders, useSummary, type OpenOrder } from './api'
 import { useLang, useNow } from './hooks'
+import { InstFilterChip, useInstFilterParam } from './instFilter'
 import { ALGO_COLUMNS, ALGO_NUMERIC, OPEN_COLUMNS, OPEN_NUMERIC } from './ordersFormat'
 import { AlgoRow, OpenRow, TableSkeleton } from './OrdersTables'
 import { ReconciledIndicator, Skeleton, StateBlock } from './parts'
@@ -36,6 +37,7 @@ export function OrdersPage() {
   const orders = useOrders(env)
   const summary = useSummary(env)
   const [cancelling, setCancelling] = useState<OpenOrder | null>(null)
+  const [instId, clearInstFilter] = useInstFilterParam()
 
   if (orders.isError && !orders.data) {
     return (
@@ -52,8 +54,10 @@ export function OrdersPage() {
   }
 
   const loading = orders.isPending
-  const open = orders.data?.data.orders ?? []
-  const algo = orders.data?.data.algo_orders ?? []
+  const openAll = orders.data?.data.orders ?? []
+  const algoAll = orders.data?.data.algo_orders ?? []
+  const open = instId ? openAll.filter((o) => o.inst_id === instId) : openAll
+  const algo = instId ? algoAll.filter((a) => a.inst_id === instId) : algoAll
   const s = summary.data?.data
 
   const head = (
@@ -81,11 +85,14 @@ export function OrdersPage() {
         </span>
       )}
       {head}
+      {!loading && instId && (
+        <InstFilterChip instId={instId} shown={open.length + algo.length} total={openAll.length + algoAll.length} onClear={clearInstFilter} />
+      )}
       <section aria-labelledby="ord-open-title">
         <SectionHead id="ord-open-title" title={t('openTitle')} note={t('openNote')} />
         {loading ? (
           <TableSkeleton cols={OPEN_COLUMNS.length + 1} rows={2} testId="open-orders-loading" />
-        ) : open.length === 0 ? (
+        ) : open.length === 0 && !instId ? (
           <div className="pf-panel">
             <StateBlock kind="none" compact icon={ListChecks} title={t('empty.title')} body={t('empty.body')} />
           </div>
@@ -105,9 +112,15 @@ export function OrdersPage() {
                 </tr>
               </thead>
               <tbody>
-                {open.map((o) => (
-                  <OpenRow key={o.id} o={o} lang={lang} now={now} onCancel={setCancelling} />
-                ))}
+                {open.length === 0 ? (
+                  <tr data-testid="open-orders-filtered-empty">
+                    <td colSpan={OPEN_COLUMNS.length + 1} className="px-5 py-4 text-footnote text-label-secondary">
+                      {t('filteredEmptyOpen', { inst: instId })}
+                    </td>
+                  </tr>
+                ) : (
+                  open.map((o) => <OpenRow key={o.id} o={o} lang={lang} now={now} onCancel={setCancelling} />)
+                )}
               </tbody>
             </table>
           </div>
@@ -117,7 +130,7 @@ export function OrdersPage() {
         <SectionHead id="ord-algo-title" title={t('algoTitle')} note={t('algoNote')} />
         {loading ? (
           <TableSkeleton cols={ALGO_COLUMNS.length} rows={3} testId="algo-orders-loading" />
-        ) : algo.length === 0 ? (
+        ) : algo.length === 0 && !instId ? (
           <div className="pf-panel">
             <StateBlock kind="none" compact icon={Shield} title={t('algoEmpty.title')} body={t('algoEmpty.body')} />
           </div>
@@ -134,15 +147,23 @@ export function OrdersPage() {
                 </tr>
               </thead>
               <tbody>
-                {algo.map((a) => (
-                  <AlgoRow key={a.id} a={a} lang={lang} />
-                ))}
+                {algo.length === 0 ? (
+                  <tr data-testid="algo-orders-filtered-empty">
+                    <td colSpan={ALGO_COLUMNS.length} className="px-5 py-4 text-footnote text-label-secondary">
+                      {t('filteredEmptyAlgo', { inst: instId })}
+                    </td>
+                  </tr>
+                ) : (
+                  algo.map((a) => <AlgoRow key={a.id} a={a} lang={lang} />)
+                )}
               </tbody>
             </table>
-            <p className="flex items-start gap-2 border-t-[0.5px] border-separator px-5 py-3 text-footnote text-label-secondary [&_svg]:mt-0.5 [&_svg]:size-3.5 [&_svg]:shrink-0">
-              <Info aria-hidden="true" strokeWidth={2} />
-              {t('readOnlyTip')}
-            </p>
+            {algo.length > 0 && (
+              <p className="flex items-start gap-2 border-t-[0.5px] border-separator px-5 py-3 text-footnote text-label-secondary [&_svg]:mt-0.5 [&_svg]:size-3.5 [&_svg]:shrink-0">
+                <Info aria-hidden="true" strokeWidth={2} />
+                {t('readOnlyTip')}
+              </p>
+            )}
           </div>
         )}
       </section>

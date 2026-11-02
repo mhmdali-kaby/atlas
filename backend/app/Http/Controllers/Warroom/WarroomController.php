@@ -8,6 +8,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Warroom\ListMessagesRequest;
 use App\Http\Requests\Warroom\ReplayDaysRequest;
 use App\Http\Requests\Warroom\ReplayRequest;
+use App\Http\Requests\Warroom\ShowMessageRequest;
 use App\Http\Requests\Warroom\StoreMessageRequest;
 use App\Http\Requests\Warroom\ThreadsRequest;
 use App\Http\Resources\WarroomMessageResource;
@@ -67,6 +68,19 @@ class WarroomController extends Controller
             ->withQueryString();
 
         return WarroomMessageResource::collection($page);
+    }
+
+    /**
+     * A notification's target message by id (ATL-220: `/warroom?message=<id>` or the message that
+     * carries a `?proposal=<id>` card), for when it is not in a page the client has loaded yet.
+     * Another env's message, like an unknown one, 404s — the client shows the same "not found" toast.
+     */
+    public function show(ShowMessageRequest $request, string $message): WarroomMessageResource
+    {
+        $row = WarroomMessage::query()->where('env', $request->env())->whereKey($message)->first();
+        abort_if($row === null, 404);
+
+        return new WarroomMessageResource($row);
     }
 
     public function store(StoreMessageRequest $request, Auditable $audit, EventBus $bus, MentionParser $mentions): JsonResponse

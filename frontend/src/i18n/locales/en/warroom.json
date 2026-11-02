@@ -165,6 +165,15 @@
   "newMessages_other": "{{count}} new messages",
   "latest": "Scroll to the latest message",
   "liveAnnounce": "{{name}}: {{text}}",
+  "land": {
+    "findingMessage": "Finding the message…",
+    "findingProposal": "Finding the proposal…",
+    "notFound": {
+      "message": "Couldn’t find that message",
+      "proposal": "Couldn’t find that proposal",
+      "body": "It isn’t in this environment’s War Room. Showing the latest messages."
+    }
+  },
   "positions": {
     "title": "Open positions",
     "view": "Positions",

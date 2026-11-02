@@ -1,4 +1,5 @@
 import { ArrowDownRight, ArrowUpRight, CircleCheck, CloudOff, RefreshCw, TriangleAlert, type LucideIcon } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Lang } from '../../lib/format'
 import { Button, Seal, Spinner } from '../../ui'
@@ -110,6 +111,7 @@ export function StateBlock({
   compact,
   onRetry,
   icon: Icon = CloudOff,
+  actions,
 }: {
   /** empty: still syncing (seal + "Waiting for OKX…"); none: synced, nothing to list; error: retry. */
   kind: 'empty' | 'none' | 'error'
@@ -118,6 +120,8 @@ export function StateBlock({
   body: string
   compact?: boolean
   onRetry?: () => void
+  /** Extra buttons after the body, e.g. a filtered empty state's "Show in History" (ATL-220). */
+  actions?: ReactNode
 }) {
   const { t } = useTranslation('portfolio')
   const parts = body.split('./atlas up')
@@ -174,6 +178,7 @@ export function StateBlock({
           {t('error.retry')}
         </Button>
       )}
+      {actions && <div className="mt-2 flex flex-wrap items-center justify-center gap-2">{actions}</div>}
     </div>
   )
 }

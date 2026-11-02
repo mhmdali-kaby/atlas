@@ -175,6 +175,11 @@ export function historyPath(type: HistoryType, f: HistoryFilters, env: TradingEn
   return `/api/portfolio/history?${p.toString()}`
 }
 
+/** History filtered to one instrument (ATL-220's Positions "Show in History" and Orders links). */
+export function historyPathForInst(instId: string): string {
+  return `/portfolio/history?inst_id=${encodeURIComponent(instId)}`
+}
+
 /** The CSV export of exactly what the filters show (absolute: it is fetched outside apiFetch). */
 export function exportUrl(type: HistoryType, f: HistoryFilters, env: TradingEnv, now: number): string {
   return `${API_URL}/api/exports/${type}.csv?${filterParams(type, f, env, now).toString()}`

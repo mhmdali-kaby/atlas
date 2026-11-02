@@ -91,6 +91,8 @@
     "title": "No algo orders",
     "body": "Stops and take-profits appear here once a position is open."
   },
+  "filteredEmptyOpen": "No open orders on {{inst}}. A filled order moves to History.",
+  "filteredEmptyAlgo": "No stop-loss or take-profit orders on {{inst}}.",
   "error": {
     "title": "Couldn’t load your orders",
     "body": "Atlas’s server didn’t answer. Check that Atlas is running with ./atlas up, then try again."

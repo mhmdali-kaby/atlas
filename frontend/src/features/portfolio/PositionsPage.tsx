@@ -9,6 +9,8 @@ import { Button, SignedValue, toast } from '../../ui'
 import { ClosePositionSheet } from './ClosePositionSheet'
 import { POLL_MS, usePositions, useSummary, type Position } from './api'
 import { useLang, useNow } from './hooks'
+import { historyPathForInst } from './historyApi'
+import { InstFilterChip, useInstFilterParam } from './instFilter'
 import { Duration, InstId, ReconciledIndicator, SideBadge, Skeleton, StateBlock } from './parts'
 import { formatDay, formatDayTime } from './time'
 import './portfolio.css'
@@ -149,6 +151,7 @@ export function PositionsPage() {
   const showClose = (position: Position) =>
     (prev: CloseSheetState): CloseSheetState => ({ position, open: true, n: (prev?.n ?? 0) + 1 })
   const hideClose = (prev: CloseSheetState): CloseSheetState => (prev ? { ...prev, open: false } : prev)
+  const [instId, clearInstFilter] = useInstFilterParam()
 
   const retry = () => {
     void positions.refetch()
@@ -166,7 +169,12 @@ export function PositionsPage() {
 
   const loading = positions.isPending
   const items = data?.items ?? []
+  const shown = instId ? items.filter((p) => p.inst_id === instId) : items
   const s = summary.data?.data
+
+  const chip = instId && (
+    <InstFilterChip instId={instId} shown={shown.length} total={items.length} onClear={clearInstFilter} />
+  )
 
   const head = (
     <header className="flex flex-wrap items-end justify-between gap-6 pt-6 pb-4">
@@ -174,13 +182,13 @@ export function PositionsPage() {
         {loading ? (
           <Skeleton style={{ width: 200, height: 26 }} />
         ) : (
-          items.length > 0 && (
+          shown.length > 0 && (
             <h2 data-testid="positions-summary" className="text-title-2">
-              {t('openPositions', { count: items.length })}
+              {t('openPositions', { count: shown.length })}
             </h2>
           )
         )}
-        {!loading && items.length > 0 && s && (
+        {!loading && shown.length > 0 && s && (
           <p className="flex items-baseline gap-2 text-title-3 font-semibold [&_svg]:size-4">
             <span className="text-subheadline font-medium text-label-secondary">{t('positions.unrealisedTotal')}</span>
             <span data-testid="positions-upl-total">
@@ -205,7 +213,7 @@ export function PositionsPage() {
     )
   }
 
-  if (items.length === 0) {
+  if (items.length === 0 && !instId) {
     return (
       <div>
         {head}
@@ -216,9 +224,38 @@ export function PositionsPage() {
     )
   }
 
+  if (instId && shown.length === 0) {
+    return (
+      <div>
+        {head}
+        {chip}
+        <div className="pf-panel" data-testid="positions-filtered-empty">
+          <StateBlock
+            kind="none"
+            compact
+            icon={Layers}
+            title={t('positions.filteredEmpty.title', { inst: instId })}
+            body={t('positions.filteredEmpty.body')}
+            actions={
+              <>
+                <Button asChild size="sm" variant="secondary" data-testid="positions-show-history">
+                  <Link to={historyPathForInst(instId)}>{t('positions.filteredEmpty.history')}</Link>
+                </Button>
+                <Button size="sm" variant="plain" onClick={clearInstFilter} data-testid="positions-show-all">
+                  {t('positions.filteredEmpty.showAll')}
+                </Button>
+              </>
+            }
+          />
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div>
       {head}
+      {chip}
       {!canClose && (
         <Notice
           tone="info"
@@ -249,7 +286,7 @@ export function PositionsPage() {
             </tr>
           </thead>
           <tbody>
-            {items.map((p) => (
+            {shown.map((p) => (
               <PositionRow key={p.id} p={p} lang={lang} now={now} canClose={canClose} onClose={(pos) => setCloseSheet(showClose(pos))} />
             ))}
           </tbody>
