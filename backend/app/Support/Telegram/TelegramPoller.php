@@ -22,7 +22,10 @@ use Illuminate\Support\Facades\Log;
  *   the update is handled, and any update_id at or below it is skipped, so a restart (or Telegram
  *   re-sending an unconfirmed batch) never handles an update twice. At-most-once is the safe side
  *   for an approval button.
- * - Only callback queries from the configured chat id count; everything else is ignored.
+ * - Only a callback from the owner's own private chat counts (ATL-221): callback_query.from.id must
+ *   equal the stored chat id and message.chat.type must be "private". Anyone else — another member
+ *   of a group the bot was added to, or a forwarded/foreign press — is refused, answered "expired",
+ *   and audited as telegram.callback_refused / foreign_user. Nothing about the proposal changes.
  * - A malformed or wrongly signed callback, one past its expiry, or one for a proposal that is no
  *   longer waiting is answered "expired" and changes nothing.
  * - A valid press calls ProposalApprovalService (the same path as the web Approve / Reject) with
@@ -92,17 +95,23 @@ final class TelegramPoller
         if (! is_array($query) || ! is_string($query['id'] ?? null)) {
             return;
         }
+        $locale = TelegramMessages::ownerLocale();
+        $expired = (string) __('telegram.callback.expired', [], $locale);
+
         $message = is_array($query['message'] ?? null) ? $query['message'] : [];
         $chat = is_array($message['chat'] ?? null) ? $message['chat'] : [];
-        $chatId = $chat['id'] ?? null;
-        if (! (is_int($chatId) || is_string($chatId)) || ! hash_equals($connection->chat_id, (string) $chatId)) {
-            Log::info('atlas.telegram.foreign_chat_ignored', ['update_id' => self::updateId($update)]);
+        $from = is_array($query['from'] ?? null) ? $query['from'] : [];
+        $fromId = $from['id'] ?? null;
+        $isOwner = (is_int($fromId) || is_string($fromId)) && hash_equals($connection->chat_id, (string) $fromId);
+        $isPrivate = ($chat['type'] ?? null) === 'private';
+        if (! $isOwner || ! $isPrivate) {
+            Log::info('atlas.telegram.foreign_user_ignored', ['update_id' => self::updateId($update)]);
+            $this->refused(null, 'foreign_user');
+            $client->answerCallbackQuery($query['id'], $expired);
 
             return;
         }
 
-        $locale = TelegramMessages::ownerLocale();
-        $expired = (string) __('telegram.callback.expired', [], $locale);
         $data = is_string($query['data'] ?? null) ? CallbackData::decode($query['data']) : null;
         if ($data === null) {
             $this->refused(null, 'bad_signature');
@@ -134,7 +143,7 @@ final class TelegramPoller
         $messageId = $message['message_id'] ?? null;
         if (is_int($messageId)) {
             $original = is_string($message['text'] ?? null) ? $message['text'] : '';
-            $client->editMessageText((string) $chatId, $messageId, trim($original."\n\n".$this->outcomeLine($data['action'], $outcome, $locale)));
+            $client->editMessageText($connection->chat_id, $messageId, trim($original."\n\n".$this->outcomeLine($data['action'], $outcome, $locale)));
         }
     }
 
