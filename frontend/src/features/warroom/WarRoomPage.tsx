@@ -1,5 +1,5 @@
 import { CircleCheck, History, PanelRight, WifiOff } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
@@ -12,6 +12,7 @@ import { Composer } from './Composer'
 import { Feed } from './Feed'
 import { FeedEmpty, FeedError, FeedNotFound, FeedSkeleton } from './FeedStates'
 import { Inspector } from './Inspector'
+import { useInspector } from './useInspector'
 import { localMessages, useOutbox } from './live'
 import { lastReplayDay, replayPath } from './replay'
 import { runsForThread, useRuns } from './runs'
@@ -47,40 +48,6 @@ function ConnectionBanner({ banner, onReconnect }: { banner: BannerState; onReco
       <span>{banner.missed > 0 ? t('live.backMissed', { count: banner.missed }) : t('live.back')}</span>
     </div>
   )
-}
-
-const INSPECTOR_KEY = 'atlas.wr.inspector'
-const WIDE_QUERY = '(min-width: 1280px)'
-
-function useWide(): boolean {
-  const [wide, setWide] = useState(() => window.matchMedia?.(WIDE_QUERY).matches ?? true)
-  useEffect(() => {
-    const mq = window.matchMedia?.(WIDE_QUERY)
-    if (!mq) return
-    const on = () => setWide(mq.matches)
-    mq.addEventListener('change', on)
-    return () => mq.removeEventListener('change', on)
-  }, [])
-  return wide
-}
-
-/**
- * From 1280px the inspector is open by default and the toggle is remembered; below it starts
- * closed and opens over the feed.
- */
-function useInspector() {
-  const wide = useWide()
-  const [open, setOpen] = useState(() => localStorage.getItem(INSPECTOR_KEY) !== 'closed')
-  // Below 1280 the overlay is separate state; it only counts while the window is narrow.
-  const [overlayOpen, setOverlayOpen] = useState(false)
-  const overlay = !wide && overlayOpen
-  const toggle = () => {
-    if (wide) {
-      localStorage.setItem(INSPECTOR_KEY, open ? 'closed' : 'open')
-      setOpen(!open)
-    } else setOverlayOpen(!overlay)
-  }
-  return { shown: wide ? open : overlay, overlay, toggle }
 }
 
 export function WarRoomPage() {
