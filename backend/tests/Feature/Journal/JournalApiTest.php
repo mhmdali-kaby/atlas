@@ -42,6 +42,23 @@ function jeScore(string $agent, string $day, int $n, ?string $hitRate, ?string $
 }
 
 /**
+ * @param  array<string, mixed>  $overrides
+ */
+function jeClosed(string $closedAtUtc, string $realised, array $overrides = []): void
+{
+    DB::table('positions_closed')->insert(array_merge([
+        'id' => (string) Str::uuid(), 'env' => 'demo', 'pos_id' => (string) random_int(1, PHP_INT_MAX),
+        'inst_id' => 'BTC-USDT-SWAP', 'inst_type' => 'SWAP', 'mgn_mode' => 'isolated', 'pos_side' => 'net',
+        'side' => 'long', 'close_type' => '2', 'lever' => '5', 'ccy' => 'USDT', 'size' => '1',
+        'entry_px' => '100', 'exit_px' => '100', 'realised_pnl' => $realised, 'pnl' => $realised,
+        'fee' => '0', 'funding_fee' => '0', 'liq_penalty' => '0', 'pnl_ratio' => '0',
+        'opened_at' => CarbonImmutable::parse($closedAtUtc, 'UTC')->subHours(2)->format('Y-m-d H:i:s.uP'),
+        'closed_at' => CarbonImmutable::parse($closedAtUtc, 'UTC')->format('Y-m-d H:i:s.uP'),
+        'origin' => 'external', 'created_at' => now(), 'updated_at' => now(),
+    ], $overrides));
+}
+
+/**
  * @param  array<string, mixed>  $query
  * @return list<list<string>>
  */
@@ -228,6 +245,20 @@ describe('agent scores', function (): void {
         expect($agents['historian']['days'])->toBe([])
             ->and($agents['historian']['summary']['hit_rate'])->toBeNull();
         expect($res->getContent())->toContain('"data":{}');
+    });
+
+    it('sums pnl_attributed_usd from the same closed trades as Performance\'s By-agent breakdown, over the window', function (): void {
+        // days=7 → Baghdad 2026-10-22 .. 2026-10-28, i.e. UTC [2026-10-21 21:00, 2026-10-28 21:00).
+        jeClosed('2026-10-21 20:00:00', '100.00', ['agent' => 'portfolio_manager']);               // outside: Baghdad 2026-10-21 23:00
+        jeClosed('2026-10-22 06:00:00', '12.50', ['agent' => 'portfolio_manager']);
+        jeClosed('2026-10-24 06:00:00', '-30.00', ['agent' => 'portfolio_manager']);
+        jeClosed('2026-10-25 06:00:00', '5.00', ['agent' => 'portfolio_manager', 'ccy' => 'BTC']);  // not USD-stable: excluded
+        jeClosed('2026-10-26 06:00:00', '9.00');                                                    // no agent (external): excluded
+
+        $res = $this->getJson('/api/agents/scores?days=7')->assertOk();
+        $agents = collect($res->json('data'))->keyBy('agent');
+        expect($agents['portfolio_manager']['pnl_attributed_usd'])->toBe('-17.5')
+            ->and($agents['market_scout']['pnl_attributed_usd'])->toBeNull();
     });
 
     it('defaults to 30 days and accepts only 7, 30 and 90', function (): void {
