@@ -1,25 +1,35 @@
-import { ArrowRightToLine, CircleCheck, CircleDashed, CircleX, Hand, ShieldCheck, Shrink, SlidersHorizontal, type LucideIcon } from 'lucide-react'
+import { ArrowRightToLine, CircleCheck, CircleDashed, CircleX, Eye, Hand, Send, ShieldCheck, Shrink, SlidersHorizontal, type LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { formatFixed, formatMoney, type Lang } from '../../../lib/format'
 import { fillSlots, slot } from '../slots'
 import { Inline } from '../text'
+import { AutonomyGauge, AutonomyReason } from './AutonomyNoteCard'
+import { gaugeOf, resolveAutonomy } from './autonomyNote'
 import { MONEY_CAPS, type RiskCheck, type RiskResult, type StepState } from './debate'
 import { Fig, Head } from './debateParts'
 import './debate.css'
+import './autonomyNote.css'
 
 /*
  * The Risk Engine's result (brief §10, design v11 Phase 2 §6): the result badge, the nine checks as
  * one pipeline in the order they ran (Pass / Resized / Failed / Not run / Awaiting you, each with its
  * reason), the final contracts, notional, leverage and margin, the cap that set the size, and the
  * settings version the check read. A rejection names the check and its reason first.
+ *
+ * Step 9 (Autonomy, decision 254, ATL-219) is never a plain pass: its state is send_now, advise_only
+ * or awaiting_owner, and its name and reason come from AutonomyReason, built only from the check's
+ * own stored values (card.autonomy), never from the mock.
  */
 
-const STEP_ICON: Record<StepState, LucideIcon> = { pass: CircleCheck, resize: Shrink, fail: CircleX, not_run: CircleDashed, awaiting_owner: Hand }
+const STEP_ICON: Record<StepState, LucideIcon> = { pass: CircleCheck, resize: Shrink, fail: CircleX, not_run: CircleDashed, awaiting_owner: Hand, send_now: Send, advise_only: Eye }
 const RESULT: Record<RiskResult, [string, LucideIcon]> = { approved: ['is-pass', CircleCheck], resized: ['is-resize', Shrink], rejected: ['is-fail', CircleX] }
 
 export function RiskCheckCard({ card, target, onJump, ts, lang }: { card: RiskCheck; target: string | null; onJump: (id: string) => void; ts: string; lang: Lang }) {
   const { t } = useTranslation('debate')
+  const { t: ta } = useTranslation('autonomy-note')
   const usd = (s: string) => formatMoney(s, 'USD', lang)
+  const autonomy = card.autonomy ? resolveAutonomy(card.autonomy, 'entry') : null
+  const autonomyGauge = autonomy?.gauge && card.autonomy ? gaugeOf(card.autonomy) : null
   const [cls, ResultIcon] = RESULT[card.result]
   const failed = card.failedCheck
   const failedStep = failed === null ? null : card.steps[failed - 1]
@@ -108,6 +118,7 @@ export function RiskCheckCard({ card, target, onJump, ts, lang }: { card: RiskCh
       <ol className="db-steps" aria-label={t('rk.checks')} data-testid="db-rk-steps">
         {card.steps.map((s) => {
           const Icon = STEP_ICON[s.state]
+          const isAutonomy = s.n === 9 && card.autonomy !== null && autonomy !== null
           return (
             <li key={s.n} className={`db-step is-${s.state}`} data-testid="db-rk-step" data-n={s.n} data-state={s.state}>
               <span className="db-step-n" aria-hidden="true">
@@ -115,14 +126,21 @@ export function RiskCheckCard({ card, target, onJump, ts, lang }: { card: RiskCh
               </span>
               <span className="db-step-body">
                 <span className="db-step-head">
-                  <span className="db-step-name">{t(`rk.c.${s.n}`)}</span>
+                  <span className="db-step-name">{isAutonomy ? fillSlots(ta('step', { n: slot('n') }), { n: <Fig>{String(autonomy!.level)}</Fig> }) : t(`rk.c.${s.n}`)}</span>
                   <span className="db-step-st" data-testid="db-rk-step-state">
                     <Icon className="icon" aria-hidden="true" />
                     <span>{t(`rk.st.${s.state}`)}</span>
                   </span>
+                  {isAutonomy && autonomyGauge && <AutonomyGauge gauge={autonomyGauge} />}
                 </span>
-                <span className="db-step-why" dir="auto">
-                  {s.reason ? <Inline text={s.reason} flat /> : s.state === 'not_run' && failed !== null ? fillSlots(t('rk.notRunWhy', { n: slot('n') }), { n: <Fig>{String(failed)}</Fig> }) : null}
+                <span className="db-step-why" dir="auto" data-testid={isAutonomy ? 'db-rk-autonomy-reason' : undefined}>
+                  {isAutonomy ? (
+                    <AutonomyReason values={card.autonomy!} resolved={autonomy!} lang={lang} />
+                  ) : s.reason ? (
+                    <Inline text={s.reason} flat />
+                  ) : s.state === 'not_run' && failed !== null ? (
+                    fillSlots(t('rk.notRunWhy', { n: slot('n') }), { n: <Fig>{String(failed)}</Fig> })
+                  ) : null}
                 </span>
               </span>
             </li>

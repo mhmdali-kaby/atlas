@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { api, ApiError } from '../../../lib/api'
+import { readAutonomyValues, type AutonomyNoteValues } from './autonomyNote'
 import { abs, cmp, dec, decStr, div, fromInt, maxDecimals, mul } from './dec'
 
 /*
@@ -148,6 +149,8 @@ export interface ProposalSummary {
   stop: string | null
   take_profits: TakeProfit[]
   time_stop_minutes: number | null
+  /** The Portfolio Manager's partial_close/close share of the position, 0-100; null otherwise. */
+  close_pct?: string | null
   size_suggestion_pct: string | null
   leverage_suggestion: number | null
   expected_r: string | null
@@ -236,6 +239,7 @@ export function readProposalCard(card: Record<string, unknown> | null | undefine
       stop: str(card.stop),
       take_profits: readTps(card.take_profits),
       time_stop_minutes: int(card.time_stop_minutes),
+      close_pct: str(card.close_pct),
       size_suggestion_pct: str(card.size_suggestion_pct_equity ?? card.size_suggestion_pct),
       leverage_suggestion: int(card.leverage_suggestion),
       expected_r: str(card.expected_r_multiple ?? card.expected_r),
@@ -435,6 +439,16 @@ export function liqOf(p: ProposalSummary): string | null {
 function sizingValues(rc: RiskCheckView | null): Record<string, unknown> {
   const c = rc?.checks?.find((x) => x?.check === 'position_size')
   return (c?.values as Record<string, unknown> | undefined) ?? {}
+}
+
+/**
+ * The autonomy check's own stored values (decision 254, ATL-212/219): check 9 for an entry, check
+ * 7 for a position action — both named "autonomy", so the lookup is the same either way. Null when
+ * the check never ran (the proposal was rejected earlier).
+ */
+export function autonomyValuesOf(rc: RiskCheckView | null): AutonomyNoteValues | null {
+  const c = rc?.checks?.find((x) => x?.check === 'autonomy')
+  return readAutonomyValues(c?.values)
 }
 
 export interface Stake {

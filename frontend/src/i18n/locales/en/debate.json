@@ -98,7 +98,9 @@
       "resize": "Resized",
       "fail": "Failed",
       "not_run": "Not run",
-      "awaiting_owner": "Awaiting you"
+      "awaiting_owner": "Awaiting you",
+      "send_now": "Sent without asking",
+      "advise_only": "Advice only"
     },
     "c": {
       "1": "Environment and kill switch",

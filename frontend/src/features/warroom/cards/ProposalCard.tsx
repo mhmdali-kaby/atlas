@@ -42,9 +42,12 @@ import { Medallion } from '../Medallion'
 import { fillSlots, slot } from '../slots'
 import { InstrumentId, Inline, Markdown } from '../text'
 import { formatTime, mmss } from '../time'
+import { AutonomyNoteCard } from './AutonomyNoteCard'
+import type { AutonomyNoteValues } from './autonomyNote'
 import { dec, decStr, div } from './dec'
 import { Ladder } from './Ladder'
 import {
+  autonomyValuesOf,
   daOf,
   decimalsOf,
   evidenceChips,
@@ -225,6 +228,10 @@ export function ProposalCard({ cardRef, lang, onJump }: { cardRef: ProposalCardR
   const advice = live && shown === 'advice'
   const label = t('aria', { dir: t(`dir.${dir}`), inst: p.inst_id, v: p.version, status: statusWord })
   const targets = p.take_profits.filter((x): x is { price: string; pct: string | null } => x.price !== null)
+  // The autonomy note (decision 254, ATL-212/213, design v18 §4.6): built only from the risk
+  // check's own stored autonomy values, never from the proposal's requested size or a fixture.
+  const autonomyValues = live ? autonomyValuesOf(p.risk_check) : null
+  const sentByAutonomy = shown === 'sent' && Boolean(p.decided_by?.startsWith('autonomy'))
 
   return (
     <div className={`pr-card is-${shown}`} role="group" aria-label={label} data-testid="pr-card" data-status={shown} data-proposal-id={p.id}>
@@ -233,10 +240,17 @@ export function ProposalCard({ cardRef, lang, onJump }: { cardRef: ProposalCardR
           <ChessKnight aria-hidden="true" strokeWidth={1.5} />
         </span>
         <span className="hv-kind">{fillSlots(t('title', { v: slot('v') }), { v: <Fig>{String(p.version)}</Fig> })}</span>
-        <span className={`pr-status is-${shown}`} data-testid="pr-status">
-          <StatusIcon className="icon" aria-hidden="true" />
-          <span>{statusWord}</span>
-        </span>
+        {sentByAutonomy ? (
+          <span className="pr-status is-sent is-auto" data-testid="pr-status">
+            <Send className="icon" aria-hidden="true" />
+            <span>{t('st.autoSent')}</span>
+          </span>
+        ) : (
+          <span className={`pr-status is-${shown}`} data-testid="pr-status">
+            <StatusIcon className="icon" aria-hidden="true" />
+            <span>{statusWord}</span>
+          </span>
+        )}
       </div>
 
       <div className="pr-title">
@@ -269,7 +283,9 @@ export function ProposalCard({ cardRef, lang, onJump }: { cardRef: ProposalCardR
 
       {awaiting && expiresAt !== null && left !== null && <Band expiresAt={expiresAt} left={left} createdAt={p.risk_check?.created_at ?? p.created_at} lang={lang} />}
 
-      <Outcome p={p} shown={shown} live={live} lang={lang} P={P} />
+      {awaiting && autonomyValues !== null && autonomyValues.autonomyLevel >= 3 && <AutonomyNoteCard values={autonomyValues} kind="entry" lang={lang} />}
+
+      <Outcome p={p} shown={shown} live={live} lang={lang} P={P} autonomyValues={autonomyValues} sentByAutonomy={sentByAutonomy} />
 
       {zone && p.stop && (
         <div className="pr-ladder">
@@ -494,7 +510,7 @@ export function ProposalCard({ cardRef, lang, onJump }: { cardRef: ProposalCardR
   )
 }
 
-function Band({ expiresAt, left, createdAt, lang }: { expiresAt: number; left: number; createdAt: string | null; lang: Lang }) {
+export function Band({ expiresAt, left, createdAt, lang }: { expiresAt: number; left: number; createdAt: string | null; lang: Lang }) {
   const { t } = useTranslation('proposal')
   const opened = createdAt ? Date.parse(createdAt) : expiresAt - 15 * 60_000
   const total = Math.max(1, expiresAt - opened)
@@ -514,7 +530,23 @@ function Band({ expiresAt, left, createdAt, lang }: { expiresAt: number; left: n
   )
 }
 
-function Outcome({ p, shown, live, lang, P }: { p: ProposalDetail; shown: ShownStatus; live: boolean; lang: Lang; P: (v: string | null) => string }) {
+function Outcome({
+  p,
+  shown,
+  live,
+  lang,
+  P,
+  autonomyValues,
+  sentByAutonomy,
+}: {
+  p: ProposalDetail
+  shown: ShownStatus
+  live: boolean
+  lang: Lang
+  P: (v: string | null) => string
+  autonomyValues: AutonomyNoteValues | null
+  sentByAutonomy: boolean
+}) {
   const { t } = useTranslation('proposal')
   if (!live) return null
   const at = (ts: string | null | undefined) => <Fig>{ts ? formatTime(ts, lang) : '—'}</Fig>
@@ -528,6 +560,9 @@ function Outcome({ p, shown, live, lang, P }: { p: ProposalDetail; shown: ShownS
   const contracts = order?.sz ?? p.risk_check?.final_contracts ?? null
   switch (shown) {
     case 'sent': {
+      if (sentByAutonomy && autonomyValues) {
+        return <AutonomyNoteCard values={autonomyValues} kind="entry" sent={{ time: order?.created_at ?? p.decided_at, price: order?.px ?? null }} lang={lang} />
+      }
       const market = order?.ord_type === 'market' || !order?.px
       return line(
         Send,
@@ -562,6 +597,7 @@ function Outcome({ p, shown, live, lang, P }: { p: ProposalDetail; shown: ShownS
     case 'expired':
       return line(Hourglass, fillSlots(t('l.expired', { time: slot('time') }), { time: at(p.approval_expires_at) }), 'is-warn')
     case 'advice':
+      if (autonomyValues) return <AutonomyNoteCard values={autonomyValues} kind="entry" lang={lang} />
       return line(
         Eye,
         <>

@@ -21,7 +21,8 @@
     "under_review": "In review",
     "voting": "Voting",
     "passed": "Passed the vote",
-    "risk_checked": "Risk checked"
+    "risk_checked": "Risk checked",
+    "autoSent": "Sent without asking"
   },
   "by": "Approve by {{time}}",
   "left": "{{t}} left",
@@ -104,6 +105,22 @@
     "not_editable": "Only an entry proposal can be edited.",
     "risk_engine_unavailable": "The Risk Engine could not check the edit. Your proposal is unchanged.",
     "unknown": "Atlas refused the action. Nothing was sent to OKX."
+  },
+  "pm": {
+    "kind": {
+      "amend_stop": "Stop change",
+      "amend_targets": "Target change",
+      "close": "Close",
+      "partial_close": "Partial close"
+    },
+    "what": {
+      "amend_stop": "Move the stop to {{stop}}.",
+      "amend_targets": "New targets: {{list}}.",
+      "close": "Close the position at market.",
+      "closeSized": "Close {{c}} contracts at market, {{notional}}.",
+      "partial_close": "Close {{pct}}% of the position at market."
+    },
+    "byYou": "Approved by you at {{time}}."
   },
   "t": {
     "sent": "Approved: order sent to OKX",
