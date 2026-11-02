@@ -121,7 +121,8 @@ test('Sign out returns to /login and Back does not show the shell', async ({ pag
     window.dispatchEvent(new PopStateEvent('popstate'))
   })
   await expect(page).toHaveURL(/\/portfolio\/positions$/)
-  await page.getByRole('button', { name: 'Account' }).click()
+  // ATL-223: the accessible name now leads with the owner's initials ("MA, Account").
+  await page.getByRole('button', { name: 'MA, Account' }).click()
   await page.screenshot({ path: `${SHOTS}/account-menu.png` })
   await page.getByRole('menuitem', { name: 'Sign out' }).click()
 

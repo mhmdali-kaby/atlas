@@ -259,8 +259,9 @@ describe('the live run row', () => {
     expect(row).toHaveTextContent('Historian')
     expect(row).toHaveTextContent('Writing')
     expect(row).toHaveTextContent('History weakly supports a bounce')
-    // Under the question it answers.
-    expect(within(row).getByRole('link', { name: /Show the message/ })).toBeInTheDocument()
+    // Under the question it answers. The accessible name leads with the visible quoted author
+    // (ATL-223 round 2: no more aria-label that drops the visible text).
+    expect(within(row).getByRole('link', { name: /^You/ })).toBeInTheDocument()
     // Announced politely: the start, the tool call, the writing; never the streamed text.
     expect(screen.getByTestId('wr-live')).toHaveTextContent('Historian is writing an answer.')
 

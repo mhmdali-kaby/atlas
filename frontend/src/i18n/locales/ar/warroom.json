@@ -69,7 +69,7 @@
   "you": "أنت",
   "atlas": "أطلس",
   "messageLabel": "{{name}}، {{time}}",
-  "jumpTo": "عرض رسالة {{name}}",
+  "jumpTo": "الانتقال إلى الرسالة الأصلية",
   "actions": {
     "reply": "رد",
     "copy": "نسخ النص",

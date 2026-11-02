@@ -69,7 +69,7 @@
   "you": "You",
   "atlas": "Atlas",
   "messageLabel": "{{name}}, {{time}}",
-  "jumpTo": "Show the message {{name}} wrote",
+  "jumpTo": "Jump to the original message",
   "actions": {
     "reply": "Reply",
     "copy": "Copy text",

@@ -86,15 +86,18 @@ export function ThemeMenu() {
 /** The account menu: who is signed in, then Sign out. */
 export function AccountMenu({ name, email, onSignOut }: { name: string; email: string; onSignOut: () => void }) {
   const { t } = useTranslation('shell')
+  const letters = initials(name)
   return (
     <Menu
       trigger={
-        <button type="button" className={toolbarIconButton} aria-label={t('account')} title={t('account')}>
+        // ATL-223: the accessible name must start with the visible initials (axe
+        // label-content-name-mismatch), so it is built from them rather than "Account" alone.
+        <button type="button" className={toolbarIconButton} aria-label={t('accountAria', { initials: letters })} title={t('account')}>
           <span
             aria-hidden="true"
             className="grid size-[26px] place-items-center rounded-full text-[11px] font-semibold tracking-[0.02em] text-on-solid avatar-fill"
           >
-            {initials(name)}
+            {letters}
           </span>
         </button>
       }
