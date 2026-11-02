@@ -434,7 +434,7 @@ export interface ScorecardCardProps {
   /** The agent's entry from GET /api/agents/scores; missing = no rows. */
   scores: AgentScores | undefined
   days: ScoreDays
-  /** The period's Baghdad days (meta.from / meta.to), for the trend's axis. */
+  /** The trend's Baghdad days: meta.from, and the newest scored day (today is not scored yet). */
   from: string
   to: string
   /** Voters only: the 30-day reliability weight. */

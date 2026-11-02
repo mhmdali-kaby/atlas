@@ -68,7 +68,7 @@
   box-shadow: 0.5px 0 0 0 var(--separator), 0 0.5px 0 0 var(--separator);
   scroll-margin: 24px;
 }
-.sc-card:focus-visible { outline: none; box-shadow: inset 0 0 0 3px rgba(0, 122, 255, 0.4); border-radius: var(--radius-panel); }
+.sc-card:focus-visible { outline: none; box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--accent) 40%, transparent); border-radius: var(--radius-panel); }
 .sc-card.is-flash { animation: sc-flash 1.4s var(--ease-out); }
 @keyframes sc-flash { from { background: var(--flash); } to { background: transparent; } }
 .sc-card.is-skel { gap: 12px; }

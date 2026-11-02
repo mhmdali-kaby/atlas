@@ -280,7 +280,7 @@ export function ScorecardsView({ portfolio = false }: { portfolio?: boolean }) {
               scores={by.get(c.slug)}
               days={report.meta.days}
               from={report.meta.from}
-              to={report.meta.to}
+              to={through}
               weight={!portfolio && VOTERS.includes(c.slug) ? weightOf(by.get(c.slug)) : null}
               pnl={portfolio}
             />
