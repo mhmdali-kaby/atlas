@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import { ChartSpline, MessagesSquare, Settings, UsersRound, type LucideIcon } from 'lucide-react'
+import { ChartSpline, MessagesSquare, NotebookPen, Settings, UsersRound, type LucideIcon } from 'lucide-react'
 import type { RouteObject } from 'react-router'
 
 /**
@@ -7,7 +7,7 @@ import type { RouteObject } from 'react-router'
  * switcher at its top moves between them and the list below belongs to the current area.
  * An area appears in the switcher only once a feature contributes to it.
  */
-export type AreaId = 'warroom' | 'agents' | 'portfolio' | 'settings'
+export type AreaId = 'warroom' | 'agents' | 'portfolio' | 'journal' | 'settings'
 
 export interface AreaDef {
   id: AreaId
@@ -22,6 +22,7 @@ export const AREAS: readonly AreaDef[] = [
   { id: 'warroom', labelKey: 'shell:area.warroom', icon: MessagesSquare, basePath: '/warroom' },
   { id: 'agents', labelKey: 'shell:area.agents', icon: UsersRound, basePath: '/agents' },
   { id: 'portfolio', labelKey: 'shell:area.portfolio', icon: ChartSpline, basePath: '/portfolio' },
+  { id: 'journal', labelKey: 'shell:area.journal', icon: NotebookPen, basePath: '/journal' },
   { id: 'settings', labelKey: 'shell:area.settings', icon: Settings, basePath: '/settings' },
 ]
 
