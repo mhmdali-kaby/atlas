@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Settings;
 
+use App\Support\Settings\SettingsLabels;
 use App\Support\Settings\SettingsSchema;
 use Brick\Math\BigDecimal;
 use Carbon\CarbonImmutable;
@@ -173,16 +174,41 @@ class UpdateSettingsRequest extends FormRequest
     }
 
     /**
+     * ATL-222: every field's error names it in plain words, never as its raw underscored key
+     * (security round 16 / QA on ATL-216). QA round 1: the same holds for the `changes.<field>.*`
+     * element rules on list fields (whitelist, blocklist, enabled_markets, agents.web's domain
+     * lists) — without an entry for the wildcard key, Laravel falls back to the raw path
+     * ("changes.whitelist.0"). The wildcard attribute key keeps every dot literal: the escaped
+     * rule key (`self::escape()`) is only for building the rule, and the validator reports the
+     * error back against the unescaped path.
+     *
      * @return array<string, string>
      */
     public function attributes(): array
     {
         $attributes = [];
         foreach (SettingsSchema::fields() as $field) {
-            $attributes["changes.{$field}"] = $field;
+            $attributes["changes.{$field}"] = SettingsLabels::forField($field);
+        }
+        foreach ($this->listFieldsWithElementRules() as $field) {
+            $attributes["changes.{$field}.*"] = SettingsLabels::forListElement($field);
         }
 
         return $attributes;
+    }
+
+    /**
+     * Every field validated with a `changes.<field>.*` element rule, per rules() above.
+     *
+     * @return list<string>
+     */
+    private function listFieldsWithElementRules(): array
+    {
+        return [
+            ...SettingsSchema::MARKET_LIST_FIELDS,
+            ...SettingsSchema::INSTRUMENT_LIST_FIELDS,
+            ...SettingsSchema::WEB_DOMAIN_FIELDS,
+        ];
     }
 
     public function env(): string
@@ -210,7 +236,7 @@ class UpdateSettingsRequest extends FormRequest
     {
         return function (string $attribute, mixed $value, Closure $fail) use ($min, $max, $exclusive): void {
             if (! is_string($value) || preg_match(self::DECIMAL_PATTERN, $value) !== 1) {
-                $fail(__('settings.decimal_format'));
+                $fail(self::decimalFormatMessage($min, $exclusive));
 
                 return;
             }
@@ -225,5 +251,22 @@ class UpdateSettingsRequest extends FormRequest
                 ]));
             }
         };
+    }
+
+    /**
+     * ATL-222 (QA on ATL-216): the format rule's message names the field (via :attribute,
+     * substituted from `attributes()`) and its lower bound, instead of the old "must be a decimal
+     * number written as a string" wording that said nothing about why "-1" was refused. Most
+     * decimal fields allow 0 and up with no meaningful upper bound to show here (the exact ceiling
+     * still shows once the value parses, in decimal_range_*), so that common case reads as
+     * "a positive amount" rather than a redundant number.
+     */
+    private static function decimalFormatMessage(string $min, bool $exclusive): string
+    {
+        if ($min === '0' && ! $exclusive) {
+            return __('settings.decimal_format_positive');
+        }
+
+        return __($exclusive ? 'settings.decimal_format_exclusive' : 'settings.decimal_format_inclusive', ['min' => $min]);
     }
 }

@@ -94,11 +94,11 @@ function tgAwaitingEnvelope(Proposal $p): array
  * @param  array<string, mixed>  $overrides
  * @return array<string, mixed>
  */
-function tgCallback(int $updateId, string $data, string $chatId = TG_CHAT): array
+function tgCallback(int $updateId, string $data, string $chatId = TG_CHAT, ?string $fromId = null, string $chatType = 'private'): array
 {
     return ['update_id' => $updateId, 'callback_query' => [
-        'id' => "cq-{$updateId}", 'from' => ['id' => (int) $chatId], 'data' => $data,
-        'message' => ['message_id' => 77, 'chat' => ['id' => (int) $chatId, 'type' => 'private'], 'text' => 'Proposal awaiting your approval'],
+        'id' => "cq-{$updateId}", 'from' => ['id' => (int) ($fromId ?? $chatId)], 'data' => $data,
+        'message' => ['message_id' => 77, 'chat' => ['id' => (int) $chatId, 'type' => $chatType], 'text' => 'Proposal awaiting your approval'],
     ]];
 }
 
@@ -312,18 +312,37 @@ it('answers "expired" when the button outlived its proposal (already rejected on
         ->and(tgSent('answerCallbackQuery')[0]->data()['text'])->toBe('expired');
 });
 
-it('ignores a press from another chat id', function (): void {
+// ATL-221 (security round 16): only the owner's own private chat may press Approve/Reject.
+
+it('refuses a validly signed callback from a different Telegram user, auditing foreign_user', function (): void {
     tgConnect();
     $p = tgProposal();
-    tgFake([tgCallback(602, CallbackData::encode('a', $p->id, $p->approval_expires_at->getTimestamp()), '111222333')]);
+    tgFake([tgCallback(602, CallbackData::encode('a', $p->id, $p->approval_expires_at->getTimestamp()), fromId: '111222333')]);
 
     $this->artisan('atlas:telegram-poll', ['--once' => true])->assertSuccessful();
 
     expect($p->fresh()?->status)->toBe('awaiting_owner')
         ->and(tgExecuteCalls($p->id))->toBe([])
-        ->and(tgSent('answerCallbackQuery'))->toBe([])
-        ->and(AuditLog::query()->where('action', '!=', 'settings.created')->pluck('action')->all())->toBe([])
+        ->and(tgSent('answerCallbackQuery'))->toHaveCount(1)
+        ->and(tgSent('answerCallbackQuery')[0]->data()['text'])->toBe('expired')
+        ->and(tgSent('editMessageText'))->toBe([])
+        ->and(AuditLog::query()->where('action', 'telegram.callback_refused')->sole()->after)
+        ->toMatchArray(['actor' => 'telegram', 'reason' => 'foreign_user'])
         ->and(TelegramConnection::current()?->update_offset)->toBe(602);
+});
+
+it('refuses a validly signed callback from a group chat, auditing foreign_user', function (): void {
+    tgConnect();
+    $p = tgProposal();
+    tgFake([tgCallback(603, CallbackData::encode('a', $p->id, $p->approval_expires_at->getTimestamp()), chatType: 'supergroup')]);
+
+    $this->artisan('atlas:telegram-poll', ['--once' => true])->assertSuccessful();
+
+    expect($p->fresh()?->status)->toBe('awaiting_owner')
+        ->and(tgExecuteCalls($p->id))->toBe([])
+        ->and(tgSent('answerCallbackQuery')[0]->data()['text'])->toBe('expired')
+        ->and(AuditLog::query()->where('action', 'telegram.callback_refused')->sole()->after)
+        ->toMatchArray(['actor' => 'telegram', 'reason' => 'foreign_user']);
 });
 
 // --- AC5: offset ------------------------------------------------------------------------------------
@@ -402,6 +421,13 @@ it('validates the token and chat id, and refuses guests', function (): void {
     $this->actingAs($this->user, 'web')->putJson('/api/notifications/telegram', ['bot_token' => 'nope', 'chat_id' => 'abc'])
         ->assertStatus(422)->assertJsonValidationErrors(['bot_token', 'chat_id']);
     $this->actingAs($this->user, 'web')->postJson('/api/notifications/telegram/test')->assertStatus(409)->assertJsonPath('error', 'not_configured');
+});
+
+// ATL-221 (security round 16): a group or supergroup chat id (negative) is refused at the door.
+it('refuses a negative (group) chat_id', function (): void {
+    $this->actingAs($this->user, 'web')->putJson('/api/notifications/telegram', ['bot_token' => TG_TOKEN, 'chat_id' => '-1001234567890'])
+        ->assertStatus(422)->assertJsonValidationErrors(['chat_id']);
+    expect(TelegramConnection::query()->count())->toBe(0);
 });
 
 it('keeps the token out of logs, exceptions and stored errors when Telegram fails', function (string $failure): void {
