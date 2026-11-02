@@ -81,7 +81,7 @@
     "riskRejected": "The Risk Engine rejected it at {{time}}:",
     "expired": "Expired at {{time}}. Atlas rejected it, as your settings say.",
     "advice": "Autonomy is set to Advise only, so Atlas won’t place this trade.",
-    "adviceLink": "Change it in Settings → Risk & Autonomy",
+    "adviceLink": "Change it in Settings → Autonomy",
     "edited": "Version {{v}} is your edit. The Risk Engine re-checked it at {{time}}.",
     "withdrawn": "Withdrawn by the Strategist at {{time}}.",
     "replaced": "Replaced by version {{v}} at {{time}}."
