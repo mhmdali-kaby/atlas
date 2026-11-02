@@ -26,7 +26,14 @@ import redis
 import respx
 from atlas_shared import bus, testing
 from atlas_shared.active_env import ENV_CHANGED, read_active_env, stored_env
-from atlas_shared.db import BalanceSnapshot, Connection, EquityPoint, PositionSnapshot, SyncStatus, make_engine
+from atlas_shared.db import (
+    BalanceSnapshot,
+    Connection,
+    EquityPoint,
+    PositionSnapshot,
+    SyncStatus,
+    make_engine,
+)
 from atlas_shared.defaults import DEFAULTS
 from atlas_shared.events import EventEnvelope
 from atlas_shared.laravel_crypt import parse_app_key
@@ -77,7 +84,8 @@ def set_active_env(engine: Engine, env: str | None) -> None:
         if env is not None:
             c.execute(
                 text(
-                    "INSERT INTO system_state (id, active_env, preflight_attestations, created_at, updated_at)"
+                    "INSERT INTO system_state"
+                    " (id, active_env, preflight_attestations, created_at, updated_at)"
                     " VALUES (1, :env, '{}'::jsonb, now(), now())"
                 ),
                 {"env": env},
@@ -166,8 +174,8 @@ class _FakeWs:
         raise StopAsyncIteration
 
 
-async def _until(cond: Any, timeout: float = 3.0) -> None:
-    deadline = time.monotonic() + timeout
+async def _until(cond: Any, within: float = 3.0) -> None:
+    deadline = time.monotonic() + within
     while not cond():
         if time.monotonic() > deadline:
             raise AssertionError("condition not met in time")
@@ -186,7 +194,9 @@ def laravel_encrypt(plaintext: str) -> str:
     value = base64.b64encode(enc.update(data) + enc.finalize()).decode()
     iv_b64 = base64.b64encode(iv).decode()
     mac = hmac.new(key, (iv_b64 + value).encode(), hashlib.sha256).hexdigest()
-    return base64.b64encode(json.dumps({"iv": iv_b64, "value": value, "mac": mac, "tag": ""}).encode()).decode()
+    return base64.b64encode(
+        json.dumps({"iv": iv_b64, "value": value, "mac": mac, "tag": ""}).encode()
+    ).decode()
 
 
 def _wipe_live(engine: Engine) -> None:
@@ -226,7 +236,9 @@ async def test_env_changed_moves_rest_to_live_and_closes_the_demo_sockets(
 ) -> None:
     engine = system_state
     sockets = FakeSockets()
-    feed = MarketFeed("demo", engine, rds, connect=sockets.connect, instruments=set, publish=lambda s, e: None)
+    feed = MarketFeed(
+        "demo", engine, rds, connect=sockets.connect, instruments=set, publish=lambda s, e: None
+    )
     pfeed = PrivateFeed(
         "demo", engine, rds, credentials=lambda: CREDS, connect=sockets.connect, publish=lambda s, e: None
     )
@@ -384,7 +396,9 @@ async def test_execute_is_refused_with_reconciling_until_the_live_reconciliation
 
 async def test_an_event_for_the_running_env_or_without_a_row_changes_nothing(system_state: Engine) -> None:
     factory = _StubFactory()
-    application = create_app(_settings("demo"), scheduler=Scheduler(), engine=system_state, runtime_factory=factory)
+    application = create_app(
+        _settings("demo"), scheduler=Scheduler(), engine=system_state, runtime_factory=factory
+    )
     switcher = application.state.env_switcher
     assert await switcher.handle_envelope(env_changed("demo", "live")) is False  # no row: stay
     set_active_env(system_state, "demo")
@@ -429,9 +443,13 @@ def test_with_a_row_trading_core_starts_in_the_stored_env(
     assert factory.reasons == ["not_reconciled"]
 
 
-async def test_the_watcher_follows_an_event_published_on_the_bus(system_state: Engine, rds: redis.Redis) -> None:
+async def test_the_watcher_follows_an_event_published_on_the_bus(
+    system_state: Engine, rds: redis.Redis
+) -> None:
     factory = _StubFactory()
-    application = create_app(_settings("demo"), scheduler=Scheduler(), engine=system_state, runtime_factory=factory)
+    application = create_app(
+        _settings("demo"), scheduler=Scheduler(), engine=system_state, runtime_factory=factory
+    )
     switcher = application.state.env_switcher
     switcher.block_ms = 100
     switcher.start(rds)
