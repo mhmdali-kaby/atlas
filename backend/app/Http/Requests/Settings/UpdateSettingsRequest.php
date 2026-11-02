@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Settings;
 
+use App\Support\Settings\SettingsLabels;
 use App\Support\Settings\SettingsSchema;
 use Brick\Math\BigDecimal;
 use Carbon\CarbonImmutable;
@@ -173,13 +174,16 @@ class UpdateSettingsRequest extends FormRequest
     }
 
     /**
+     * ATL-222: every field's error names it in plain words, never as its raw underscored key
+     * (security round 16 / QA on ATL-216).
+     *
      * @return array<string, string>
      */
     public function attributes(): array
     {
         $attributes = [];
         foreach (SettingsSchema::fields() as $field) {
-            $attributes["changes.{$field}"] = $field;
+            $attributes["changes.{$field}"] = SettingsLabels::forField($field);
         }
 
         return $attributes;
@@ -210,7 +214,7 @@ class UpdateSettingsRequest extends FormRequest
     {
         return function (string $attribute, mixed $value, Closure $fail) use ($min, $max, $exclusive): void {
             if (! is_string($value) || preg_match(self::DECIMAL_PATTERN, $value) !== 1) {
-                $fail(__('settings.decimal_format'));
+                $fail(self::decimalFormatMessage($min, $exclusive));
 
                 return;
             }
@@ -225,5 +229,22 @@ class UpdateSettingsRequest extends FormRequest
                 ]));
             }
         };
+    }
+
+    /**
+     * ATL-222 (QA on ATL-216): the format rule's message names the field (via :attribute,
+     * substituted from `attributes()`) and its lower bound, instead of the old "must be a decimal
+     * number written as a string" wording that said nothing about why "-1" was refused. Most
+     * decimal fields allow 0 and up with no meaningful upper bound to show here (the exact ceiling
+     * still shows once the value parses, in decimal_range_*), so that common case reads as
+     * "a positive amount" rather than a redundant number.
+     */
+    private static function decimalFormatMessage(string $min, bool $exclusive): string
+    {
+        if ($min === '0' && ! $exclusive) {
+            return __('settings.decimal_format_positive');
+        }
+
+        return __($exclusive ? 'settings.decimal_format_exclusive' : 'settings.decimal_format_inclusive', ['min' => $min]);
     }
 }

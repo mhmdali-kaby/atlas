@@ -70,3 +70,33 @@ it('refuses an invalid ask-above amount with 422 and writes no version', functio
     'null' => [null],
     'empty' => [''],
 ]);
+
+/** ATL-222 (QA on ATL-216): the message must name the field in plain words, not its raw key. */
+it('names the field in plain English for a negative ask-above amount', function (): void {
+    $this->getJson('/api/settings?env=demo')->assertOk();
+
+    $response = $this->patchJson('/api/settings', ['env' => 'demo', 'version' => 1, 'changes' => ['autonomy_ask_above_usd' => '-1']])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('changes.autonomy_ask_above_usd');
+
+    $message = $response->json('errors')['changes.autonomy_ask_above_usd'][0] ?? null;
+    expect($message)->toBeString()
+        ->and($message)->not->toContain('autonomy_ask_above_usd')
+        ->and($message)->not->toContain('_')
+        ->and($message)->toContain('Ask me above');
+});
+
+it('names the field in plain Arabic for a negative ask-above amount', function (): void {
+    $this->withHeaders(['Accept-Language' => 'ar'])->getJson('/api/settings?env=demo')->assertOk();
+
+    $response = $this->withHeaders(['Accept-Language' => 'ar'])
+        ->patchJson('/api/settings', ['env' => 'demo', 'version' => 1, 'changes' => ['autonomy_ask_above_usd' => '-1']])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('changes.autonomy_ask_above_usd');
+
+    $message = $response->json('errors')['changes.autonomy_ask_above_usd'][0] ?? null;
+    expect($message)->toBeString()
+        ->and($message)->not->toContain('autonomy_ask_above_usd')
+        ->and($message)->not->toContain('_')
+        ->and($message)->toContain('اسألني فوق');
+});
