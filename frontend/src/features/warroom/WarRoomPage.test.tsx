@@ -169,7 +169,7 @@ describe('War Room', () => {
     expect(warroom.area).toBe('warroom')
     const sections = Array.isArray(warroom.sidebar) ? warroom.sidebar : [warroom.sidebar]
     expect(sections.map((s) => s?.id)).toEqual(['agents', 'threads'])
-    expect(warroom.routes.map((r) => r.path)).toEqual(['warroom', 'warroom/threads/:threadId'])
+    expect(warroom.routes.map((r) => r.path)).toEqual(['warroom', 'warroom/threads/:threadId', 'warroom/replay', 'warroom/replay/:date'])
   })
 
   it('makes "/" open the War Room, the first area, when it is registered', async () => {

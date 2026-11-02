@@ -26,6 +26,7 @@ import {
   Undo2,
   Users,
   Briefcase,
+  Lock,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -72,6 +73,7 @@ import {
 } from './proposal'
 import { EditSheet, ReasonSheet } from './ProposalSheets'
 import { rText } from './rText'
+import { useReadOnly } from '../readOnly'
 import './proposal.css'
 
 /*
@@ -134,13 +136,17 @@ type Sheet = 'reject' | 'edit' | 'ask' | null
 
 export function ProposalCard({ cardRef, lang, onJump }: { cardRef: ProposalCardRef; lang: Lang; onJump: (id: string) => void }) {
   const { t } = useTranslation('proposal')
+  const { t: tw } = useTranslation('warroom')
   const qc = useQueryClient()
-  const base = useProposal(cardRef.proposalId)
+  // In Replay the card is drawn as posted: its snapshot, never refetched, with no actions.
+  const readOnly = useReadOnly()
+  const base = useProposal(cardRef.proposalId, !readOnly)
   const follow = base.data ? followOwnerEdits(base.data) : null
   const edit = useProposal(follow?.edited ? follow.id : '')
   const loaded: ProposalDetail | undefined = follow?.edited ? (edit.data ?? undefined) : base.data
-  const p: ProposalDetail = loaded ?? base.data ?? cardRef.snapshot
-  const live = Boolean(loaded)
+  // A proposal the live War Room already loaded is in the cache; Replay still draws the snapshot.
+  const p: ProposalDetail = readOnly ? cardRef.snapshot : (loaded ?? base.data ?? cardRef.snapshot)
+  const live = Boolean(loaded) && !readOnly
   const now = useNow(1000)
   const shown = shownStatus(p, now)
   // The price now (ATL-188): polled every 10 s while the card is on screen and the trade is still
@@ -373,6 +379,13 @@ export function ProposalCard({ cardRef, lang, onJump }: { cardRef: ProposalCardR
       )}
 
       {chips.length > 0 && <Evidence chips={chips} onJump={onJump} />}
+
+      {readOnly && (
+        <p className="pr-readonly" data-testid="pr-readonly">
+          <Lock aria-hidden="true" strokeWidth={1.5} className="icon" />
+          <span>{tw('rp.cardNote')}</span>
+        </p>
+      )}
 
       {awaiting && (
         <div className="pr-actions" role="group" aria-label={t('actionsSr')} data-testid="pr-actions">
