@@ -8,12 +8,14 @@
     "sources": "Data sources",
     "risk": "Risk profile",
     "autonomy": "Autonomy",
-    "backfill": "Market history"
+    "backfill": "Market history",
+    "claude": "Claude",
+    "team": "Your team"
   },
   "done": "Done",
   "continue": "Continue",
   "back": "Back",
-  "finish": "Finish setup",
+  "finish": "Open the War Room",
   "checking": "Checking your OKX connection…",
   "welcome": {
     "title": "Welcome to Atlas",
@@ -285,6 +287,67 @@
     "error": {
       "title": "Couldn’t load the market history progress",
       "body": "Atlas’s server didn’t answer. The collection carries on without this page."
+    }
+  },
+  "claude": {
+    "title": "Sign in to Claude",
+    "lead": "Atlas’s agents run on your Claude plan through Claude Code on this Mac. Nothing is billed to an API key.",
+    "checking": "Checking…",
+    "later": "Set up later",
+    "laterNote": "Not ready yet? You can set it up later. The agents stay offline until Claude is ready, and the Agents page checks again whenever you like.",
+    "laterToast": "The agents stay offline for now",
+    "laterToastBody": "Sign in to Claude, then press Check again on the Agents page.",
+    "sub": {
+      "cli": {
+        "pass": "The command-line tool the agents run on.",
+        "fail": "The agents can’t run without it."
+      },
+      "login": {
+        "pass": "Agent usage counts against your Claude plan.",
+        "fail": "Sign in once, and Atlas uses it from then on.",
+        "skip": "Atlas checks this once Claude Code is installed."
+      },
+      "key": {
+        "pass": "So agent usage can never fall back to pay-as-you-go billing.",
+        "fail": "Remove it, so usage always stays on your plan."
+      }
+    }
+  },
+  "team": {
+    "title": "Meet your team",
+    "lead": "Nine agents research, debate and propose. None of them can place an order: only the risk engine, with your limits, can approve one.",
+    "team": "The team",
+    "day": "Your team’s day",
+    "dayNote": "Times are shown in your time zone. Change it in Settings → General.",
+    "whenSr": "When it works:",
+    "off": "Off",
+    "offWhen": "Off. It won’t work until you turn it on.",
+    "offNote_one": "1 agent is off. Turn it on in Settings → Agents whenever you like.",
+    "offNote_other": "{{count}} agents are off. Turn them on in Settings → Agents whenever you like.",
+    "loading": "Loading your team",
+    "errTitle": "Atlas couldn’t load your team",
+    "errText": "The agents service didn’t answer. You can still finish: the War Room shows the team once it’s running.",
+    "retry": "Try again",
+    "role": {
+      "orchestrator": "Runs the process and answers you first",
+      "market_scout": "Picks what the team watches each day",
+      "news_intelligence": "Reads the news and the event calendar",
+      "historian": "Answers with statistics from history",
+      "technical_analyst": "Turns charts into levels and plans",
+      "derivatives_sentiment": "Reads funding, open interest and crowding",
+      "strategist": "Writes the trade proposals",
+      "devils_advocate": "Finds the strongest reasons not to trade",
+      "portfolio_manager": "Manages positions after entry"
+    },
+    "when": {
+      "orchestrator": "Always on, and the first to answer you",
+      "news_intelligence": "Every morning at <f>{{t}}</f>, and whenever big news breaks",
+      "historian": "Every morning at <f>{{t}}</f>, on every proposal, and every {{day}} at <f>{{w}}</f>",
+      "market_scout": "Every morning at <f>{{t}}</f>",
+      "cycle": "Every <f>{{n}}</f> minutes, <f>{{a}}</f> to <f>{{b}}</f>",
+      "strategist": "After each analysis cycle",
+      "devils_advocate": "Whenever a trade is proposed",
+      "portfolio_manager": "Every 5 minutes while a trade is open, and the daily report at <f>{{t}}</f>"
     }
   }
 }

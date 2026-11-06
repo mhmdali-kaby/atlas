@@ -1,8 +1,8 @@
-export const STEPS = ['welcome', 'connect', 'sources', 'risk', 'autonomy', 'backfill'] as const
+export const STEPS = ['welcome', 'connect', 'claude', 'sources', 'risk', 'autonomy', 'backfill', 'team'] as const
 export type StepId = (typeof STEPS)[number]
 
-/** Where Finish setup lands (ATL-19 saves the choices first). */
-export const AFTER_ONBOARDING_PATH = '/portfolio'
+/** Where Finish ("Open the War Room") lands, after onboarding_completed is saved (ATL-234). */
+export const AFTER_ONBOARDING_PATH = '/warroom'
 
 export function onboardingPath(step: StepId = 'welcome'): string {
   return step === 'welcome' ? '/onboarding' : `/onboarding?step=${step}`
