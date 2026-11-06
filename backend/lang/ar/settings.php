@@ -31,6 +31,7 @@ return [
     'schedule_scout_after_regime' => 'يجب أن يكون :later بعد :earlier، لأن مستكشف السوق يقرأ جدول أنظمة السوق.',
     'schedule_quiet_empty' => 'يجب أن تبدأ ساعات الهدوء وتنتهي في وقتين مختلفين.',
 
+    'prompt_version_unknown' => 'الإصدار :version ليس من إصدارات التعليمات المحفوظة لهذا الوكيل.',
     'attr_agent_setting' => ':agent: :setting',
     'attr_notification' => ':event: :channel',
 
@@ -51,6 +52,7 @@ return [
         'model' => 'النموذج',
         'daily_tokens' => 'الرموز اليومية',
         'daily_turns' => 'الدورات اليومية',
+        'prompt_version' => 'إصدار التعليمات',
     ],
 
     'notification_event' => [

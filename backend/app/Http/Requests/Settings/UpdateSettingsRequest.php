@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Settings;
 
 use App\Models\Setting;
+use App\Support\Agents\PromptVersions;
 use App\Support\Backup\BackupSettings;
 use App\Support\Settings\SettingsLabels;
 use App\Support\Settings\SettingsSchema;
@@ -71,6 +72,9 @@ class UpdateSettingsRequest extends FormRequest
             $rules[$key] = match ($kind) {
                 'boolean' => ['sometimes', 'boolean:strict'],
                 'model' => ['sometimes', 'string', Rule::in(SettingsSchema::AGENT_MODELS)],
+                // ATL-251: the pin endpoint checks the version belongs to the agent; here it must
+                // at least be a stored version of that agent.
+                'prompt_version' => ['sometimes', 'nullable', 'integer:strict', 'min:1', self::storedPromptVersion(explode('.', $field)[1])],
                 default => ['sometimes', 'integer:strict', 'between:'.implode(',', SettingsSchema::agentIntegerBounds($setting))],
             };
         }
@@ -309,6 +313,16 @@ class UpdateSettingsRequest extends FormRequest
         $zone = config('atlas_defaults.timezone.display');
 
         return FirstLiveMonth::endsAt()?->setTimezone(is_string($zone) ? $zone : 'UTC')->format('Y-m-d H:i') ?? '';
+    }
+
+    /** ATL-251: `agents.<slug>.prompt_version` must name a prompt_versions row of that agent. */
+    private static function storedPromptVersion(string $slug): Closure
+    {
+        return function (string $attribute, mixed $value, Closure $fail) use ($slug): void {
+            if (is_int($value) && ! PromptVersions::exists($slug, $value)) {
+                $fail(__('settings.prompt_version_unknown', ['version' => $value]));
+            }
+        };
     }
 
     private static function maxEnabledAutonomyLevel(): Closure
