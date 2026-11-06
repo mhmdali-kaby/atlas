@@ -484,6 +484,16 @@ quality:
 internal_api:
   max_body_bytes: 1048576
 
+# ATL-245, decision #265 (1): optional TOTP for the owner's login.
+two_factor:
+  # 30-second steps accepted either side of now when checking a code.
+  window: 1
+  # Single-use recovery codes issued on confirm and on regenerate.
+  recovery_codes: 8
+  # Enrolment writes (start, confirm, regenerate, disable) per user per minute.
+  attempts_per_minute: 5
+  qr_size_px: 192
+
 # ATL-13, brief §18: `php artisan atlas:doctor` thresholds.
 doctor:
   max_clock_drift_ms: 2000

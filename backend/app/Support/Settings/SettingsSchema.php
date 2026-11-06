@@ -126,6 +126,9 @@ final class SettingsSchema
         'model' => 'model',
         'daily_tokens' => 'integer',
         'daily_turns' => 'integer',
+        // ATL-251, decision #265 (3): a prompt_versions.version the supervisor pins this agent
+        // to, or null for the current prompt file.
+        'prompt_version' => 'prompt_version',
     ];
 
     /** ATL-214: the delivery channels of every notification event (notifications.channels). */
@@ -639,6 +642,7 @@ final class SettingsSchema
                 $out[$field] = match ($agentFields[$field]) {
                     'boolean' => $value === true,
                     'model' => is_string($value) ? $value : '',
+                    'prompt_version' => is_int($value) ? $value : null,
                     default => is_numeric($value) ? (int) $value : 0,
                 };
 
