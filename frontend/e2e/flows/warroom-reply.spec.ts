@@ -128,11 +128,11 @@ test('replying to an older message while scrolled up: the jump-to-latest float c
   test.skip(theme === 'dark', 'the overlap is a layout bug, independent of theme; the light project covers both languages')
   await openWarRoom(page)
 
-  // QA repro: scroll the feed well up into the seeded history, past "Check 480" (Historian),
+  // QA repro: scroll the feed well up into the seeded history, past the Historian's pre-CPI regime check,
   // then Reply from there. .wr-float (the jump-to-latest button) must grow with the composer,
   // which the ReplyChip makes taller, instead of landing on the chip's × at a fixed offset.
   await feedOf(page).evaluate((el) => el.scrollBy({ top: -1500 }))
-  const older = feedOf(page).locator('[data-msg-id]').filter({ hasText: 'Check 480:' })
+  const older = feedOf(page).locator('[data-msg-id]').filter({ hasText: 'Regime check before CPI:' })
   await expect(older).toBeVisible()
   const latest = page.getByTestId('wr-latest')
   await expect(latest).toBeVisible()
