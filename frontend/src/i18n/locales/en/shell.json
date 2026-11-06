@@ -39,5 +39,7 @@
     "title": "Nothing here yet",
     "body": "This page is not part of Atlas yet. Choose a page in the sidebar."
   },
-  "switchLangHint": "Switch language"
+  "switchLangHint": "Switch language",
+  "prefSaveFail": "Couldn’t save that change",
+  "prefSaveOffline": "Atlas’s server didn’t answer, so it’s back as it was."
 }

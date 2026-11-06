@@ -122,3 +122,33 @@ describe('apiFetch', () => {
     await expect(api.post('/api/auth/logout')).resolves.toBeNull()
   })
 })
+
+describe('Accept-Language (ATL-227)', () => {
+  afterEach(async () => {
+    const { default: i18n } = await import('../i18n')
+    await i18n.changeLanguage('en')
+  })
+
+  it('sends the chosen language on every request, GET and unsafe alike', async () => {
+    const { default: i18n } = await import('../i18n')
+    const fetch = mockFetch((url) => (url.endsWith('/sanctum/csrf-cookie') ? new Response(null, { status: 204 }) : json(200, {})))
+    await i18n.changeLanguage('en')
+    await api.get('/api/portfolio/summary')
+    await i18n.changeLanguage('ar')
+    await api.get('/api/warroom/threads')
+    await api.patch('/api/me/preferences', { theme: 'dark' })
+    const langs = fetch.mock.calls.map(([u, init]) => [String(u).replace(API_URL, ''), new Headers(init?.headers).get('Accept-Language')])
+    expect(langs).toEqual([
+      ['/api/portfolio/summary', 'en'],
+      ['/api/warroom/threads', 'ar'],
+      ['/sanctum/csrf-cookie', 'ar'],
+      ['/api/me/preferences', 'ar'],
+    ])
+  })
+
+  it('keeps a language the caller set itself', async () => {
+    const fetch = mockFetch(() => json(200, {}))
+    await api.get('/api/x', { headers: { 'Accept-Language': 'ar' } })
+    expect(new Headers(fetch.mock.calls[0]![1]!.headers).get('Accept-Language')).toBe('ar')
+  })
+})

@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Navigate, useLocation } from 'react-router'
+import { PreferencesSync } from '../../lib/preferences'
 import { Spinner } from '../../ui'
 import { IDLE_LOCK_MS, loginPath, SIGNED_OUT_KEY, useAuthExpiredListener, useLogout, useSession } from './session'
 import { useIdleLock } from './useIdleLock'
@@ -35,7 +36,13 @@ export function RequireAuth({ children }: { children: ReactNode }) {
     return <Navigate to={loginPath(requested, locked ? 'idle' : undefined)} replace />
   }
   if (!signedIn) return <Checking label={t('checking')} />
-  return <>{children}</>
+  return (
+    <>
+      {/* The owner's saved language, theme and time zone, applied at boot (ATL-227). */}
+      <PreferencesSync enabled />
+      {children}
+    </>
+  )
 }
 
 function Checking({ label }: { label: string }) {

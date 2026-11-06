@@ -16,7 +16,7 @@ import { useNow } from '../../portfolio/hooks'
 import { threadPath, useSelectedThread } from '../selection'
 import { fillSlots, slot } from '../slots'
 import { InstrumentId, Inline } from '../text'
-import { baghdadDay, formatDate, formatFullTime, formatTime, formatUtcFull, formatUtcTime } from '../time'
+import { baghdadDay, formatDate, formatFullTime, ownerCity, formatTime, formatUtcFull, formatUtcTime } from '../time'
 import { Ladder } from './Ladder'
 import { rText } from './rText'
 import { isThin, type Bias, type Direction, type TechnicalSetup } from './technicalSetup'
@@ -47,7 +47,7 @@ export function AsOf({ ts, lang, testId = 'ta-asof' }: { ts: string; lang: Lang;
   const today = baghdadDay(ts) === baghdadDay(now)
   const when = today ? formatTime(ts, lang) : `${formatDate(ts, lang)}${lang === 'ar' ? '، ' : ', '}${formatTime(ts, lang)}`
   return (
-    <time className="hv-asof" dateTime={ts} tabIndex={0} title={t('ta.dual', { baghdad: formatFullTime(ts, lang), utc: formatUtcFull(ts) })} data-testid={testId}>
+    <time className="hv-asof" dateTime={ts} tabIndex={0} title={t('ta.dual', { city: ownerCity(lang), local: formatFullTime(ts, lang), utc: formatUtcFull(ts) })} data-testid={testId}>
       {fillSlots(t('ta.asOf', { time: slot('time'), utc: slot('utc') }), {
         time: <span className="num">{when}</span>,
         utc: <bdi dir="ltr" className="num">{`${formatUtcTime(ts)} UTC`}</bdi>,

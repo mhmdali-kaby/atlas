@@ -12,7 +12,7 @@ import { Calendar, Flow } from './newsBriefTables'
 import { SignedSentiment } from './newsParts'
 import { fillSlots, slot } from './slots'
 import { InstrumentId, Markdown } from './text'
-import { formatFullTime, formatTime, formatUtcFull } from './time'
+import { formatFullTime, ownerCity, formatTime, formatUtcFull } from './time'
 import { UntracedMark, UntracedScope } from './Untraced'
 import './newsBrief.css'
 
@@ -57,7 +57,7 @@ function Degraded({ brief, lang }: { brief: NewsBrief; lang: Lang }) {
         const names = formatList(classes.map((k) => t(`news_brief.class.${k}`, { defaultValue: k })), lang)
         const cap = <Fig>{formatFixed(0.5, 2, lang)}</Fig>
         const time = since ? (
-          <time className="num nb-time" dateTime={since} tabIndex={0} title={t('news_brief.timeTip', { baghdad: formatFullTime(since, lang), utc: formatUtcFull(since) })}>
+          <time className="num nb-time" dateTime={since} tabIndex={0} title={t('news_brief.timeTip', { city: ownerCity(lang), local: formatFullTime(since, lang), utc: formatUtcFull(since) })}>
             <Fig>{formatTime(since, lang)}</Fig>
           </time>
         ) : null
@@ -121,7 +121,7 @@ export function NewsBriefCard({ brief, unmatched, lang }: { brief: NewsBrief; un
           <Stories brief={brief} ranked limit allSources={false} empty={t('news_brief.empty.top')} lang={lang} now={now} mark={mark} />
         </section>
         <section className="nb-sec" data-testid="nb-calendar">
-          <SecHead title={fillSlots(t('news_brief.cal', { n: slot('n') }), { n: hours(48) })} sub={t('news_brief.calSub')} />
+          <SecHead title={fillSlots(t('news_brief.cal', { n: slot('n') }), { n: hours(48) })} sub={t('news_brief.calSub', { city: ownerCity(lang) })} />
           {brief.events.length === 0 ? (
             <p className="nb-empty">{fillSlots(t('news_brief.empty.events', { n: slot('n') }), { n: hours(48) })}</p>
           ) : (
@@ -230,7 +230,7 @@ export function NewsBriefCard({ brief, unmatched, lang }: { brief: NewsBrief; un
           <Stories brief={brief} ranked={false} limit={false} allSources empty={t('news_brief.empty.stories', { n: 72 })} lang={lang} now={now} mark={mark} />
         </section>
         <section className="nb-sec" data-testid="nb-calendar">
-          <SecHead title={t('news_brief.upcoming')} sub={t('news_brief.calSub')} />
+          <SecHead title={t('news_brief.upcoming')} sub={t('news_brief.calSub', { city: ownerCity(lang) })} />
           {brief.events.length === 0 ? (
             <p className="nb-empty">{fillSlots(t('news_brief.empty.events', { n: slot('n') }), { n: hours(48) })}</p>
           ) : (

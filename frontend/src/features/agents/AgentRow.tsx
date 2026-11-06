@@ -2,6 +2,7 @@ import { CircleCheck, CircleDot, CircleX, Gauge, Hourglass, Minus, TriangleAlert
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
+import { ownerDateFormat } from '../../lib/ownerZone'
 import { Spinner } from '../../ui'
 import { useLang } from '../portfolio/hooks'
 import { Medallion } from '../warroom/Medallion'
@@ -144,8 +145,7 @@ function ModelCell({ d }: { d: Agent }) {
 }
 
 function formatDateShort(iso: string, lang: 'en' | 'ar'): string {
-  return new Intl.DateTimeFormat(lang === 'ar' ? 'ar-IQ-u-nu-latn' : 'en-GB', {
-    timeZone: 'Asia/Baghdad',
+  return ownerDateFormat(lang === 'ar' ? 'ar-IQ-u-nu-latn' : 'en-GB', {
     day: 'numeric',
     month: 'short',
     hour: '2-digit',

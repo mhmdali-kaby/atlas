@@ -74,7 +74,8 @@ export function replayDayName(day: string, lang: Lang, short = false): string {
   let f = nameFmt.get(key)
   if (!f) {
     f = new Intl.DateTimeFormat(lang === 'en' ? 'en-GB' : DATE_LOCALE.ar, {
-      timeZone: 'Asia/Baghdad',
+      // A day is a date, not an instant: read at its Baghdad midday, which is the same date in UTC.
+      timeZone: 'UTC',
       weekday: short ? 'short' : 'long',
       day: 'numeric',
       month: short ? 'short' : 'long',
