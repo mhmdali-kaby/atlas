@@ -41,6 +41,15 @@ class AppServiceProvider extends ServiceProvider
                 ->by('environment-switch|'.($user !== null ? (string) $user->getAuthIdentifier() : $request->ip()));
         });
 
+        // ATL-245: TOTP enrolment checks the password or a code, so its writes share a tight limit.
+        RateLimiter::for('two-factor', function (Request $request): Limit {
+            $perMinute = config('atlas_defaults.two_factor.attempts_per_minute');
+            $user = $request->user();
+
+            return Limit::perMinute(is_int($perMinute) ? $perMinute : 5)
+                ->by('two-factor|'.($user !== null ? (string) $user->getAuthIdentifier() : $request->ip()));
+        });
+
         // ATL-38: owner War Room posts, per user (brief §16).
         RateLimiter::for('warroom-post', function (Request $request): Limit {
             $perMinute = config('atlas_defaults.warroom.post_per_minute');
