@@ -12,5 +12,8 @@
   "dismiss": "Dismiss",
   "notifications": "Notifications ({hotkey})",
   "more_one": "{{count}} more in Notifications",
-  "more_other": "{{count}} more in Notifications"
+  "more_other": "{{count}} more in Notifications",
+  "otp": {
+    "label": "6-digit code"
+  }
 }
