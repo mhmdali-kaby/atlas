@@ -13,7 +13,7 @@ import { StepHead, StepMain, type StepProps } from './steps'
 import './onboarding-n.css'
 
 /*
- * Claude (design v21 onboarding.js claude(); decision #242): the agents run on the owner's
+ * Claude (design v21 onboarding.js claude(); decision 242): the agents run on the owner's
  * logged-in Claude Code, so this step runs the same GET /api/agents/claude-status the Agents page
  * and the doctor run. Three checks, then the one fix that's needed, and Check again. The owner may
  * carry on without it ("Set up later" in the footer); the agents stay offline until it passes.
