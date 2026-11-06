@@ -16,6 +16,8 @@ export interface Connection {
   position_mode: string | null
   uid_last4: string | null
   last_verified_at: string | null
+  /** Set with last_verified_at by a test where OKX listed no withdraw (ATL-235); the live pre-flight needs both. */
+  withdraw_off_verified_at?: string | null
   /** The error slug of the last failed test, or null. */
   last_test_error: string | null
   created_at: string
