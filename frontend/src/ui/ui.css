@@ -25,3 +25,61 @@
   from { background-position: 100% 0; }
   to { background-position: -100% 0; }
 }
+
+/* ---- The 6-digit code field (design v22 §2, §5.1) -----------------------
+   One real input, invisible, over six drawn cells. The cells read left to right
+   in Arabic too. Shared by the login's code step and Settings → General. */
+.otp {
+  --cell-w: 44px; --cell-h: 52px; --cell-gap: 8px; --group-gap: 20px;
+  --digit: var(--text-title-2);
+  position: relative; display: inline-block; flex: none;
+}
+.otp.is-lg { --cell-w: 50px; --cell-h: 60px; --group-gap: 22px; --digit: var(--text-title-1); }
+@media (max-width: 420px) { .otp.is-lg { --cell-w: 46px; --cell-h: 56px; --group-gap: 18px; } }
+@media (max-width: 360px) { .otp, .otp.is-lg { --cell-w: 38px; --cell-h: 48px; --cell-gap: 6px; --group-gap: 16px; } }
+.otp-cells { display: flex; gap: var(--cell-gap); direction: ltr; }
+.otp-gap { flex: none; width: calc(var(--group-gap) - 2 * var(--cell-gap)); }
+.otp-cell {
+  position: relative; display: grid; place-items: center;
+  width: var(--cell-w); height: var(--cell-h); border-radius: var(--radius-control);
+  background: var(--field-bg); box-shadow: inset 0 0 0 1px var(--field-border);
+  transition: box-shadow var(--dur-fast) var(--ease-out);
+}
+.dark .otp-cell { background: var(--fill-4); }
+.otp:not(.is-error):hover .otp-cell:not(.is-active) { box-shadow: inset 0 0 0 1px var(--field-border-hover); }
+.otp-digit {
+  font-family: var(--font-num); font-size: var(--digit); line-height: 1; font-weight: 500;
+  font-variant-numeric: tabular-nums; color: var(--label);
+}
+.otp-cell.is-filled .otp-digit { animation: otp-digit-in 160ms var(--ease-out); }
+@keyframes otp-digit-in { from { opacity: 0; transform: translateY(3px) scale(0.92); } to { opacity: 1; transform: none; } }
+.otp-cell.is-active { box-shadow: inset 0 0 0 1.5px var(--accent), var(--focus-ring); }
+.otp-caret { position: absolute; width: 2px; height: 42%; border-radius: 1px; background: var(--accent); opacity: 0; }
+.otp-cell.is-active:not(.is-filled) .otp-caret { opacity: 1; animation: otp-blink 1.06s steps(1) infinite; }
+@keyframes otp-blink { 50% { opacity: 0; } }
+.otp.is-error .otp-cell { box-shadow: inset 0 0 0 1px var(--loss); }
+.otp.is-error .otp-cell.is-active { box-shadow: inset 0 0 0 1.5px var(--loss), var(--error-ring); }
+.otp.is-error .otp-caret { background: var(--loss); }
+.otp.is-shaking .otp-cells { animation: otp-shake 380ms var(--ease-out); }
+@keyframes otp-shake { 0%, 100% { transform: none; } 20% { transform: translateX(-6px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(2px); } }
+.otp-input {
+  position: absolute; inset: 0; z-index: 1; width: 100%; height: 100%; margin: 0; padding: 0;
+  border: 0; background: transparent; color: transparent; caret-color: transparent;
+  font-size: 16px; opacity: 0; cursor: text;
+}
+.otp-input:disabled { cursor: default; }
+.otp-input:disabled ~ .otp-cells .otp-cell { opacity: 0.5; }
+
+/* The 30-second dial: a clock, so it never mirrors. */
+.otp-dial { width: 16px; height: 16px; flex: none; }
+.otp-dial svg { display: block; width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+.otp-dial-track { fill: none; stroke: var(--fill-1); stroke-width: 2.4; }
+.otp-dial-arc {
+  fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linecap: round;
+  stroke-dasharray: 100 100; animation: otp-dial 30s linear infinite; animation-delay: var(--dial-at, 0s);
+}
+@keyframes otp-dial { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -100; } }
+@media (prefers-reduced-motion: reduce) {
+  .otp-dial { display: none; }
+  .otp-cell.is-filled .otp-digit, .otp.is-shaking .otp-cells, .otp-cell.is-active:not(.is-filled) .otp-caret { animation: none; }
+}

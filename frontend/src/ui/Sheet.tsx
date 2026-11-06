@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { cx } from './cx'
 import { FADE, SPRING } from './motion'
 
-export type SheetTone = 'default' | 'destructive' | 'warning' | 'muted' | 'live' | 'demo'
+export type SheetTone = 'default' | 'destructive' | 'warning' | 'muted' | 'live' | 'demo' | 'accent' | 'profit'
 
 const TONE: Record<SheetTone, string> = {
   default: 'bg-fill-3 text-label',
@@ -14,6 +14,9 @@ const TONE: Record<SheetTone, string> = {
   /* Live readiness §4.1/§4.2: the environment switch sheets. */
   live: 'bg-live-wash text-live-ink',
   demo: 'bg-demo-wash text-demo-ink',
+  /* Two-factor sheets (design v22 §5.3): setting up (accent), done (profit). */
+  accent: 'bg-accent-wash text-accent-ink',
+  profit: 'bg-profit-wash text-profit-ink',
 }
 
 export interface SheetProps {
@@ -37,6 +40,12 @@ export interface SheetProps {
   onCloseAutoFocus?: (event: Event) => void
   /** Called when the sheet would focus its first control on open; preventDefault to focus another. */
   onOpenAutoFocus?: (event: Event) => void
+  /** Ignores Esc and clicks outside, so only the sheet's own buttons close it (design v22 §5.3). */
+  locked?: boolean
+  /** `alertdialog` for a step the owner must act on (the recovery codes). */
+  role?: 'dialog' | 'alertdialog'
+  /** Shown at the inline end of the icon's row (e.g. "Step 2 of 3"). */
+  iconAside?: ReactNode
 }
 
 /**
@@ -58,12 +67,16 @@ export function Sheet({
   className,
   onCloseAutoFocus,
   onOpenAutoFocus,
+  locked = false,
+  role,
+  iconAside,
 }: SheetProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(defaultOpen)
   const isOpen = open ?? uncontrolledOpen
   const [surface, setSurface] = useState<HTMLDivElement | null>(null)
   const clipped = useSheetClip(surface)
   const setOpen = (next: boolean) => {
+    if (!next && locked) return
     if (open === undefined) setUncontrolledOpen(next)
     onOpenChange?.(next)
   }
@@ -89,6 +102,9 @@ export function Sheet({
                 forceMount
                 onCloseAutoFocus={onCloseAutoFocus}
                 onOpenAutoFocus={onOpenAutoFocus}
+                onEscapeKeyDown={locked ? (e) => e.preventDefault() : undefined}
+                onInteractOutside={locked ? (e) => e.preventDefault() : undefined}
+                {...(role ? { role } : {})}
                 {...(description ? {} : { 'aria-describedby': undefined })}
               >
                 <motion.div
@@ -107,15 +123,18 @@ export function Sheet({
                 >
                   <div className="grid gap-4 px-7 pt-7 pb-5">
                     {icon && (
-                      <span
-                        aria-hidden="true"
-                        className={cx(
-                          'grid size-11 place-items-center rounded-card [&_svg]:size-5',
-                          TONE[tone],
-                        )}
-                      >
-                        {icon}
-                      </span>
+                      <div className="flex items-center justify-between gap-3">
+                        <span
+                          aria-hidden="true"
+                          className={cx(
+                            'grid size-11 place-items-center rounded-card [&_svg]:size-5',
+                            TONE[tone],
+                          )}
+                        >
+                          {icon}
+                        </span>
+                        {iconAside}
+                      </div>
                     )}
                     <div className="grid gap-1">
                       <Dialog.Title className="text-title-3">{title}</Dialog.Title>

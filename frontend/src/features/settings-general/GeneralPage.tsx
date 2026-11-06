@@ -23,6 +23,7 @@ import '../settings-connections/settings.css'
 import { clock, hm, scheduleFrom } from './dayModel'
 import { DayLine } from './DayLine'
 import './general.css'
+import { TwoFactorSection } from './TwoFactorSection'
 import { ZonePicker } from './ZonePicker'
 
 /*
@@ -388,6 +389,8 @@ export function GeneralPage() {
         </div>
         <p className="gn-group-note">{t('youNote')}</p>
       </section>
+
+      <TwoFactorSection email={session.data?.email ?? ''} lang={lang} />
 
       <section className="gn-section" aria-labelledby="gn-look-title">
         <h2 className="gn-group-title" id="gn-look-title">
