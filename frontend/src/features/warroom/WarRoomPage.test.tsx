@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider } from 'react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { buildShellRegistry } from '../../app/feature'
+import { CommandPalette } from '../command-palette/CommandPalette'
 import { HomeRedirect } from '../../app/AppShell'
 import i18n from '../../i18n'
 import type { Position, PositionsPayload } from '../portfolio/api'
@@ -118,6 +119,11 @@ function fakeBackend(
       if (next === 'fail') return reply(500, { message: 'Server Error' })
       return reply(200, { data: [...next].reverse(), meta: { next_cursor: null } })
     }
+    if (url.pathname === '/api/instruments') {
+      const q = (url.searchParams.get('q') ?? '').toLowerCase()
+      const all = [{ inst_id: 'XAU-USDT-SWAP', inst_type: 'SWAP', asset_class: 'commodity', base_ccy: 'XAU', quote_ccy: 'USDT', settle_ccy: 'USDT', state: 'live', blocked: false }]
+      return reply(200, { data: all.filter((i) => i.inst_id.toLowerCase().includes(q)) })
+    }
     if (url.pathname === '/api/portfolio/positions') {
       return positions === 'fail' ? reply(500, { message: 'Server Error' }) : reply(200, { data: positions })
     }
@@ -132,7 +138,7 @@ const messageCalls = (fetch: ReturnType<typeof fakeBackend>) =>
 const positionCalls = (fetch: ReturnType<typeof fakeBackend>) =>
   fetch.mock.calls.filter(([input]) => new URL(String(input)).pathname === '/api/portfolio/positions')
 
-function renderWarRoom(path = '/warroom') {
+function renderWarRoom(path = '/warroom', extra: React.ReactNode = null) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const Sidebar = () => (
     <nav aria-label="War Room">
@@ -149,6 +155,7 @@ function renderWarRoom(path = '/warroom') {
           <Sidebar />
           <div data-slot="toolbar-actions" />
           {r.element}
+          {extra}
         </>
       ),
     })),
@@ -386,5 +393,40 @@ describe('Opening on a proposal (ATL-180)', () => {
     expect(proposalMessageId([OWNER_MSG, proposal], new Set(['v2-edit', PROPOSAL_ID]))).toBe(proposal.id)
     expect(proposalParam('?proposal=abc')).toBe('abc')
     expect(proposalParam('?proposal=')).toBeNull()
+  })
+})
+
+describe('An instrument picked with ⌘K (ATL-250)', () => {
+  it('Enter on XAU-USDT-SWAP opens the War Room with it in the inspector, its position first; ✕ goes back to the thread', async () => {
+    vi.stubGlobal('matchMedia', (q: string) => ({ matches: q.includes('min-width: 1280px'), addEventListener() {}, removeEventListener() {} }))
+    Element.prototype.scrollIntoView = vi.fn()
+    vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
+    // The owner had closed the inspector: picking an instrument opens it.
+    localStorage.setItem('atlas.wr.inspector', 'closed')
+    const fetch = fakeBackend([[]])
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const router = renderWarRoom('/warroom/threads/btc-1', <CommandPalette />)
+    await waitFor(() => expect(messageCalls(fetch).length).toBeGreaterThan(0))
+    expect(screen.queryByTestId('wr-inspector')).not.toBeInTheDocument()
+
+    await user.keyboard('{Meta>}k{/Meta}')
+    await user.keyboard('xau')
+    await screen.findByTestId('palette-item-inst.XAU-USDT-SWAP')
+    await user.keyboard('{Enter}')
+
+    const picked = await screen.findByTestId('wr-inspector-picked')
+    expect(picked).toHaveTextContent('XAU-USDT-SWAP')
+    expect(router.state.location.pathname).toBe('/warroom')
+    expect(router.state.location.search).toBe('?inst=XAU-USDT-SWAP')
+    const inspector = screen.getByTestId('wr-inspector')
+    expect(within(inspector).getByText('Chosen with ⌘K')).toBeInTheDocument()
+    const rows = await within(inspector).findAllByTestId('wr-position-row')
+    expect(rows[0]).toHaveAttribute('data-inst', 'XAU-USDT-SWAP')
+    expect(rows[0]).toHaveClass('is-here')
+
+    await user.click(screen.getByRole('button', { name: 'Back to this thread' }))
+    await waitFor(() => expect(screen.queryByTestId('wr-inspector-picked')).not.toBeInTheDocument())
+    expect(router.state.location.search).toBe('')
+    expect(screen.getByTestId('wr-inspector')).toBeInTheDocument()
   })
 })

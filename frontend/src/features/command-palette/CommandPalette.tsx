@@ -1,13 +1,14 @@
 import { Command } from 'cmdk'
-import { CornerDownLeft, Search, SearchX } from 'lucide-react'
+import { CloudOff, CornerDownLeft, Search, SearchX } from 'lucide-react'
 import { Dialog } from 'radix-ui'
 import { useEffect, useMemo, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
+import { Spinner } from '../../ui'
 import { cx } from '../../ui/cx'
-import { entryHooks, GROUP_ORDER, matchRank, sortEntries, staticEntries } from './registry'
+import { entryHooks, GROUP_ORDER, matchRank, sortEntries, staticEntries, unpack } from './registry'
 import { focusBeforeOpen, paletteKeys, skipFocusReturn, usePaletteStore } from './store'
-import type { PaletteEntry, PaletteGroup } from './types'
+import type { PaletteEntry, PaletteGroup, PaletteStatus } from './types'
 import './palette.css'
 
 const NS = 'command-palette'
@@ -74,7 +75,9 @@ function PaletteBody({ onChoose }: { onChoose: (entry: PaletteEntry, go: (entry:
   const navigate = useNavigate()
   const [query, setQuery] = useState('')
   // The hooks list is fixed when the module loads, so every render calls the same hooks in order.
-  const dynamic = entryHooks.flatMap((provide) => provide(query))
+  const provided = entryHooks.map((provide) => unpack(provide(query)))
+  const dynamic = provided.flatMap((p) => p.entries)
+  const statuses = provided.flatMap((p) => (p.status ? [p.status] : []))
 
   const en = i18n.getFixedT('en')
   const ar = i18n.getFixedT('ar')
@@ -82,6 +85,8 @@ function PaletteBody({ onChoose }: { onChoose: (entry: PaletteEntry, go: (entry:
 
   const results: Ranked[] = useMemo(() => {
     const ranked = all.map((entry) => {
+      // An instrument was matched by the server (inst_id or base currency); keep its order.
+      if (entry.instrument) return { entry, names: [entry.instrument.instId], rank: 0 }
       const names = [en(entry.labelKey), ar(entry.labelKey)]
       let rank = matchRank(names, entry.keywords, query)
       // The area's name in both languages lists its pages in order ("المحفظة" finds Overview first),
@@ -125,7 +130,11 @@ function PaletteBody({ onChoose }: { onChoose: (entry: PaletteEntry, go: (entry:
   }
 
   const keys = paletteKeys()
-  const groups = GROUP_ORDER.map((g) => ({ g, items: results.filter((r) => r.entry.group === g) })).filter((x) => x.items.length > 0)
+  const groups = GROUP_ORDER.map((g) => ({ g, items: results.filter((r) => r.entry.group === g), status: statuses.find((s) => s.group === g) ?? null })).filter(
+    (x) => x.items.length > 0 || x.status !== null,
+  )
+  // Nothing anywhere, and no search still running or failed: one empty state, not an empty group.
+  const nothing = results.length === 0 && !statuses.some((s) => s.kind !== 'none')
 
   return (
     <Command
@@ -156,14 +165,20 @@ function PaletteBody({ onChoose }: { onChoose: (entry: PaletteEntry, go: (entry:
         </Dialog.Close>
       </div>
       <Command.List className="pal-list" aria-label={t('results')}>
-        {groups.map(({ g, items }) => (
-          <Command.Group key={g} heading={t(`g.${g as PaletteGroup}`)} className="pal-group">
-            {items.map((r) => (
-              <Row key={r.entry.id} ranked={r} query={query} onSelect={() => onChoose(r.entry, go)} />
-            ))}
-          </Command.Group>
-        ))}
-        {results.length === 0 && (
+        {!nothing &&
+          groups.map(({ g, items, status }) => (
+            <Command.Group key={g} heading={t(`g.${g as PaletteGroup}`)} className="pal-group">
+              {items.map((r) =>
+                r.entry.instrument ? (
+                  <InstrumentRow key={r.entry.id} entry={r.entry} query={query} onSelect={() => onChoose(r.entry, go)} />
+                ) : (
+                  <Row key={r.entry.id} ranked={r} query={query} onSelect={() => onChoose(r.entry, go)} />
+                ),
+              )}
+              {status && <StatusRow status={status} />}
+            </Command.Group>
+          ))}
+        {nothing && (
           <div className="pal-empty" role="status">
             <SearchX aria-hidden="true" className="pal-empty-icon" />
             <p className="pal-empty-title">{t('none', { q: query.trim() })}</p>
@@ -247,6 +262,50 @@ function Row({ ranked, query, onSelect }: { ranked: Ranked; query: string; onSel
         <span className="pal-enter" aria-hidden="true">
           <CornerDownLeft />
         </span>
+      </span>
+    </Command.Item>
+  )
+}
+
+/** A group's status row (design v22 §6): searching, nothing found, or the search failed. */
+function StatusRow({ status }: { status: PaletteStatus }) {
+  const { t } = useTranslation(NS)
+  const text = status.kind === 'searching' ? t('inst.searching') : status.kind === 'error' ? t('inst.error') : t('inst.none')
+  return (
+    <div className={cx('pal-status', status.kind === 'error' && 'is-error')} role="status" data-testid={`palette-status-${status.group}`} data-kind={status.kind}>
+      {status.kind === 'searching' ? <Spinner /> : status.kind === 'error' ? <CloudOff aria-hidden="true" /> : <SearchX aria-hidden="true" />}
+      <span>{text}</span>
+    </div>
+  )
+}
+
+/**
+ * An instrument (design v22 §6): its asset-class tile, the inst_id in the number face, the class
+ * beneath, and OKX's state at the end ("Trading" in plain text, never "Live", which names the live
+ * environment; any other state as a badge). The chosen row adds "Open in the War Room".
+ */
+function InstrumentRow({ entry, query, onSelect }: { entry: PaletteEntry; query: string; onSelect: () => void }) {
+  const { t } = useTranslation(NS)
+  const inst = entry.instrument!
+  const Icon = entry.icon
+  const known = ['live', 'suspend', 'preopen', 'test', 'expired', 'rebase'].includes(inst.state)
+  const stateLabel = known ? t(`inst.state.${inst.state}`) : inst.state
+  return (
+    <Command.Item value={entry.id} onSelect={onSelect} className="pal-opt is-inst" data-testid={`palette-item-${entry.id}`}>
+      <span className={cx('pal-icon', `is-${inst.classKey}`)} aria-hidden="true">
+        <Icon strokeWidth={1.75} />
+      </span>
+      <span className="pal-text">
+        <span className="pal-label">
+          <bdi dir="ltr" className="pal-inst">
+            <Marked label={inst.instId} query={query.replace(/\s+/g, '')} />
+          </bdi>
+        </span>
+        <span className="pal-sub">{t(`inst.class.${inst.classKey}`)}</span>
+      </span>
+      <span className="pal-end">
+        {inst.state === 'live' ? <span className="pal-state">{stateLabel}</span> : <span className={cx('pal-badge', `is-${inst.state}`)}>{stateLabel}</span>}
+        <span className="pal-hint">{t('inst.open')}</span>
       </span>
     </Command.Item>
   )

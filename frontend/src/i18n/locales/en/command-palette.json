@@ -47,5 +47,28 @@
   "page": {
     "replay": "Replay",
     "pfScorecards": "Portfolio scorecards"
+  },
+  "inst": {
+    "searching": "Searching instruments…",
+    "error": "Couldn’t search instruments. Pages and actions still work.",
+    "none": "No instruments match.",
+    "open": "Open in the War Room",
+    "state": {
+      "live": "Trading",
+      "suspend": "Suspended",
+      "preopen": "Pre-open",
+      "test": "Test",
+      "expired": "Expired",
+      "rebase": "Rebasing"
+    },
+    "class": {
+      "crypto": "Crypto perpetual",
+      "spot": "Crypto spot",
+      "stock": "Stock perpetual",
+      "etf": "ETF perpetual",
+      "index": "Index perpetual",
+      "commodity": "Commodity perpetual",
+      "other": "Other instrument"
+    }
   }
 }

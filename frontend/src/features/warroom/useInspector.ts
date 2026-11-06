@@ -37,5 +37,10 @@ export function useInspector(storageKey = 'atlas.wr.inspector') {
   }
   /** Close the narrow-window overlay (a moment picked in it jumps the feed underneath). */
   const closeOverlay = () => setOverlayOpen(false)
-  return { shown: wide ? open : overlay, overlay, toggle, closeOverlay }
+  /** Show it, whatever the width (an instrument picked with ⌘K, ATL-250). Not remembered. */
+  const reveal = () => {
+    if (wide) setOpen(true)
+    else setOverlayOpen(true)
+  }
+  return { shown: wide ? open : overlay, overlay, toggle, closeOverlay, reveal }
 }

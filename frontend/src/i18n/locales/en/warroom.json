@@ -984,5 +984,7 @@
     "none": "No closed trades this week",
     "noneBody": "Nothing closed between {{from}} and {{to}}, so there is nothing to review. Atlas wrote this without asking the Historian.",
     "noVerdict": "The Historian couldn’t write this week’s verdict, so there is no suggested change. The figures are Atlas’s own."
-  }
+  },
+  "inspPicked": "Chosen with ⌘K",
+  "inspClear": "Back to this thread"
 }

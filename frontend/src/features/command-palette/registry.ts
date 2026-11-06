@@ -1,5 +1,5 @@
 import { AREAS } from '../../app/feature'
-import type { PaletteEntry, PaletteGroup, PaletteModule } from './types'
+import type { PaletteEntry, PaletteGroup, PaletteModule, PaletteProvided, PaletteStatus } from './types'
 
 /* Every src/features/<name>/palette.ts, found by glob (decision 265 (2)), like routes.tsx. */
 const modules = import.meta.glob<{ default: PaletteModule }>('../*/palette.ts', { eager: true })
@@ -13,6 +13,11 @@ export const staticEntries: PaletteEntry[] = paletteModules.flatMap((m) => m.ent
 
 /** The live-state and search hooks, fixed at load, so each render calls the same hooks in the same order. */
 export const entryHooks: NonNullable<PaletteModule['useEntries']>[] = paletteModules.flatMap((m) => (m.useEntries ? [m.useEntries] : []))
+
+/** A `useEntries` result as entries plus an optional status row (ATL-250). */
+export function unpack(provided: PaletteProvided): { entries: PaletteEntry[]; status: PaletteStatus | null } {
+  return Array.isArray(provided) ? { entries: provided, status: null } : { entries: provided.entries, status: provided.status ?? null }
+}
 
 export const GROUP_ORDER: readonly PaletteGroup[] = ['actions', 'pages', 'instruments']
 
