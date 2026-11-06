@@ -13,6 +13,7 @@ import { messageParam, useMessageById } from './deepLink'
 import { Feed } from './Feed'
 import { FeedEmpty, FeedError, FeedNotFound, FeedSkeleton } from './FeedStates'
 import { Inspector } from './Inspector'
+import { inspectParam, INSPECT_PARAM } from './instrumentSearch'
 import { useInspector } from './useInspector'
 import { localMessages, useOutbox } from './live'
 import { lastReplayDay, replayPath } from './replay'
@@ -75,6 +76,21 @@ export function WarRoomPage() {
     if (!thread) return
     navigate(`${threadPath(thread)}${location.search}`, { replace: true })
   }, [targetMessage.data, threads.isPending, selected, threadList, location.search, navigate])
+  // An instrument picked with ⌘K (ATL-250): `?inst=<inst_id>` shows it in the inspector over the
+  // thread's own context, opening the inspector if it was closed, until the owner clears it.
+  const picked = inspectParam(location.search)
+  const { reveal } = inspector
+  const [revealedFor, setRevealedFor] = useState<string | null>(null)
+  if (picked !== revealedFor) {
+    setRevealedFor(picked)
+    if (picked) reveal()
+  }
+  const clearPick = () => {
+    const params = new URLSearchParams(location.search)
+    params.delete(INSPECT_PARAM)
+    const rest = params.toString()
+    navigate(`${location.pathname}${rest ? `?${rest}` : ''}`, { replace: true })
+  }
   // The shell's toolbar has a slot for page actions; the inspector toggle goes there.
   const [toolbarSlot, setToolbarSlot] = useState<Element | null>(null)
   const findSlot = (el: HTMLDivElement | null) => {
@@ -144,7 +160,15 @@ export function WarRoomPage() {
         </div>
       </section>
       {inspector.shown && (
-        <Inspector env={env} thread={selected} threadName={threadName} loading={loading} lastMessageAt={list[list.length - 1]?.created_at ?? null} />
+        <Inspector
+          env={env}
+          thread={selected}
+          threadName={threadName}
+          loading={loading}
+          lastMessageAt={list[list.length - 1]?.created_at ?? null}
+          picked={picked}
+          onClearPick={clearPick}
+        />
       )}
       {toolbarSlot &&
         createPortal(

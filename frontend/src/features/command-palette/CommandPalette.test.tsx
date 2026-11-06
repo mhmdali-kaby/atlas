@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, render, renderHook, screen, waitFor } from '@testing-library/react'
+import { act, render, renderHook, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider, useLocation } from 'react-router'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -9,7 +9,7 @@ import { KillSwitchButton } from '../kill-switch/KillSwitch'
 import { useKillSheets } from '../kill-switch/sheetStore'
 import { CommandPalette } from './CommandPalette'
 import { PaletteButton } from './PaletteDoors'
-import { entryHooks, matchRank, paletteModules, staticEntries } from './registry'
+import { entryHooks, matchRank, paletteModules, staticEntries, unpack } from './registry'
 import { usePaletteStore } from './store'
 import type { PaletteEntry } from './types'
 
@@ -25,6 +25,16 @@ const RUNNING = {
 
 let calls: { method: string; path: string }[] = []
 
+/* GET /api/instruments?q= (ATL-250): the server matches inst_id or base currency, case-insensitive. */
+const INSTRUMENTS = [
+  { inst_id: 'XAU-USDT-SWAP', inst_type: 'SWAP', asset_class: 'commodity', base_ccy: 'XAU', quote_ccy: 'USDT', settle_ccy: 'USDT', state: 'live', blocked: false },
+  { inst_id: 'XAUT-USDT-SWAP', inst_type: 'SWAP', asset_class: 'commodity', base_ccy: 'XAUT', quote_ccy: 'USDT', settle_ccy: 'USDT', state: 'preopen', blocked: false },
+  { inst_id: 'BTC-USDT-SWAP', inst_type: 'SWAP', asset_class: 'crypto', base_ccy: 'BTC', quote_ccy: 'USDT', settle_ccy: 'USDT', state: 'live', blocked: false },
+  { inst_id: 'BTC-USDT', inst_type: 'SPOT', asset_class: 'crypto', base_ccy: 'BTC', quote_ccy: 'USDT', settle_ccy: null, state: 'live', blocked: false },
+]
+let instrumentsFail = false
+const instrumentCalls = () => calls.filter((c) => c.path.startsWith('/api/instruments'))
+
 function fakeBackend() {
   calls = []
   vi.stubGlobal(
@@ -38,6 +48,11 @@ function fakeBackend() {
       if (path === '/sanctum/csrf-cookie') return reply(204)
       if (path === '/api/auth/me') return reply(200, { data: OWNER })
       if (path === '/api/system/health') return reply(200, { data: RUNNING })
+      if (path.startsWith('/api/instruments?')) {
+        if (instrumentsFail) return reply(500, { message: 'Server Error' })
+        const q = (new URLSearchParams(path.split('?')[1]).get('q') ?? '').toLowerCase()
+        return reply(200, { data: INSTRUMENTS.filter((i) => i.inst_id.toLowerCase().includes(q) || (i.base_ccy ?? '').toLowerCase().includes(q)) })
+      }
       if (path === '/api/cycles' && method === 'POST') return reply(202, { data: { requested: true } })
       if (path === '/api/portfolio/orders') return reply(200, { data: { env: 'demo', orders: [], algo_orders: [] } })
       if (path.startsWith('/api/portfolio/positions')) return reply(200, { data: { taken_at: RUNNING.as_of, items: [] } })
@@ -47,8 +62,13 @@ function fakeBackend() {
 }
 
 function Where() {
-  const { pathname } = useLocation()
-  return <p data-testid="where">{pathname}</p>
+  const { pathname, search } = useLocation()
+  return (
+    <>
+      <p data-testid="where">{pathname}</p>
+      <p data-testid="where-search">{search}</p>
+    </>
+  )
 }
 
 function renderShell(path = '/portfolio') {
@@ -85,6 +105,7 @@ beforeAll(() => {
 })
 
 beforeEach(async () => {
+  instrumentsFail = false
   resetCsrfForTests()
   fakeBackend()
   await i18n.changeLanguage('en')
@@ -167,8 +188,108 @@ describe('finding pages', () => {
     renderShell()
     await user.keyboard('{Meta>}k{/Meta}')
     await user.keyboard('zzqx')
-    expect(screen.getByText('No results for “zzqx”')).toBeInTheDocument()
+    // Once the instrument search has answered with nothing, one empty state for the whole palette.
+    expect(await screen.findByText('No results for “zzqx”')).toBeInTheDocument()
+    expect(screen.queryByTestId('palette-status-instruments')).not.toBeInTheDocument()
     expect(screen.queryAllByRole('option')).toHaveLength(0)
+  })
+})
+
+describe('instruments (ATL-250)', () => {
+  it('"xau" lists XAU-USDT-SWAP from the API under Instruments, with its asset class and state', async () => {
+    const user = userEvent.setup()
+    renderShell()
+    await user.keyboard('{Meta>}k{/Meta}')
+    await user.keyboard('xau')
+    expect(screen.getByTestId('palette-status-instruments')).toHaveTextContent('Searching instruments…')
+    const row = await screen.findByTestId('palette-item-inst.XAU-USDT-SWAP')
+    const group = row.closest('[cmdk-group]') as HTMLElement
+    expect(within(group).getByText('Instruments')).toBeInTheDocument()
+    expect(row).toHaveTextContent('XAU-USDT-SWAP')
+    expect(row).toHaveTextContent('Commodity perpetual')
+    expect(row).toHaveTextContent('Trading')
+    expect(screen.getByTestId('palette-item-inst.XAUT-USDT-SWAP')).toHaveTextContent('Pre-open')
+    expect(screen.queryByTestId('palette-item-inst.BTC-USDT-SWAP')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('palette-status-instruments')).not.toBeInTheDocument()
+    // Debounced: one request for the settled query, not one per key.
+    expect(instrumentCalls().map((c) => c.path)).toEqual(['/api/instruments?q=xau&limit=20&state=any&env=demo'])
+  })
+
+  it('Enter on an instrument opens the War Room with it picked for the inspector', async () => {
+    const user = userEvent.setup()
+    renderShell('/portfolio')
+    await user.keyboard('{Meta>}k{/Meta}')
+    await user.keyboard('xau')
+    await screen.findByTestId('palette-item-inst.XAU-USDT-SWAP')
+    // Nothing above it matches "xau", so the first instrument is selected.
+    expect(screen.getByRole('option', { selected: true })).toHaveAttribute('data-testid', 'palette-item-inst.XAU-USDT-SWAP')
+    await user.keyboard('{Enter}')
+    await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/warroom'))
+    expect(screen.getByTestId('where-search')).toHaveTextContent('?inst=XAU-USDT-SWAP')
+    expect(palette()).not.toBeInTheDocument()
+  })
+
+  it('one character sends no request', async () => {
+    const user = userEvent.setup()
+    renderShell()
+    await user.keyboard('{Meta>}k{/Meta}')
+    await user.keyboard('x')
+    await new Promise((r) => setTimeout(r, 300))
+    expect(instrumentCalls()).toHaveLength(0)
+    expect(screen.queryByTestId('palette-status-instruments')).not.toBeInTheDocument()
+  })
+
+  it('a query with no instruments shows the "No instruments match" row under the other results', async () => {
+    const user = userEvent.setup()
+    renderShell()
+    await user.keyboard('{Meta>}k{/Meta}')
+    await user.keyboard('risk')
+    await waitFor(() => expect(screen.getByTestId('palette-status-instruments')).toHaveAttribute('data-kind', 'none'))
+    expect(screen.getByTestId('palette-status-instruments')).toHaveTextContent('No instruments match.')
+    expect(screen.getByTestId('palette-item-page.settings.risk')).toBeInTheDocument()
+  })
+
+  it('a failed search says so and keeps pages and actions', async () => {
+    instrumentsFail = true
+    const user = userEvent.setup()
+    renderShell()
+    await user.keyboard('{Meta>}k{/Meta}')
+    await user.keyboard('zzqx')
+    await waitFor(() => expect(screen.getByTestId('palette-status-instruments')).toHaveAttribute('data-kind', 'error'))
+    expect(screen.getByTestId('palette-status-instruments')).toHaveTextContent('Couldn’t search instruments. Pages and actions still work.')
+    expect(screen.queryByText('No results for “zzqx”')).not.toBeInTheDocument()
+  })
+
+  it('a newer query replaces the older one and aborts its request', async () => {
+    const user = userEvent.setup()
+    const signals: AbortSignal[] = []
+    const base = vi.mocked(fetch).getMockImplementation()!
+    vi.mocked(fetch).mockImplementation(async (input, init = {}) => {
+      if (String(input).includes('/api/instruments?q=xa&')) {
+        signals.push(init.signal!)
+        return new Promise<Response>(() => {})
+      }
+      return base(input, init)
+    })
+    renderShell()
+    await user.keyboard('{Meta>}k{/Meta}')
+    await user.keyboard('xa')
+    await waitFor(() => expect(signals).toHaveLength(1))
+    await user.keyboard('u')
+    await screen.findByTestId('palette-item-inst.XAU-USDT-SWAP')
+    await waitFor(() => expect(signals[0]!.aborted).toBe(true))
+  })
+
+  it('draws the Arabic rows in Arabic', async () => {
+    await act(() => i18n.changeLanguage('ar'))
+    const user = userEvent.setup()
+    renderShell()
+    await user.keyboard('{Meta>}k{/Meta}')
+    await user.keyboard('btc')
+    const spot = await screen.findByTestId('palette-item-inst.BTC-USDT')
+    expect(spot).toHaveTextContent('عملة مشفّرة فورية')
+    expect(screen.getByTestId('palette-item-inst.BTC-USDT-SWAP')).toHaveTextContent('عقد عملة مشفّرة دائم')
+    expect(screen.getByText('الأدوات')).toBeInTheDocument()
   })
 })
 
@@ -211,7 +332,7 @@ describe('every palette.ts entry', () => {
     const client = new QueryClient()
     client.setQueryData(['system', 'health'], { data: health })
     const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>
-    const { result } = renderHook(() => entryHooks.flatMap((provide) => provide('')), { wrapper })
+    const { result } = renderHook(() => entryHooks.flatMap((provide) => unpack(provide('')).entries), { wrapper })
     return result.current
   }
 

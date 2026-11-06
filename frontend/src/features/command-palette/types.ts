@@ -35,14 +35,36 @@ export interface PaletteEntry {
   to?: string
   /** … or run this. The palette is closed before it runs. */
   run?: () => void | Promise<void>
+  /**
+   * An instrument row (ATL-250): drawn with its asset-class tile, inst_id and OKX state. It was
+   * matched by the server, so it is listed in the order it came and not ranked by its label.
+   */
+  instrument?: PaletteInstrument
 }
+
+export interface PaletteInstrument {
+  instId: string
+  /** `command-palette:inst.class.<key>`: crypto, spot, stock, etf, index, commodity, other. */
+  classKey: 'crypto' | 'spot' | 'stock' | 'etf' | 'index' | 'commodity' | 'other'
+  /** OKX's state: live, suspend, preopen, test, … */
+  state: string
+}
+
+/** A status row at the end of a group (ATL-250): a search in flight, nothing found, or a failure. */
+export interface PaletteStatus {
+  group: PaletteGroup
+  kind: 'searching' | 'none' | 'error'
+}
+
+/** What a `useEntries` hook returns: entries alone, or entries with a status row. */
+export type PaletteProvided = PaletteEntry[] | { entries: PaletteEntry[]; status?: PaletteStatus | null }
 
 /**
  * What a palette.ts default-exports. `entries` are fixed; `useEntries` is a React hook called on
  * every render of the open palette with the current query, for entries that depend on live state
- * (trading paused or not) or on a search (ATL-250's instruments).
+ * (trading paused or not) or on a search (ATL-250's instruments, which also returns a status row).
  */
 export interface PaletteModule {
   entries?: PaletteEntry[]
-  useEntries?: (query: string) => PaletteEntry[]
+  useEntries?: (query: string) => PaletteProvided
 }

@@ -30,6 +30,7 @@ class InstrumentResource extends JsonResource
             'base_ccy' => $data['base_ccy'],
             'quote_ccy' => $data['quote_ccy'],
             'settle_ccy' => $data['settle_ccy'],
+            'state' => $data['state'],
             'blocked' => (bool) $data['blocked'],
         ];
     }

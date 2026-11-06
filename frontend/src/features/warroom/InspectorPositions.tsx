@@ -74,13 +74,22 @@ function PositionSkeleton() {
   )
 }
 
-export function InspectorPositions({ env, thread }: { env: TradingEnv; thread: WarroomThread | undefined }) {
+export function InspectorPositions({
+  env,
+  thread,
+  focus,
+}: {
+  env: TradingEnv
+  thread: WarroomThread | undefined
+  /** An instrument picked with ⌘K (ATL-250): its position goes first, over the thread's own. */
+  focus?: string | null
+}) {
   const { t } = useTranslation('warroom')
   const lang = useLang()
   const query = usePositions(env)
 
   const all = query.data?.data.items ?? []
-  const here = thread?.kind === 'instrument' ? thread.key : null
+  const here = focus ?? (thread?.kind === 'instrument' ? thread.key : null)
   const list = here ? [...all.filter((p) => p.inst_id === here), ...all.filter((p) => p.inst_id !== here)] : all
 
   let body: ReactNode

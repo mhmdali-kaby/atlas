@@ -1,4 +1,4 @@
-import { ChartCandlestick, Lock, UsersRound } from 'lucide-react'
+import { ChartCandlestick, Lock, Search, UsersRound, X } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { TradingEnv } from '../../app/shell/tradingEnv'
 import { Skeleton } from '../../ui'
@@ -22,6 +22,8 @@ export function Inspector({
   threadName,
   lastMessageAt,
   loading,
+  picked = null,
+  onClearPick,
 }: {
   env: TradingEnv
   thread: WarroomThread | undefined
@@ -29,6 +31,9 @@ export function Inspector({
   /** The newest loaded message's time, so the facts agree with the feed; null when empty. */
   lastMessageAt: string | null
   loading: boolean
+  /** An instrument chosen with ⌘K (ATL-250, `?inst=`): shown over the thread's own context until cleared. */
+  picked?: string | null
+  onClearPick?: () => void
 }) {
   const { t } = useTranslation('warroom')
   const lang = useLang()
@@ -42,8 +47,44 @@ export function Inspector({
 
   let head = null
   let body = null
-  if (thread?.kind === 'instrument') {
+  const chartEmpty = (instId: string) => {
     const [before, after] = around(t('chartEmpty.bodyBefore') + ' \u0000 ' + t('chartEmpty.bodyAfter'))
+    return (
+      <section className="insp-sec" aria-labelledby="wr-insp-chart">
+        <h3 className="insp-title" id="wr-insp-chart">
+          <span>{t('chart')}</span>
+        </h3>
+        <div className="insp-empty" data-testid="wr-chart-empty">
+          <ChartCandlestick aria-hidden="true" strokeWidth={1.5} />
+          <p className="insp-empty-title">{t('chartEmpty.title')}</p>
+          <p>
+            {before}
+            <InstrumentId id={instId} />
+            {after}
+          </p>
+        </div>
+      </section>
+    )
+  }
+  if (picked) {
+    head = (
+      <>
+        <div className="insp-pick">
+          <h2 className="text-title-3 insp-name" data-testid="wr-inspector-picked">
+            <InstrumentId id={picked} />
+          </h2>
+          <button type="button" className="insp-clear" aria-label={t('inspClear')} title={t('inspClear')} onClick={onClearPick} data-testid="wr-inspector-clear">
+            <X aria-hidden="true" strokeWidth={1.75} />
+          </button>
+        </div>
+        <p className="insp-kind">
+          <Search aria-hidden="true" strokeWidth={1.5} />
+          <span>{t('inspPicked')}</span>
+        </p>
+      </>
+    )
+    body = chartEmpty(picked)
+  } else if (thread?.kind === 'instrument') {
     head = (
       <>
         <h2 className="text-title-3 insp-name">
@@ -55,22 +96,7 @@ export function Inspector({
         </p>
       </>
     )
-    body = (
-      <section className="insp-sec" aria-labelledby="wr-insp-chart">
-        <h3 className="insp-title" id="wr-insp-chart">
-          <span>{t('chart')}</span>
-        </h3>
-        <div className="insp-empty" data-testid="wr-chart-empty">
-          <ChartCandlestick aria-hidden="true" strokeWidth={1.5} />
-          <p className="insp-empty-title">{t('chartEmpty.title')}</p>
-          <p>
-            {before}
-            <InstrumentId id={thread.key} />
-            {after}
-          </p>
-        </div>
-      </section>
-    )
+    body = chartEmpty(thread.key)
   } else if (thread?.kind === 'agent' && agentBySlug(thread.key)) {
     const agent = agentBySlug(thread.key)!
     const status = agentStatus(agent.slug)
@@ -124,7 +150,7 @@ export function Inspector({
     <aside className="inspector" id="wr-inspector" aria-label={t('inspector')} data-testid="wr-inspector">
       <header className="insp-head">{head}</header>
       {body}
-      <InspectorPositions env={env} thread={thread} />
+      <InspectorPositions env={env} thread={thread} focus={picked} />
       <section className="insp-sec" aria-labelledby="wr-insp-facts">
         <h3 className="insp-title" id="wr-insp-facts">
           <span>{t('facts')}</span>

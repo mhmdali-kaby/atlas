@@ -143,3 +143,46 @@ it('rejects an unauthenticated request', function (): void {
 
     $this->getJson('/api/instruments?q=sol')->assertUnauthorized();
 });
+
+it('ATL-250: q=xau returns only the active env\'s instruments whose inst_id or base contains it, case-insensitive', function (): void {
+    DB::table('system_state')->updateOrInsert(['id' => 1], ['active_env' => 'live']);
+    atl119Instrument(['env' => 'live', 'inst_id' => 'XAU-USDT-SWAP', 'base_ccy' => 'XAU', 'asset_class' => 'commodity']);
+    atl119Instrument(['env' => 'live', 'inst_id' => 'XAUT-USDT-SWAP', 'base_ccy' => 'XAUT', 'asset_class' => 'commodity']);
+    // base contains "xau" but does not start with it.
+    atl119Instrument(['env' => 'live', 'inst_id' => 'PXAUX-USDT-SWAP', 'base_ccy' => 'pXAUx', 'asset_class' => 'other']);
+    atl119Instrument(['env' => 'live', 'inst_id' => 'XAG-USDT-SWAP', 'base_ccy' => 'XAG', 'asset_class' => 'commodity']);
+    // the other env's gold is not listed.
+    atl119Instrument(['env' => 'demo', 'inst_id' => 'XAU-USDT-SWAP', 'base_ccy' => 'XAU', 'asset_class' => 'commodity']);
+
+    $res = $this->getJson('/api/instruments?q=xau')->assertOk();
+
+    expect(array_column($res->json('data'), 'inst_id'))->toBe(['XAU-USDT-SWAP', 'XAUT-USDT-SWAP', 'PXAUX-USDT-SWAP'])
+        ->and($res->json('data.0.state'))->toBe('live')
+        ->and($res->json('data.0.asset_class'))->toBe('commodity');
+
+    $upper = $this->getJson('/api/instruments?q=XaU')->assertOk();
+    expect(array_column($upper->json('data'), 'inst_id'))->toBe(['XAU-USDT-SWAP', 'XAUT-USDT-SWAP', 'PXAUX-USDT-SWAP']);
+});
+
+it('ATL-250: returns at most 20 contains-matches', function (): void {
+    for ($i = 0; $i < 25; $i++) {
+        atl119Instrument(['inst_id' => sprintf('A%02dXAU-USDT-SWAP', $i), 'base_ccy' => sprintf('A%02dXAU', $i)]);
+    }
+
+    expect($this->getJson('/api/instruments?q=xau')->assertOk()->json('data'))->toHaveCount(20);
+});
+
+it('ATL-250: state=any includes suspended and pre-open instruments with their state', function (): void {
+    atl119Instrument(['inst_id' => 'XAU-USDT-SWAP', 'base_ccy' => 'XAU', 'state' => 'live']);
+    atl119Instrument(['inst_id' => 'XAUT-USDT-SWAP', 'base_ccy' => 'XAUT', 'state' => 'preopen']);
+    atl119Instrument(['inst_id' => 'XAUX-USDT-SWAP', 'base_ccy' => 'XAUX', 'state' => 'suspend']);
+
+    expect(array_column($this->getJson('/api/instruments?q=xau')->json('data'), 'inst_id'))->toBe(['XAU-USDT-SWAP']);
+
+    $res = $this->getJson('/api/instruments?q=xau&state=any')->assertOk();
+    expect(array_column($res->json('data'), 'state', 'inst_id'))->toBe([
+        'XAU-USDT-SWAP' => 'live', 'XAUT-USDT-SWAP' => 'preopen', 'XAUX-USDT-SWAP' => 'suspend',
+    ]);
+
+    $this->getJson('/api/instruments?q=xau&state=open')->assertUnprocessable()->assertJsonValidationErrors('state');
+});

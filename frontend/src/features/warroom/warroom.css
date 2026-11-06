@@ -125,6 +125,14 @@
 .insp-name { overflow-wrap: anywhere; }
 .insp-kind { display: flex; align-items: center; gap: 6px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
 .insp-kind svg { width: 14px; height: 14px; }
+.insp-pick { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.insp-clear {
+  flex: none; display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 8px;
+  color: var(--label-secondary); background: transparent;
+}
+.insp-clear:hover { background: var(--fill-4); color: var(--label); }
+.insp-clear:focus-visible { outline: none; box-shadow: var(--shadow-focus); }
+.insp-clear svg { width: 15px; height: 15px; }
 .insp-sec { padding: 14px 18px; border-top: 0.5px solid var(--separator); display: grid; gap: 10px; }
 .insp-title { font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 600; color: var(--label-secondary); display: flex; justify-content: space-between; align-items: baseline; }
 .insp-facts { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); }
