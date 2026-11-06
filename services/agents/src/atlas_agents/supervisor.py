@@ -27,7 +27,8 @@ Runs of one agent never overlap: each agent has its own lock.
 
 The owner's agent settings (ATL-114) are applied by :mod:`atlas_agents.settings_applier`, on
 ``system.settings_changed`` (:meth:`Supervisor.consume_system`) and re-checked before every
-mention, tick and run.
+mention, tick and run. That includes a pinned prompt version (ATL-252): the agent runs on the stored
+body instead of its files.
 """
 
 from __future__ import annotations
@@ -216,7 +217,10 @@ class Supervisor:
             clock=self._clock,
         )
         self._locks = self._applier.locks
-        self._applier.start(self._build)
+        # A pin change (ATL-252) hands a live session a new prompt hook built like build()'s.
+        self._applier.start(
+            self._build, lambda slug, source: prompts.renderer(self.tool_context(slug), source)
+        )
 
     @property
     def replaying(self) -> bool:
