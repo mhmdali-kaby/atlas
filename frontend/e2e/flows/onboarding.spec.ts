@@ -3,8 +3,8 @@ import { API_URL, SHOTS, SPA_URL } from '../support/stack'
 
 /**
  * Brief §19 onboarding flow on the real stack (ATL-25): a new owner walks Welcome → Connect (a
- * fixture key, tested through Laravel → trading_core → recorded OKX JSON) → Risk Conservative →
- * Autonomy 2 and lands on Portfolio. The key below is made up; fixture mode never calls OKX.
+ * fixture key, tested through Laravel → trading_core → recorded OKX JSON) → Data sources (Skip) →
+ * Risk Conservative → Autonomy 2 → Market history and lands on Portfolio. The key below is made up; fixture mode never calls OKX.
  */
 const FIXTURE_KEY = { key: 'e2e00000-0000-4000-8000-00000000f1x7', secret: 'E2E-FIXTURE-SECRET', pass: 'e2e-fixture-pass' }
 
@@ -52,8 +52,14 @@ test('a new owner goes from Welcome to Portfolio through Connect, Risk and Auton
   expect(connections[0].last_verified_at).not.toBeNull()
   expect(connections[0].permissions).toEqual(expect.arrayContaining(['read_only', 'trade', 'withdraw']))
 
-  // Risk: Balanced is preselected; choose Conservative.
+  // Data sources (ATL-233): optional; Skip saves no key.
   await page.getByTestId('ob-next').click()
+  await expect(page).toHaveURL(/step=sources$/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Choose where news comes from')
+  await expect(page.getByTestId('sources-summary')).toBeVisible()
+  await page.getByTestId('ob-skip').click()
+
+  // Risk: Balanced is preselected; choose Conservative.
   await expect(page).toHaveURL(/step=risk$/)
   const profiles = page.getByRole('radiogroup', { name: 'Risk profile' })
   await expect(profiles.getByRole('radio', { name: 'Balanced' })).toHaveAttribute('aria-checked', 'true')
@@ -65,6 +71,12 @@ test('a new owner goes from Welcome to Portfolio through Connect, Risk and Auton
   await expect(page).toHaveURL(/step=autonomy$/)
   const levels = page.getByRole('radiogroup', { name: 'Autonomy' })
   await expect(levels.getByRole('radio', { checked: true })).toHaveAttribute('data-value', '2')
+  await page.getByTestId('ob-next').click()
+
+  // Market history (ATL-233): the real backfill summary; Finish never waits for it.
+  await expect(page).toHaveURL(/step=backfill$/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Atlas is collecting market history')
+  await expect(page.getByTestId('ob-next')).toBeEnabled()
   await page.getByTestId('ob-next').click()
 
   await expect(page).toHaveURL(/\/portfolio$/)

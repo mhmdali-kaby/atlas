@@ -55,7 +55,7 @@ function mockSystemDark(initial: boolean) {
 }
 
 function fakeBackend() {
-  const state = { signedIn: true }
+  const state = { signedIn: true, prefs: { name: 'Mohammed Ali', locale: 'en', timezone: 'Europe/London', theme: 'system' } as Record<string, string> }
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
@@ -66,6 +66,12 @@ function fakeBackend() {
       if (path === '/sanctum/csrf-cookie') return reply(204)
       if (path === '/api/auth/status') return reply(200, { owner_exists: true })
       if (path === '/api/auth/me') return state.signedIn ? reply(200, { data: OWNER }) : reply(401, { message: 'Unauthenticated.' })
+      // ATL-227: the toolbar's language and appearance save through the owner's preferences.
+      if (path === '/api/me/preferences' && method === 'GET') return reply(200, { data: state.prefs })
+      if (path === '/api/me/preferences' && method === 'PATCH') {
+        state.prefs = { ...state.prefs, ...(JSON.parse(String(init.body)) as Record<string, string>) }
+        return reply(200, { data: state.prefs })
+      }
       if (path === '/api/auth/logout' && method === 'POST') {
         state.signedIn = false
         return reply(204)
@@ -127,6 +133,30 @@ describe('risk footer', () => {
     expect(screen.getByRole('contentinfo')).toHaveTextContent('Automated trading can lose money. Demo/Live: Demo')
     await act(() => i18n.changeLanguage('ar'))
     expect(screen.getByRole('contentinfo')).toHaveTextContent('قد يؤدي التداول الآلي إلى خسارة المال. تجريبي/حقيقي: تجريبي')
+  })
+
+  it.each(['en', 'ar'] as const)('in live reads Live in the live capsule and lights the live wire (%s)', async (lang) => {
+    await i18n.changeLanguage(lang)
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({ data: { active_env: 'live', live_started_at: null, first_month_ends_at: null, in_first_live_month: false, switched_at: null, confirmation_text: 'TRADE LIVE', preflight: { ok: true, items: [] } } }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      ),
+    )
+    const { unmount } = render(
+      <QueryClientProvider client={new QueryClient()}>
+        <RiskFooter />
+      </QueryClientProvider>,
+    )
+    const word = lang === 'en' ? 'Live' : 'حقيقي'
+    await waitFor(() => expect(screen.getByTestId('footer-env')).toHaveTextContent(word))
+    expect(screen.getByTestId('footer-env')).toHaveClass('shell-footer-live')
+    expect(document.documentElement).toHaveClass('is-live')
+    unmount()
+    expect(document.documentElement).not.toHaveClass('is-live')
   })
 
   it('is on the login page and on every shell page', async () => {

@@ -1,6 +1,8 @@
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, type ApiError } from '../../lib/api'
+import { getEcho } from '../../lib/echo'
 
 /**
  * The environment Atlas trades in (decision 255 (4)): `system_state.active_env`, served by
@@ -65,4 +67,26 @@ export function useEnvironment() {
 export function useTradingEnv(): TradingEnv {
   const { data } = useEnvironment()
   return data?.data.active_env === 'live' ? 'live' : 'demo'
+}
+
+/**
+ * `system.env_changed` on private-system (ATL-236): a switch made in another tab or by another
+ * session. Refetch the environment and every other query, so the badge, the footer and every
+ * page follow with no reload (the same thing the Environment page does after its own switch).
+ */
+export function useEnvChangedListener() {
+  const qc = useQueryClient()
+  useEffect(() => {
+    let channel: ReturnType<ReturnType<typeof getEcho>['private']>
+    try {
+      channel = getEcho().private('system')
+    } catch {
+      return undefined
+    }
+    const refresh = () => void qc.invalidateQueries()
+    channel.listen('.system.env_changed', refresh)
+    return () => {
+      channel.stopListening('.system.env_changed', refresh)
+    }
+  }, [qc])
 }

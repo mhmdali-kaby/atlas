@@ -9,6 +9,9 @@ import { API_URL, resetCsrfForTests } from '../../lib/api'
 import type { Connection, ConnectionTestResponse } from './connections'
 import { useToasts } from '../../ui'
 import type { RiskLimits, SettingsDoc } from './settings'
+import { report, source } from '../settings-data-sources/testFixtures'
+import type { SourcesReport } from '../settings-data-sources/model'
+import type { BackfillReport } from '../settings-data/api'
 
 const OWNER = { id: '01a18376-1d35-70c2-ad01-6d1d2cd870ad', name: 'Mohammed Ali', email: 'owner@atlas.test', locale: 'en', theme: 'system' }
 const ID = 'a0c7c3a2-6f4e-4f0b-9a7f-0d6b8c1e2f30'
@@ -56,14 +59,71 @@ function settingsDoc(version = 1, over: Partial<SettingsDoc['settings']> = {}): 
   }
 }
 
+/** GET /api/data-sources: two free feeds, CryptoPanic and the three Finnhub sources, none keyed. */
+function sourcesReport(): SourcesReport {
+  const now = Date.now()
+  const keyed = { requires_key: true, status: 'needs_key' as const, last_success_at: null, last_item_at: null, hourly_24h: Array(24).fill(0) }
+  return report([
+    source('okx.announcements', 'exchange', now, { provider: 'okx', name: 'OKX announcements' }),
+    source('rss.coindesk', 'crypto_news', now, { name: 'CoinDesk' }),
+    source('cryptopanic', 'crypto_news', now, { provider: 'cryptopanic', name: 'CryptoPanic', ...keyed }),
+    source('finnhub.news', 'markets_news', now, { provider: 'finnhub', name: 'Finnhub news', ...keyed }),
+    source('finnhub.calendar', 'calendar', now, { provider: 'finnhub', name: 'Finnhub economic calendar', poll_seconds: 900, ...keyed }),
+    source('forexfactory.calendar', 'calendar', now, { provider: 'forexfactory', name: 'ForexFactory weekly calendar', poll_seconds: 900 }),
+    source('finnhub.earnings', 'earnings', now, { provider: 'finnhub', name: 'Finnhub earnings', poll_seconds: 3600, ...keyed }),
+  ])
+}
+
+/** GET /api/data/backfill: `total` crypto perps with one 1D candle job each, the first `done` of them finished. */
+function backfillReport(done: number, total: number): BackfillReport {
+  const at = new Date().toISOString()
+  return {
+    env: 'demo',
+    as_of: at,
+    instruments: Array.from({ length: total }, (_, i) => ({
+      inst_id: `C${i}-USDT-SWAP`,
+      asset_class: 'crypto' as const,
+      open_issues: 0,
+      datasets: [
+        {
+          dataset: 'candles:1D',
+          status: i < done ? ('done' as const) : ('pending' as const),
+          depth_days: null,
+          target_from: null,
+          cursor_ts: null,
+          rows_written: i < done ? 100 : 0,
+          expected: 100,
+          percent: i < done ? '100.0' : '0.0',
+          last_error: null,
+          updated_at: at,
+        },
+      ],
+    })),
+    totals: {
+      instruments: total,
+      jobs: total,
+      by_status: { pending: total - done, running: 0, done, failed: 0, paused: 0 },
+      rows_written: done * 100,
+      percent: ((done / total) * 100).toFixed(1),
+    },
+    quality: { open: 0, open_by_kind: { gap: 0, duplicate: 0, zero_volume: 0, outlier: 0 } },
+    quality_issues: [],
+  }
+}
+
 const VERIFIED = { last_verified_at: '2026-10-28T08:00:00Z', permissions: ['read_only', 'trade'], account_mode: 'futures', position_mode: 'net_mode', uid_last4: '6123' }
 
 /**
  * A fake Laravel API: auth, /api/connections CRUD, the test endpoint and GET/PATCH /api/settings
  * (version check, preset rules for risk_profile). Records every exchange.
  */
-function fakeBackend(opts: { mode?: TestMode; stored?: Connection | null; settings?: SettingsDoc; conflicts?: number; settingsDown?: boolean } = {}) {
+function fakeBackend(
+  opts: { mode?: TestMode; stored?: Connection | null; settings?: SettingsDoc; conflicts?: number; settingsDown?: boolean; keyRefused?: boolean } = {},
+) {
   const state = {
+    sources: sourcesReport(),
+    backfill: backfillReport(0, 4),
+    keyRefused: opts.keyRefused ?? false,
     mode: opts.mode ?? 'ok',
     stored: opts.stored ?? null,
     settings: opts.settings ?? settingsDoc(),
@@ -107,6 +167,26 @@ function fakeBackend(opts: { mode?: TestMode; stored?: Connection | null; settin
         state.settings = { ...state.settings, version: state.settings.version + (changed ? 1 : 0), settings: next }
         return reply(200, { data: state.settings })
       }
+      if (path === '/api/data-sources' && method === 'GET') return reply(200, state.sources)
+      const keyPut = /^\/api\/data-sources\/([^/]+)\/key$/.exec(path)
+      if (keyPut && method === 'PUT') {
+        if (state.keyRefused) return reply(422, { message: 'Finnhub refused the key.', errors: { api_key: ['Finnhub refused the key.'] } })
+        const target = state.sources.data.find((x) => x.key === decodeURIComponent(keyPut[1]!))!
+        const last4 = String((body as { api_key?: string } | null)?.api_key ?? '').slice(-4)
+        state.sources = report(
+          state.sources.data.map((x) =>
+            x.requires_key && x.provider === target.provider ? { ...x, has_key: true, key_last4: last4, status: 'ok' as const } : x,
+          ),
+        )
+        return reply(200, { data: state.sources.data.find((x) => x.key === target.key) })
+      }
+      const toggle = /^\/api\/data-sources\/([^/]+)$/.exec(path)
+      if (toggle && method === 'PATCH') {
+        const key = decodeURIComponent(toggle[1]!)
+        state.sources = report(state.sources.data.map((x) => (x.key === key ? { ...x, enabled: Boolean((body as { enabled?: boolean } | null)?.enabled) } : x)))
+        return reply(200, { data: state.sources.data.find((x) => x.key === key) })
+      }
+      if (path === '/api/data/backfill?env=demo') return reply(200, { data: state.backfill })
       if (path === '/api/connections' && method === 'GET') return reply(200, { data: state.stored ? [state.stored] : [] })
       if (path === '/api/connections' && method === 'POST') {
         state.stored = connectionRow({ label: body?.label ?? 'OKX demo', api_key_last4: (body?.api_key ?? '').slice(-4) })
@@ -172,7 +252,7 @@ afterEach(async () => {
 })
 
 describe('onboarding', () => {
-  it('sends a signed-in owner with no verified demo connection from / to Welcome, with a 4-step stepper', async () => {
+  it('sends a signed-in owner with no verified demo connection from / to Welcome, with a 6-step stepper', async () => {
     fakeBackend()
     const user = userEvent.setup()
     const { router } = renderApp('/')
@@ -180,8 +260,16 @@ describe('onboarding', () => {
     expect(router.state.location.pathname).toBe('/onboarding')
 
     const stepper = screen.getByRole('navigation', { name: 'Setup steps' })
-    expect(within(stepper).getAllByRole('listitem')).toHaveLength(4)
-    expect(within(stepper).getByText('Welcome').closest('[aria-current="step"]')).not.toBeNull()
+    expect(within(stepper).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      '1Welcome',
+      '2Connect OKX',
+      '3Data sources',
+      '4Risk profile',
+      '5Autonomy',
+      '6Market history',
+    ])
+    expect(screen.getByTestId('ob-step-of')).toHaveTextContent('Step 1 of 6')
+    expect(within(stepper.querySelector('ol')!).getByText('Welcome').closest('[aria-current="step"]')).not.toBeNull()
     expect(screen.getByText(/Automated trading can lose money\. Start on demo/)).toBeInTheDocument()
     expect(screen.getByRole('contentinfo')).toHaveTextContent('Demo/Live: Demo')
     expect(screen.queryByRole('button', { name: 'Back' })).toBeNull()
@@ -191,16 +279,22 @@ describe('onboarding', () => {
     expect(router.state.location.search).toBe('?step=connect')
     await waitFor(() => expect(title).toHaveFocus())
     expect(continueButton()).toBeDisabled()
+    expect(screen.getByTestId('ob-step-of')).toHaveTextContent('Step 2 of 6')
   })
 
-  it('lands a verified, onboarded owner on the first sidebar page, not on onboarding', async () => {
+  it('opens an owner who already finished onboarding at the War Room, never at the new steps', async () => {
     fakeBackend({ stored: connectionRow(VERIFIED), settings: settingsDoc(3, { onboarding_completed: 1 }) })
-    const { router } = renderApp('/')
-    // Phase 0 has no sidebar page in this checkout yet, so "/" shows the shell's fallback.
-    await waitFor(() => expect(screen.queryByRole('status', { name: 'Checking your OKX connection…' })).toBeNull())
-    await act(() => new Promise((r) => setTimeout(r, 50)))
-    expect(router.state.location.pathname).not.toBe('/onboarding')
+    const { router, view } = renderApp('/')
+    await waitFor(() => expect(router.state.location.pathname).toBe('/warroom'))
     expect(screen.queryByRole('heading', { name: 'Welcome to Atlas' })).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'Choose where news comes from' })).toBeNull()
+    view.unmount()
+    // A bookmarked new step does not reopen the wizard either.
+    for (const step of ['sources', 'backfill']) {
+      const again = renderApp(`/onboarding?step=${step}`)
+      await waitFor(() => expect(again.router.state.location.pathname).not.toBe('/onboarding'))
+      again.view.unmount()
+    }
   })
 
   it('saves and tests the key, shows the account details, unlocks Continue, and never echoes a secret', async () => {
@@ -356,7 +450,7 @@ describe('onboarding', () => {
     const user = userEvent.setup()
     renderApp('/onboarding?step=connect')
     await screen.findByRole('heading', { level: 1, name: 'Connect your OKX demo account' })
-    const done = within(screen.getByRole('navigation', { name: 'Setup steps' })).getByText('Welcome').closest('button')
+    const done = within(screen.getByRole('navigation', { name: 'Setup steps' }).querySelector('ol')!).getByText('Welcome').closest('button')
     expect(done).toHaveTextContent('Done: Welcome')
     await user.click(done as HTMLButtonElement)
     expect(await screen.findByRole('heading', { level: 1, name: 'Welcome to Atlas' })).toBeInTheDocument()
@@ -453,11 +547,15 @@ describe('onboarding steps 3–4 (ATL-19)', () => {
     await screen.findByRole('radiogroup', { name: 'Risk profile' })
     await user.click(continueButton())
     await screen.findByRole('radiogroup', { name: 'Autonomy' })
+    expect(continueButton()).toHaveTextContent('Continue')
+    await user.click(continueButton())
+    await screen.findByRole('heading', { level: 1, name: 'Atlas is collecting market history' })
+    expect(patches(backend).at(-1)?.body).toEqual({ env: 'demo', version: 1, changes: { autonomy_level: 2 } })
     expect(continueButton()).toHaveTextContent('Finish setup')
     await user.click(continueButton())
 
     await waitFor(() => expect(first.router.state.location.pathname).toBe('/portfolio'))
-    expect(patches(backend).at(-1)?.body).toEqual({ env: 'demo', version: 1, changes: { autonomy_level: 2, onboarding_completed: 1 } })
+    expect(patches(backend).at(-1)?.body).toEqual({ env: 'demo', version: 1, changes: { onboarding_completed: 1 } })
     expect(backend.settings.version).toBe(2)
     first.view.unmount()
 
@@ -473,6 +571,10 @@ describe('onboarding steps 3–4 (ATL-19)', () => {
     const user = userEvent.setup()
     const { router } = renderApp('/onboarding?step=autonomy')
     await user.click(await screen.findByRole('radio', { name: 'Advise only' }))
+    await user.click(continueButton())
+    await screen.findByRole('heading', { level: 1, name: 'Atlas is collecting market history' })
+    expect(backend.settings.settings.autonomy_level).toBe(1)
+    expect(backend.settings.settings.onboarding_completed).toBe(0)
     await user.click(continueButton())
     await waitFor(() => expect(router.state.location.pathname).toBe('/portfolio'))
     expect(backend.settings.settings.autonomy_level).toBe(1)
@@ -552,6 +654,174 @@ describe('onboarding steps 3–4 (ATL-19)', () => {
     await user.click(continueButton())
     expect(await screen.findByRole('heading', { level: 1, name: 'اختر مقدار ما يفعله أطلس بنفسه' })).toBeInTheDocument()
     expect(radio('الاستقلالية', 'تلقائي بالكامل')).toHaveAccessibleDescription(/متاح في مرحلة لاحقة/)
+    expect(continueButton()).toHaveTextContent('متابعة')
+    await user.click(continueButton())
+    expect(await screen.findByRole('heading', { level: 1, name: 'يجمع أطلس سجل السوق' })).toBeInTheDocument()
+    expect(screen.getByTestId('ob-step-of')).toHaveTextContent('الخطوة 6 من 6')
     expect(continueButton()).toHaveTextContent('إنهاء الإعداد')
+  })
+})
+
+describe('Data sources and Market history steps (ATL-233)', () => {
+  const keyPuts = (backend: ReturnType<typeof fakeBackend>) => backend.requests.filter((r) => r.method === 'PUT' && r.path.endsWith('/key'))
+  const FINNHUB_KEY = 'fh-test-key-0000-9XyZ'
+
+  it('follows Connect with Data sources, step 3 of 6', async () => {
+    fakeBackend()
+    const user = userEvent.setup()
+    const { router } = renderApp('/onboarding?step=connect')
+    await fillAndTest(user)
+    await screen.findByTestId('test-success')
+    await user.click(continueButton())
+    expect(await screen.findByRole('heading', { level: 1, name: 'Choose where news comes from' })).toBeInTheDocument()
+    expect(router.state.location.search).toBe('?step=sources')
+    expect(screen.getByTestId('ob-step-of')).toHaveTextContent('Step 3 of 6')
+    const stepper = screen.getByRole('navigation', { name: 'Setup steps' })
+    expect(within(stepper.querySelector('ol')!).getByText('Data sources').closest('[aria-current="step"]')).not.toBeNull()
+  })
+
+  it('lists every source with its status and the keys it needs', async () => {
+    fakeBackend({ stored: connectionRow(VERIFIED) })
+    renderApp('/onboarding?step=sources')
+    const summary = await screen.findByTestId('sources-summary')
+    expect(summary).toHaveTextContent('3 of 7 sources work without a key')
+    expect(summary).toHaveTextContent('CryptoPanic and Finnhub need a free key.')
+    expect(screen.getByRole('switch', { name: 'CoinDesk' })).toBeChecked()
+    expect(screen.getAllByText('Works without a key')).toHaveLength(3)
+    expect(screen.getAllByText('Needs a Finnhub key')).toHaveLength(3)
+    expect(screen.getByText('Needs a CryptoPanic key')).toBeInTheDocument()
+    expect(screen.getByLabelText('Finnhub key')).toHaveAttribute('type', 'password')
+    expect(screen.getByLabelText('CryptoPanic key')).toHaveValue('')
+    expect(screen.getByText('Used by 3 sources')).toBeInTheDocument()
+    expect(continueButton()).toBeEnabled()
+  })
+
+  it('Skip moves on to the risk step with no key saved, even with a key typed', async () => {
+    const backend = fakeBackend({ stored: connectionRow(VERIFIED) })
+    const user = userEvent.setup()
+    const { router } = renderApp('/onboarding?step=sources')
+    await user.type(await screen.findByLabelText('Finnhub key'), FINNHUB_KEY)
+    await user.click(screen.getByRole('button', { name: 'Skip' }))
+    expect(await screen.findByRole('heading', { level: 1, name: 'Choose a risk profile' })).toBeInTheDocument()
+    expect(router.state.location.search).toBe('?step=risk')
+    expect(keyPuts(backend)).toHaveLength(0)
+    expect(backend.sources.data.some((x) => x.has_key)).toBe(false)
+  })
+
+  it('saves a Finnhub key on Continue and then shows only its last 4 characters', async () => {
+    const backend = fakeBackend({ stored: connectionRow(VERIFIED) })
+    const user = userEvent.setup()
+    const { router } = renderApp('/onboarding?step=sources')
+    await user.type(await screen.findByLabelText('Finnhub key'), FINNHUB_KEY)
+    // The count follows what is typed, before anything is saved.
+    expect(screen.getByTestId('sources-summary')).toHaveTextContent('6 of 7 sources will work')
+    expect(screen.getAllByText('Uses your Finnhub key')).toHaveLength(3)
+    await user.click(continueButton())
+
+    expect(await screen.findByRole('heading', { level: 1, name: 'Choose a risk profile' })).toBeInTheDocument()
+    expect(router.state.location.search).toBe('?step=risk')
+    const puts = keyPuts(backend)
+    expect(puts).toHaveLength(1)
+    expect(puts[0]).toMatchObject({ path: '/api/data-sources/finnhub.news/key', body: { api_key: FINNHUB_KEY } })
+    expect(useToasts.getState().toasts.map((x) => x.title)).toContain('Key saved')
+
+    await user.click(screen.getByRole('button', { name: 'Back' }))
+    await screen.findByRole('heading', { level: 1, name: 'Choose where news comes from' })
+    const mask = await screen.findByTestId('ob-key-mask')
+    expect(mask).toHaveTextContent('•••• 9XyZ')
+    expect(mask).toHaveAccessibleName('Saved key ending in 9XyZ')
+    expect(screen.queryByLabelText('Finnhub key')).toBeNull()
+    expect(document.body.textContent).not.toContain(FINNHUB_KEY)
+    expect(screen.queryByDisplayValue(FINNHUB_KEY)).toBeNull()
+    expect(screen.getByRole('button', { name: 'Replace' })).toBeInTheDocument()
+  })
+
+  it('stays on the step with the field marked when Finnhub refuses the key', async () => {
+    const backend = fakeBackend({ stored: connectionRow(VERIFIED), keyRefused: true })
+    const user = userEvent.setup()
+    const { router } = renderApp('/onboarding?step=sources')
+    const field = await screen.findByLabelText('Finnhub key')
+    await user.type(field, FINNHUB_KEY)
+    await user.click(continueButton())
+    expect(await screen.findByText(/Finnhub didn’t accept that key/)).toBeInTheDocument()
+    expect(router.state.location.search).toBe('?step=sources')
+    expect(keyPuts(backend)).toHaveLength(1)
+    await waitFor(() => expect(screen.getByLabelText('Finnhub key')).toHaveFocus())
+    // Skip still works.
+    await user.click(screen.getByRole('button', { name: 'Skip' }))
+    expect(await screen.findByRole('heading', { level: 1, name: 'Choose a risk profile' })).toBeInTheDocument()
+  })
+
+  it('turns a source off through the Data sources API', async () => {
+    const backend = fakeBackend({ stored: connectionRow(VERIFIED) })
+    const user = userEvent.setup()
+    renderApp('/onboarding?step=sources')
+    await user.click(await screen.findByRole('switch', { name: 'CoinDesk' }))
+    await waitFor(() => expect(backend.requests.some((r) => r.method === 'PATCH' && r.path === '/api/data-sources/rss.coindesk')).toBe(true))
+    expect(backend.sources.data.find((x) => x.key === 'rss.coindesk')?.enabled).toBe(false)
+    await waitFor(() => expect(screen.getByTestId('sources-summary')).toHaveTextContent('2 of 6 sources work without a key'))
+  })
+
+  it('shows the backfill done/total and percentage, with Continue enabled at 0%', async () => {
+    const backend = fakeBackend({ stored: connectionRow(VERIFIED) })
+    backend.backfill = backfillReport(0, 4)
+    renderApp('/onboarding?step=backfill')
+    const bar = await screen.findByTestId('backfill-bar')
+    expect(bar).toHaveAttribute('aria-valuenow', '0')
+    expect(bar).toHaveAttribute('aria-valuetext', '0%')
+    expect(screen.getByTestId('backfill-insts')).toHaveTextContent('0 of 4 instruments done')
+    expect(screen.getByTestId('backfill-carry')).toHaveTextContent('You can carry on')
+    expect(screen.getByTestId('ob-step-of')).toHaveTextContent('Step 6 of 6')
+    await waitFor(() => expect(continueButton()).toBeEnabled())
+  })
+
+  it('updates the progress while the step is open', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    try {
+      const backend = fakeBackend({ stored: connectionRow(VERIFIED) })
+      backend.backfill = backfillReport(1, 4)
+      renderApp('/onboarding?step=backfill')
+      expect(await screen.findByTestId('backfill-insts')).toHaveTextContent('1 of 4 instruments done')
+      expect(screen.getByTestId('backfill-bar')).toHaveAttribute('aria-valuenow', '25')
+      backend.backfill = backfillReport(3, 4)
+      await act(() => vi.advanceTimersByTimeAsync(5_500))
+      await waitFor(() => expect(screen.getByTestId('backfill-insts')).toHaveTextContent('3 of 4 instruments done'))
+      expect(screen.getByTestId('backfill-bar')).toHaveAttribute('aria-valuenow', '75')
+      expect(backend.requests.filter((r) => r.path === '/api/data/backfill?env=demo').length).toBeGreaterThanOrEqual(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('keeps Continue enabled when the backfill progress cannot load', async () => {
+    const backend = fakeBackend({ stored: connectionRow(VERIFIED) })
+    // @ts-expect-error -- a broken body makes the request fail
+    backend.backfill = null
+    renderApp('/onboarding?step=backfill')
+    await screen.findByRole('heading', { level: 1, name: 'Atlas is collecting market history' })
+    expect(await screen.findByRole('alert')).toHaveTextContent('Couldn’t load the market history progress')
+    await waitFor(() => expect(continueButton()).toBeEnabled())
+  })
+
+  it('walks the new steps in Arabic, right to left, with the step count in Arabic', async () => {
+    fakeBackend({ stored: connectionRow(VERIFIED) })
+    await i18n.changeLanguage('ar')
+    const user = userEvent.setup()
+    renderApp('/onboarding?step=sources')
+    expect(await screen.findByRole('heading', { level: 1, name: 'اختر من أين تأتي الأخبار' })).toBeInTheDocument()
+    expect(document.documentElement.dir).toBe('rtl')
+    expect(screen.getByTestId('ob-step-of')).toHaveTextContent('الخطوة 3 من 6')
+    const stepper = screen.getByRole('navigation', { name: 'خطوات الإعداد' })
+    expect(within(stepper).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      'مكتملة: الترحيب',
+      'مكتملة: ربط OKX',
+      '3مصادر البيانات',
+      '4مستوى المخاطرة',
+      '5الاستقلالية',
+      '6سجل السوق',
+    ])
+    expect(await screen.findByLabelText('مفتاح Finnhub')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'تخطٍّ' }))
+    expect(await screen.findByRole('heading', { level: 1, name: 'اختر مستوى المخاطرة' })).toBeInTheDocument()
   })
 })

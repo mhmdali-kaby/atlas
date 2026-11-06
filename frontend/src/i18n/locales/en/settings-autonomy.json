@@ -46,5 +46,7 @@
     "title": "Couldn’t load autonomy",
     "body": "Atlas’s server didn’t answer. Check that Atlas is running with ./atlas up, then try again.",
     "retry": "Try again"
-  }
+  },
+  "firstMonth": "Available from {{date}}, after your first live month.",
+  "firstMonthNote": "Your first live month runs until {{date}}. Until then Atlas stays at level 2 or below."
 }

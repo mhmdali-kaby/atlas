@@ -5,7 +5,9 @@ const SHOTS = '../../evidence/ATL-17'
 
 /** A fake Laravel on the API origin: a session that sign-out ends. */
 async function fakeApi(page: Page, signedIn = true) {
-  const state = { signedIn }
+  // ATL-227: the toolbar's language and appearance save to /api/me/preferences; nothing is stored
+  // until the first save, so the browser's own choice shows first.
+  const state = { signedIn, prefs: null as Record<string, string> | null }
   await page.route(/^http:\/\/localhost:8000\//, async (route) => {
     const url = new URL(route.request().url())
     const method = route.request().method()
@@ -30,6 +32,13 @@ async function fakeApi(page: Page, signedIn = true) {
     if (url.pathname === '/sanctum/csrf-cookie') return json(204)
     if (url.pathname === '/api/auth/status') return json(200, { owner_exists: true })
     if (url.pathname === '/api/auth/me') return state.signedIn ? json(200, { data: OWNER }) : json(401, { message: 'Unauthenticated.' })
+    if (url.pathname === '/api/me/preferences') {
+      if (method === 'PATCH') {
+        const body = JSON.parse(route.request().postData() ?? '{}') as Record<string, string>
+        state.prefs = { name: 'Mohammed Ali', locale: 'en', timezone: 'Asia/Baghdad', theme: 'system', ...state.prefs, ...body }
+      }
+      return state.prefs ? json(200, { data: state.prefs }) : json(404, { message: 'Not found' })
+    }
     if (url.pathname === '/api/auth/logout') {
       state.signedIn = false
       return json(204)

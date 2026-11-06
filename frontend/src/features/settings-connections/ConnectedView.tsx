@@ -3,6 +3,8 @@ import { RefreshCw, Replace, Trash2, TriangleAlert } from 'lucide-react'
 import { useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { api } from '../../lib/api'
+import { useOwnerZone } from '../../lib/ownerZone'
+import { zoneCity } from '../../lib/zones'
 import { Button, Seal, toast } from '../../ui'
 import {
   AccountRows,
@@ -68,6 +70,7 @@ export function ConnectedView({ connection, onRemoved }: { connection: Connectio
   const failure: Failure | null =
     localFailure ?? (connection.last_test_error ? { error: connection.last_test_error, okxCode: null } : null)
   const testing = test.isPending
+  const zone = useOwnerZone()
   const spot = connection.account_mode === 'spot'
   const last4 = connection.uid_last4 ?? '----'
   const verifiedRow: [string, ReactNode] = [
@@ -76,7 +79,7 @@ export function ConnectedView({ connection, onRemoved }: { connection: Connectio
       <time
         key="verified"
         dateTime={connection.last_verified_at}
-        title={t('conn.verifiedTip')}
+        title={t('conn.verifiedTip', { city: zoneCity(zone, lang), zone })}
         data-testid="last-verified"
       >
         {formatDayTime(connection.last_verified_at, lang, true)}

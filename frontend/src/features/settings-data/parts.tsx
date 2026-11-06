@@ -3,6 +3,7 @@ import { Tooltip } from 'radix-ui'
 import type { ReactElement, ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import type { Lang } from '../../lib/format'
+import { teamDay } from '../../lib/ownerZone'
 import { Spinner } from '../../ui'
 import { formatClock, formatDay } from '../portfolio/time'
 import { DATASET, type DatasetKey, type Status } from './model'
@@ -87,7 +88,7 @@ export function useDepthText() {
   }
 }
 
-const BAGHDAY = (ms: number) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Baghdad' }).format(new Date(ms))
+const BAGHDAY = teamDay
 
 export function useTimeText() {
   const lang = useLang()

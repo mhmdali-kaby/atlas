@@ -1,4 +1,4 @@
-export const STEPS = ['welcome', 'connect', 'risk', 'autonomy'] as const
+export const STEPS = ['welcome', 'connect', 'sources', 'risk', 'autonomy', 'backfill'] as const
 export type StepId = (typeof STEPS)[number]
 
 /** Where Finish setup lands (ATL-19 saves the choices first). */

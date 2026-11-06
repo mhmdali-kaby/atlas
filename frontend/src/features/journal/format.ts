@@ -1,7 +1,8 @@
 import { ArrowDownRight, ArrowUpRight, Equal } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { DATE_LOCALE, formatSigned, type Lang } from '../../lib/format'
-import { formatTime, OWNER_TZ } from '../warroom/time'
+import { ownerDateFormat } from '../../lib/ownerZone'
+import { formatTime } from '../warroom/time'
 import { splitTag } from './model'
 
 /* Formatting shared by the Journal's row and entry (no components here). */
@@ -13,14 +14,9 @@ export function usdText(v: string | null | undefined, lang: Lang): string {
   return v === null || v === undefined || v === '' ? '—' : formatSigned(v, 'USD', lang)
 }
 
-const dayFmt = new Map<Lang, Intl.DateTimeFormat>()
-/** "Tue 27 Oct, 17:04" / "الثلاثاء 27 تشرين الأول، 17:04" in Baghdad (design §7 row line 2). */
+/** "Tue 27 Oct, 17:04" / "الثلاثاء 27 تشرين الأول، 17:04" in the owner's zone (design §7 row line 2). */
 export function whenText(ts: string | number, lang: Lang): string {
-  let f = dayFmt.get(lang)
-  if (!f) {
-    f = new Intl.DateTimeFormat(lang === 'en' ? 'en-GB' : DATE_LOCALE.ar, { timeZone: OWNER_TZ, weekday: 'short', day: 'numeric', month: 'short' })
-    dayFmt.set(lang, f)
-  }
+  const f = ownerDateFormat(lang === 'en' ? 'en-GB' : DATE_LOCALE.ar, { weekday: 'short', day: 'numeric', month: 'short' })
   const ms = typeof ts === 'number' ? ts : Date.parse(ts.replace(/(\.\d{3})\d+/, '$1'))
   return `${f.format(new Date(ms))}${lang === 'ar' ? '، ' : ', '}${formatTime(ms, lang)}`
 }

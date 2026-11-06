@@ -6,7 +6,8 @@
   "env": {
     "demo": "Demo",
     "live": "Live",
-    "demoTip": "Paper trading on the OKX demo account. No real money moves."
+    "demoTip": "Paper trading on the OKX demo account. No real money moves.",
+    "liveTip": "Real money on your OKX live account. Every order Atlas sends is real."
   },
   "nav": {
     "label": "Sidebar",
@@ -39,5 +40,7 @@
     "title": "Nothing here yet",
     "body": "This page is not part of Atlas yet. Choose a page in the sidebar."
   },
-  "switchLangHint": "Switch language"
+  "switchLangHint": "Switch language",
+  "prefSaveFail": "Couldn’t save that change",
+  "prefSaveOffline": "Atlas’s server didn’t answer, so it’s back as it was."
 }

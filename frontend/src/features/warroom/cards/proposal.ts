@@ -340,7 +340,9 @@ export interface EditBody {
 const path = (id: string, action = '') => `/api/proposals/${encodeURIComponent(id)}${action}`
 
 export const proposalApi = {
-  approve: (id: string) => api.post<ApproveBody>(path(id, '/approve')),
+  /** A live proposal needs `{ live_confirmed: true }` (ATL-238); demo sends no body, as before. */
+  approve: (id: string, opts: { liveConfirmed?: boolean } = {}) =>
+    opts.liveConfirmed ? api.post<ApproveBody>(path(id, '/approve'), { live_confirmed: true }) : api.post<ApproveBody>(path(id, '/approve')),
   reject: (id: string, reason: string) => api.post<{ ok: boolean; proposal: ProposalSummary }>(path(id, '/reject'), { reason }),
   edit: (id: string, body: { size?: string; stop?: string; targets?: Array<{ price: string; pct: string }> }) => api.patch<EditBody>(path(id), body),
   askTeam: (id: string, question: string) => api.post<{ ok: boolean; message_id: string; thread_id: string }>(path(id, '/ask-team'), { question }),

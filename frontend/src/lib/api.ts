@@ -1,3 +1,4 @@
+import i18n from '../i18n'
 import {
   useMutation,
   useQuery,
@@ -15,6 +16,9 @@ import {
  *   fresh per request because login and logout rotate it.
  * - 419 (CSRF mismatch) → one /sanctum/csrf-cookie refetch and one retry.
  * - 401 (no or expired session) → an `atlas:auth-expired` window event, then ApiError.
+ * - Every request carries Accept-Language with the app's current language (en|ar), so Laravel
+ *   answers, including 422 messages, in the language on screen (ATL-222, ATL-227). A caller may
+ *   set its own.
  */
 
 export const API_URL: string = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000').replace(/\/+$/, '')
@@ -54,6 +58,11 @@ export interface ApiRequestInit extends Omit<RequestInit, 'body' | 'credentials'
 
 let csrfReady: Promise<void> | null = null
 
+/** The language on screen, as Accept-Language: "ar" or "en". */
+export function currentLanguage(): 'en' | 'ar' {
+  return i18n.language === 'ar' ? 'ar' : 'en'
+}
+
 /** Reads a cookie by name, URL-decoded (Laravel URL-encodes XSRF-TOKEN). */
 function readCookie(name: string): string | null {
   const prefix = `${name}=`
@@ -69,7 +78,7 @@ async function fetchCsrfCookie(): Promise<void> {
   try {
     res = await fetch(`${API_URL}/sanctum/csrf-cookie`, {
       credentials: 'include',
-      headers: { Accept: 'application/json' },
+      headers: { Accept: 'application/json', 'Accept-Language': currentLanguage() },
     })
   } catch {
     throw new ApiError(0, 'Network error')
@@ -96,6 +105,7 @@ export function resetCsrfForTests(): void {
 async function send(path: string, init: ApiRequestInit, method: string): Promise<Response> {
   const headers = new Headers(init.headers)
   headers.set('Accept', 'application/json')
+  if (!headers.has('Accept-Language')) headers.set('Accept-Language', currentLanguage())
   let body: BodyInit | undefined
   if (init.json !== undefined) {
     headers.set('Content-Type', 'application/json')

@@ -1,0 +1,106 @@
+/* ==========================================================================
+   The team's day (DayLine.tsx): General, Schedule, onboarding.
+   One 24-hour line. Jobs are rings in their agent's colour, the analysis window
+   is a comb (one tooth per cycle), the US session and quiet hours are bands
+   behind the line, Now is the accent dot. Mirrors in Arabic.
+   ========================================================================== */
+.dl {
+  --lane: 20px; --lanes: 1; --field: 46px; --dirx: 1;
+  --dl-bg: var(--bg-grouped-row);
+  margin: 0; display: grid; gap: 4px; container: dl / inline-size; min-width: 0;
+}
+:root[dir="rtl"] .dl { --dirx: -1; }
+:root:lang(ar) .dl { --lane: 23px; }
+
+.dl-plot { position: relative; padding-top: calc(var(--lanes) * var(--lane) + 4px); }
+.dl-labs { position: absolute; inset-inline: 0; top: 0; height: calc(var(--lanes) * var(--lane)); }
+
+/* A job's label: its ring, its time, its name. Lane 0 sits on the line. */
+.dl-lab {
+  --ln: 0; --tx: -6px;
+  position: absolute; inset-inline-start: var(--x); bottom: calc(var(--ln) * var(--lane));
+  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+  font-size: var(--text-caption); line-height: var(--text-caption--line-height); color: var(--label-secondary);
+  transform: translateX(calc(var(--tx) * var(--dirx)));
+}
+.dl-lab[data-aw="e"] { --tx: calc(-100% + 6px); }
+.dl-lab[data-aw="s0"] { inset-inline-start: 0; --tx: 0px; }
+.dl-lab.is-run { color: var(--accent-ink); font-weight: 500; }
+.dl-lab[data-aw="c"] { --tx: -50%; }
+.dl-lab.is-run[data-aw="e"] { --tx: -100%; }
+.dl-lab.is-now, .dl-lab.is-now b { color: var(--accent-ink); }
+.dl-lab b { font-weight: 600; color: var(--label); font-variant-numeric: tabular-nums; }
+.dl-lab.is-now::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+.dl-lab:not(.is-run):not(.is-now)::before {
+  content: ""; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  box-shadow: inset 0 0 0 2px var(--ring);
+}
+.dl-lab[data-pair]::before { background: conic-gradient(var(--ring) 0 50%, var(--ring2) 0 100%); box-shadow: none; -webkit-mask: radial-gradient(circle, transparent 2px, black 2.5px); mask: radial-gradient(circle, transparent 2px, black 2.5px); }
+.dl-lab.is-lit b, .dl-lab.is-lit { color: var(--accent-ink); }
+
+/* The field: bands behind, the line, the comb, the rings, Now. The line sits at 13 px; bands
+   run the full field height and carry their caption at the bottom. */
+.dl-field { position: relative; height: var(--field); }
+.dl-line { position: absolute; inset-inline: 0; top: 12px; height: 2px; border-radius: 1px; background: var(--fill-1); }
+
+.dl-band {
+  position: absolute; inset-inline-start: var(--x); width: var(--w); top: 0; bottom: 0;
+  border-radius: 8px; background: var(--fill-4); box-shadow: inset 0 0 0 0.5px var(--hairline-color);
+}
+.dl-band.is-quiet {
+  background: repeating-linear-gradient(135deg, var(--fill-3) 0 1.5px, transparent 1.5px 6px);
+  box-shadow: inset 0 0 0 0.5px var(--separator);
+}
+.dl-band-cap {   /* may run past a narrow band's end: nothing else lives on the field's floor */
+  position: absolute; inset-inline-start: 8px; bottom: 3px; white-space: nowrap;
+  font-size: var(--text-caption); line-height: var(--text-caption--line-height); color: var(--label-secondary);
+}
+.dl-band.is-us .dl-band-cap::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-inline-end: 5px; border-radius: 1.5px; background: var(--label-secondary); vertical-align: 1px; opacity: 0.6; }
+
+/* The analysis window: a soft bar with one tooth per cycle */
+.dl-run {
+  position: absolute; inset-inline-start: var(--x); width: var(--w); top: 8px; height: 10px;
+  border-radius: 5px; background: var(--accent-wash);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 28%, transparent);
+}
+.dl-tooth {
+  position: absolute; inset-inline-start: var(--x); top: 6px; width: 1.5px; height: 14px; margin-inline-start: -0.75px;
+  border-radius: 1px; background: var(--accent); opacity: 0.75; pointer-events: none;
+}
+.dl-run.is-lit { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+
+.dl-pt {
+  position: absolute; inset-inline-start: var(--x); top: 6px; width: 14px; height: 14px; margin-inline-start: -7px;
+  border-radius: 50%; background: var(--dl-bg); box-shadow: inset 0 0 0 2.5px var(--ring), 0 0 0 2px var(--dl-bg);
+}
+.dl-pt[data-pair] { background: conic-gradient(var(--ring) 0 50%, var(--ring2) 0 100%); box-shadow: 0 0 0 2px var(--dl-bg); }
+.dl-pt[data-pair]::after { content: ""; position: absolute; inset: 2.5px; border-radius: 50%; background: var(--dl-bg); }
+.dl-pt.is-lit { box-shadow: inset 0 0 0 2.5px var(--ring), 0 0 0 2px var(--dl-bg), 0 0 0 4px var(--accent); }
+
+.dl-now {
+  position: absolute; inset-inline-start: var(--x); top: 8px; width: 10px; height: 10px; margin-inline-start: -5px;
+  border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 2px var(--dl-bg);
+}
+
+/* Ticks: the line's own clock, then the other clock under it when they differ */
+.dl-axis { position: relative; height: var(--text-caption--line-height); font-size: var(--text-caption); line-height: var(--text-caption--line-height); }
+.dl-axis.is-alt { color: var(--label-secondary); }
+.dl-tick {
+  position: absolute; inset-inline-start: var(--x); white-space: nowrap;
+  transform: translateX(calc(-50% * var(--dirx))); font-variant-numeric: tabular-nums; color: var(--label);
+}
+.dl-axis.is-alt .dl-tick { color: var(--label-secondary); }
+.dl-tick.is-first { transform: none; }
+.dl-tick.is-last { inset-inline-start: auto; inset-inline-end: 0; transform: none; }
+.dl-tick-zone { margin-inline-start: 4px; color: var(--label-secondary); font-weight: 600; }
+.dl-axis.is-alt .dl-tick-zone { font-weight: 500; }
+@container dl (width < 720px) { .dl-tick.is-3h { display: none; } }
+@container dl (width < 440px) { .dl-tick.is-6h { display: none; } }
+
+/* a phone-width line: the Now label steps aside (its dot stays), the analysis label shortens */
+.dl-short { display: none; }
+@container dl (width < 440px) {
+  .dl-lab.is-now { display: none; }
+  .dl-long { display: none; }
+  .dl-short { display: inline; }
+}

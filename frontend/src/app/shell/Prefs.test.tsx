@@ -1,9 +1,23 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render as rtlRender, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { act } from 'react'
+import { act, type ReactElement } from 'react'
+import { MemoryRouter } from 'react-router'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import i18n from '../../i18n'
 import { AccountMenu, LanguageButton, MoreMenu } from './Prefs'
+
+/** The toolbar controls write preferences (ATL-227) and the account menu navigates: both need providers. */
+function render(ui: ReactElement) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return rtlRender(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={client}>
+        <MemoryRouter>{children}</MemoryRouter>
+      </QueryClientProvider>
+    ),
+  })
+}
 
 /**
  * ATL-223: the account button's accessible name must contain the visible initials, so axe's

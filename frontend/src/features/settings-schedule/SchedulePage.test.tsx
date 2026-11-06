@@ -78,7 +78,7 @@ function fakeBackend(opts: { schedule?: Record<string, unknown>; zone?: string; 
       if (path === '/sanctum/csrf-cookie') return reply(204)
       if (path === '/api/auth/status') return reply(200, { owner_exists: true })
       if (path === '/api/auth/me') return reply(200, { data: OWNER })
-      if (path === '/api/me/preferences') return reply(200, { data: { name: 'Mohammed Ali', locale: 'en', timezone: opts.zone ?? 'Asia/Baghdad', theme: 'system' } })
+      if (path === '/api/me/preferences') return reply(200, { data: { name: 'Mohammed Ali', locale: i18n.language === 'ar' ? 'ar' : 'en', timezone: opts.zone ?? 'Asia/Baghdad', theme: 'system' } })
       if (path === '/api/settings?env=demo' && method === 'GET') return reply(200, doc())
       if (path.startsWith('/api/settings/history')) return reply(200, { data: state.history, meta: { total: state.history.length } })
       if (path === '/api/settings' && method === 'PATCH') {

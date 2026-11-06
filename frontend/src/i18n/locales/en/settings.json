@@ -22,7 +22,7 @@
     "footnote": "Atlas never withdraws or moves money, and refuses live keys that can withdraw.",
     "accountTitle": "Account",
     "accountNote": "OKX reports these details each time Atlas tests the connection.",
-    "verifiedTip": "Baghdad time (Asia/Baghdad)",
+    "verifiedTip": "{{city}} time ({{zone}})",
     "never": "Never",
     "liveTitle": "Live account",
     "live": "OKX live",

@@ -2,6 +2,7 @@ import { Tooltip } from 'radix-ui'
 import type { ReactElement, ReactNode } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import type { Lang } from '../../lib/format'
+import { teamDay } from '../../lib/ownerZone'
 import { formatAgo, formatClock, formatDayTime } from '../portfolio/time'
 import type { ApiSource } from './model'
 
@@ -39,10 +40,7 @@ export function useSourceName() {
   return (s: Pick<ApiSource, 'key' | 'name'>) => t(`name.${s.key.replace(/\./g, '_')}`, { defaultValue: s.name })
 }
 
-const sameBaghdadDay = (a: number, b: number) => {
-  const f = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Baghdad' })
-  return f.format(new Date(a)) === f.format(new Date(b))
-}
+const sameBaghdadDay = (a: number, b: number) => teamDay(a) === teamDay(b)
 
 export function useTimes(now: number) {
   const { t } = useTranslation(NS)
