@@ -8,7 +8,7 @@ import type { WarroomMessage } from './api'
 import { isMoment } from './replay'
 import { MOMENT_ICON } from './momentIcons'
 import { atFromPointer, BUCKETS, DAY_MS, densityBuckets, linePct, minuteOfDay, SPEEDS, type Speed } from './replayTime'
-import { formatClock, formatTime } from './time'
+import { formatClock, formatTime, ownerCity } from './time'
 
 /*
  * The day line (ATL-207; design v18 Replay, "the signature"): 00:00 to 24:00 Baghdad, the day's
@@ -91,7 +91,7 @@ export function DayLine({ dayStart, messages, times, at, shown, playing, speed, 
   }
 
   return (
-    <div className="rp-line" role="group" aria-label={t('rp.timeline')} data-testid="rp-line">
+    <div className="rp-line" role="group" aria-label={t('rp.timeline', { city: ownerCity(lang) })} data-testid="rp-line">
       <div className="rp-controls">
         <button
           type="button"
@@ -162,11 +162,11 @@ export function DayLine({ dayStart, messages, times, at, shown, playing, speed, 
             className="rp-head"
             role="slider"
             tabIndex={0}
-            aria-label={t('rp.timeline')}
+            aria-label={t('rp.timeline', { city: ownerCity(lang) })}
             aria-valuemin={0}
             aria-valuemax={1439}
             aria-valuenow={minuteOfDay(at, dayStart)}
-            aria-valuetext={t('rp.timeAria', { time: formatTime(at, lang), shown: shownText, total: totalText })}
+            aria-valuetext={t('rp.timeAria', { city: ownerCity(lang), time: formatTime(at, lang), shown: shownText, total: totalText })}
             aria-describedby="rp-keys"
             aria-orientation="horizontal"
             style={{ '--x': headPct.toFixed(3) } as CSSProperties}

@@ -693,3 +693,37 @@
   --lh-message: 1.6875rem;
   --tr-message: 0;
 }
+
+/*
+ * Settings → General appearance thumbnails (design v21 owner-setup §3.2, ATL-227): the Light
+ * tile is light and the Dark tile is dark whatever the app's theme, so these do not change in
+ * .dark. Plus the shadows of the miniature window and the selected tile's focus halo.
+ */
+:root {
+  --thumb-l-desk: linear-gradient(140deg, #CFE2FF 0%, #DDF3F6 55%, #E9E6FF 100%);
+  --thumb-l-win: #FFFFFF;
+  --thumb-l-side: #EDEDF0;
+  --thumb-l-row: rgba(60, 60, 67, 0.20);
+  --thumb-l-row-on: #FFFFFF;
+  --thumb-l-bar: #F6F6F7;
+  --thumb-l-line: #007AFF;
+  --thumb-l-area: rgba(0, 122, 255, 0.18);
+  --thumb-d-desk: linear-gradient(140deg, #0E2347 0%, #0B2E33 55%, #1D1640 100%);
+  --thumb-d-win: #000000;
+  --thumb-d-side: #232325;
+  --thumb-d-row: rgba(235, 235, 245, 0.24);
+  --thumb-d-row-on: #48484A;
+  --thumb-d-bar: #161618;
+  --thumb-d-line: #0A84FF;
+  --thumb-d-area: rgba(10, 132, 255, 0.28);
+  --thumb-stop: #D70015;
+  --thumb-shadow: 0 1px 3px rgba(0, 0, 0, 0.10);
+  --thumb-shadow-hover: 0 2px 8px rgba(0, 0, 0, 0.14);
+  --thumb-win-shadow: 0 2px 6px rgba(0, 0, 0, 0.18), 0 0 0 0.5px rgba(0, 0, 0, 0.14);
+  --thumb-row-on-edge: 0 0 0 0.5px rgba(0, 0, 0, 0.08);
+  --thumb-focus-halo: 0 0 0 8px rgba(0, 122, 255, 0.28);
+  --mono-edge: inset 0 0.5px 0 rgba(255, 255, 255, 0.35), 0 1px 2px rgba(0, 0, 0, 0.12);
+  --field-lift: 0 1px 1.5px rgba(0, 0, 0, 0.06);
+  --on-active-secondary: rgba(255, 255, 255, 0.86);
+  --on-active-edge: rgba(255, 255, 255, 0.5);
+}

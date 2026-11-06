@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { FIGURE_LOCALE, formatFixed, type Lang } from '../../../lib/format'
 import { fillSlots, slot } from '../slots'
 import { Inline } from '../text'
-import { formatFullTime, formatTime, formatUtcFull } from '../time'
+import { formatFullTime, ownerCity, formatTime, formatUtcFull } from '../time'
 import type { Evidence, PositioningReport, Regime, Stance } from './positioning'
 import { AsOf, InstrumentButton } from './TechnicalSetupCard'
 import './technicalSetup.css'
@@ -95,7 +95,7 @@ function StancePill({ side, stance }: { side: 'long' | 'short'; stance: Stance }
 function Stamp({ ts, lang }: { ts: string; lang: Lang }) {
   const { t } = useTranslation('warroom')
   return (
-    <time className="an-stamp num" dateTime={ts} tabIndex={0} title={t('ta.dual', { baghdad: formatFullTime(ts, lang), utc: formatUtcFull(ts) })} data-testid="pos-ev-asof">
+    <time className="an-stamp num" dateTime={ts} tabIndex={0} title={t('ta.dual', { city: ownerCity(lang), local: formatFullTime(ts, lang), utc: formatUtcFull(ts) })} data-testid="pos-ev-asof">
       {formatTime(ts, lang)}
     </time>
   )

@@ -21,7 +21,7 @@ export const FIGURE_LOCALE: Readonly<Record<Lang, string>> = {
   ar: 'en-US',
 }
 
-/** Locale for dates and times (shown in Asia/Baghdad, 24-hour clock). */
+/** Locale for dates and times (shown in the owner's zone, lib/ownerZone, 24-hour clock). */
 export const DATE_LOCALE: Readonly<Record<Lang, string>> = {
   en: 'en-US',
   ar: 'ar-IQ-u-nu-latn',

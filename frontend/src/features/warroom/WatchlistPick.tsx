@@ -1,6 +1,7 @@
 import { ArrowDownRight, ArrowRight, ArrowUpRight, CircleMinus, Pin, Undo2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { DATE_LOCALE, type Lang } from '../../lib/format'
+import { ownerDateFormat } from '../../lib/ownerZone'
 import { Button, Spinner } from '../../ui'
 import { Fig } from './historianParts'
 import { fillSlots, slot } from './slots'
@@ -62,7 +63,7 @@ function Conviction({ pick: p, card, lang }: { pick: Pick; card: Card; lang: Lan
 function Chips({ pick: p, date, now, lang }: { pick: Pick; date: string; now: number; lang: Lang }) {
   const { t } = useTranslation('warroom')
   if (p.catalysts.length === 0) return null
-  const weekday = (ms: number) => new Intl.DateTimeFormat(lang === 'en' ? 'en-GB' : DATE_LOCALE.ar, { timeZone: 'Asia/Baghdad', weekday: 'short' }).format(new Date(ms))
+  const weekday = (ms: number) => ownerDateFormat(lang === 'en' ? 'en-GB' : DATE_LOCALE.ar, { weekday: 'short' }).format(new Date(ms))
   return (
     <ul className="wl-chips" data-testid="wl-chips">
       {p.catalysts.map((k) => {

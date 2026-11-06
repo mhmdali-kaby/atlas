@@ -17,7 +17,6 @@ import {
 import { useNow } from "../../portfolio/hooks";
 import { Duration } from "../../portfolio/parts";
 import { fillSlots, slot } from "../slots";
-import { OWNER_TZ } from "../time";
 import { CardHead, Fig, Meter, Signed, Stamp } from "./pmParts";
 import {
     ruleText,
@@ -42,10 +41,11 @@ import "./pm.css";
 
 const WARN_AT = 0.7;
 
+/** A business day ("2026-10-27") as words. The day is a date, not an instant, so it is read in UTC. */
 function dayText(day: string, lang: Lang): string {
     return new Intl.DateTimeFormat(
         lang === "en" ? "en-GB" : "ar-IQ-u-nu-latn",
-        { timeZone: OWNER_TZ, weekday: "long", day: "numeric", month: "long" },
+        { timeZone: "UTC", weekday: "long", day: "numeric", month: "long" },
     ).format(new Date(`${day}T12:00:00Z`));
 }
 
