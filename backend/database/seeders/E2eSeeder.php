@@ -23,7 +23,7 @@ class E2eSeeder extends Seeder
 
     public const EMAIL = 'owner@atlas.e2e';
 
-    public const NAME = 'Atlas E2E Owner';
+    public const NAME = 'Mohammed Al-Kaabi';
 
     /** Test-only credential for a throwaway database, never a real account. */
     public const PASSWORD = 'e2e-owner-password-1';
