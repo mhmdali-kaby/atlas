@@ -520,9 +520,9 @@
     "keyReturn": "Return",
     "keyEsc": "Esc",
     "err": {
-      "notLive": "{{inst}} isn’t live on the demo account right now.",
+      "notLive": "{{inst}} isn’t trading right now.",
       "blocked": "{{inst}} is blocked in Settings.",
-      "unknown": "{{inst}} isn’t an instrument on the demo account.",
+      "unknown": "{{inst}} isn’t an instrument in this account’s universe.",
       "server": "Couldn’t pin {{inst}}. Atlas’s server didn’t answer. Try again."
     },
     "toast": {

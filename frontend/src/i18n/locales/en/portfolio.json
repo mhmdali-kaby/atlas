@@ -140,7 +140,10 @@
     "funding": "Funding",
     "empty": {
       "title": "No balances",
-      "body": "OKX reports no balances on the demo account yet."
+      "body": {
+        "demo": "OKX reports no balances on the demo account yet.",
+        "live": "OKX reports no balances on the live account yet."
+      }
     },
     "noCost": {
       "cash": "Cash is counted at $1.00, so it has no average cost",
@@ -175,7 +178,10 @@
     "pagination": "Pages",
     "empty": {
       "title": "No deposits or withdrawals",
-      "body": "The demo account’s balance is paper money from OKX, so nothing has been deposited or withdrawn."
+      "body": {
+        "demo": "The demo account’s balance is paper money from OKX, so nothing has been deposited or withdrawn.",
+        "live": "No deposits or withdrawals on the OKX live account yet."
+      }
     }
   },
   "benchmark": {

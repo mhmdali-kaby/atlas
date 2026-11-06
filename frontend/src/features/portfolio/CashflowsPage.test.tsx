@@ -22,11 +22,17 @@ const ALL: CashflowMarker[] = Array.from({ length: 23 }, (_, i) => ({
   ts: new Date(Date.parse('2026-10-25T17:36:25Z') - i * 86_400_000).toISOString(),
 }))
 
-function fakeBackend(flows: CashflowMarker[] | 'fail') {
+function fakeBackend(flows: CashflowMarker[] | 'fail', opts: { env?: 'demo' | 'live' } = {}) {
+  const env = opts.env ?? 'demo'
   const reply = (status: number, body?: unknown) =>
     new Response(body === undefined ? null : JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
   const fetch = vi.fn(async (input: RequestInfo | URL) => {
     const url = new URL(String(input))
+    if (url.pathname === '/api/environment') {
+      return reply(200, {
+        data: { active_env: env, live_started_at: null, first_month_ends_at: null, in_first_live_month: false, switched_at: null, confirmation_text: 'TRADE LIVE', preflight: { ok: true, items: [] } },
+      })
+    }
     if (url.pathname === '/api/portfolio/summary') return reply(200, { data: SUMMARY })
     if (url.pathname === '/api/portfolio/cashflows') {
       if (flows === 'fail') return reply(500, { message: 'Server Error' })
@@ -156,6 +162,17 @@ describe('Portfolio Cash flows', () => {
     renderCashflows()
     expect(await screen.findByTestId('state-none')).toHaveTextContent('No deposits or withdrawals')
     expect(screen.queryAllByRole('button')).toHaveLength(0)
+  })
+
+  it('in live, the empty state names the OKX live account, in English and Arabic (ATL-244)', async () => {
+    fakeBackend([], { env: 'live' })
+    renderCashflows()
+    expect(await screen.findByText(/No deposits or withdrawals on the OKX live account yet\./)).toBeInTheDocument()
+    expect(screen.queryByText(/demo account/)).toBeNull()
+
+    await i18n.changeLanguage('ar')
+    expect(await screen.findByText(/في حساب OKX الحقيقي بعد/)).toBeInTheDocument()
+    expect(screen.queryByText(/التجريبي/)).toBeNull()
   })
 
   it('shows the error state with a retry when the API fails', async () => {

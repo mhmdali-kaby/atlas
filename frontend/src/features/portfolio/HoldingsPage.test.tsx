@@ -26,11 +26,17 @@ const USDT_F = row({ ccy: 'USDT', account: 'funding', quantity: '12000', value_u
 const SEEDED: HoldingsPayload = { taken_at: '2026-10-28T17:36:00.000000Z', total_value_usd: '5136121.59', items: [USDT_T, USDC_T, USDT_F] }
 const SUMMARY = { env: 'demo', reconciled_at: '2026-10-28T17:36:00.000000Z', stale: false } as PortfolioSummary
 
-function fakeBackend(holdings: HoldingsPayload | 'fail') {
+function fakeBackend(holdings: HoldingsPayload | 'fail', opts: { env?: 'demo' | 'live' } = {}) {
+  const env = opts.env ?? 'demo'
   const reply = (status: number, body?: unknown) =>
     new Response(body === undefined ? null : JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
   const fetch = vi.fn(async (input: RequestInfo | URL) => {
     const url = new URL(String(input))
+    if (url.pathname === '/api/environment') {
+      return reply(200, {
+        data: { active_env: env, live_started_at: null, first_month_ends_at: null, in_first_live_month: false, switched_at: null, confirmation_text: 'TRADE LIVE', preflight: { ok: true, items: [] } },
+      })
+    }
     if (url.pathname === '/api/portfolio/summary') return reply(200, { data: SUMMARY })
     if (url.pathname === '/api/portfolio/holdings') {
       return holdings === 'fail' ? reply(500, { message: 'Server Error' }) : reply(200, { data: holdings })
@@ -197,6 +203,17 @@ describe('Portfolio Holdings', () => {
     renderHoldings()
     expect(await screen.findByTestId('state-none')).toHaveTextContent('No balances')
     expect(screen.queryByTestId('holdings-table')).toBeNull()
+  })
+
+  it('in live, the empty state names the OKX live account, in English and Arabic (ATL-244)', async () => {
+    fakeBackend({ taken_at: SEEDED.taken_at, total_value_usd: '0', items: [] }, { env: 'live' })
+    renderHoldings()
+    expect(await screen.findByText(/OKX reports no balances on the live account yet\./)).toBeInTheDocument()
+    expect(screen.queryByText(/demo account/)).toBeNull()
+
+    await i18n.changeLanguage('ar')
+    expect(await screen.findByText(/في الحساب الحقيقي بعد/)).toBeInTheDocument()
+    expect(screen.queryByText(/التجريبي/)).toBeNull()
   })
 
   it('shows the error state with a retry when the API fails', async () => {

@@ -205,7 +205,7 @@ export function HoldingsPage() {
       <div>
         {head}
         <div className="pf-panel">
-          <StateBlock kind="none" compact icon={Wallet} title={t('holdings.empty.title')} body={t('holdings.empty.body')} />
+          <StateBlock kind="none" compact icon={Wallet} title={t('holdings.empty.title')} body={t(`holdings.empty.body.${env}`)} />
         </div>
       </div>
     )

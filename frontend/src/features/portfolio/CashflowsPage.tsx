@@ -183,7 +183,7 @@ export function CashflowsPage() {
             compact
             icon={ArrowLeftRight}
             title={t('cashflows.empty.title')}
-            body={t('cashflows.empty.body')}
+            body={t(`cashflows.empty.body.${env}`)}
           />
         </div>
       </div>
