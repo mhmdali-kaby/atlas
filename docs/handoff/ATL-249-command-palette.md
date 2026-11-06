@@ -81,3 +81,21 @@ rank, then the registered order. `normalise()` folds case, Arabic diacritics, ta
 - New token pair `--palette-scrim` (6% light / 32% dark) in tokens.css.
 - Tests: `CommandPalette.test.tsx` (jsdom needs `scrollIntoView` and `ResizeObserver` stubs for cmdk),
   `e2e/command-palette.spec.ts` (keyboard only, light LTR and dark RTL).
+
+## Built by ATL-250 (instruments)
+
+- `useEntries` may now return `{ entries, status }` (`PaletteProvided`); `unpack()` in registry.ts
+  normalises it. `status` is a `PaletteStatus` `{ group, kind: 'searching' | 'none' | 'error' }`, drawn
+  as a `.pal-status` row at the end of that group. If nothing matches anywhere and no status is
+  `searching`/`error`, the palette shows its single "No results for …" state instead.
+- An entry with `instrument: { instId, classKey, state }` is drawn as an instrument row and is not
+  ranked by its label (the server matched it; server order is kept).
+- Provider: `features/warroom/instrumentSearch.ts` (`useInstrumentEntries`, registered from
+  `warroom/palette.ts`). 2+ characters (spaces ignored), 150 ms debounce, then
+  `GET /api/instruments?q=<q>&limit=20&state=any&env=<active env>`; the TanStack signal aborts a stale request.
+- `GET /api/instruments` now matches `q` anywhere in inst_id or base_ccy (exact base, then prefix,
+  then contains), defaults `env` to `system_state.active_env`, returns `state`, and takes `state=any`
+  (default stays live-only, so the pin search is unchanged apart from contains-matching).
+- ↵ goes to `/warroom?inst=<inst_id>`. The War Room reads `?inst=` (`inspectParam`), opens the
+  inspector if closed, and shows that instrument (head "Chosen with ⌘K", chart empty state, its
+  position first) until ✕ "Back to this thread" removes the param. A thread switch drops it too.
