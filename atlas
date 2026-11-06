@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Atlas local CLI: ./atlas up | down | restart | status | logs [name] | doctor | backup [dir]
+# Atlas local CLI: ./atlas up | down | restart | status | logs [name] | doctor | backup [dir] | reset-two-factor
 #
 # Infrastructure (Postgres, Redis) runs in Docker Compose. The application
 # processes run natively, each in a restart loop, with logs in .atlas/logs
@@ -199,5 +199,6 @@ case "${1:-}" in
   logs) shift; cmd_logs "${1:-}" ;;
   doctor) load_app_key; cd "$ROOT/backend" && exec php artisan atlas:doctor ;;
   backup) shift; cmd_backup "${1:-}" ;;
-  *) echo "usage: ./atlas up|down|restart|status|logs [name]|doctor|backup [dir]"; exit 2 ;;
+  reset-two-factor) shift; load_app_key; cd "$ROOT/backend" && exec php artisan atlas:reset-two-factor "$@" ;;
+  *) echo "usage: ./atlas up|down|restart|status|logs [name]|doctor|backup [dir]|reset-two-factor"; exit 2 ;;
 esac
