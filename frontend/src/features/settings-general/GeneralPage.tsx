@@ -5,18 +5,19 @@ import { Link } from 'react-router'
 import { initials } from '../../app/shell/Prefs'
 import { useTradingEnv } from '../../app/shell/tradingEnv'
 import { useSession } from '../auth/session'
-import { DATE_LOCALE, formatMoney, formatSigned, type Lang } from '../../lib/format'
+import { DATE_LOCALE, formatMoney, type Lang } from '../../lib/format'
 import { useOwnerZone } from '../../lib/ownerZone'
 import { saveErrorOf, usePreferences, useSavePreference, type PreferenceField, type Preferences } from '../../lib/preferences'
 import { browserZone, diffFromTeam, spanWords, zoneCity, zoneName, zoneOffset } from '../../lib/zones'
 import { isKnownZone } from '../../lib/ownerZone'
 import { THEME_CHOICES, type ThemeChoice } from '../../theme/theme'
-import { Button, SegmentedControl, Skeleton, Spinner } from '../../ui'
+import { Button, SegmentedControl, SignedValue, Skeleton, Spinner } from '../../ui'
 import { INPUT_CLASSES } from '../../ui/TextField'
 import { cx } from '../../ui/cx'
 import { useSettings } from '../onboarding'
 import { useLang, useNow } from '../portfolio/hooks'
 import { formatAgo } from '../portfolio/time'
+import { rText } from '../warroom/cards/rText'
 import { formatDateTime } from '../warroom/time'
 import '../settings-connections/settings.css'
 import { clock, hm, scheduleFrom } from './dayModel'
@@ -192,9 +193,9 @@ function Preview({ lang, zone, now }: { lang: Lang; zone: string; now: number })
       <div className="gn-pv-item">
         <dt>{t('pv.change')}</dt>
         <dd>
-          <span className="fig text-profit-ink">{fig(formatSigned('2450', 'USD', lang))}</span>
-          <span className="fig text-loss-ink">{fig(formatSigned('-1.25', 'percent', lang))}</span>
-          {fig('+1.40R')}
+          <SignedValue value="2450" unit="USD" />
+          <SignedValue value="-1.25" unit="percent" />
+          {fig(rText(1.4))}
         </dd>
       </div>
     </dl>

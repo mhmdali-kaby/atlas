@@ -1,16 +1,18 @@
-import { Lock, Plug } from 'lucide-react'
-import { useId, useState } from 'react'
+import { Plug } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Skeleton, Toggle } from '../../ui'
+import { useTradingEnv } from '../../app/shell/tradingEnv'
+import { Skeleton } from '../../ui'
 import { useConnection } from '../onboarding'
 import { ConnectedView } from './ConnectedView'
+import { LiveSection } from './LiveSection'
 import { LoadError, NotConnected } from './states'
 import './settings.css'
 
 /*
  * Settings → Connections (brief §14.2, design js/pages/settings.js `connections`): the OKX demo
- * account card with Test again / Replace keys / Remove…, its account rows, and the disabled
- * OKX live row. Keys are only ever shown as •••• last4.
+ * account card with Test again / Replace keys / Remove…, its account rows, and the OKX live
+ * account under it (ATL-241). Keys are only ever shown as •••• last4.
  */
 
 function PaneHeader() {
@@ -28,37 +30,10 @@ function PaneHeader() {
   )
 }
 
-function LiveGroup() {
-  const { t } = useTranslation('settings')
-  const labelId = useId()
-  return (
-    <section className="grid" aria-labelledby={`${labelId}-title`}>
-      <h2 id={`${labelId}-title`} className="px-4 pb-2 text-footnote font-semibold text-label-secondary">
-        {t('conn.liveTitle')}
-      </h2>
-      <div role="list" className="st-group">
-        <div role="listitem" aria-disabled="true" data-testid="live-row" className="flex min-h-12 items-center gap-3 px-4 py-2.5">
-          <span
-            aria-hidden="true"
-            className="grid size-7 shrink-0 place-items-center rounded-[7px] bg-fill-3 text-label-secondary [&_svg]:size-4"
-          >
-            <Lock strokeWidth={1.5} />
-          </span>
-          <span className="grid min-w-0 flex-1 gap-px">
-            <span id={labelId} className="text-callout text-label-secondary">
-              {t('conn.live')}
-            </span>
-            <span className="text-footnote text-label-secondary">{t('conn.liveNote')}</span>
-          </span>
-          <Toggle checked={false} disabled aria-labelledby={labelId} />
-        </div>
-      </div>
-    </section>
-  )
-}
-
 export function ConnectionsPage() {
   const query = useConnection('demo')
+  const live = useConnection('live').connection
+  const activeEnv = useTradingEnv()
   const [removed, setRemoved] = useState(false)
 
   let body
@@ -72,7 +47,14 @@ export function ConnectionsPage() {
   } else if (query.isError && !query.data) {
     body = <LoadError onRetry={() => void query.refetch()} />
   } else if (query.connection) {
-    body = <ConnectedView key={query.connection.id} connection={query.connection} onRemoved={() => setRemoved(true)} />
+    body = (
+      <ConnectedView
+        key={query.connection.id}
+        connection={query.connection}
+        trading={activeEnv === 'demo' && live !== null}
+        onRemoved={() => setRemoved(true)}
+      />
+    )
   } else {
     body = <NotConnected focusOnMount={removed} />
   }
@@ -81,7 +63,7 @@ export function ConnectionsPage() {
     <div className="st-page">
       <PaneHeader />
       {body}
-      <LiveGroup />
+      {query.data && <LiveSection connection={live} />}
     </div>
   )
 }

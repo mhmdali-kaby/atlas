@@ -17,13 +17,17 @@ export function NotConnected({ focusOnMount }: { focusOnMount: boolean }) {
   }, [focusOnMount])
 
   return (
-    <section className="st-group st-empty" aria-labelledby="st-none-title" data-testid="not-connected">
+    <section className="grid" aria-labelledby="st-demo-title">
+      <h2 id="st-demo-title" className="px-4 pb-2 text-footnote font-semibold text-label-secondary">
+        {t('conn.demoTitle')}
+      </h2>
+      <div className="st-group st-empty" data-testid="not-connected">
       <span className="st-empty-icon" aria-hidden="true">
         <Plug strokeWidth={1.5} />
       </span>
-      <h2 id="st-none-title" className="text-title-3">
+      <h3 id="st-none-title" className="text-title-3">
         {t('conn.none.title')}
-      </h2>
+      </h3>
       <p className="max-w-[46ch] text-subheadline text-label-secondary">{t('conn.none.body')}</p>
       <Button
         ref={button}
@@ -38,6 +42,7 @@ export function NotConnected({ focusOnMount }: { focusOnMount: boolean }) {
         {t('conn.connect')}
       </Button>
       <KeysSheet key={opened} open={open} onOpenChange={setOpen} connection={null} />
+      </div>
     </section>
   )
 }

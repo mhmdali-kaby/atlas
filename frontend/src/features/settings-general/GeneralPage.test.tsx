@@ -85,6 +85,19 @@ describe('Settings → General', () => {
     expect(screen.getByText('owner@atlas.test')).toBeInTheDocument()
   })
 
+  it('the preview shows signed changes with arrows and gain/loss words, and R as +1.4R', async () => {
+    backend()
+    renderPage()
+    const pv = await screen.findByTestId('gn-preview')
+    const profit = pv.querySelector('[data-sign="profit"]')
+    const loss = pv.querySelector('[data-sign="loss"]')
+    expect(profit?.querySelector('[data-sign-icon]')).not.toBeNull()
+    expect(loss?.querySelector('[data-sign-icon]')).not.toBeNull()
+    expect(profit).toHaveTextContent('gain')
+    expect(loss).toHaveTextContent('loss')
+    expect(pv).toHaveTextContent('+1.4R')
+  })
+
   it('switching to Arabic flips the whole app to RTL at once and saves only the locale', async () => {
     const state = backend()
     const user = userEvent.setup()
