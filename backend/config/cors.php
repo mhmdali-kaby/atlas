@@ -30,7 +30,10 @@ return [
 
     'allowed_headers' => ['*'],
 
-    'exposed_headers' => [],
+    // ATL-256: without this the SPA's fetch() cannot read Retry-After on a cross-origin 429
+    // (browsers only expose a small safelist of response headers by default), so every "try
+    // again in N s" wait line fell back to a hard-coded 60s instead of the server's real value.
+    'exposed_headers' => ['Retry-After'],
 
     'max_age' => 0,
 

@@ -202,6 +202,26 @@ it('throttles the sixth challenge attempt within a minute with 429', function ()
     $this->getJson('/api/auth/me')->assertUnauthorized();
 });
 
+it('exposes Retry-After through CORS so the SPA can read the real wait time off a cross-origin 429', function (): void {
+    // ATL-256: backend/config/cors.php exposed no headers, so the SPA's fetch() could not read
+    // Retry-After on a cross-origin 429 and every wait line fell back to a fixed 60s.
+    [$secret] = enableChallengeTwoFactor($this->owner);
+    passwordStep($this);
+    $wrong = wrongChallengeCode($secret);
+
+    foreach (range(1, 5) as $_) {
+        $this->postJson('/api/auth/two-factor-challenge', ['code' => $wrong])->assertStatus(422);
+    }
+
+    $response = $this->postJson('/api/auth/two-factor-challenge', ['code' => (new Google2FA)->getCurrentOtp($secret)])
+        ->assertStatus(429)
+        ->assertHeader('Access-Control-Allow-Origin', 'http://localhost:3000');
+
+    expect($response->headers->get('Access-Control-Expose-Headers'))
+        ->not->toBeNull()
+        ->toContain('Retry-After');
+});
+
 it('requires a code or a recovery code', function (): void {
     enableChallengeTwoFactor($this->owner);
     passwordStep($this);
