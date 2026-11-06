@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { CirclePause, CloudOff, OctagonX, RefreshCw } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
+import { LiveTag } from '../../app/shell/LiveTag'
 import { useTradingEnv } from '../../app/shell/tradingEnv'
 import { Button, Sheet, SheetClose, Spinner, type SheetTone } from '../../ui'
 import { cx } from '../../ui/cx'
@@ -119,7 +120,7 @@ export function KillSheet({
 
   const account = t(`account.${env}`)
 
-  let title: string
+  let title: ReactNode
   let icon: ReactNode
   let tone: SheetTone = 'destructive'
   let description: ReactNode
@@ -158,9 +159,18 @@ export function KillSheet({
       </SheetClose>
     )
   } else {
-    title = t('title')
+    // Live (ATL-240, decision #251): the LIVE tag on the title and a real-money line; still one press.
+    title =
+      env === 'live' ? (
+        <>
+          {t('title')}
+          <LiveTag />
+        </>
+      ) : (
+        t('title')
+      )
     icon = <OctagonX strokeWidth={1.5} />
-    description = t('intro', { account })
+    description = t(env === 'live' ? 'introLive' : 'intro', { account })
     body = <ConfirmBody preview={preview.data} flatten={flatten} onFlatten={setFlatten} account={account} lang={lang} />
     actions = <ConfirmActions flatten={flatten} onGo={() => void send(flatten)} />
   }

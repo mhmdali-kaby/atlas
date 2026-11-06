@@ -46,6 +46,7 @@ import { AutonomyNoteCard } from './AutonomyNoteCard'
 import type { AutonomyNoteValues } from './autonomyNote'
 import { dec, decStr, div } from './dec'
 import { Ladder } from './Ladder'
+import { LiveOrderSheet, needsLiveConfirm } from './LiveOrderSheet'
 import {
   autonomyValuesOf,
   daOf,
@@ -135,7 +136,7 @@ export interface Conflict {
   body: string
 }
 
-type Sheet = 'reject' | 'edit' | 'ask' | null
+type Sheet = 'reject' | 'edit' | 'ask' | 'live' | null
 
 export function ProposalCard({ cardRef, lang, onJump }: { cardRef: ProposalCardRef; lang: Lang; onJump: (id: string) => void }) {
   const { t } = useTranslation('proposal')
@@ -190,17 +191,26 @@ export function ProposalCard({ cardRef, lang, onJump }: { cardRef: ProposalCardR
     return { title, body: known || message || t('why409.unknown') }
   }
 
-  const approve = async () => {
+  // Live (ATL-240, decision #255 (7)): Approve opens the real-order sheet first; only its confirm
+  // sends, with live_confirmed: true. Demo approves at once, as before.
+  const isLiveProposal = needsLiveConfirm(p)
+  const approve = async (liveConfirmed = false) => {
     if (busy) return
+    if (isLiveProposal && !liveConfirmed) {
+      setSheet('live')
+      return
+    }
+    setSheet(null)
     setBusy(true)
     setConflict(null)
     try {
-      const res = await proposalApi.approve(p.id)
+      const res = await proposalApi.approve(p.id, { liveConfirmed: isLiveProposal })
       const next = res.proposal
       if (next) qc.setQueryData<ProposalDetail>(proposalKey(p.id), (old) => (old ? mergeSummary(old, next) : old))
-      toast({ title: t('t.sent'), body: t('t.sentBody', { inst: p.inst_id }) })
+      toast({ title: t(isLiveProposal ? 't.sentLive' : 't.sent'), body: t('t.sentBody', { inst: p.inst_id }) })
     } catch (err) {
-      if (err instanceof ApiError && err.status === 409) setConflict(reason409(err, t('c409.title')))
+      if (err instanceof ApiError && err.status === 422 && refusalOf(err).code === 'live_confirmation_required') setConflict({ title: t('t.failed'), body: t('lv.e422') })
+      else if (err instanceof ApiError && err.status === 409) setConflict(reason409(err, t('c409.title')))
       else {
         const { message } = refusalOf(err)
         setConflict({ title: t('t.failed'), body: message ?? t('t.error') })
@@ -444,6 +454,16 @@ export function ProposalCard({ cardRef, lang, onJump }: { cardRef: ProposalCardR
 
       {live && (
         <>
+          {isLiveProposal && (
+            <LiveOrderSheet
+              p={p}
+              open={sheet === 'live'}
+              onOpenChange={(o) => setSheet(o ? 'live' : null)}
+              onConfirm={() => void approve(true)}
+              lang={lang}
+              band={expiresAt !== null && left !== null ? <Band expiresAt={expiresAt} left={left} createdAt={p.risk_check?.created_at ?? p.created_at} lang={lang} /> : undefined}
+            />
+          )}
           <ReasonSheet
             kind="reject"
             open={sheet === 'reject'}

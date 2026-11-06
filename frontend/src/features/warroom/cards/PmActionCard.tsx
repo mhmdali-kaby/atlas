@@ -10,6 +10,7 @@ import { fillSlots, slot } from '../slots'
 import { InstrumentId, Markdown } from '../text'
 import { formatTime } from '../time'
 import { AutonomyNoteCard } from './AutonomyNoteCard'
+import { LiveOrderSheet, needsLiveConfirm } from './LiveOrderSheet'
 import { Band } from './ProposalCard'
 import { ReasonSheet } from './ProposalSheets'
 import {
@@ -62,7 +63,7 @@ function Fig({ children }: { children: string }) {
 
 const shortId = (id: string) => id.slice(0, 8)
 
-type Sheet = 'reject' | 'ask' | null
+type Sheet = 'reject' | 'ask' | 'live' | null
 
 export function PmActionCard({ cardRef, lang }: { cardRef: ProposalCardRef; lang: Lang; onJump: (id: string) => void }) {
   const { t } = useTranslation('proposal')
@@ -103,12 +104,19 @@ export function PmActionCard({ cardRef, lang }: { cardRef: ProposalCardRef; lang
   }
   const [conflict, setConflict] = useState<{ title: string; body: string } | null>(null)
 
-  const approve = async () => {
+  // Live (ATL-240): the real-order sheet first; only its confirm sends live_confirmed: true.
+  const isLiveProposal = needsLiveConfirm(p)
+  const approve = async (liveConfirmed = false) => {
     if (busy) return
+    if (isLiveProposal && !liveConfirmed) {
+      setSheet('live')
+      return
+    }
+    setSheet(null)
     setBusy('approve')
     setConflict(null)
     try {
-      const res = await proposalApi.approve(p.id)
+      const res = await proposalApi.approve(p.id, { liveConfirmed: isLiveProposal })
       if (res.proposal) qc.setQueryData<ProposalDetail>(proposalKey(p.id), (old) => (old ? mergeSummary(old, res.proposal!) : old))
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) setConflict(reason409(err, t('c409.title')))
@@ -222,6 +230,16 @@ export function PmActionCard({ cardRef, lang }: { cardRef: ProposalCardRef; lang
 
       {live && (
         <>
+          {isLiveProposal && (
+            <LiveOrderSheet
+              p={p}
+              open={sheet === 'live'}
+              onOpenChange={(o) => setSheet(o ? 'live' : null)}
+              onConfirm={() => void approve(true)}
+              lang={lang}
+              band={expiresAt !== null && left !== null ? <Band expiresAt={expiresAt} left={left} createdAt={p.risk_check?.created_at ?? p.created_at} lang={lang} /> : undefined}
+            />
+          )}
           <ReasonSheet
             kind="reject"
             open={sheet === 'reject'}

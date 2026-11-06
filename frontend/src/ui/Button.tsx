@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { cx } from './cx'
 import { Spinner } from './Spinner'
 
-export type ButtonVariant = 'primary' | 'secondary' | 'destructive' | 'plain' | 'plain-destructive'
+export type ButtonVariant = 'primary' | 'secondary' | 'destructive' | 'plain' | 'plain-destructive' | 'live'
 export type ButtonSize = 'sm' | 'md' | 'lg'
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -37,6 +37,8 @@ const VARIANTS: Record<ButtonVariant, string> = {
   destructive: 'bg-destructive-solid text-on-solid shadow-1 hover:brightness-[1.06]',
   plain: 'bg-transparent text-accent-ink hover:bg-fill-4',
   'plain-destructive': 'bg-transparent text-loss-ink hover:bg-loss-wash',
+  /* Live readiness (ATL-240): the one button that sends a real order. */
+  live: 'bg-live text-live-on shadow-1 hover:brightness-[0.94]',
 }
 
 /** Plain buttons are tighter than filled ones (design: 8px inline padding). */

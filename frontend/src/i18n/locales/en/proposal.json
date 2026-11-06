@@ -133,7 +133,8 @@
     "editRejected": "The Risk Engine rejected version {{v}}",
     "asked": "Question sent to the team",
     "askedBody": "The Orchestrator routes it and answers in Main.",
-    "error": "Something went wrong. Try again."
+    "error": "Something went wrong. Try again.",
+    "sentLive": "Approved: real order sent to OKX live"
   },
   "rj": {
     "title": "Reject this proposal?",
@@ -187,5 +188,42 @@
     "sum": "Target shares add up to {{n}}. They must total 100%.",
     "reason": "Write a reason."
   },
-  "cancel": "Cancel"
+  "cancel": "Cancel",
+  "lv": {
+    "title": {
+      "entry": "This places a real order",
+      "amend_stop": "This moves a real stop",
+      "amend_targets": "This changes real take-profits",
+      "partial_close": "This closes part of a real position",
+      "close": "This closes a real position"
+    },
+    "lead": {
+      "entry": "Atlas sends it to your OKX live account as soon as you approve.",
+      "amend_stop": "Atlas changes the stop on your OKX live account as soon as you approve.",
+      "amend_targets": "Atlas changes the take-profits on your OKX live account as soon as you approve.",
+      "partial_close": "Atlas closes this part at market on your OKX live account as soon as you approve.",
+      "close": "Atlas closes it at market on your OKX live account as soon as you approve."
+    },
+    "receipt": "The order",
+    "inst": "Instrument",
+    "order": "Order",
+    "orderV": "{{side}}, {{type}} at {{zone}}",
+    "side": {
+      "buy": "Buy",
+      "sell": "Sell"
+    },
+    "size": "Size",
+    "sizeSub": "{{c}} contracts at {{lev}}",
+    "stop": "Stop",
+    "stopSub": "Placed on OKX’s servers with the order",
+    "stopMoveSub": "Stops only tighten",
+    "targets": "Take-profits",
+    "position": "Position",
+    "close": "Close",
+    "closeV": "All {{c}} contracts at market",
+    "closeAll": "The whole position at market",
+    "closePart": "{{pct}} of the position at market",
+    "confirm": "Approve real order",
+    "e422": "Approve again: live orders need your confirmation."
+  }
 }

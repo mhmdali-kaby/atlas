@@ -7,6 +7,7 @@ import { routes } from '../../app/router'
 import i18n from '../../i18n'
 import { API_URL, resetCsrfForTests } from '../../lib/api'
 import { useToasts } from '../../ui'
+import { dayText } from '../settings-environment/model'
 
 /* ATL-242: "Settings for: Demo | Live" on Risk, Money limits, Autonomy and Markets. */
 
@@ -51,7 +52,8 @@ function initial(): Values {
 }
 
 /** Two settings rows, one per env, behind GET/PATCH /api/settings (ATL-238's first-month 422 on live). */
-function fakeBackend(opts: { firstMonth?: boolean } = {}) {
+/** `staleDoc`: the month started after the page loaded, so GET still shows no end date but PATCH refuses. */
+function fakeBackend(opts: { firstMonth?: boolean; staleDoc?: boolean } = {}) {
   const rows: Record<Env, { version: number; settings: Values }> = {
     demo: { version: 7, settings: initial() },
     live: { version: 1, settings: initial() },
@@ -66,7 +68,7 @@ function fakeBackend(opts: { firstMonth?: boolean } = {}) {
       settings: rows[env].settings,
       presets: PRESETS,
       max_enabled_autonomy_level: 4,
-      first_live_month_ends_at: env === 'live' && opts.firstMonth ? ENDS : null,
+      first_live_month_ends_at: env === 'live' && opts.firstMonth && !opts.staleDoc ? ENDS : null,
       max_live_autonomy_level: 2,
       updated_at: '2026-10-28T09:00:00Z',
     },
@@ -225,9 +227,9 @@ describe('Settings for: Demo | Live (ATL-242)', () => {
     expect(be.rows.demo).toEqual(demoBefore)
   })
 
-  it.each(['en', 'ar'] as const)('during the first live month, live autonomy 3 is refused with the API message (%s)', async (lang) => {
+  it.each(['en', 'ar'] as const)('a first live month that began after the page loaded: live autonomy 3 is refused with the API message (%s)', async (lang) => {
     await i18n.changeLanguage(lang)
-    const be = fakeBackend({ firstMonth: true })
+    const be = fakeBackend({ firstMonth: true, staleDoc: true })
     const user = userEvent.setup()
     renderAt('/settings/autonomy?env=live')
     const name = lang === 'en' ? 'Auto within limits' : i18n.t('au.l3', { ns: 'onboarding' })
@@ -249,5 +251,60 @@ describe('Settings for: Demo | Live (ATL-242)', () => {
     await waitFor(() => expect(be.rows.live.settings.autonomy_level).toBe(3))
     expect(be.patches.at(-1)?.env).toBe('live')
     expect(be.rows.demo.settings.autonomy_level).toBe(2)
+  })
+})
+
+describe('First live month on Autonomy and Money limits (ATL-240)', () => {
+  it.each(['en', 'ar'] as const)('live autonomy 3 and 4 are disabled with the end date (%s)', async (lang) => {
+    await i18n.changeLanguage(lang)
+    const be = fakeBackend({ firstMonth: true })
+    const user = userEvent.setup()
+    renderAt('/settings/autonomy?env=live')
+    const name3 = lang === 'en' ? 'Auto within limits' : i18n.t('au.l3', { ns: 'onboarding' })
+    const name4 = i18n.t('au.l4', { ns: 'onboarding' })
+    const l3 = await screen.findByRole('radio', { name: name3 })
+    const l4 = screen.getByRole('radio', { name: name4 })
+    expect(l3).toHaveAttribute('aria-disabled', 'true')
+    expect(l4).toHaveAttribute('aria-disabled', 'true')
+    const date = dayText(ENDS, lang, true)
+    if (lang === 'en') expect(date).toBe('December 2')
+    expect(l3).toHaveAccessibleDescription(expect.stringContaining(i18n.t('firstMonth', { ns: 'settings-autonomy', date })))
+    expect(l4).toHaveAccessibleDescription(expect.stringContaining(i18n.t('firstMonth', { ns: 'settings-autonomy', date })))
+    expect(screen.getByText(i18n.t('firstMonthNote', { ns: 'settings-autonomy', date }))).toBeInTheDocument()
+    await user.click(l3)
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    expect(be.patches).toEqual([])
+    // 1 and 2 still save.
+    await user.click(screen.getByRole('radio', { name: lang === 'en' ? 'Advise only' : i18n.t('au.l1', { ns: 'onboarding' }) }))
+    await waitFor(() => expect(be.patches).toEqual([{ env: 'live', version: 1, changes: { autonomy_level: 1 } }]))
+  })
+
+  it('the demo row is never limited by the live month', async () => {
+    fakeBackend({ firstMonth: true })
+    renderAt('/settings/autonomy?env=demo')
+    expect(await screen.findByRole('radio', { name: 'Auto within limits' })).not.toHaveAttribute('aria-disabled')
+  })
+
+  it('Money limits marks the live cap as required: no Remove cap, and an empty cap cannot be saved', async () => {
+    const be = fakeBackend({ firstMonth: true })
+    be.rows.live.settings.bot_capital_cap_usdt = '10000'
+    const user = userEvent.setup()
+    renderAt('/settings/money?env=live')
+    const cap = await screen.findByRole('textbox', { name: /^Bot capital cap/ })
+    expect(screen.getByText(/Required before switching to live, and for the first 30 days after/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Remove cap' })).not.toBeInTheDocument()
+    await user.clear(cap)
+    expect(await screen.findByTestId('error-bot_capital_cap_usdt')).toHaveTextContent('A bot capital cap is required until December 2.')
+    expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled()
+    expect(be.patches).toEqual([])
+  })
+
+  it('outside the first month the live cap can still be removed', async () => {
+    const be = fakeBackend()
+    be.rows.live.settings.bot_capital_cap_usdt = '10000'
+    renderAt('/settings/money?env=live')
+    await screen.findByRole('textbox', { name: /^Bot capital cap/ })
+    expect(screen.queryByText(/Required before switching to live/)).not.toBeInTheDocument()
+    expect(screen.queryByTestId('error-bot_capital_cap_usdt')).not.toBeInTheDocument()
   })
 })

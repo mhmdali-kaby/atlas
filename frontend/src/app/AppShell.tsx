@@ -17,6 +17,7 @@ import { AccountMenu, LanguageButton, MoreMenu, ThemeMenu, ToolbarGroup } from '
 import { toolbarIconButton } from './shell/toolbarClasses'
 import { RiskFooter } from './shell/RiskFooter'
 import { Sidebar } from './shell/Sidebar'
+import { useEnvChangedListener } from './shell/tradingEnv'
 
 const NARROW_QUERY = '(max-width: 760px)'
 
@@ -44,6 +45,7 @@ export function AppShell({ shell = registeredShell }: { shell?: ShellRegistry })
   const areaHref = (id: AreaId) =>
     id === area?.id ? location.pathname + location.search : (lastByArea.current[id] ?? areaHome(shell, id))
 
+  useEnvChangedListener()
   const [sidebarHidden, setSidebarHidden] = useState(false)
   const [narrowOpen, setNarrowOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
