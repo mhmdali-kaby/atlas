@@ -427,6 +427,10 @@ describe('Settings → Connections', () => {
     expect(err).toHaveTextContent('This key can withdraw funds')
     expect(err).toHaveTextContent('Create a key with Read + Trade only')
     expect(err.className).toContain('bg-loss-wash')
+    // The sheet survives the empty state turning into the card behind it.
+    await waitFor(() => expect(screen.getByTestId('live-card')).toHaveAttribute('data-state', 'refused'))
+    expect(screen.getByRole('dialog', { name: 'Connect the OKX live account' })).toBeInTheDocument()
+    expect(within(screen.getByRole('dialog')).getByTestId('test-error')).toBeInTheDocument()
   })
 
   it('a live test with a wrong key says not verified with the mapped error, keeping only label and key', async () => {

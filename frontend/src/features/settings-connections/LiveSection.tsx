@@ -58,6 +58,10 @@ type LiveState = 'testing' | 'verified' | 'refused' | 'failed' | 'untested'
 export function LiveSection({ connection }: { connection: Connection | null }) {
   const { t } = useTranslation('settings')
   const [removed, setRemoved] = useState(false)
+  // The connect sheet lives here, not in the empty state: saving the key swaps the empty state
+  // for the card, and a refused key must keep the sheet open with its error.
+  const [connectOpen, setConnectOpen] = useState(false)
+  const [opened, setOpened] = useState(0)
   return (
     <section className="grid" aria-labelledby="st-live-title" data-testid="live-section">
       <h2 id="st-live-title" className="px-4 pb-2 text-footnote font-semibold text-label-secondary">
@@ -66,17 +70,22 @@ export function LiveSection({ connection }: { connection: Connection | null }) {
       {connection ? (
         <LiveConnected key={connection.id} connection={connection} onRemoved={() => setRemoved(true)} />
       ) : (
-        <LiveEmpty focusOnMount={removed} />
+        <LiveEmpty
+          focusOnMount={removed}
+          onConnect={() => {
+            setOpened((n) => n + 1)
+            setConnectOpen(true)
+          }}
+        />
       )}
       <p className="px-4 pt-2 text-footnote text-label-secondary">{t('lv.footnote')}</p>
+      <KeysSheet key={`lconnect-${opened}`} open={connectOpen} onOpenChange={setConnectOpen} connection={null} env="live" />
     </section>
   )
 }
 
-function LiveEmpty({ focusOnMount }: { focusOnMount: boolean }) {
+function LiveEmpty({ focusOnMount, onConnect }: { focusOnMount: boolean; onConnect: () => void }) {
   const { t } = useTranslation('settings')
-  const [open, setOpen] = useState(false)
-  const [opened, setOpened] = useState(0)
   const button = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
@@ -95,14 +104,10 @@ function LiveEmpty({ focusOnMount }: { focusOnMount: boolean }) {
         variant="primary"
         icon={<Plug />}
         className="mt-2"
-        onClick={() => {
-          setOpened((n) => n + 1)
-          setOpen(true)
-        }}
+        onClick={onConnect}
       >
         {t('lv.connect')}
       </Button>
-      <KeysSheet key={opened} open={open} onOpenChange={setOpen} connection={null} env="live" />
     </div>
   )
 }
