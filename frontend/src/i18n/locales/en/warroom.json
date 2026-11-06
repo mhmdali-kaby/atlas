@@ -178,7 +178,10 @@
     "view": "Positions",
     "empty": {
       "title": "No open positions",
-      "body": "Positions on the OKX demo account appear here as soon as Atlas syncs them."
+      "body": {
+        "demo": "Positions on the OKX demo account appear here as soon as Atlas syncs them.",
+        "live": "Positions on the OKX live account appear here as soon as Atlas syncs them."
+      }
     },
     "error": {
       "title": "Couldn’t load positions",
@@ -517,9 +520,9 @@
     "keyReturn": "Return",
     "keyEsc": "Esc",
     "err": {
-      "notLive": "{{inst}} isn’t live on the demo account right now.",
+      "notLive": "{{inst}} isn’t trading right now.",
       "blocked": "{{inst}} is blocked in Settings.",
-      "unknown": "{{inst}} isn’t an instrument on the demo account.",
+      "unknown": "{{inst}} isn’t an instrument in this account’s universe.",
       "server": "Couldn’t pin {{inst}}. Atlas’s server didn’t answer. Try again."
     },
     "toast": {

@@ -48,6 +48,8 @@ interface Props {
   seed: string
   now: number
   lang: Lang
+  /** The pane's own env (the "Settings for: Demo | Live" row this preview belongs to). */
+  env: SettingsDoc['env']
   onRetry: () => void
 }
 
@@ -208,7 +210,7 @@ function Figures({ p, texts, doc, saved, lang }: { p: RiskPreview; texts: MoneyT
   )
 }
 
-export function Preview({ doc, texts, preview, failed, pending, invalid, dirty, saved, seed, now, lang, onRetry }: Props) {
+export function Preview({ doc, texts, preview, failed, pending, invalid, dirty, saved, seed, now, lang, env, onRetry }: Props) {
   const { t } = useTranslation('settings-money')
   const noEquity = preview?.reason === 'no_equity'
   const noFigs = failed || noEquity
@@ -238,7 +240,7 @@ export function Preview({ doc, texts, preview, failed, pending, invalid, dirty, 
         </span>
         <div className="ml-empty-text">
           <p className="ml-empty-title">{t('noEq.title')}</p>
-          <p className="ml-empty-body">{t('noEq.body')}</p>
+          <p className="ml-empty-body">{t(`noEq.body.${env}`)}</p>
         </div>
         <Link to="/settings/connections" className="ml-empty-btn">
           <Plug aria-hidden="true" />

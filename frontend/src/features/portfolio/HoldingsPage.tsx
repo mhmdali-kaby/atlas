@@ -156,7 +156,7 @@ export function HoldingsPage() {
 
   const data = holdings.data?.data
   if (data && data.taken_at === null) {
-    return <StateBlock kind="empty" title={t('empty.title')} body={t('empty.body')} />
+    return <StateBlock kind="empty" title={t('empty.title')} body={t(`empty.body.${env}`)} />
   }
 
   const loading = holdings.isPending
@@ -205,7 +205,7 @@ export function HoldingsPage() {
       <div>
         {head}
         <div className="pf-panel">
-          <StateBlock kind="none" compact icon={Wallet} title={t('holdings.empty.title')} body={t('holdings.empty.body')} />
+          <StateBlock kind="none" compact icon={Wallet} title={t('holdings.empty.title')} body={t(`holdings.empty.body.${env}`)} />
         </div>
       </div>
     )

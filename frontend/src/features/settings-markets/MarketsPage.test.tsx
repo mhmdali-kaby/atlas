@@ -44,7 +44,8 @@ const UNIVERSE = [
 
 type Eligible = { inst_id: string; fails: string[]; market: string; min_24h_volume_usd: string | null }
 
-function fakeBackend(opts: { markets?: Partial<typeof MARKETS>; reject422?: string; eligibility?: Eligible[] } = {}) {
+function fakeBackend(opts: { markets?: Partial<typeof MARKETS>; reject422?: string; eligibility?: Eligible[]; env?: 'demo' | 'live' } = {}) {
+  const env = opts.env ?? 'demo'
   const state = {
     version: 4,
     markets: { ...MARKETS, ...opts.markets } as Record<string, unknown>,
@@ -54,7 +55,7 @@ function fakeBackend(opts: { markets?: Partial<typeof MARKETS>; reject422?: stri
   const doc = () => ({
     data: {
       id: 's1',
-      env: 'demo',
+      env,
       version: state.version,
       settings: { risk_profile: 'balanced', ...BALANCED, autonomy_level: 2, onboarding_completed: 1, ...state.markets },
       presets: { conservative: BALANCED, balanced: BALANCED, aggressive: BALANCED },
@@ -74,7 +75,12 @@ function fakeBackend(opts: { markets?: Partial<typeof MARKETS>; reject422?: stri
       if (path === '/api/auth/status') return reply(200, { owner_exists: true })
       if (path === '/api/auth/me') return reply(200, { data: OWNER })
       if (path === '/api/connections') return reply(200, { data: [] })
-      if (path === '/api/settings?env=demo' && method === 'GET') return reply(200, doc())
+      if (url.pathname === '/api/environment') {
+        return reply(200, {
+          data: { active_env: env, live_started_at: null, first_month_ends_at: null, in_first_live_month: false, switched_at: null, confirmation_text: 'TRADE LIVE', preflight: { ok: true, items: [] } },
+        })
+      }
+      if (path === `/api/settings?env=${env}` && method === 'GET') return reply(200, doc())
       if (path.startsWith('/api/settings/history')) return reply(200, { data: [], meta: { total: 0 } })
       if (url.pathname === '/api/instruments') {
         const q = (url.searchParams.get('q') ?? '').toUpperCase()
@@ -98,7 +104,7 @@ function fakeBackend(opts: { markets?: Partial<typeof MARKETS>; reject422?: stri
             notes: ['spread_unknown'],
           }
         })
-        return reply(200, { data: { env: 'demo', as_of: '2026-10-30T08:00:00Z', settings_version: 4, draft: [], instruments: rows } })
+        return reply(200, { data: { env, as_of: '2026-10-30T08:00:00Z', settings_version: 4, draft: [], instruments: rows } })
       }
       if (path === '/api/settings' && method === 'PATCH') {
         const body = JSON.parse(String(init.body)) as { version: number; changes: Record<string, unknown> }
@@ -170,6 +176,23 @@ describe('Settings → Markets (ATL-131)', () => {
     expect(await screen.findByTestId('error-whitelist')).toHaveTextContent('NOPE-USDT-SWAP isn’t in the OKX demo universe.')
     expect(screen.queryByTestId('save-bar')).not.toBeInTheDocument()
     expect(state.patches).toHaveLength(0)
+  })
+
+  it('in live, the subtitle and the unknown-instrument refusal name the OKX live account, in English and Arabic (ATL-244)', async () => {
+    fakeBackend({ env: 'live' })
+    const user = userEvent.setup()
+    renderPage()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Markets' })).toBeInTheDocument()
+    expect(await screen.findByText(/What Atlas may trade on the OKX live account\./)).toBeInTheDocument()
+    expect(screen.queryByText(/OKX demo account/)).toBeNull()
+
+    const input = await screen.findByRole('combobox', { name: 'Allowed instruments' })
+    await user.type(input, 'NOPE-USDT-SWAP{Enter}')
+    expect(await screen.findByTestId('error-whitelist')).toHaveTextContent('NOPE-USDT-SWAP isn’t in the OKX live universe.')
+
+    await i18n.changeLanguage('ar')
+    expect(await screen.findByText(/حساب OKX الحقيقي/)).toBeInTheDocument()
+    expect(screen.queryByText(/التجريبي/)).toBeNull()
   })
 
   it('renders dated futures and options as disabled, off switches with the later-phase caption from the locale file', async () => {

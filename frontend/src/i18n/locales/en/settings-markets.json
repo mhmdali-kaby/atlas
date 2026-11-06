@@ -1,6 +1,9 @@
 {
   "nav": "Markets",
-  "intro": "What Atlas may trade on the OKX demo account. Market Scout starts each morning from the instruments that pass these settings.",
+  "intro": {
+    "demo": "What Atlas may trade on the OKX demo account. Market Scout starts each morning from the instruments that pass these settings.",
+    "live": "What Atlas may trade on the OKX live account. Market Scout starts each morning from the instruments that pass these settings."
+  },
   "version": "Version {{v}}",
   "m": {
     "spot": "Spot",
@@ -62,7 +65,10 @@
   "add": "Add",
   "addTo": "Add to {{list}}",
   "rm": "Remove {{id}}",
-  "unknownInst": "{{text}} isn’t in the OKX demo universe.",
+  "unknownInst": {
+    "demo": "{{text}} isn’t in the OKX demo universe.",
+    "live": "{{text}} isn’t in the OKX live universe."
+  },
   "dupAllow": "{{id}} is already allowed.",
   "dupDeny": "{{id}} is already blocked.",
   "opt": {
@@ -79,7 +85,10 @@
   "removed": "Removed {{id}} from {{list}}.",
   "fail": {
     "blocked": "Also blocked, and the blocklist wins",
-    "unknown_instrument": "Not in the OKX demo universe",
+    "unknown_instrument": {
+      "demo": "Not in the OKX demo universe",
+      "live": "Not in the OKX live universe"
+    },
     "not_live": "Not trading on OKX right now",
     "listed_under_7_days": "Listed on OKX less than 7 days ago",
     "min_24h_volume": "Below the {{min}} volume minimum today",

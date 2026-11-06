@@ -170,7 +170,7 @@ function MarketsPane({ scope }: { scope: EnvScope }) {
     if (d.whitelist.length && answer) {
       for (const e of answer.instruments) {
         if (!d.whitelist.includes(e.inst_id)) continue
-        const w = failText(e, tt)
+        const w = failText(e, tt, ENV)
         if (w) warnings[e.inst_id] = w
       }
     }

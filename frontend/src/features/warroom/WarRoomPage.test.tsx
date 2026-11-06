@@ -98,10 +98,19 @@ const reply = (status: number, body?: unknown) =>
   new Response(body === undefined ? null : JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
 
 /** `positions` defaults to the two seeded positions; pass [] / 'fail' to test the other states. */
-function fakeBackend(messages: Messages[], positions: PositionsPayload | 'fail' = { taken_at: '2026-10-28T17:36:00.000000Z', items: [BTC_POSITION, XAU_POSITION] }) {
+function fakeBackend(
+  messages: Messages[],
+  positions: PositionsPayload | 'fail' = { taken_at: '2026-10-28T17:36:00.000000Z', items: [BTC_POSITION, XAU_POSITION] },
+  env: 'demo' | 'live' = 'demo',
+) {
   const queue = [...messages]
   const fetch = vi.fn(async (input: RequestInfo | URL) => {
     const url = new URL(String(input))
+    if (url.pathname === '/api/environment') {
+      return reply(200, {
+        data: { active_env: env, live_started_at: null, first_month_ends_at: null, in_first_live_month: false, switched_at: null, confirmation_text: 'TRADE LIVE', preflight: { ok: true, items: [] } },
+      })
+    }
     if (url.pathname === '/api/warroom/threads') return reply(200, { data: [MAIN, BTC, HIST] })
     if (url.pathname === '/api/warroom/messages') {
       const next = queue.length > 1 ? queue.shift()! : queue[0]!
@@ -325,6 +334,18 @@ describe('Inspector positions (ATL-43)', () => {
     renderWarRoom()
     expect(await screen.findByTestId('wr-positions-empty')).toHaveTextContent('No open positions')
     expect(screen.queryByTestId('wr-position-row')).not.toBeInTheDocument()
+  })
+
+  it('in live, the empty state names the OKX live account, in English and Arabic (ATL-244)', async () => {
+    fakeBackend([[]], { taken_at: '2026-10-28T17:36:00.000000Z', items: [] }, 'live')
+    renderWarRoom()
+    const empty = await screen.findByTestId('wr-positions-empty')
+    expect(empty).toHaveTextContent('Positions on the OKX live account appear here as soon as Atlas syncs them.')
+    expect(empty).not.toHaveTextContent('demo account')
+
+    await i18n.changeLanguage('ar')
+    await waitFor(() => expect(screen.getByTestId('wr-positions-empty')).toHaveTextContent('حساب OKX الحقيقي'))
+    expect(screen.getByTestId('wr-positions-empty')).not.toHaveTextContent('التجريبي')
   })
 
   it('shows an error with Retry that refetches on failure', async () => {

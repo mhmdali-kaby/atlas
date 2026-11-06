@@ -1,6 +1,9 @@
 {
   "nav": "Money limits",
-  "intro": "Caps in USDT on what Atlas may put into trades on the OKX demo account. The smallest limit always wins, here or in your risk profile.",
+  "intro": {
+    "demo": "Caps in USDT on what Atlas may put into trades on the OKX demo account. The smallest limit always wins, here or in your risk profile.",
+    "live": "Caps in USDT on what Atlas may put into trades on the OKX live account. The smallest limit always wins, here or in your risk profile."
+  },
   "version": "Version {{v}}",
   "prev": {
     "title": "Next trade",
@@ -46,7 +49,10 @@
   "invalid": "Fix the highlighted limit to update the preview.",
   "noEq": {
     "title": "No account equity yet",
-    "body": "Atlas shows these limits in dollars once it has synced the OKX demo account’s equity. That happens about a minute after you connect.",
+    "body": {
+      "demo": "Atlas shows these limits in dollars once it has synced the OKX demo account’s equity. That happens about a minute after you connect.",
+      "live": "Atlas shows these limits in dollars once it has synced the OKX live account’s equity. That happens about a minute after you connect."
+    },
     "btn": "Open Connections"
   },
   "pErr": {

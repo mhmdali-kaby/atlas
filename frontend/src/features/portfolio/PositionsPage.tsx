@@ -164,7 +164,7 @@ export function PositionsPage() {
 
   const data = positions.data?.data
   if (data && data.taken_at === null) {
-    return <StateBlock kind="empty" title={t('empty.title')} body={t('empty.body')} />
+    return <StateBlock kind="empty" title={t('empty.title')} body={t(`empty.body.${env}`)} />
   }
 
   const loading = positions.isPending
@@ -218,7 +218,7 @@ export function PositionsPage() {
       <div>
         {head}
         <div className="pf-panel">
-          <StateBlock kind="none" compact icon={Layers} title={t('positions.empty.title')} body={t('positions.empty.body')} />
+          <StateBlock kind="none" compact icon={Layers} title={t('positions.empty.title')} body={t(`positions.empty.body.${env}`)} />
         </div>
       </div>
     )
@@ -261,7 +261,7 @@ export function PositionsPage() {
           tone="info"
           icon={Unplug}
           className="mb-4"
-          title={t('positions.close.disconnected')}
+          title={t(`positions.close.disconnected.${env}`)}
           actions={
             <Button asChild size="sm" variant="plain">
               <Link to="/settings/connections">{t('positions.close.connect')}</Link>

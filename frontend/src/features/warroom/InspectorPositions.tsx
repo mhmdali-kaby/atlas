@@ -102,7 +102,7 @@ export function InspectorPositions({ env, thread }: { env: TradingEnv; thread: W
       <div className="insp-empty" data-testid="wr-positions-empty">
         <Layers aria-hidden="true" strokeWidth={1.5} />
         <p className="insp-empty-title">{t('positions.empty.title')}</p>
-        <p>{t('positions.empty.body')}</p>
+        <p>{t(`positions.empty.body.${env}`)}</p>
       </div>
     )
   } else {

@@ -2,7 +2,7 @@ import { CircleCheck, TriangleAlert } from 'lucide-react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router'
-import { useTradingEnv } from '../../app/shell/tradingEnv'
+import { useTradingEnv, type TradingEnv } from '../../app/shell/tradingEnv'
 import { formatMoney, type Lang } from '../../lib/format'
 import { Seal, SegmentedControl, SignedValue } from '../../ui'
 import { cx } from '../../ui/cx'
@@ -68,7 +68,7 @@ function HeroEquity({ value, lang }: { value: string; lang: Lang }) {
   )
 }
 
-function AccountSeal({ uidLast4, stale }: { uidLast4: string; stale: boolean }) {
+function AccountSeal({ env, uidLast4, stale }: { env: TradingEnv; uidLast4: string; stale: boolean }) {
   const { t } = useTranslation('portfolio')
   return (
     <figure className="m-0 me-3 grid justify-items-center gap-2 max-[760px]:hidden">
@@ -83,7 +83,7 @@ function AccountSeal({ uidLast4, stale }: { uidLast4: string; stale: boolean }) 
         </span>
       </span>
       <figcaption className="flex justify-center gap-1.5 text-footnote text-label-secondary">
-        <span>{t('sealCaption')}</span>
+        <span>{t(`sealCaption.${env}`)}</span>
         <span className="fig">•••• {uidLast4}</span>
       </figcaption>
     </figure>
@@ -174,7 +174,7 @@ export function OverviewPage() {
   const loading = summary.isPending
 
   if (s && s.total_equity_usd === null) {
-    return <StateBlock kind="empty" title={t('empty.title')} body={t('empty.body')} />
+    return <StateBlock kind="empty" title={t('empty.title')} body={t(`empty.body.${env}`)} />
   }
 
   const connection = connections.data?.data.find((c) => c.exchange === 'okx' && c.env === env)
@@ -285,7 +285,7 @@ export function OverviewPage() {
     chart = (
       <>
         <div className="mb-2.5 flex items-center justify-between gap-4">{rangeControl}</div>
-        <StateBlock kind="empty" compact title={t('empty.title')} body={t('empty.body')} />
+        <StateBlock kind="empty" compact title={t('empty.title')} body={t(`empty.body.${env}`)} />
       </>
     )
   } else {
@@ -322,7 +322,7 @@ export function OverviewPage() {
           )}
           {s ? <ReconciledIndicator summary={s} lang={lang} now={now} /> : <Skeleton style={{ width: 260, height: 18 }} />}
         </div>
-        {uidLast4 && !loading && <AccountSeal uidLast4={uidLast4} stale={s?.stale ?? false} />}
+        {uidLast4 && !loading && <AccountSeal env={env} uidLast4={uidLast4} stale={s?.stale ?? false} />}
       </section>
 
       <section aria-label={t('chartSection')} className="mt-3">
