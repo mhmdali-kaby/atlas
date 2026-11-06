@@ -34,7 +34,7 @@ final class Preflight
     }
 
     /**
-     * @return list<array{key: string, kind: string, ok: bool, detail: string}>
+     * @return list<array{key: string, kind: string, ok: bool, detail: string, confirmed_at?: string|null}>
      */
     public function items(?SystemState $state, CarbonImmutable $now): array
     {
@@ -52,9 +52,12 @@ final class Preflight
         $attestations = $state !== null ? $state->preflight_attestations : [];
         foreach (self::ATTESTED as $key) {
             $at = $attestations[$key]['confirmed_at'] ?? null;
-            $items[] = is_string($at)
+            // ATL-239: the page shows "Confirmed on <day> at <time>" in the owner's zone, so the
+            // attested items also carry the raw timestamp (null when not confirmed).
+            $items[] = (is_string($at)
                 ? self::item($key, 'attested', true, __('environment.preflight.attested.ok', ['at' => $at]))
-                : self::item($key, 'attested', false, __("environment.preflight.{$key}.fail"));
+                : self::item($key, 'attested', false, __("environment.preflight.{$key}.fail")))
+                + ['confirmed_at' => is_string($at) ? $at : null];
         }
 
         return $items;
