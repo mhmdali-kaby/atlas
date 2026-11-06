@@ -63,6 +63,9 @@ class AgentSettings:
     web: WebPolicy = field(default_factory=WebPolicy)
     schedule_defaults: Mapping[str, Any] = field(default_factory=lambda: DEFAULTS)
     """DEFAULTS with the row's ``schedule.*`` keys overlaid (ATL-229, :mod:`atlas_agents.schedule`)."""
+    prompt_pins: Mapping[str, int] = field(default_factory=dict)
+    """slug -> pinned ``prompt_versions.version`` (``agents.<slug>.prompt_version``, ATL-252). An
+    agent missing here runs on its current prompt files."""
 
 
 def read_row(engine: Engine, env: str) -> tuple[int | None, dict[str, Any]]:
@@ -143,6 +146,22 @@ def merge_web(data: Mapping[str, Any], defaults: Mapping[str, Any] = DEFAULTS) -
     return dataclasses.replace(policy, **out) if out else policy
 
 
+def merge_pins(base: Mapping[str, AgentSpec], data: Mapping[str, Any]) -> dict[str, int]:
+    """``agents.<slug>.prompt_version`` for every agent in ``base``: an int >= 1 pins that stored
+    version; null or absent means the current files (decision #265 (3))."""
+    pins: dict[str, int] = {}
+    for slug in base:
+        key = f"agents.{slug}.prompt_version"
+        value = data.get(key)
+        if value is None:
+            continue
+        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            _warn(key, value)
+            continue
+        pins[slug] = value
+    return pins
+
+
 def merge(
     base: Mapping[str, AgentSpec],
     version: int | None,
@@ -154,6 +173,7 @@ def merge(
         specs={slug: merge_spec(spec, data, defaults) for slug, spec in base.items()},
         web=merge_web(data, defaults),
         schedule_defaults=schedule.effective(data, defaults),
+        prompt_pins=merge_pins(base, data),
     )
 
 
