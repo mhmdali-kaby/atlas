@@ -87,7 +87,7 @@ function fakeBackend(opts: { schedule?: Record<string, unknown>; zone?: string; 
         if (refused) return refused
         state.patches.push(body)
         const diff = Object.fromEntries(Object.entries(body.changes).map(([k, v]) => [k, { from: state.schedule[k], to: v }]))
-        state.schedule = { ...state.schedule, ...body.changes }
+        state.schedule = { ...state.schedule, ...(body.changes as Record<string, string | number | boolean>) }
         state.version += 1
         state.history = [{ id: `h${state.version}`, version: state.version, diff, changed_by: null, created_at: '2026-11-06T09:30:00Z' }, ...state.history]
         return reply(200, doc())

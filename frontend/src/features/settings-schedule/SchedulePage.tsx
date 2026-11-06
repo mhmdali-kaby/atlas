@@ -57,7 +57,7 @@ import { dayName, iso, NS, teamWeekdayTime, useOwnerZone } from './words'
 import './schedule.css'
 
 /*
- * Settings → Schedule (decision #255 (2), ATL-230; design v21 js/pages/settings-schedule.js).
+ * Settings → Schedule (decision 255 (2), ATL-230; design v21 js/pages/settings-schedule.js).
  * When the team works, in Baghdad time. Edits batch behind the save bar and go out as one
  * versioned PATCH /api/settings of schedule.* keys (ATL-228); the supervisor picks them up on
  * its next tick (ATL-229). Order and range rules are the server's: its 422 shows under the field.
@@ -398,7 +398,7 @@ function SchedulePane({ env }: { env: TradingEnv }) {
     }
 
     const timeRow = (k: TimeField, label: string, sub: string, opts: { agent?: string; extra?: ReactNode; control?: ReactNode } = {}) => (
-      <div className={cx('sch-row', opts.agent && 'sch-job', changed.includes(k) && 'is-changed')} data-row={k}>
+      <div key={k} className={cx('sch-row', opts.agent && 'sch-job', changed.includes(k) && 'is-changed')} data-row={k}>
         {opts.agent && <Medallion slug={opts.agent} size={30} status="idle" />}
         <span className="sch-main">
           <span className="sch-label text-callout" id={`sch-${k}-label`}>
@@ -495,7 +495,20 @@ function SchedulePane({ env }: { env: TradingEnv }) {
             </p>
             {list.length > 0 && (
               <p className="sch-preview" data-testid="sch-preview">
-                {t('preview', { times: iso(previewTimes(list)) })}
+                {t('preview', { times: '\u0000' })
+                  .split('\u0000')
+                  .map((piece, i) =>
+                    i === 0 ? (
+                      <span key={i}>{piece}</span>
+                    ) : (
+                      <span key={i}>
+                        <bdi dir="ltr" className="sch-times" data-testid="sch-preview-times">
+                          {previewTimes(list)}
+                        </bdi>
+                        {piece}
+                      </span>
+                    ),
+                  )}
               </p>
             )}
             {diff !== 0 && (

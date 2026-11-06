@@ -4,8 +4,8 @@ import { DATE_LOCALE, type Lang } from '../../lib/format'
 import { TEAM_TZ, WEEKDAYS, type Weekday } from './model'
 
 export const NS = 'settings-schedule'
-const LRI = '⁦'
-const PDI = '⁩'
+const LRI = '\u2066'
+const PDI = '\u2069'
 /** A time inside a sentence: an LTR isolate so "07:30" never reorders in Arabic. */
 export const iso = (s: string | number) => `${LRI}${s}${PDI}`
 

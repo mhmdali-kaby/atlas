@@ -1,7 +1,7 @@
 import type { SettingsChanges, SettingsDoc } from '../onboarding'
 
 /*
- * Settings → Schedule (decision #255 (2), ATL-228 keys; design v21 js/pages/settings-schedule.js).
+ * Settings → Schedule (decision 255 (2), ATL-228 keys; design v21 js/pages/settings-schedule.js).
  * Pure maths for the page: every time is a Baghdad wall-clock "HH:MM" (the clock the team keeps);
  * the owner's zone only adds a second reading beside each one.
  */
