@@ -8,7 +8,7 @@ import type { SettingsDoc } from '../onboarding/settings'
 import type { WarroomThread } from './api'
 import { sendMessage } from './live'
 import { endOfBaghdadDay, type Slash } from './slash'
-import { baghdadDay } from './time'
+import { baghdadDay, formatTime, ownerCity } from './time'
 import { invalidateWatchlists, type ApiWatchlist, type WatchlistDay } from './watchlist'
 
 /*
@@ -34,7 +34,7 @@ interface SettingsWithBlocklist extends SettingsDoc {
 }
 
 export function useSlashRunner(env: TradingEnv, thread: WarroomThread | undefined) {
-  const { t } = useTranslation('warroom')
+  const { t, i18n } = useTranslation('warroom')
   const qc = useQueryClient()
   const health = useSystemHealth()
   const [kill, setKill] = useState({ open: false, flatten: false })
@@ -74,7 +74,8 @@ export function useSlashRunner(env: TradingEnv, thread: WarroomThread | undefine
           },
         })
         void qc.invalidateQueries({ queryKey: ['settings', env] })
-        return info('slash.done.block', { inst: instId })
+        const lang = i18n.language === 'ar' ? 'ar' : 'en'
+        return info('slash.done.block', { inst: instId, time: formatTime(Date.parse(until), lang), city: ownerCity(lang) })
       } catch (e) {
         if (e instanceof ApiError && e.status === 409 && attempt === 0) continue
         if (e instanceof ApiError && e.status === 422) return fail('slash.err.blockInvalid', { inst: instId })

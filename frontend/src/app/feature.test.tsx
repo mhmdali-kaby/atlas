@@ -37,7 +37,7 @@ describe('shell registry', () => {
     expect(shellRegistry.areas.map((a) => a.id)).toEqual(['warroom', 'agents', 'portfolio', 'journal', 'backtester', 'settings'])
     const paths = (area: string) => shellRegistry.navEntries.filter((e) => e.area === area).map((e) => e.path)
     expect(paths('portfolio')).toEqual(['/portfolio', '/portfolio/positions', '/portfolio/orders', '/portfolio/holdings', '/portfolio/cashflows', '/portfolio/history', '/portfolio/performance', '/portfolio/scorecards'])
-    expect(paths('settings')).toEqual(['/settings/connections', '/settings/risk', '/settings/money', '/settings/markets', '/settings/autonomy', '/settings/agents', '/settings/data', '/settings/sources', '/settings/notifications'])
+    expect(paths('settings')).toEqual(['/settings/general', '/settings/connections', '/settings/risk', '/settings/money', '/settings/markets', '/settings/autonomy', '/settings/agents', '/settings/data', '/settings/sources', '/settings/notifications', '/settings/environment'])
   })
 
   it('adds a fake feature\'s area and sections without touching any other module', () => {
@@ -75,7 +75,7 @@ describe('shell registry', () => {
     expect(activeArea(reg, '/warroom/threads/abc')?.id).toBe('warroom')
     expect(activeArea(reg, '/warroomx')).toBeUndefined()
     expect(activeArea(reg, '/nowhere')).toBeUndefined()
-    expect(areaHome(reg, 'settings')).toBe('/settings/connections')
+    expect(areaHome(reg, 'settings')).toBe('/settings/general')
     expect(areaHome(reg, 'warroom')).toBe('/warroom')
   })
 })

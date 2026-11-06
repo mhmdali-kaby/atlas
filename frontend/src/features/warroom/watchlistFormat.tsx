@@ -15,10 +15,10 @@ export function joinList(items: ReactNode[], lang: Lang): ReactNode[] {
 }
 export const insts = (ids: string[], lang: Lang) => joinList(ids.map((id) => <InstrumentId key={id} id={id} />), lang)
 
-/** "Wednesday 28 October" for a "YYYY-MM-DD" day: formatted at midday Baghdad, never at midnight. */
+/** "Wednesday 28 October" for a "YYYY-MM-DD" day: a date, not an instant, so it is read in UTC. */
 export function titleDate(date: string, lang: Lang): string {
-  return new Intl.DateTimeFormat(lang === 'en' ? 'en-GB' : DATE_LOCALE.ar, { timeZone: 'Asia/Baghdad', weekday: 'long', day: 'numeric', month: 'long' }).format(
-    new Date(`${date}T09:00:00Z`),
+  return new Intl.DateTimeFormat(lang === 'en' ? 'en-GB' : DATE_LOCALE.ar, { timeZone: 'UTC', weekday: 'long', day: 'numeric', month: 'long' }).format(
+    new Date(`${date}T12:00:00Z`),
   )
 }
 

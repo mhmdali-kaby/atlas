@@ -7,7 +7,7 @@ import { sourceLabel, type NewsBrief, type NewsCluster, type NewsSource, type Pr
 import { ImportancePips, SignedSentiment } from './newsParts'
 import { fillSlots, slot } from './slots'
 import { InstrumentId } from './text'
-import { baghdadDay, formatDateTime, formatFullTime, formatTime, formatUtcFull, formatUtcTime } from './time'
+import { baghdadDay, formatDateTime, formatFullTime, ownerCity, formatTime, formatUtcFull, formatUtcTime } from './time'
 
 /*
  * The story list of NewsBriefCard (design v9 "Watchlist and news briefs" §B): each cluster with its
@@ -57,7 +57,7 @@ export function BriefImportance({ n }: { n: number }) {
 function PubTime({ ts, lang, now }: { ts: string; lang: Lang; now: number }) {
   const { t } = useTranslation('warroom')
   const today = baghdadDay(ts) === baghdadDay(now)
-  const tip = t('news_brief.timeTip', { baghdad: formatFullTime(ts, lang), utc: formatUtcFull(ts) })
+  const tip = t('news_brief.timeTip', { city: ownerCity(lang), local: formatFullTime(ts, lang), utc: formatUtcFull(ts) })
   return (
     <time className="nb-time" dateTime={new Date(Date.parse(ts)).toISOString()} title={tip} tabIndex={0} data-testid="nb-time">
       {fillSlots(t('news_brief.pub', { time: slot('time'), utc: slot('utc') }), {

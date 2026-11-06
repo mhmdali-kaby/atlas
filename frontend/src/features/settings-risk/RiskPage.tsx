@@ -20,6 +20,7 @@ import {
 } from '../onboarding'
 import '../settings-connections/settings.css'
 import { ActivityList } from './Activity'
+import { EnvScopeControl, EnvScopeNotice, useEnvScope, type EnvScope } from './EnvScope'
 import { LimitRow } from './LimitRow'
 import {
   changesFor,
@@ -46,7 +47,7 @@ import './risk.css'
  * Nothing is saved until Save changes; a 409 reloads the current values and says so.
  */
 
-function PaneHeader({ version }: { version: number | null }) {
+function PaneHeader({ version, scope }: { version: number | null; scope: EnvScope }) {
   const { t } = useTranslation('settings')
   const lang = useLang()
   return (
@@ -58,11 +59,14 @@ function PaneHeader({ version }: { version: number | null }) {
         <h2 className="text-title-2">{t('nav.risk')}</h2>
         <p className="max-w-[54ch] text-subheadline text-label-secondary">{t('risk.intro')}</p>
       </div>
-      {version !== null && (
-        <span className="st-version" data-testid="settings-version">
-          {t('risk.version', { v: formatFixed(version, 0, lang) })}
-        </span>
-      )}
+      <div className="lv-aside">
+        <EnvScopeControl scope={scope} />
+        {version !== null && (
+          <span className="st-version" data-testid="settings-version">
+            {t('risk.version', { v: formatFixed(version, 0, lang) })}
+          </span>
+        )}
+      </div>
     </header>
   )
 }
@@ -129,13 +133,20 @@ function Section({ id, title, note, children }: { id: string; title: string; not
 }
 
 export function RiskPage() {
+  const scope = useEnvScope()
+  // One row per env: switching Demo | Live starts from that row's saved values, no draft carried over.
+  return <RiskPane key={scope.env} scope={scope} />
+}
+
+function RiskPane({ scope }: { scope: EnvScope }) {
+  const rowEnv = scope.env
   const { t } = useTranslation('settings')
   const { t: tOb } = useTranslation('onboarding')
   const lang = useLang()
   const client = useQueryClient()
-  const query = useSettings('demo')
-  const history = useSettingsHistory('demo')
-  const save = useSaveSettings('demo')
+  const query = useSettings(rowEnv)
+  const history = useSettingsHistory(rowEnv)
+  const save = useSaveSettings(rowEnv)
   const doc = query.data?.data
 
   /** `null` = no edits: the page shows the saved settings as they are. */
@@ -180,7 +191,7 @@ export function RiskPage() {
         onError: async (err) => {
           if (err instanceof ApiError && err.status === 409) {
             const fresh = await query.refetch()
-            void client.invalidateQueries({ queryKey: historyKey('demo') })
+            void client.invalidateQueries({ queryKey: historyKey(rowEnv) })
             const v = fresh.data?.data.version ?? (err.body as { current_version?: number } | null)?.current_version ?? null
             setEdits(null)
             setServerErrors({})
@@ -255,7 +266,7 @@ export function RiskPage() {
         </Section>
 
         <div className="st-group">
-          <Link to="/settings/autonomy" className="st-au-link" data-testid="autonomy-link">
+          <Link to={rowEnv === scope.active ? '/settings/autonomy' : `/settings/autonomy?env=${rowEnv}`} className="st-au-link" data-testid="autonomy-link">
             <span className="st-au-link-label">{t('risk.autonomyRow')}</span>
             <span className="st-au-link-value">
               {t('risk.autonomyValue', { n: formatFixed(doc.settings.autonomy_level, 0, lang), name: tOb(`au.l${doc.settings.autonomy_level}`) })}
@@ -297,7 +308,8 @@ export function RiskPage() {
 
   return (
     <div ref={pageRef} className="st-page st-risk">
-      <PaneHeader version={doc && !query.isPending ? doc.version : null} />
+      <PaneHeader scope={scope} version={doc && !query.isPending ? doc.version : null} />
+      <EnvScopeNotice scope={scope} />
       {body}
     </div>
   )

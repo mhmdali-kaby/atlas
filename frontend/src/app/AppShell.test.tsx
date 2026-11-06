@@ -55,7 +55,7 @@ function mockSystemDark(initial: boolean) {
 }
 
 function fakeBackend() {
-  const state = { signedIn: true }
+  const state = { signedIn: true, prefs: { name: 'Mohammed Ali', locale: 'en', timezone: 'Europe/London', theme: 'system' } as Record<string, string> }
   vi.stubGlobal(
     'fetch',
     vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
@@ -66,6 +66,12 @@ function fakeBackend() {
       if (path === '/sanctum/csrf-cookie') return reply(204)
       if (path === '/api/auth/status') return reply(200, { owner_exists: true })
       if (path === '/api/auth/me') return state.signedIn ? reply(200, { data: OWNER }) : reply(401, { message: 'Unauthenticated.' })
+      // ATL-227: the toolbar's language and appearance save through the owner's preferences.
+      if (path === '/api/me/preferences' && method === 'GET') return reply(200, { data: state.prefs })
+      if (path === '/api/me/preferences' && method === 'PATCH') {
+        state.prefs = { ...state.prefs, ...(JSON.parse(String(init.body)) as Record<string, string>) }
+        return reply(200, { data: state.prefs })
+      }
       if (path === '/api/auth/logout' && method === 'POST') {
         state.signedIn = false
         return reply(204)
@@ -119,7 +125,11 @@ afterEach(async () => {
 
 describe('risk footer', () => {
   it('names the environment in English and Arabic', async () => {
-    render(<RiskFooter />)
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <RiskFooter />
+      </QueryClientProvider>,
+    )
     expect(screen.getByRole('contentinfo')).toHaveTextContent('Automated trading can lose money. Demo/Live: Demo')
     await act(() => i18n.changeLanguage('ar'))
     expect(screen.getByRole('contentinfo')).toHaveTextContent('قد يؤدي التداول الآلي إلى خسارة المال. تجريبي/حقيقي: تجريبي')

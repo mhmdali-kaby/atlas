@@ -21,6 +21,7 @@ import { useLang } from '../portfolio/hooks'
 import '../settings-connections/settings.css'
 import { useRiskPreview } from '../settings-money/model'
 import { fill } from '../settings-money/parts'
+import { EnvScopeNotice, useEnvScope, type EnvScope } from '../settings-risk/EnvScope'
 import { useSettingsHistory } from '../settings-risk/model'
 import '../settings-risk/risk.css'
 import './autonomy.css'
@@ -45,14 +46,21 @@ const ALWAYS = [
 ] as const
 
 export function AutonomyPage() {
+  const scope = useEnvScope()
+  // One row per env: switching Demo | Live starts from that row's saved values, no edit carried over.
+  return <AutonomyPane key={scope.env} scope={scope} />
+}
+
+function AutonomyPane({ scope }: { scope: EnvScope }) {
+  const rowEnv = scope.env
   const { t } = useTranslation('settings-autonomy')
   const { t: tAu } = useTranslation('autonomy')
   const lang = useLang()
-  const query = useSettings('demo')
-  const history = useSettingsHistory('demo')
-  const preview = useRiskPreview('env=demo', 'demo')
+  const query = useSettings(rowEnv)
+  const history = useSettingsHistory(rowEnv)
+  const preview = useRiskPreview(`env=${rowEnv}`, rowEnv)
   const levelsRef = useRef<HTMLDivElement>(null)
-  const s = useAutonomySave(query, levelsRef)
+  const s = useAutonomySave(query, levelsRef, rowEnv)
   const doc = query.data?.data
 
   const largestRaw = preview.data?.data.max_notional_usd ?? null
@@ -114,7 +122,7 @@ export function AutonomyPage() {
                 {fill(t('largestNote'), {
                   largest: <MoneyFig value={largest} />,
                   link: (
-                    <Link className="au-link" to="/settings/money">
+                    <Link className="au-link" to={rowEnv === scope.active ? '/settings/money' : `/settings/money?env=${rowEnv}`}>
                       {t('moneyLink')}
                     </Link>
                   ),
@@ -205,7 +213,8 @@ export function AutonomyPage() {
 
   return (
     <div className="st-page st-risk au-page">
-      <PaneHeader version={doc && !query.isPending ? doc.version : null} />
+      <PaneHeader scope={scope} version={doc && !query.isPending ? doc.version : null} />
+      <EnvScopeNotice scope={scope} />
       {body}
     </div>
   )

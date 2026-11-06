@@ -5,6 +5,7 @@ import path from 'node:path'
 import { promisify } from 'node:util'
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test, type Page } from '@playwright/test'
+import { seedAppearance } from './appearance'
 import arWarroom from '../../src/i18n/locales/ar/warroom.json' with { type: 'json' }
 import enWarroom from '../../src/i18n/locales/en/warroom.json' with { type: 'json' }
 import { BACKEND_DIR, BACKEND_ENV, EVIDENCE_DIR, REVERB, SERVICES_DIR, withEnv } from '../support/stack'
@@ -163,11 +164,7 @@ test('stopping Reverb shows the banner; restarting clears it and brings in what 
 })
 
 test('Arabic, dark: a failed send shows "Not sent" with Try again at the inline end, and retrying posts once', async ({ page }) => {
-  await page.addInitScript(() => {
-    localStorage.setItem('atlas.lang', 'ar')
-    localStorage.setItem('atlas.theme', 'dark')
-  })
-  await page.emulateMedia({ colorScheme: 'dark' })
+  await seedAppearance(page, 'ar', 'dark')
   await openMain(page)
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl')
   await expect(input(page)).toHaveAttribute('placeholder', arWarroom.composer.placeholder)
@@ -262,14 +259,7 @@ for (const [lang, theme] of [
   ['ar', 'dark'],
 ] as const) {
   test(`the news alert card in ${lang}/${theme}: designed strings, no axe violations, nothing clipped`, async ({ page }) => {
-    await page.addInitScript(
-      ([l, th]) => {
-        localStorage.setItem('atlas.lang', l)
-        localStorage.setItem('atlas.theme', th)
-      },
-      [lang, theme] as const,
-    )
-    await page.emulateMedia({ colorScheme: theme })
+    await seedAppearance(page, lang, theme)
     await openMain(page)
     await expect(page.locator('html')).toHaveAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr')
     const wr = lang === 'ar' ? arWarroom : enWarroom

@@ -12,6 +12,7 @@ import { useLang, useNow } from '../portfolio/hooks'
 import '../settings-connections/settings.css'
 import '../settings-risk/risk.css'
 import { fieldErrors, historyKey, useSaveSettings, useSettingsHistory } from '../settings-risk/model'
+import { EnvScopeControl, EnvScopeNotice, useEnvScope, type EnvScope } from '../settings-risk/EnvScope'
 import { MoneyActivity } from './Activity'
 import { FieldRow } from './FieldRow'
 import {
@@ -43,10 +44,9 @@ import { Preview } from './Preview'
  * after the last valid edit; Save sends the changed keys as one versioned PATCH /api/settings.
  */
 
-const ENV = 'demo' as const
 const DEBOUNCE_MS = 300
 
-function PaneHeader({ version }: { version: number | null }) {
+function PaneHeader({ version, scope }: { version: number | null; scope: EnvScope }) {
   const { t } = useTranslation('settings-money')
   const lang = useLang()
   return (
@@ -58,11 +58,14 @@ function PaneHeader({ version }: { version: number | null }) {
         <h2 className="text-title-2">{t('nav')}</h2>
         <p className="max-w-[60ch] text-subheadline text-label-secondary">{t('intro')}</p>
       </div>
-      {version !== null && (
-        <span className="st-version" data-testid="settings-version">
-          {t('version', { v: formatFixed(version, 0, lang) })}
-        </span>
-      )}
+      <div className="lv-aside">
+        {version !== null && (
+          <span className="st-version" data-testid="settings-version">
+            {t('version', { v: formatFixed(version, 0, lang) })}
+          </span>
+        )}
+        <EnvScopeControl scope={scope} />
+      </div>
     </header>
   )
 }
@@ -115,6 +118,13 @@ function Loading() {
 }
 
 export function MoneyPage() {
+  const scope = useEnvScope()
+  // One row per env: switching Demo | Live starts from that row's saved values, no draft carried over.
+  return <MoneyPane key={scope.env} scope={scope} />
+}
+
+function MoneyPane({ scope }: { scope: EnvScope }) {
+  const ENV = scope.env
   const { t } = useTranslation('settings-money')
   const { t: tOb } = useTranslation('onboarding')
   const lang = useLang()
@@ -284,7 +294,7 @@ export function MoneyPage() {
                   pct: <Fig>{pctText(doc.settings.max_position_pct, lang)}</Fig>,
                   value: <Fig>{usd(position.cents, lang)}</Fig>,
                 })}{' '}
-                <Link to="/settings/risk">{t('noteProfileLink')}</Link>
+                <Link to={ENV === scope.active ? '/settings/risk' : `/settings/risk?env=${ENV}`}>{t('noteProfileLink')}</Link>
               </span>
             </p>
           )}
@@ -330,7 +340,8 @@ export function MoneyPage() {
 
   return (
     <div ref={pageRef} className="st-page st-risk ml-page">
-      <PaneHeader version={doc && !query.isPending ? doc.version : null} />
+      <PaneHeader scope={scope} version={doc && !query.isPending ? doc.version : null} />
+      <EnvScopeNotice scope={scope} />
       {body}
     </div>
   )

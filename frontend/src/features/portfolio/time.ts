@@ -1,29 +1,20 @@
 import { DATE_LOCALE, type Lang } from '../../lib/format'
+import { ownerDateFormat, ownerOffsetMs } from '../../lib/ownerZone'
 import type { EquityRange } from './api'
 
 /** The Baghdad calendar day of an instant (Y-m-d); one rule shared with the War Room. */
 export { baghdadDay } from '../warroom/time'
 
 /*
- * Dates and times on the Overview: Asia/Baghdad, 24-hour clock, Western digits in
- * both languages (DATE_LOCALE: en-US / ar-IQ-u-nu-latn; never a bare "ar").
+ * Dates and times on the Overview: the owner's zone (Settings → General), 24-hour clock, Western
+ * digits in both languages (DATE_LOCALE: en-US / ar-IQ-u-nu-latn; never a bare "ar").
  */
 
-export const OWNER_TZ = 'Asia/Baghdad'
 const HOUR = 3_600_000
 const DAY = 24 * HOUR
-/** Baghdad is UTC+3 all year (no DST since 2008). */
-const BAGHDAD_OFFSET = 3 * HOUR
 
-const cache = new Map<string, Intl.DateTimeFormat>()
 function dtf(lang: Lang, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
-  const key = `${lang}|${JSON.stringify(options)}`
-  let f = cache.get(key)
-  if (!f) {
-    f = new Intl.DateTimeFormat(DATE_LOCALE[lang], { timeZone: OWNER_TZ, ...options })
-    cache.set(key, f)
-  }
-  return f
+  return ownerDateFormat(DATE_LOCALE[lang], options)
 }
 
 /** "17:36:00" */
@@ -75,20 +66,23 @@ export function timeTicks(t0: number, t1: number, range: EquityRange, lang: Lang
     for (let ts = Math.ceil(t0 / step) * step; ts < t1 - HOUR / 2; ts += step) out.push({ ts, label: f.format(ts) })
   } else if (range === '1W') {
     const f = dtf(lang, { weekday: 'short', day: 'numeric' })
-    const start = Math.ceil((t0 + BAGHDAD_OFFSET) / DAY) * DAY - BAGHDAD_OFFSET
+    const off = ownerOffsetMs(t0)
+    const start = Math.ceil((t0 + off) / DAY) * DAY - off
     for (let ts = start; ts < t1 - 6 * HOUR; ts += DAY) out.push({ ts, label: f.format(ts) })
   } else if (range === '1M') {
     const f = dtf(lang, { day: 'numeric', month: 'short' })
-    const start = Math.ceil((t0 + BAGHDAD_OFFSET) / DAY) * DAY - BAGHDAD_OFFSET + 2 * DAY
+    const off = ownerOffsetMs(t0)
+    const start = Math.ceil((t0 + off) / DAY) * DAY - off + 2 * DAY
     for (let ts = start; ts < t1 - 2 * DAY; ts += 6 * DAY) out.push({ ts, label: f.format(ts) })
   } else {
     const short = t1 - t0 < 190 * DAY
     const f = dtf(lang, short ? { day: 'numeric', month: 'short' } : { month: 'short', year: '2-digit' })
     const d = new Date(t0)
+    const off = ownerOffsetMs(t0)
     const months = Math.ceil((t1 - t0) / (28 * DAY)) + 2
     for (let m = 0; m < months; m++) {
       for (const day of short ? [1, 15] : [1]) {
-        const x = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + m, day) - BAGHDAD_OFFSET
+        const x = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + m, day) - off
         if (x > t0 + 3 * DAY && x < t1 - 4 * DAY) out.push({ ts: x, label: f.format(x) })
       }
     }

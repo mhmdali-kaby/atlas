@@ -3,7 +3,8 @@ import type { CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Lang } from '../../lib/format'
 import { fillSlots, slot } from './slots'
-import { formatTime } from './time'
+import { ownerDateFormat } from '../../lib/ownerZone'
+import { formatTime, ownerCity } from './time'
 import { baseOf, dayStart, usSessions, type Pick, type Trigger } from './watchlist'
 
 /*
@@ -76,7 +77,7 @@ export function WatchlistRail({ date, rows, trigger, now, lang, linkedInst, onHo
   const pos = (ms: number) => ((ms - a) / (b - a)) * 100
   const fmt = (ms: number) => formatTime(ms, lang)
   const list = (xs: string[]) => new Intl.ListFormat(lang === 'ar' ? 'ar' : 'en', { style: 'long', type: 'conjunction' }).format(xs)
-  const weekday = (ms: number) => new Intl.DateTimeFormat(lang === 'ar' ? 'ar-IQ-u-nu-latn' : 'en-GB', { timeZone: 'Asia/Baghdad', weekday: 'short' }).format(new Date(ms))
+  const weekday = (ms: number) => ownerDateFormat(lang === 'ar' ? 'ar-IQ-u-nu-latn' : 'en-GB', { weekday: 'short' }).format(new Date(ms))
 
   // One mark per catalyst (time + name), carrying every live pick it moves.
   const byKey = new Map<string, Mark>()
@@ -195,7 +196,7 @@ export function WatchlistRail({ date, rows, trigger, now, lang, linkedInst, onHo
           )
         })}
         {sess.map(([o, c, ro, rc]) => (
-          <span key={o} className="wl-tick is-us" style={css({ '--x': `${((pos(o) + pos(c)) / 2).toFixed(2)}%` })} title={t('wl.usHoursTip')}>
+          <span key={o} className="wl-tick is-us" style={css({ '--x': `${((pos(o) + pos(c)) / 2).toFixed(2)}%` })} title={t('wl.usHoursTip', { city: ownerCity(lang) })}>
             <span className="wl-us-full">
               {fillSlots(t('wl.usHoursAt', { range: slot('range') }), {
                 range: (

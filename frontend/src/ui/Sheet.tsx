@@ -4,13 +4,16 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { cx } from './cx'
 import { FADE, SPRING } from './motion'
 
-export type SheetTone = 'default' | 'destructive' | 'warning' | 'muted'
+export type SheetTone = 'default' | 'destructive' | 'warning' | 'muted' | 'live' | 'demo'
 
 const TONE: Record<SheetTone, string> = {
   default: 'bg-fill-3 text-label',
   destructive: 'bg-loss-wash text-loss-ink',
   warning: 'bg-warning-wash text-warning-ink',
   muted: 'bg-fill-3 text-label-secondary',
+  /* Live readiness §4.1/§4.2: the environment switch sheets. */
+  live: 'bg-live-wash text-live-ink',
+  demo: 'bg-demo-wash text-demo-ink',
 }
 
 export interface SheetProps {

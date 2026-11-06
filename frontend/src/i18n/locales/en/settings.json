@@ -22,7 +22,7 @@
     "footnote": "Atlas never withdraws or moves money, and refuses live keys that can withdraw.",
     "accountTitle": "Account",
     "accountNote": "OKX reports these details each time Atlas tests the connection.",
-    "verifiedTip": "Baghdad time (Asia/Baghdad)",
+    "verifiedTip": "{{city}} time ({{zone}})",
     "never": "Never",
     "liveTitle": "Live account",
     "live": "OKX live",
@@ -125,5 +125,12 @@
     },
     "autonomyRow": "Autonomy",
     "autonomyValue": "Level {{n}}, {{name}}"
+  },
+  "scope": {
+    "label": "Settings for",
+    "demo": "Demo",
+    "live": "Live",
+    "editLive": "You’re editing the live settings. They apply once Atlas switches to live in Settings → Environment.",
+    "editDemo": "You’re editing the demo settings. Atlas is trading on live."
   }
 }
