@@ -40,6 +40,15 @@ function assertNoSecretsIn(string $haystack): void
     }
 }
 
+function setActiveEnv(string $env): void
+{
+    DB::table('system_state')->updateOrInsert(['id' => 1], [
+        'active_env' => $env,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+}
+
 beforeEach(function (): void {
     $this->owner = User::factory()->create();
     $this->actingAs($this->owner, 'web');
@@ -198,6 +207,53 @@ it('replaces a secret on PATCH and clears the old verification', function (): vo
     $auditJson = json_encode([$audit->before, $audit->after], JSON_THROW_ON_ERROR);
     assertNoSecretsIn($auditJson);
     expect($auditJson)->not->toContain('NEWKEY-zz99')->not->toContain('new-secret-value');
+});
+
+it('blocks deleting the live connection while Atlas trades live (ATL-243)', function (): void {
+    $id = $this->postJson('/api/connections', demoConnectionPayload(['env' => 'live', 'label' => 'OKX Live']))->json('data.id');
+    setActiveEnv('live');
+
+    $this->deleteJson("/api/connections/{$id}")
+        ->assertStatus(409)
+        ->assertJsonPath('error', 'live_connection_in_use')
+        ->assertJsonPath('message', __('connections.live_connection_in_use'));
+
+    expect(Connection::query()->whereKey($id)->exists())->toBeTrue();
+    expect(AuditLog::query()->where('action', 'connection.deleted')->where('subject_id', $id)->exists())->toBeFalse();
+});
+
+it('blocks re-keying the live connection while Atlas trades live, but still allows renaming it (ATL-243)', function (): void {
+    $id = $this->postJson('/api/connections', demoConnectionPayload(['env' => 'live', 'label' => 'OKX Live']))->json('data.id');
+    Connection::query()->whereKey($id)->update(['last_verified_at' => now(), 'withdraw_off_verified_at' => now()]);
+    setActiveEnv('live');
+
+    $this->patchJson("/api/connections/{$id}", ['api_key' => 'a-new-live-key'])
+        ->assertStatus(409)
+        ->assertJsonPath('error', 'live_connection_in_use')
+        ->assertJsonPath('message', __('connections.live_connection_in_use'));
+
+    $connection = Connection::query()->findOrFail($id);
+    expect($connection->api_key)->toBe(ATL4_KEY)
+        ->and($connection->last_verified_at)->not->toBeNull()
+        ->and($connection->withdraw_off_verified_at)->not->toBeNull();
+    expect(AuditLog::query()->where('action', 'connection.updated')->where('subject_id', $id)->exists())->toBeFalse();
+
+    // Renaming carries no credential, so it is allowed even while live.
+    $this->patchJson("/api/connections/{$id}", ['label' => 'Renamed Live'])
+        ->assertOk()
+        ->assertJsonPath('data.label', 'Renamed Live');
+});
+
+it('allows deleting and re-keying the live connection while Atlas trades demo (ATL-243)', function (): void {
+    $id = $this->postJson('/api/connections', demoConnectionPayload(['env' => 'live', 'label' => 'OKX Live']))->json('data.id');
+    setActiveEnv('demo');
+
+    $this->patchJson("/api/connections/{$id}", ['api_key' => 'a-new-live-key'])
+        ->assertOk()
+        ->assertJsonPath('data.api_key_last4', substr('a-new-live-key', -4));
+
+    $this->deleteJson("/api/connections/{$id}")->assertNoContent();
+    expect(Connection::query()->whereKey($id)->exists())->toBeFalse();
 });
 
 it('refuses to change env or exchange on PATCH', function (): void {
