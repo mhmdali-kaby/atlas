@@ -12,6 +12,8 @@ import { HEALTH_KEY, postKill, useKillPreview, useSystemEvents, useSystemHealth,
 import { ConfirmActions, ConfirmBody } from './KillConfirm'
 import { KillReport } from './KillReport'
 import { NS, Tr } from './parts'
+import { useKillSheets } from './sheetStore'
+import { ResumeSheet } from './TradingBanner'
 import './killswitch.css'
 
 type View = 'confirm' | 'working' | 'report' | 'fail'
@@ -26,30 +28,39 @@ export function KillSwitchButton() {
   const health = useSystemHealth()
   useSystemEvents()
   const stopped = health.data?.data.trading.paused ?? false
-  const [open, setOpen] = useState(false)
+  // The store lets the ⌘K palette open this same sheet (ATL-249); it never sends a kill itself.
+  const open = useKillSheets((s) => s.kill)
+  const setOpen = useKillSheets((s) => s.setKill)
+  const resumeOpen = useKillSheets((s) => s.resume)
+  const setResumeOpen = useKillSheets((s) => s.setResume)
   const label = t(stopped ? 'stoppedAria' : 'stopAria')
+  // Closed again when the toolbar goes (sign-out), so a sheet never reopens on the next mount.
+  useEffect(() => () => useKillSheets.setState({ kill: false, resume: false }), [])
 
   return (
-    <KillSheet
-      open={open}
-      onOpenChange={setOpen}
-      trigger={
-        <button
-          type="button"
-          className={cx('ks-stop', stopped && 'is-stopped')}
-          aria-haspopup="dialog"
-          aria-label={label}
-          title={label}
-          data-testid="kill-switch"
-        >
-          <OctagonX aria-hidden="true" />
-          <span className="ks-stop-label">{t(stopped ? 'stopped' : 'stop')}</span>
-          <span className="ks-stop-short" aria-hidden="true">
-            {t(stopped ? 'stopped' : 'stopShort')}
-          </span>
-        </button>
-      }
-    />
+    <>
+      {health.data && <ResumeSheet open={resumeOpen} onOpenChange={setResumeOpen} health={health.data.data} />}
+      <KillSheet
+        open={open}
+        onOpenChange={setOpen}
+        trigger={
+          <button
+            type="button"
+            className={cx('ks-stop', stopped && 'is-stopped')}
+            aria-haspopup="dialog"
+            aria-label={label}
+            title={label}
+            data-testid="kill-switch"
+          >
+            <OctagonX aria-hidden="true" />
+            <span className="ks-stop-label">{t(stopped ? 'stopped' : 'stop')}</span>
+            <span className="ks-stop-short" aria-hidden="true">
+              {t(stopped ? 'stopped' : 'stopShort')}
+            </span>
+          </button>
+        }
+      />
+    </>
   )
 }
 

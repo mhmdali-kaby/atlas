@@ -20,6 +20,7 @@
     "@tanstack/react-query": "^5.105.0",
     "@tanstack/react-table": "^8.21.3",
     "@tanstack/react-virtual": "^3.14.23",
+    "cmdk": "^1.1.1",
     "i18next": "^26.5.11",
     "laravel-echo": "^2.6.3",
     "lightweight-charts": "^5.2.1",
