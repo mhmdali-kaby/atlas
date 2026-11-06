@@ -61,6 +61,7 @@
     "label": "Label",
     "labelHint": "Only you see this name.",
     "defaultLabel": "OKX demo",
+    "defaultLabelLive": "OKX live",
     "apiKey": "API key",
     "secret": "Secret key",
     "passphrase": "Passphrase",
@@ -73,7 +74,9 @@
     "invalid": "OKX keys don’t look like this. Paste it again, exactly as OKX showed it.",
     "where": {
       "title": "Create a demo key with Read and Trade only",
-      "body": "In OKX, switch to Demo trading, then open Profile → API keys → Create. Tick Read and Trade. Never tick Withdraw."
+      "body": "In OKX, switch to Demo trading, then open Profile → API keys → Create. Tick Read and Trade. Never tick Withdraw.",
+      "liveTitle": "Create a live key with Read and Trade only",
+      "liveBody": "In OKX, stay in live trading, not Demo trading. Open Profile → API keys → Create, tick Read and Trade, and add this Mac’s IP address to the key’s allow-list. Never tick Withdraw."
     },
     "saved": "Key saved",
     "savedMeta": "API key <fig>•••• {{last4}}</fig>. Atlas never shows a saved key again.",
@@ -148,6 +151,16 @@
       "unknown": {
         "title": "The test didn’t finish",
         "body": "Something went wrong between Atlas and OKX. Try again."
+      }
+    },
+    "errorsLive": {
+      "wrong_environment": {
+        "title": "This key belongs to the demo account",
+        "body": "Create the key in OKX live trading, not Demo trading, then paste it here."
+      },
+      "withdraw_permission_enabled": {
+        "title": "This key can withdraw funds",
+        "body": "Create a key with Read + Trade only, then replace it here. Atlas never moves money, and it won’t trade live with a key that could."
       }
     }
   },

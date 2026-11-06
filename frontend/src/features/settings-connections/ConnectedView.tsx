@@ -19,6 +19,7 @@ import {
 import { useLang, useNow } from '../portfolio/hooks'
 import { formatClock, formatDayTime } from '../portfolio/time'
 import { useStoreConnection, type Failure } from './shared'
+import { TradingBadge } from './LiveSection'
 import { KeysSheet, RemoveSheet } from './sheets'
 import { StatusLine } from './StatusLine'
 
@@ -26,7 +27,16 @@ import { StatusLine } from './StatusLine'
  * A stored demo connection: the account card (seal, status, Test again / Replace keys / Remove…),
  * the failure, Spot and withdraw notices, and the Account rows with Last verified in Baghdad time.
  */
-export function ConnectedView({ connection, onRemoved }: { connection: Connection; onRemoved: () => void }) {
+export function ConnectedView({
+  connection,
+  onRemoved,
+  trading = false,
+}: {
+  connection: Connection
+  onRemoved: () => void
+  /** Show "Trading now": Atlas trades on demo and a live account is connected too. */
+  trading?: boolean
+}) {
   const { t } = useTranslation('settings')
   const { t: tOn } = useTranslation('onboarding')
   const lang = useLang()
@@ -93,7 +103,10 @@ export function ConnectedView({ connection, onRemoved }: { connection: Connectio
 
   return (
     <>
-      <section className="grid" aria-labelledby="st-acc-name">
+      <section className="grid" aria-labelledby="st-demo-title">
+        <h2 id="st-demo-title" className="px-4 pb-2 text-footnote font-semibold text-label-secondary">
+          {t('conn.demoTitle')}
+        </h2>
         <div className="st-group" data-testid="account-card">
           <div className="flex items-center gap-4 px-5 py-[18px]">
             <span role="img" aria-label={t('conn.sealLabel', { last4 })} className="relative grid shrink-0 place-items-center">
@@ -101,9 +114,10 @@ export function ConnectedView({ connection, onRemoved }: { connection: Connectio
               <span aria-hidden="true" className="st-seal-dot" data-state={failure ? 'stale' : 'ok'} />
             </span>
             <div className="grid min-w-0 gap-1">
-              <h2 id="st-acc-name" className="truncate text-title-3 font-semibold">
-                {connection.label}
-              </h2>
+              <h3 id="st-acc-name" className="st-account-name text-title-3 font-semibold">
+                <span className="truncate">{connection.label}</span>
+                {trading && <TradingBadge env="demo" />}
+              </h3>
               <StatusLine connection={connection} testing={testing} failure={failure} now={now} lang={lang} />
             </div>
           </div>
