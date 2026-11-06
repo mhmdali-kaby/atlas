@@ -16,15 +16,17 @@ import { AFTER_ONBOARDING_PATH, onboardingPath, parseStep, STEPS, type StepId } 
 import { DEFAULT_AUTONOMY, DEFAULT_PROFILE, enabledAutonomyLevels, isOnboarded, isPreset, usePatchSettings, useSettings, type RiskProfile } from './settings'
 import { AutonomyStep, ConnectStep, RiskStep, WelcomeStep } from './steps'
 import { BackfillStep } from './BackfillStep'
+import { ClaudeStep, useClaudeReady } from './ClaudeStep'
+import { TeamStep } from './TeamStep'
 import { SourcesStep, type SourcesHandle } from './SourcesStep'
 import './onboarding.css'
 
 
 /**
  * /onboarding (design: js/pages/onboarding.js, css/auth.css "Onboarding frame"): a top bar,
- * the numbered stepper (Welcome → Connect OKX → Data sources → Risk profile → Autonomy → Market
- * history), the full-width step (title and lead on the start side, the form on the end side from
- * 1024 px) and Back / Skip / Continue at the bottom.
+ * the numbered stepper (Welcome → Connect OKX → Claude → Data sources → Risk profile → Autonomy →
+ * Market history → Your team), the full-width step (title and lead on the start side, the form on the end side from
+ * 1024 px) and Back / Skip or Set up later / Continue at the bottom. Finishing opens the War Room.
  * The step is in the URL (?step=connect), so reload and the browser's Back keep it.
  */
 export function OnboardingPage() {
@@ -46,6 +48,7 @@ export function OnboardingPage() {
   const direction = shown.index !== index ? (index > shown.index ? 1 : -1) : shown.direction
 
   const settings = useSettings('demo')
+  const claude = useClaudeReady(step === 'claude')
   const doc = settings.data?.data
   const patch = usePatchSettings('demo')
   // The owner's picks; until they touch a card, the saved values (Balanced and level 2 on a new row).
@@ -69,18 +72,20 @@ export function OnboardingPage() {
 
   // Steps after Connect need a verified demo key; a URL that skips ahead goes back to Connect.
   if (index > 1 && !demo.isPending && !verified) return <Navigate to={onboardingPath('connect')} replace />
-  // A finished setup does not reopen: /onboarding goes to Portfolio (verified key + Finish saved).
+  // A finished setup does not reopen: /onboarding goes to the War Room (verified key + Finish saved).
   if (verified && isOnboarded(doc)) return <Navigate to={AFTER_ONBOARDING_PATH} replace />
 
   // Backfill progress never blocks: Continue is enabled at 0% (only the settings save gates it).
   const canContinue =
     step === 'connect'
       ? verified && !replacing
-      : step === 'sources'
-        ? verified && !sourcesBusy
-        : index > 1
-          ? verified && !!doc && !patch.isPending
-          : true
+      : step === 'claude'
+        ? verified && claude.ready
+        : step === 'sources'
+          ? verified && !sourcesBusy
+          : index > 1
+            ? verified && !!doc && !patch.isPending
+            : true
   const busy = patch.isPending || sourcesBusy
   const last = index === STEPS.length - 1
 
@@ -92,6 +97,12 @@ export function OnboardingPage() {
 
   function saveFailed() {
     toast({ title: t('saveError.title'), body: t('saveError.body'), tone: 'error' })
+  }
+
+  function setUpLater() {
+    // Carries on without Claude; the agents stay offline until the Agents page's check passes.
+    go(STEPS[index + 1] as StepId)
+    toast({ title: t('claude.laterToast'), body: t('claude.laterToastBody'), tone: 'info' })
   }
 
   function onContinue() {
@@ -175,6 +186,7 @@ export function OnboardingPage() {
             >
               {step === 'welcome' && <WelcomeStep autoFocus={moved} />}
               {step === 'connect' && <ConnectStep autoFocus={moved} onReplacingChange={setReplacing} />}
+              {step === 'claude' && <ClaudeStep autoFocus={moved} />}
               {step === 'sources' && <SourcesStep ref={sourcesRef} autoFocus={moved} onBusyChange={setSourcesBusy} />}
               {step === 'risk' && <RiskStep autoFocus={moved} value={profile} onChange={setProfilePick} />}
               {step === 'autonomy' && (
@@ -190,6 +202,7 @@ export function OnboardingPage() {
                 />
               )}
               {step === 'backfill' && <BackfillStep autoFocus={moved} />}
+              {step === 'team' && <TeamStep autoFocus={moved} />}
             </motion.section>
           </AnimatePresence>
         </main>
@@ -204,6 +217,11 @@ export function OnboardingPage() {
               <span />
             )}
             <div className="flex min-w-0 items-center gap-2 max-[600px]:gap-1">
+              {step === 'claude' && !claude.ready && !claude.checking && (
+                <Button size="lg" variant="plain" className="whitespace-nowrap max-[600px]:px-2.5" onClick={setUpLater} data-testid="ob-later">
+                  {t('claude.later')}
+                </Button>
+              )}
               {step === 'sources' && !busy && (
                 <Button size="lg" variant="plain" className="whitespace-nowrap max-[600px]:px-2.5" onClick={() => go('risk')} data-testid="ob-skip">
                   {t('skip')}

@@ -391,3 +391,276 @@
   font-family: var(--font-stack-sans);
   letter-spacing: normal;
 }
+
+/* ---- Claude (ATL-234; design onboarding-n.css): three checks, then the one fix that's needed ---- */
+.ob-checks-box {
+  border-radius: var(--radius-card);
+  background: var(--bg-grouped-row);
+  box-shadow: 0 0 0 0.5px var(--hairline-color);
+}
+.ob-checks {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.ob-check {
+  position: relative;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 14px;
+  padding: 14px 18px;
+}
+.ob-check + .ob-check::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  inset-inline: 64px 0;
+  border-top: 0.5px solid var(--separator);
+}
+.ob-check-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--fill-4);
+  color: var(--label-secondary);
+}
+.ob-check-icon svg {
+  width: 19px;
+  height: 19px;
+}
+.ob-check.is-pass .ob-check-icon {
+  background: var(--profit-wash);
+  color: var(--profit-ink);
+}
+.ob-check.is-fail .ob-check-icon {
+  background: var(--loss-wash);
+  color: var(--loss-ink);
+}
+.ob-check.is-unknown .ob-check-icon {
+  background: var(--warning-wash);
+  color: var(--warning-ink);
+}
+.ob-check-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.ob-check-title {
+  font-size: var(--text-callout);
+  line-height: var(--lh-callout);
+  letter-spacing: var(--tr-callout);
+  font-weight: 500;
+  color: var(--label);
+}
+.ob-check.is-fail .ob-check-title {
+  color: var(--loss-ink);
+  font-weight: 600;
+}
+.ob-check.is-skip .ob-check-title,
+.ob-check.is-checking .ob-check-title {
+  color: var(--label-secondary);
+}
+.ob-check-title code,
+.ob-fix code {
+  padding: 0 5px;
+  border-radius: 5px;
+  background: var(--fill-3);
+  color: var(--label);
+  font-weight: 500;
+}
+.ob-check-sub {
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+.ob-checks-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 10px 18px 12px;
+  border-top: 0.5px solid var(--separator);
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+.ob-cmd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: min(360px, 100%);
+  height: 40px;
+  padding-inline: 14px 4px;
+  border-radius: 10px;
+  background: var(--bg-secondary);
+  box-shadow: inset 0 0 0 0.5px var(--hairline-color);
+}
+:root.dark .ob-cmd {
+  background: var(--bg);
+}
+.ob-cmd code {
+  flex: 1;
+  padding: 0;
+  background: none;
+  font-size: var(--text-subheadline);
+  color: var(--label);
+  text-align: left;
+}
+.ob-fix-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--accent-ink);
+}
+.ob-fix-link svg {
+  width: 13px;
+  height: 13px;
+}
+.ob-later-note {
+  max-width: 62ch;
+}
+
+/* ---- Meet your team: nine agents in the order work flows, then the team's day ---- */
+.ob-agents {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+.ob-agent {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  padding: 14px 14px 15px;
+  border-radius: var(--radius-card);
+  background: var(--bg-grouped-row);
+  box-shadow: 0 0 0 0.5px var(--hairline-color);
+}
+.ob-agent-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.ob-agent-name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: var(--text-callout);
+  line-height: var(--lh-callout);
+  letter-spacing: var(--tr-callout);
+  font-weight: 600;
+  color: var(--label);
+}
+.ob-agent-role {
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+.ob-agent-when {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  margin-top: 6px;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label);
+}
+.ob-agent-when svg {
+  width: 13px;
+  height: 13px;
+  margin-top: 2.5px;
+  flex-shrink: 0;
+  color: var(--accent-ink);
+}
+:root:lang(ar) .ob-agent-when svg {
+  margin-top: 4px;
+}
+/* an agent the owner turned off: greyed ring and text, "Off" said in words */
+.ob-agent.is-off {
+  background: var(--bg-secondary);
+}
+.ob-agent.is-off .ob-agent-name,
+.ob-agent-when.is-off,
+.ob-agent-when.is-off svg {
+  color: var(--label-secondary);
+}
+.ob-agent-off {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding-inline: 7px;
+  border-radius: 999px;
+  background: var(--fill-3);
+  font-size: var(--text-caption);
+  line-height: var(--lh-caption);
+  font-weight: 600;
+  color: var(--label-secondary);
+}
+.ob-agent-sk-medal {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+}
+.ob-agent.is-loading {
+  min-height: 112px;
+}
+.ob-team-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 0;
+  padding-inline: 4px;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+.ob-team-note svg,
+.ob-day-note svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--accent-ink);
+}
+.ob-day {
+  display: grid;
+  gap: 12px;
+  padding: 18px 20px 14px;
+  border-radius: var(--radius-card);
+  background: var(--bg-grouped-row);
+  box-shadow: 0 0 0 0.5px var(--hairline-color);
+}
+.ob-day .dl {
+  --dl-bg: var(--bg-grouped-row);
+}
+.ob-day-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 10px;
+  border-top: 0.5px solid var(--separator);
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+@media (max-width: 600px) {
+  .ob-agents {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+  }
+  .ob-agent {
+    padding: 12px 14px;
+  }
+  .ob-day {
+    padding: 16px;
+  }
+}

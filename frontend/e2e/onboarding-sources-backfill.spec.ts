@@ -1,12 +1,14 @@
 import { expect, test, type Page } from '@playwright/test'
 
 /*
- * ATL-233: the Data sources (after Connect) and Market history (after Autonomy) onboarding steps,
- * walked with fixtures at 1280 and 390 px, in English and Arabic, light and dark.
+ * ATL-233 + ATL-234: the whole onboarding after Connect, walked with fixtures at 1280 and 390 px,
+ * in English and Arabic, light and dark: Claude (signed out, then Check again passes) → Data
+ * sources → Risk → Autonomy → Market history → Meet your team (9 agents) → the War Room.
  */
 
 const OWNER = { id: '01a18376-1d35-70c2-ad01-6d1d2cd870ad', name: 'Mohammed Ali', email: 'owner@atlas.test', locale: 'en', theme: 'system' }
 const SHOTS = '../../evidence/ATL-233'
+const SHOTS_234 = '../../evidence/ATL-234'
 const FINNHUB_KEY = 'fh-e2e-fixture-key-9XyZ'
 
 const PRESETS = {
@@ -76,6 +78,36 @@ function backfill(done: number) {
   }
 }
 
+const AGENTS = [
+  ['orchestrator', 'Orchestrator'],
+  ['market_scout', 'Market Scout'],
+  ['news_intelligence', 'News Intelligence'],
+  ['historian', 'Historian'],
+  ['technical_analyst', 'Technical Analyst'],
+  ['derivatives_sentiment', 'Derivatives & Sentiment'],
+  ['strategist', 'Strategist'],
+  ['devils_advocate', 'Devil’s Advocate'],
+  ['portfolio_manager', 'Portfolio Manager'],
+].map(([slug, name]) => ({
+  slug, name, handle: name, enabled: true, model: 'strong', model_name: null, state: 'idle', state_since: null, current_task: null,
+  today: { tokens: 0, tokens_in: 0, tokens_out: 0, turns: 0, runs: 0, cost_usd_notional: '0.000000' },
+  budget: { daily_tokens: 400000, daily_turns: 60 }, prompt: null, last_run: null,
+}))
+
+/** GET /api/agents/claude-status: installed, and signed in or not. */
+function claude(ok: boolean) {
+  return {
+    data: {
+      ok, installed: true, logged_in: ok, api_key_env_clear: true, login_command: 'claude login', checked_at: new Date().toISOString(),
+      checks: [
+        { name: 'claude_cli', ok: true, status: 'pass', detail: 'claude 2.4.1 (Claude Code)' },
+        { name: 'claude_cli_login', ok, status: ok ? 'pass' : 'fail', detail: ok ? 'logged in' : 'not logged in' },
+        { name: 'claude_api_key', ok: true, status: 'pass', detail: 'not set' },
+      ],
+    },
+  }
+}
+
 async function fakeApi(page: Page) {
   const state = {
     version: 1,
@@ -83,6 +115,8 @@ async function fakeApi(page: Page) {
     sources: sources(),
     done: 0,
     backfillCalls: 0,
+    claudeOk: false,
+    claudeCalls: 0,
     keyPuts: [] as { path: string; body: unknown }[],
   }
   await page.route(/^http:\/\/localhost:8000\//, async (route) => {
@@ -120,6 +154,13 @@ async function fakeApi(page: Page) {
       state.backfillCalls += 1
       return json(200, backfill(state.done))
     }
+    if (url.pathname === '/api/agents/claude-status') {
+      state.claudeCalls += 1
+      return json(200, claude(state.claudeOk))
+    }
+    if (url.pathname === '/api/agents') {
+      return json(200, { data: AGENTS, meta: { env: 'demo', day: '2026-10-28', timezone: 'Asia/Baghdad', day_start: '', day_end: '', settings_version: state.version } })
+    }
     if (url.pathname === '/api/data/storage') return json(200, { data: { hypertables: [], total_bytes: 0 } })
     return json(404, { message: 'Not found' })
   })
@@ -134,8 +175,16 @@ async function prefs(page: Page, lang: 'en' | 'ar', theme: 'light' | 'dark') {
 }
 
 const T = {
-  en: { sources: 'Choose where news comes from', risk: 'Choose a risk profile', autonomy: 'Choose how much Atlas does on its own', history: 'Atlas is collecting market history', skip: 'Skip', key: 'Finnhub key', step3: 'Step 3 of 6', step6: 'Step 6 of 6', finish: 'Finish setup' },
-  ar: { sources: 'اختر من أين تأتي الأخبار', risk: 'اختر مستوى المخاطرة', autonomy: 'اختر مقدار ما يفعله أطلس بنفسه', history: 'يجمع أطلس سجل السوق', skip: 'تخطٍّ', key: 'مفتاح Finnhub', step3: 'الخطوة 3 من 6', step6: 'الخطوة 6 من 6', finish: 'إنهاء الإعداد' },
+  en: {
+    claude: 'Sign in to Claude', signedIn: 'Signed in', team: 'Meet your team', role: 'Runs the process and answers you first',
+    sources: 'Choose where news comes from', risk: 'Choose a risk profile', autonomy: 'Choose how much Atlas does on its own', history: 'Atlas is collecting market history', skip: 'Skip', key: 'Finnhub key',
+    step3: 'Step 3 of 8', step4: 'Step 4 of 8', step7: 'Step 7 of 8', step8: 'Step 8 of 8', next: 'Continue', finish: 'Open the War Room',
+  },
+  ar: {
+    claude: 'سجّل الدخول إلى Claude', signedIn: 'تم تسجيل الدخول', team: 'تعرّف على فريقك', role: 'يدير سير العمل ويردّ عليك أولًا',
+    sources: 'اختر من أين تأتي الأخبار', risk: 'اختر مستوى المخاطرة', autonomy: 'اختر مقدار ما يفعله أطلس بنفسه', history: 'يجمع أطلس سجل السوق', skip: 'تخطٍّ', key: 'مفتاح Finnhub',
+    step3: 'الخطوة 3 من 8', step4: 'الخطوة 4 من 8', step7: 'الخطوة 7 من 8', step8: 'الخطوة 8 من 8', next: 'متابعة', finish: 'افتح غرفة العمليات',
+  },
 }
 
 const noOverflow = (page: Page) => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
@@ -148,14 +197,36 @@ for (const width of [1280, 390] as const) {
       await prefs(page, lang, theme)
       const api = await fakeApi(page)
 
-      // Connect is done (a verified key), so the owner continues to Data sources.
+      // Connect is done (a verified key), so the owner continues to Claude (ATL-234).
       await page.goto('/onboarding?step=connect')
       await expect(page.getByTestId('saved-key')).toBeVisible()
+      await page.getByTestId('ob-next').click()
+      await expect(page).toHaveURL(/step=claude$/)
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(t.claude)
+      await expect(page.getByTestId('ob-step-of')).toHaveText(t.step3)
+      // Signed out: the claude login instruction, Continue locked, Set up later offered.
+      await expect(page.getByTestId('claude-login-command')).toHaveText('claude login')
+      await expect(page.getByTestId('ob-next')).toBeDisabled()
+      await expect(page.getByTestId('ob-later')).toBeVisible()
+      await expect(page.locator('section[data-step="claude"]')).toHaveCSS('opacity', '1')
+      expect(await noOverflow(page)).toBe(true)
+      await page.screenshot({ path: `${SHOTS_234}/claude-out-${width}-${lang}-${theme}.png`, fullPage: true })
+      // Check again re-queries; signed in now, every check is green and Continue opens.
+      const calls = api.claudeCalls
+      api.claudeOk = true
+      await page.getByTestId('claude-check').click()
+      await expect(page.getByTestId('claude-checks')).toHaveAttribute('data-view', 'ok')
+      expect(api.claudeCalls).toBe(calls + 1)
+      await expect(page.locator('[data-check="login"]')).toHaveAttribute('data-state', 'pass')
+      await expect(page.locator('[data-check="login"]')).toContainText(t.signedIn)
+      await expect(page.getByTestId('claude-login-command')).toHaveCount(0)
+      await expect(page.getByTestId('ob-next')).toBeEnabled()
+      await page.screenshot({ path: `${SHOTS_234}/claude-ok-${width}-${lang}-${theme}.png`, fullPage: true })
       await page.getByTestId('ob-next').click()
       await expect(page).toHaveURL(/step=sources$/)
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(t.sources)
       await expect(page.locator('html')).toHaveAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr')
-      await expect(page.getByTestId('ob-step-of')).toHaveText(t.step3)
+      await expect(page.getByTestId('ob-step-of')).toHaveText(t.step4)
       if (width === 390) await expect(page.locator('.ob-steps-sm')).toBeVisible()
       else await expect(page.locator('.ob-steps-ol')).toBeVisible()
       await expect(page.getByTestId('sources-summary')).toBeVisible()
@@ -191,11 +262,11 @@ for (const width of [1280, 390] as const) {
       // Market history: 0% to start, and Continue (Finish) is enabled anyway.
       await expect(page).toHaveURL(/step=backfill$/)
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(t.history)
-      await expect(page.getByTestId('ob-step-of')).toHaveText(t.step6)
+      await expect(page.getByTestId('ob-step-of')).toHaveText(t.step7)
       const bar = page.getByTestId('backfill-bar')
       await expect(bar).toHaveAttribute('aria-valuenow', '0')
       await expect(page.getByTestId('ob-next')).toBeEnabled()
-      await expect(page.getByTestId('ob-next')).toHaveText(t.finish)
+      await expect(page.getByTestId('ob-next')).toHaveText(t.next)
       // It updates while open: the fake backfill moves on, the next 5 s poll shows it.
       api.done = 14
       await expect(page.getByTestId('backfill-insts')).toContainText('14', { timeout: 8_000 })
@@ -205,8 +276,23 @@ for (const width of [1280, 390] as const) {
       expect(await noOverflow(page)).toBe(true)
       await page.screenshot({ path: `${SHOTS}/backfill-${width}-${lang}-${theme}.png`, fullPage: true })
 
+      // Meet your team (ATL-234): one card per agent the API returns, then Open the War Room.
       await page.getByTestId('ob-next').click()
-      await expect(page).toHaveURL(/\/portfolio$/)
+      await expect(page).toHaveURL(/step=team$/)
+      await expect(page.getByRole('heading', { level: 1 })).toHaveText(t.team)
+      await expect(page.getByTestId('ob-step-of')).toHaveText(t.step8)
+      const cards = page.getByTestId('team-agent')
+      await expect(cards).toHaveCount(9)
+      await expect(cards.first()).toContainText(t.role)
+      await expect(cards.locator('.medal-glyph')).toHaveCount(9)
+      await expect(page.getByTestId('team-day')).toBeVisible()
+      await expect(page.getByTestId('ob-next')).toHaveText(t.finish)
+      await expect(page.locator('section[data-step="team"]')).toHaveCSS('opacity', '1')
+      expect(await noOverflow(page)).toBe(true)
+      await page.screenshot({ path: `${SHOTS_234}/team-${width}-${lang}-${theme}.png`, fullPage: true })
+
+      await page.getByTestId('ob-next').click()
+      await expect(page).toHaveURL(/\/warroom$/)
       expect(api.settings.onboarding_completed).toBe(1)
       // Onboarded: the app opens at the War Room, not at the new steps.
       await page.goto('/')
