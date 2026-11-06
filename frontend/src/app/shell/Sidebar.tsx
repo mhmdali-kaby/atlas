@@ -1,6 +1,7 @@
 import type { KeyboardEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link, useLocation } from 'react-router'
+import { PaletteButton } from '../../features/command-palette/PaletteDoors'
 import { AppIcon } from '../../ui'
 import type { AreaDef, AreaId, AreaNavEntry, ShellRegistry } from '../feature'
 
@@ -58,6 +59,7 @@ export function Sidebar({ registry, area, active, areaHref, onNavigate }: Sideba
       <div className="flex h-[calc(var(--toolbar-height)-8px)] shrink-0 items-center gap-2.5 px-3.5">
         <AppIcon size={26} />
         <span className="text-headline font-semibold">{t('common:appName')}</span>
+        <PaletteButton />
       </div>
       {registry.areas.length > 0 && (
         <nav className="shell-area-switch" aria-label={t('nav.areas')} onKeyDown={onSwitcherKeyDown} data-testid="area-switch">
