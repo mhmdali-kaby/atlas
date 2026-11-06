@@ -33,10 +33,11 @@ return [
     'schedule_scout_after_regime' => 'The :later must be later than the :earlier, because Market Scout reads the regime table.',
     'schedule_quiet_empty' => 'Quiet hours must start and end at different times.',
 
+    'prompt_version_unknown' => 'Prompt version :version is not one of this agent\'s saved versions.',
+
     // ATL-222: SettingsLabels composes these two for agents.<slug>.<setting> and
     // notifications.<event>.<channel>, so nine agents and eleven events don't need 69 separate
     // attribute translations.
-    'prompt_version_unknown' => 'Prompt version :version is not one of this agent\'s saved versions.',
     'attr_agent_setting' => ':agent: :setting',
     'attr_notification' => ':event: :channel',
 

@@ -35,10 +35,11 @@ class AgentPromptsController extends Controller
         ]);
     }
 
-    public function show(string $slug, int $version): JsonResponse
+    public function show(string $slug, string $version): JsonResponse
     {
         self::assertAgent($slug);
-        $found = PromptVersions::find($slug, $version);
+        $parsed = PromptVersions::parse($version);
+        $found = $parsed === null ? null : PromptVersions::find($slug, $parsed);
         abort_if($found === null, 404);
 
         return response()->json(['data' => $found]);

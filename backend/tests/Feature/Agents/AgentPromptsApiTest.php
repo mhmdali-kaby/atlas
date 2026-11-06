@@ -200,6 +200,28 @@ it('validates agents.<slug>.prompt_version on PATCH /api/settings too', function
     expect($this->getJson('/api/settings?env=demo')->json('data.settings')['agents.historian.prompt_version'])->toBe(3);
 });
 
+it('answers versions outside the int4 column with 404 or 422, never a database error', function (): void {
+    // QA round 1: 3000000000 overflowed Postgres integer (22003), 99999999999999999999 overflowed PHP int.
+    foreach (['2147483648', '3000000000', '99999999999999999999', '0', '01'] as $segment) {
+        $this->getJson("/api/agents/historian/prompts/{$segment}")->assertNotFound();
+    }
+
+    foreach ([2147483648, 3000000000, 0, -1] as $version) {
+        $this->putJson('/api/agents/historian/prompt-pin', ['version' => $version, 'env' => 'demo'])
+            ->assertUnprocessable()->assertJsonValidationErrors(['version']);
+    }
+    $this->call('PUT', '/api/agents/historian/prompt-pin', [], [], [], ['CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json'],
+        '{"version": 99999999999999999999, "env": "demo"}')
+        ->assertUnprocessable()->assertJsonValidationErrors(['version']);
+
+    $settingsVersion = $this->getJson('/api/settings?env=demo')->json('data.version');
+    foreach ([2147483648, 3000000000] as $version) {
+        $this->patchJson('/api/settings', ['env' => 'demo', 'version' => $settingsVersion, 'changes' => ['agents.historian.prompt_version' => $version]])
+            ->assertUnprocessable()->assertJsonValidationErrors(['changes.agents.historian.prompt_version']);
+    }
+    expect($this->getJson('/api/settings?env=demo')->json('data.version'))->toBe($settingsVersion);
+});
+
 it('requires sign-in', function (): void {
     auth()->guard('web')->logout();
 

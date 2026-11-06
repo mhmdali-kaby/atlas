@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Agents;
 
 use App\Http\Requests\Settings\SettingsEnvRequest;
+use App\Support\Agents\PromptVersions;
 use App\Support\System\ActiveEnv;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -26,7 +27,7 @@ class PinPromptRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'version' => ['present', 'nullable', 'integer:strict', 'min:1'],
+            'version' => ['present', 'nullable', 'integer:strict', 'min:1', 'max:'.PromptVersions::MAX_VERSION],
             'env' => ['sometimes', 'string', Rule::in(SettingsEnvRequest::envs())],
         ];
     }
