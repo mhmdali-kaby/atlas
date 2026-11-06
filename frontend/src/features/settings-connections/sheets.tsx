@@ -13,15 +13,21 @@ export function KeysSheet({
   open,
   onOpenChange,
   connection,
+  env = connection?.env ?? 'demo',
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
-  /** null: connect a new demo key; otherwise replace this connection's keys. */
+  /** null: connect a new key for `env`; otherwise replace this connection's keys. */
   connection: Connection | null
+  env?: Connection['env']
 }) {
   const { t } = useTranslation('settings')
   const [failure, setFailure] = useState<Failure | null>(null)
   const replace = connection !== null
+  const live = env === 'live'
+  // A live key saves under its own copy and ids; the form, fields and flow are the demo one's.
+  const title = live ? (replace ? t('lv.rk.title') : t('lv.ck.title')) : replace ? t('rk.title') : t('ck.title')
+  const text = live ? (replace ? t('lv.rk.text') : t('lv.ck.text')) : replace ? t('rk.text') : t('ck.text')
 
   function onResult(outcome: TestOutcome) {
     if (outcome.status === 'failed') {
@@ -29,27 +35,30 @@ export function KeysSheet({
       return
     }
     onOpenChange(false)
-    toast({
-      tone: 'success',
-      title: replace ? t('rk.toast') : t('ck.toast'),
-      body: t('rk.toastBody', { last4: outcome.connection.api_key_last4 }),
-    })
+    const last4 = outcome.connection.api_key_last4
+    toast(
+      live
+        ? { tone: 'success', title: t('lv.savedToast'), body: t('lv.savedToastBody', { last4 }) }
+        : { tone: 'success', title: replace ? t('rk.toast') : t('ck.toast'), body: t('rk.toastBody', { last4 }) },
+    )
   }
 
   return (
     <Sheet
       open={open}
       onOpenChange={onOpenChange}
+      tone={live ? 'live' : 'default'}
       icon={<KeyRound strokeWidth={1.5} />}
-      title={replace ? t('rk.title') : t('ck.title')}
-      description={replace ? t('rk.text') : t('ck.text')}
+      title={title}
+      description={text}
     >
-      {!replace && <KeyHelp />}
-      {failure && <TestFailure error={failure.error} okxCode={failure.okxCode} />}
+      {(live || !replace) && <KeyHelp env={env} />}
+      {failure && <TestFailure error={failure.error} okxCode={failure.okxCode} env={env} />}
       <div className="st-sheet-fields">
         <ConnectionForm
           connection={connection}
-          idPrefix={replace ? 'rk' : 'ck'}
+          env={env}
+          idPrefix={(live ? 'l' : '') + (replace ? 'rk' : 'ck')}
           submitLabel={t('rk.save')}
           cancel={
             <SheetClose>
@@ -79,12 +88,14 @@ export function RemoveSheet({
   const store = useStoreConnection()
   const [typed, setTyped] = useState('')
   const formId = useId()
+  const live = connection.env === 'live'
+  const rm = live ? 'lv.rm' : 'rm'
   const remove = useMutation({
     mutationFn: () => api.delete<null>(`/api/connections/${connection.id}`),
     onSuccess: () => {
       store.drop(connection.id)
       onOpenChange(false)
-      toast({ tone: 'success', title: t('rm.toast'), body: t('rm.toastBody') })
+      toast({ tone: 'success', title: t(`${rm}.toast`), body: t(`${rm}.toastBody`) })
       onRemoved()
     },
   })
@@ -101,8 +112,8 @@ export function RemoveSheet({
       onOpenChange={(next) => !remove.isPending && onOpenChange(next)}
       tone="destructive"
       icon={<Trash2 strokeWidth={1.5} />}
-      title={t('rm.title')}
-      description={t('rm.text')}
+      title={t(`${rm}.title`)}
+      description={t(`${rm}.text`)}
       actions={
         <>
           <SheetClose>
@@ -118,7 +129,7 @@ export function RemoveSheet({
     >
       <form id={formId} noValidate onSubmit={submit}>
         <TextField
-          id="rm-confirm"
+          id={live ? 'lrm-confirm' : 'rm-confirm'}
           label={t('rm.confirm', { label: connection.label })}
           placeholder={connection.label}
           dir="auto"

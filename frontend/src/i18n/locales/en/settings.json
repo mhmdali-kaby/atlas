@@ -24,9 +24,6 @@
     "accountNote": "OKX reports these details each time Atlas tests the connection.",
     "verifiedTip": "{{city}} time ({{zone}})",
     "never": "Never",
-    "liveTitle": "Live account",
-    "live": "OKX live",
-    "liveNote": "Live trading is enabled in Phase 4.",
     "okToast": "Connection works",
     "okToastBody": "OKX answered at {{time}}.",
     "failedToast": "Test failed",
@@ -39,7 +36,54 @@
       "title": "Couldn’t load your connections",
       "body": "Atlas’s server didn’t answer. Check that Atlas is running with ./atlas up, then try again.",
       "retry": "Try again"
-    }
+    },
+    "demoTitle": "Demo account",
+    "trading": "Trading now"
+  },
+  "lv": {
+    "title": "Live account",
+    "noneTitle": "No live account connected",
+    "noneBody": "Add a key from your OKX live account with Read and Trade only. Adding it doesn’t switch Atlas to live; that happens in Settings → Environment, after the pre-flight.",
+    "connect": "Connect OKX live",
+    "verified": "Verified {{ago}}. Withdrawals are off.",
+    "testingLine": "Testing with OKX live…",
+    "notVerified": "Not verified. This key can withdraw funds.",
+    "failedLine": "Not verified. The last test failed.",
+    "cantTest": "Not verified. Atlas couldn’t run the test.",
+    "untested": "Not verified. The key hasn’t been tested yet.",
+    "withdraw": {
+      "title": "This key can withdraw funds",
+      "body": "Create a key with Read + Trade only, then replace it here. Atlas never moves money, and it won’t trade live with a key that could."
+    },
+    "envTitle": "Switch Atlas to live in Settings → Environment",
+    "envSub": "Adding this key didn’t switch anything. The pre-flight there decides when you can.",
+    "envLiveTitle": "Atlas is trading on this account",
+    "envLiveSub": "Switch back to demo in Settings → Environment.",
+    "footnote": "Atlas refuses a live key that can withdraw, and never moves money.",
+    "sealLabel": "Seal of the OKX live account ending {{last4}}",
+    "ck": {
+      "title": "Connect the OKX live account",
+      "text": "Create the key on your OKX live account with Read and Trade only. Atlas refuses a key that can withdraw."
+    },
+    "rk": {
+      "title": "Replace the OKX live keys",
+      "text": "Paste a new key from the OKX live account, with Read and Trade only. Atlas tests it before it replaces the current one."
+    },
+    "okToast": "Live connection works",
+    "okToastBody": "OKX live answered at {{time}}. Withdrawals are off.",
+    "refusedToast": "Live key refused",
+    "refusedToastBody": "It can withdraw funds. Create one with Read + Trade only.",
+    "failedToast": "Live test failed",
+    "savedToast": "Live key saved and verified",
+    "savedToastBody": "API key •••• {{last4}}. Environment’s first check passes now.",
+    "rm": {
+      "title": "Remove the OKX live connection?",
+      "text": "Atlas deletes the live keys from this Mac, and Environment’s first check fails until you add a key again. Your OKX account and its funds are not touched.",
+      "blocked": "Atlas is trading on this account. Switch to demo in Settings → Environment before you remove it.",
+      "toast": "Live connection removed",
+      "toastBody": "The live keys were deleted from this Mac."
+    },
+    "openEnv": "Open Environment"
   },
   "rk": {
     "title": "Replace the OKX demo keys",
