@@ -107,6 +107,8 @@ test('the toolbar language button writes the same preference the page shows', as
 })
 
 test('the page has no axe violations in English and Arabic', async ({ page }) => {
+  // The shell's page fade-in would let axe sample half-faded text; reduced motion ends it at once.
+  await page.emulateMedia({ reducedMotion: 'reduce' })
   await open(page, { timezone: 'Europe/London' })
   const run = async () =>
     (await new AxeBuilder({ page }).include('[data-testid="gn-page"]').analyze()).violations.flatMap((v) =>
