@@ -74,7 +74,7 @@ class UpdateSettingsRequest extends FormRequest
                 'model' => ['sometimes', 'string', Rule::in(SettingsSchema::AGENT_MODELS)],
                 // ATL-251: the pin endpoint checks the version belongs to the agent; here it must
                 // at least be a stored version of that agent.
-                'prompt_version' => ['sometimes', 'nullable', 'integer:strict', 'min:1', self::storedPromptVersion(explode('.', $field)[1])],
+                'prompt_version' => ['sometimes', 'nullable', 'integer:strict', 'min:1', 'max:'.PromptVersions::MAX_VERSION, self::storedPromptVersion(explode('.', $field)[1])],
                 default => ['sometimes', 'integer:strict', 'between:'.implode(',', SettingsSchema::agentIntegerBounds($setting))],
             };
         }

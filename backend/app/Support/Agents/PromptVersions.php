@@ -21,6 +21,9 @@ final class PromptVersions
 
     public const PREAMBLE_FILE = '_preamble.md';
 
+    /** prompt_versions.version is a Postgres integer (int4); nothing above this can be stored. */
+    public const MAX_VERSION = 2147483647;
+
     /**
      * Newest first.
      *
@@ -61,6 +64,9 @@ final class PromptVersions
      */
     public static function find(string $slug, int $version): ?array
     {
+        if (! self::inRange($version)) {
+            return null;
+        }
         $row = DB::table('prompt_versions')->where('agent', $slug)->where('version', $version)->first(['version', 'sha256', 'body']);
         if ($row === null) {
             return null;
@@ -75,7 +81,26 @@ final class PromptVersions
 
     public static function exists(string $slug, int $version): bool
     {
-        return DB::table('prompt_versions')->where('agent', $slug)->where('version', $version)->exists();
+        return self::inRange($version) && DB::table('prompt_versions')->where('agent', $slug)->where('version', $version)->exists();
+    }
+
+    /**
+     * A route segment such as "42" as a version, or null when it is not a positive int4
+     * ("3000000000", or a value past PHP_INT_MAX), so those are a 404 rather than a DB error.
+     */
+    public static function parse(string $segment): ?int
+    {
+        if (preg_match('/^[1-9][0-9]{0,9}$/', $segment) !== 1) {
+            return null;
+        }
+        $version = (int) $segment;
+
+        return self::inRange($version) ? $version : null;
+    }
+
+    private static function inRange(int $version): bool
+    {
+        return $version >= 1 && $version <= self::MAX_VERSION;
     }
 
     /** sha256 hex of the agent's prompt files on disk, or null when either file is missing. */
