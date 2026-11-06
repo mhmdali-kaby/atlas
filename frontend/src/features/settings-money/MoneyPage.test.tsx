@@ -162,16 +162,22 @@ afterEach(async () => {
 describe('Settings → Money limits (ATL-130)', () => {
   it('max per trade 3000 calls the preview with that draft after the debounce and marks max per trade as binding', async () => {
     const state = fakeBackend()
-    const user = userEvent.setup()
+    /*
+     * ATL-258: the debounce runs on real time. Clearing and then typing key by key (each key a
+     * macrotask apart) took longer than 300 ms on a loaded machine, so the preview also went out
+     * for "" or "30" and the list never equalled ['3000']. With no delay and the old value
+     * selected, the whole edit is one burst that no timer can interrupt, as a fast typist's is.
+     */
+    const user = userEvent.setup({ delay: null })
     renderPage()
     expect(await screen.findByRole('heading', { level: 1, name: 'Money limits' })).toBeInTheDocument()
     await waitFor(() => expect(screen.getByTestId('ml-sentence')).toHaveTextContent('$5,000.00'))
     // Saved: max position 5% of $100,000 binds at $5,000.
     expect(screen.getByTestId('ml-line-use')).toHaveAttribute('data-binding', 'max_position_pct')
 
-    const input = field('Max per trade')
-    await user.clear(input)
-    await user.type(input, '3000')
+    const input = field('Max per trade') as HTMLInputElement
+    await user.type(input, '3000', { initialSelectionStart: 0, initialSelectionEnd: input.value.length })
+    expect(input).toHaveValue('3000')
     // Nothing sent before the 300 ms debounce.
     expect(perTradeCalls(state)).toEqual([])
     await waitFor(() => expect(perTradeCalls(state)).toEqual(['3000']))

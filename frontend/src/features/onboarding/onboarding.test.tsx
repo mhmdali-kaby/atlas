@@ -942,9 +942,7 @@ describe('Claude and Meet your team steps (ATL-234)', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe('/warroom'))
     expect(order).toEqual(['welcome', '?step=connect', '?step=claude', '?step=sources', '?step=risk', '?step=autonomy', '?step=backfill', '?step=team'])
     expect(backend.settings.settings.onboarding_completed).toBe(1)
-    // ATL-258: eight full steps, each change waiting for the real exit fade (AnimatePresence
-    // mode="wait"): about 2 s on an idle machine, so 5 s was not enough under a parallel run.
-  }, 15_000)
+  })
 
   it('shows the claude login instruction when signed out, and Check again re-queries until it passes', async () => {
     const backend = fakeBackend({ stored: connectionRow(VERIFIED) })

@@ -42,6 +42,12 @@ export default defineConfig({
     strictPort: true,
   },
   test: {
+    // ATL-258: measured on a 10-core Mac (4 performance cores), a full run takes the slowest
+    // page tests to 1.3-3.7 s, and `--maxWorkers=100%` beside a second run takes the same tests
+    // to 4-6 s (4-8x) with nothing wrong in them: whole Settings pages and the onboarding walk in
+    // jsdom, and stories in a Chromium sharing the cores (4.0-4.7 s each). The 5 s default
+    // failed them at random. Real faults found under load were fixed in the tests themselves.
+    testTimeout: 15_000,
     projects: [
       {
         extends: true,
