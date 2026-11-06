@@ -164,6 +164,24 @@ the new value.
   stored update offset resets with it. Rotating `APP_KEY` invalidates every Approve/Reject button
   already sent (their HMAC key is derived from it); they answer "expired".
 
+## Lost phone and recovery codes
+
+If two-factor sign-in (brief §18) is on and the owner has lost both the authenticator app and
+every recovery code, the login screen and Settings → Security point here: there is no way back
+in through the browser, because that is the point of the second factor. Recovery is a Terminal
+command on this Mac, run by whoever has shell access to it, not by anyone over the web.
+
+1. Open Terminal and `cd` to the Atlas repository.
+2. Run `./atlas reset-two-factor`. With a single owner the email is optional; pass
+   `--email=<address>` only if more than one account exists. It asks "Turn off two-factor sign-in
+   for `<email>`? This removes the authenticator and every recovery code." before changing
+   anything — answer `yes`, or pass `--force` to skip the question (e.g. in a script).
+3. It turns 2FA off through the same `TwoFactor::disable()` the API uses, and writes one
+   `audit_log` row (`two_factor.reset`, actor `cli`). It never prints a secret or a code, so the
+   output is safe to paste into a support ticket if needed.
+4. The owner signs in with just their password. They can turn two-factor sign-in on again from
+   Settings → Security once they have a new authenticator app.
+
 ## Alerts
 
 Circuit breakers, the kill switch and most owner-facing alerts arrive with the Risk Engine
