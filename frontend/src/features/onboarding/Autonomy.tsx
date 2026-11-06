@@ -232,7 +232,12 @@ export function AskField({ id, text, onText, error, disabled, actions, onEnter, 
   )
 }
 
-export type SheetNotice = { kind: 'server' } | { kind: 'conflict'; version: number } | null
+export type SheetNotice =
+  | { kind: 'server' }
+  | { kind: 'conflict'; version: number }
+  /** A 422 the API words itself (ATL-238: live autonomy above 2 in the first live month). */
+  | { kind: 'refused'; message: string }
+  | null
 
 export interface TurnOnSheetProps {
   open: boolean
@@ -335,6 +340,11 @@ export function TurnOnSheet({ open, level, raise, mode, initialAsk, largest, pen
         {notice?.kind === 'conflict' && (
           <Notice tone="warning" icon={RotateCcw} role="alert" title={t('err.conflict.title')}>
             {t('err.conflict.body', { v: formatFixed(notice.version, 0, lang) })}
+          </Notice>
+        )}
+        {notice?.kind === 'refused' && (
+          <Notice tone="error" icon={OctagonX} role="alert" title={notice.message} data-testid="au-sheet-refused">
+            {t('err.refused.body')}
           </Notice>
         )}
         {notice?.kind === 'server' && (

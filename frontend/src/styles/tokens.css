@@ -243,6 +243,11 @@
   --demo: var(--sys-teal);
   --demo-ink: var(--ui-demo-ink);
   --demo-wash: var(--ui-demo-wash);
+  /* Live readiness §2: live is the system orange; black text on it (9.6:1 / 10.9:1). */
+  --live: var(--sys-orange);
+  --live-on: #000000;
+  --live-ink: var(--ui-warning-ink);
+  --live-wash: var(--ui-warning-wash);
   --destructive-solid: var(--ui-destructive-solid);
   --neutral: var(--sys-grey);
 
@@ -338,6 +343,22 @@
   font-family: var(--font-stack-sans);
 }
 
+/* ---- Live (patch O, design v21 tokens.css) ------------------------------
+   The live environment's hue: orange, the colour macOS uses for "something real
+   is happening". Red stays for loss and Stop; teal stays for Demo. */
+:root {
+  --live: #FF9500;            /* solid; black text 9.6:1 */
+  --live-on: #000000;
+  --live-ink: #C93400;        /* orange text on page grounds: 5.3:1 on white */
+  --live-wash: rgba(255, 149, 0, 0.14);
+}
+.dark {
+  --live: #FF9F0A;            /* solid; black text 10.9:1 */
+  --live-on: #000000;
+  --live-ink: #FF9F0A;        /* 9.1:1 on #1C1C1E */
+  --live-wash: rgba(255, 159, 10, 0.16);
+}
+
 /* ---- 3. Tailwind theme -------------------------------------------------- */
 
 /* Static tokens. Stock palette, radii, shadows, type sizes and fonts are wiped,
@@ -402,6 +423,10 @@
   --color-demo: var(--demo);
   --color-demo-ink: var(--demo-ink);
   --color-demo-wash: var(--demo-wash);
+  --color-live: var(--live);
+  --color-live-on: var(--live-on);
+  --color-live-ink: var(--live-ink);
+  --color-live-wash: var(--live-wash);
   --color-destructive-solid: var(--destructive-solid);
   --color-neutral: var(--neutral);
 

@@ -330,3 +330,12 @@ it('answers in Arabic when asked', function (): void {
         ->assertUnprocessable()
         ->assertJsonPath('errors.password.0', 'كلمة المرور غير صحيحة.');
 });
+
+it('gives attested items their confirmed_at timestamp (ATL-239)', function (): void {
+    $items = atl236Items($this->putJson('/api/environment/attestations', ['ip_allowlist' => true])->assertOk()->json('data'));
+    expect($items['ip_allowlist']['confirmed_at'])->toBeString()
+        ->and(CarbonImmutable::parse($items['ip_allowlist']['confirmed_at'])->isToday())->toBeTrue()
+        ->and($items['sub_account'])->toHaveKey('confirmed_at')
+        ->and($items['sub_account']['confirmed_at'])->toBeNull()
+        ->and($items['live_connection'])->not->toHaveKey('confirmed_at');
+});

@@ -5,11 +5,12 @@ import { formatFixed } from '../../lib/format'
 import { Button, Skeleton } from '../../ui'
 import { cx } from '../../ui/cx'
 import { useLang } from '../portfolio/hooks'
+import { EnvScopeControl, type EnvScope } from '../settings-risk/EnvScope'
 import { atBound, kindOf, type NumKey } from './model'
 
 /* The Markets page's building blocks (ATL-131): pane header, load states, sections and number rows. */
 
-export function PaneHeader({ version }: { version: number | null }) {
+export function PaneHeader({ version, scope }: { version: number | null; scope: EnvScope }) {
   const { t } = useTranslation('settings-markets')
   const lang = useLang()
   return (
@@ -21,11 +22,14 @@ export function PaneHeader({ version }: { version: number | null }) {
         <h2 className="text-title-2">{t('nav')}</h2>
         <p className="max-w-[60ch] text-subheadline text-label-secondary">{t('intro')}</p>
       </div>
-      {version !== null && (
-        <span className="st-version" data-testid="settings-version">
-          {t('version', { v: formatFixed(version, 0, lang) })}
-        </span>
-      )}
+      <div className="lv-aside">
+        <EnvScopeControl scope={scope} />
+        {version !== null && (
+          <span className="st-version" data-testid="settings-version">
+            {t('version', { v: formatFixed(version, 0, lang) })}
+          </span>
+        )}
+      </div>
     </header>
   )
 }
