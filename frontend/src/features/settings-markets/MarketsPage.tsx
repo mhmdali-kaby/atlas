@@ -12,6 +12,7 @@ import { formatClock } from '../portfolio/time'
 import '../settings-agents/settings-agents.css'
 import '../settings-connections/settings.css'
 import { useDebounced } from '../settings-money/model'
+import { EnvScopeNotice, useEnvScope, type EnvScope } from '../settings-risk/EnvScope'
 import '../settings-money/money.css'
 import { Fig, fill } from '../settings-money/parts'
 import { historyKey, useSaveSettings, useSettingsHistory } from '../settings-risk/model'
@@ -55,11 +56,17 @@ import { LoadError, Loading, NumRow, PaneHeader, Section } from './parts'
  * eligibility API with the unsaved draft (decision 250).
  */
 
-const ENV: SettingsDoc['env'] = 'demo'
 const DEBOUNCE_MS = 300
 const ICONS: Record<Kind, LucideIcon> = { spot: Coins, crypto_perp: Bitcoin, stock_perp: Landmark, commodity_perp: Pickaxe, futures: CalendarClock, options: Sigma }
 
 export function MarketsPage() {
+  const scope = useEnvScope()
+  // One row per env: switching Demo | Live starts from that row's saved values, no draft carried over.
+  return <MarketsPane key={scope.env} scope={scope} />
+}
+
+function MarketsPane({ scope }: { scope: EnvScope }) {
+  const ENV: SettingsDoc['env'] = scope.env
   const { t } = useTranslation('settings-markets')
   const tt = t as unknown as (k: string, o?: Record<string, unknown>) => string
   const lang: Lang = useLang()
@@ -346,7 +353,8 @@ export function MarketsPage() {
 
   return (
     <div ref={pageRef} className="st-page st-risk ml-page mk-page">
-      <PaneHeader version={doc && !query.isPending ? doc.version : null} />
+      <PaneHeader scope={scope} version={doc && !query.isPending ? doc.version : null} />
+      <EnvScopeNotice scope={scope} />
       {body}
       <div className="sr-only" aria-live="polite" data-testid="mk-live">
         {said}

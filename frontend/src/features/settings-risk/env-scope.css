@@ -1,0 +1,18 @@
+/* Settings for: Demo | Live (ATL-242; design v21 css/live.css). Live is orange, Demo is teal. */
+.lv-scope { display: inline-flex; align-items: center; gap: 8px; align-self: start; margin-top: 4px; }
+.lv-scope-label { font-size: var(--fs-footnote); color: var(--label-secondary); white-space: nowrap; }
+.lv-scope-seg [role="radio"] { min-width: 76px; }
+.lv-scope-opt { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.lv-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.lv-dot.is-demo { background: var(--demo); }
+.lv-dot.is-live { background: var(--live); }
+.lv-notice.is-live { background: var(--live-wash); }
+.lv-notice.is-live > svg { color: var(--live-ink); }
+.lv-notice.is-demo { background: var(--demo-wash); }
+.lv-notice.is-demo > svg { color: var(--demo-ink); }
+.lv-aside { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; align-self: start; margin-top: 4px; }
+.lv-aside > .st-version { margin-top: 0; align-self: center; }
+@media (max-width: 640px) {
+  .st-pane:has(.lv-scope) { grid-template-columns: auto minmax(0, 1fr); }
+  .st-pane > .lv-aside { grid-column: 1 / -1; justify-content: flex-start; }
+}

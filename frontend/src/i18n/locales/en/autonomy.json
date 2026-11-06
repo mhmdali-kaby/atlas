@@ -53,6 +53,9 @@
     "conflict": {
       "title": "Settings changed in another window",
       "body": "They were saved as version {{v}} while this sheet was open. Check the amount and confirm again."
+    },
+    "refused": {
+      "body": "Nothing was saved. The level stays where it was."
     }
   }
 }
