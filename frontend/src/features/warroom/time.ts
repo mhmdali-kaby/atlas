@@ -1,40 +1,38 @@
 import { DATE_LOCALE, type Lang } from '../../lib/format'
+import { ownerDateFormat, ownerZone, teamDay } from '../../lib/ownerZone'
+import { zoneCity } from '../../lib/zones'
 
 /*
- * War Room times (design v4 War Room §1, §12): Asia/Baghdad, 24-hour clock, Western digits in
- * both languages. Baghdad is UTC+3 all year (no DST since 2008), so its calendar day is the UTC
- * day of the instant plus three hours.
+ * War Room times (design v4 War Room §1, §12; v21 "Two clocks"): every clock time is in the
+ * owner's zone (Settings → General), 24-hour clock, Western digits in both languages. The team's
+ * day ("Today", "Yesterday", day separators) stays the Baghdad business day: lib/ownerZone.
  */
 
-export const OWNER_TZ = 'Asia/Baghdad'
-const BAGHDAD_OFFSET_MS = 3 * 3_600_000
 const DAY_MS = 86_400_000
 
-const cache = new Map<string, Intl.DateTimeFormat>()
+/** The city of the owner's zone, for copy that names the zone a time is in ("14:05 London"). */
+export function ownerCity(lang: Lang): string {
+  return zoneCity(ownerZone(), lang)
+}
+
 function dtf(lang: Lang, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
-  const key = `${lang}|${JSON.stringify(options)}`
-  let f = cache.get(key)
-  if (!f) {
-    // The War Room design writes dates day-first in English ("27 Oct", "14 Jul 2026").
-    f = new Intl.DateTimeFormat(lang === 'en' ? 'en-GB' : DATE_LOCALE.ar, { timeZone: OWNER_TZ, ...options })
-    cache.set(key, f)
-  }
-  return f
+  // The War Room design writes dates day-first in English ("27 Oct", "14 Jul 2026").
+  return ownerDateFormat(lang === 'en' ? 'en-GB' : DATE_LOCALE.ar, options)
 }
 
 const ms = (ts: string | number) => (typeof ts === 'number' ? ts : Date.parse(ts))
 
 /** "2026-10-28": the Baghdad calendar day of an instant. */
 export function baghdadDay(ts: string | number): string {
-  return new Date(ms(ts) + BAGHDAD_OFFSET_MS).toISOString().slice(0, 10)
+  return teamDay(ms(ts))
 }
 
-/** "14:05" in Baghdad. */
+/** "14:05" in the owner's zone. */
 export function formatTime(ts: string | number, lang: Lang): string {
   return dtf(lang, { hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(ms(ts)))
 }
 
-/** "14:05:12" in Baghdad: the Replay day line's clock (ATL-207). */
+/** "14:05:12" in the owner's zone: the Replay day line's clock (ATL-207). */
 export function formatClock(ts: string | number, lang: Lang): string {
   return dtf(lang, { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).format(new Date(ms(ts)))
 }
@@ -94,12 +92,12 @@ export function formatUtcFull(ts: string | number): string {
   return utcFull.format(new Date(ms(ts)))
 }
 
-/** "Wed 28 Oct" in Baghdad (calendar day headers). */
+/** "Wed 28 Oct" in the owner's zone (calendar day headers). */
 export function formatDayShort(ts: string | number, lang: Lang): string {
   return dtf(lang, { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(ms(ts)))
 }
 
-/** "28 Oct, 06:10" in Baghdad. */
+/** "28 Oct, 06:10" in the owner's zone. */
 export function formatDateTime(ts: string | number, lang: Lang): string {
   return `${formatDate(ts, lang)}${lang === 'ar' ? '، ' : ', '}${formatTime(ts, lang)}`
 }

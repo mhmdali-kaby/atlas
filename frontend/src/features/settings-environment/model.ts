@@ -8,7 +8,7 @@ import {
 } from '../../app/shell/tradingEnv'
 import { api, type ApiError } from '../../lib/api'
 import { DATE_LOCALE, type Lang } from '../../lib/format'
-import { OWNER_TZ } from '../portfolio/time'
+import { ownerDateFormat } from '../../lib/ownerZone'
 
 /*
  * Settings → Environment (ATL-239) against ATL-236's API:
@@ -95,15 +95,8 @@ export function refusal(err: ApiError): SwitchRefusal {
   return { errors: body.errors ?? {}, failing_items: Array.isArray(body.failing_items) ? body.failing_items : [] }
 }
 
-const fmtCache = new Map<string, Intl.DateTimeFormat>()
 function dtf(lang: Lang, o: Intl.DateTimeFormatOptions) {
-  const k = `${lang}|${JSON.stringify(o)}`
-  let f = fmtCache.get(k)
-  if (!f) {
-    f = new Intl.DateTimeFormat(DATE_LOCALE[lang], { timeZone: OWNER_TZ, ...o })
-    fmtCache.set(k, f)
-  }
-  return f
+  return ownerDateFormat(DATE_LOCALE[lang], o)
 }
 
 /** "27 Oct" (short) or "24 November" (long), in the owner's zone, Western digits. */

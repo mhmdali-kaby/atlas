@@ -6,7 +6,7 @@ import type { FlowRow, NewsEvent } from './newsBrief'
 import { BriefImportance } from './newsBriefStories'
 import { SignedSentiment } from './newsParts'
 import { InstrumentId } from './text'
-import { baghdadDay, formatDateTime, formatDayShort, formatFullTime, formatTime, formatUtcFull } from './time'
+import { baghdadDay, formatDateTime, formatDayShort, formatFullTime, ownerCity, formatTime, formatUtcFull } from './time'
 
 /*
  * The tables of NewsBriefCard (design v9 §B): the event calendar (grouped by Baghdad day in the
@@ -96,7 +96,7 @@ export function Calendar({ events, grouped, caption, lang, now }: { events: News
             )}
             {g.rows.map((e, i) => {
               const past = Date.parse(e.time) <= now
-              const tip = t('news_brief.timeTip', { baghdad: formatFullTime(e.time, lang), utc: formatUtcFull(e.time) })
+              const tip = t('news_brief.timeTip', { city: ownerCity(lang), local: formatFullTime(e.time, lang), utc: formatUtcFull(e.time) })
               const today = baghdadDay(e.time) === baghdadDay(now)
               return (
                 <tr key={i} className={past ? 'is-past' : undefined} role="row" data-testid="nb-event">

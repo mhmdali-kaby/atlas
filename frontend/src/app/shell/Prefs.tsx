@@ -1,9 +1,13 @@
-import { Check, Ellipsis, Globe, LogOut, Monitor, Moon, Sun, type LucideIcon } from 'lucide-react'
+import { Check, Ellipsis, Globe, LogOut, Monitor, Moon, Plug, Settings, Sun, type LucideIcon } from 'lucide-react'
 import { DropdownMenu } from 'radix-ui'
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import { setLanguage } from '../../i18n'
+import { useNavigate } from 'react-router'
+import { useQueryClient } from '@tanstack/react-query'
+import type { Language } from '../../i18n/language'
+import { applyPreference, saveErrorOf, useSavePreference, type PreferenceField } from '../../lib/preferences'
 import { isThemeChoice, THEME_CHOICES, type ThemeChoice } from '../../theme/theme'
+import { toast } from '../../ui'
 import { useTheme } from '../../theme/useTheme'
 import { cx } from '../../ui/cx'
 import { useDir } from '../../ui/useDir'
@@ -26,12 +30,50 @@ export function ToolbarGroup({ children, className }: { children: ReactNode; cla
 }
 
 
-/** Switches English ⇄ العربية at once (dir and lang flip, no reload) and remembers it. */
+/**
+ * The toolbar's language and appearance write the owner's preferences (PATCH /api/me/preferences,
+ * ATL-227), the same path Settings → General uses, so the two places never disagree. The change
+ * shows at once; a refused or unanswered save flips it back with a toast. Signed out (the login
+ * page) there is no owner to save for, so the choice only applies to this browser.
+ */
+function useToolbarPreference() {
+  const { t, i18n } = useTranslation('shell')
+  const client = useQueryClient()
+  const save = useSavePreference()
+  const choice = useTheme((s) => s.choice)
+  return {
+    setLang(next: Language) {
+      const previous: Language = i18n.language === 'ar' ? 'ar' : 'en'
+      if (next !== previous) send('locale', next, previous)
+    },
+    setTheme(next: ThemeChoice) {
+      if (next !== choice) send('theme', next, choice)
+    },
+  }
+  function send(field: PreferenceField, value: string, previous: string) {
+    if (!client.getQueryData(['auth', 'me'])) {
+      applyPreference(field, value)
+      return
+    }
+    save.mutate(
+      { field, value, previous },
+      {
+        onError: (err) => {
+          const e = saveErrorOf(err, field)
+          toast({ tone: 'error', title: t('prefSaveFail'), body: e.kind === 'server' ? e.message : t('prefSaveOffline') })
+        },
+      },
+    )
+  }
+}
+
+/** Switches English ⇄ العربية at once (dir and lang flip, no reload) and saves it. */
 export function LanguageButton() {
   const { t, i18n } = useTranslation('shell')
+  const pref = useToolbarPreference()
   const other = i18n.language === 'ar' ? 'en' : 'ar'
   return (
-    <button type="button" className={toolbarButton} data-testid="language-switch" onClick={() => void setLanguage(other)}>
+    <button type="button" className={toolbarButton} data-testid="language-switch" onClick={() => pref.setLang(other)}>
       <Globe aria-hidden="true" strokeWidth={1.5} />
       {/* ATL-225: the visible text is the target language's own name, in its own script
           ("العربية"/"English"), so the accessible name must start with it (axe
@@ -66,14 +108,14 @@ export function ThemeMenu() {
 function ThemeItems() {
   const { t } = useTranslation('shell')
   const choice = useTheme((s) => s.choice)
-  const setChoice = useTheme((s) => s.setChoice)
+  const pref = useToolbarPreference()
   return (
     <DropdownMenu.Group>
       <DropdownMenu.Label className="px-2.5 pt-1.5 pb-1 text-footnote font-semibold text-label-secondary">{t('theme.label')}</DropdownMenu.Label>
       <DropdownMenu.RadioGroup
         value={choice}
         onValueChange={(value) => {
-          if (isThemeChoice(value)) setChoice(value)
+          if (isThemeChoice(value)) pref.setTheme(value)
         }}
       >
         {THEME_CHOICES.map((value) => {
@@ -119,8 +161,27 @@ export function AccountMenu({ name, email, onSignOut }: { name: string; email: s
         </span>
       </div>
       <Separator />
+      <SettingsItems />
       <SignOutItem onSignOut={onSignOut} />
     </Menu>
+  )
+}
+
+/** Design v21 (ATL-227): the account menu opens General, then Connections. */
+function SettingsItems() {
+  const { t } = useTranslation(['settings-general', 'settings'])
+  const navigate = useNavigate()
+  return (
+    <>
+      <DropdownMenu.Item className={menuItem} onSelect={() => void navigate('/settings/general')} data-testid="account-general">
+        <Settings aria-hidden="true" strokeWidth={1.5} />
+        <span>{t('settings-general:nav')}</span>
+      </DropdownMenu.Item>
+      <DropdownMenu.Item className={menuItem} onSelect={() => void navigate('/settings/connections')}>
+        <Plug aria-hidden="true" strokeWidth={1.5} />
+        <span>{t('settings:nav.connections')}</span>
+      </DropdownMenu.Item>
+    </>
   )
 }
 
@@ -173,6 +234,7 @@ export function MoreMenu({
   onSignOut: () => void
 }) {
   const { t, i18n } = useTranslation('shell')
+  const pref = useToolbarPreference()
   const other = i18n.language === 'ar' ? 'en' : 'ar'
   const [actions, setActions] = useState<PageAction[]>([])
   return (
@@ -210,7 +272,7 @@ export function MoreMenu({
           <Separator />
         </>
       )}
-      <DropdownMenu.Item className={menuItem} onSelect={() => void setLanguage(other)} data-testid="more-language">
+      <DropdownMenu.Item className={menuItem} onSelect={() => pref.setLang(other)} data-testid="more-language">
         <Globe aria-hidden="true" strokeWidth={1.5} />
         <span lang={other}>{t('otherLang')}</span>
         <span className="sr-only">{t('switchLangSr')}</span>
@@ -276,8 +338,14 @@ function Menu({
   )
 }
 
-function initials(name: string): string {
+/**
+ * Initials for the account button: the first letter of the first and last words. Arabic letters
+ * would join into a word ("مع"), so a zero-width non-joiner keeps them apart: "م‌ع" (design v21
+ * owner-setup §7.1). One word gives one letter.
+ */
+export function initials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
-  const letters = parts.length > 1 ? [parts[0], parts[parts.length - 1]] : parts
-  return letters.map((p) => Array.from(p ?? '')[0] ?? '').join('').toUpperCase()
+  const letters = (parts.length > 1 ? [parts[0], parts[parts.length - 1]] : parts).map((p) => Array.from(p ?? '')[0] ?? '')
+  const joins = letters.length > 1 && letters.every((l) => /[\u0600-\u06FF]/.test(l))
+  return letters.join(joins ? '\u200C' : '').toUpperCase()
 }

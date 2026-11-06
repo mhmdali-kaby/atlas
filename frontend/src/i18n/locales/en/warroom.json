@@ -447,7 +447,7 @@
     "backdrop": "Market backdrop",
     "usHoursAt": "US market hours {{range}}",
     "usShort": "US hours",
-    "usHoursTip": "New York’s regular session in Baghdad time. It moves an hour when US clocks change.",
+    "usHoursTip": "New York’s regular session in {{city}} time. It moves an hour when US clocks change.",
     "now": "Now",
     "later": "+{{n}} later",
     "laterTip": "After 08:00 tomorrow: {{list}}",
@@ -543,7 +543,7 @@
     "top": "Top stories",
     "topSub": "Since yesterday’s brief",
     "cal": "Next {{n}} hours",
-    "calSub": "Baghdad time",
+    "calSub": "{{city}} time",
     "flow": "Most news flow",
     "flowSub": "Last {{n}} hours",
     "stories": "Stories",
@@ -556,7 +556,7 @@
     "moreSrc_other": "and {{count}} more sources",
     "fewerSrc": "Fewer sources",
     "pub": "{{time}} ({{utc}})",
-    "timeTip": "{{baghdad}} in Baghdad, {{utc}} UTC",
+    "timeTip": "{{local}} in {{city}}, {{utc}} UTC",
     "readOn": "Read on {{host}} (opens in a new tab)",
     "sinceSr": "since first seen",
     "moveTip": "{{inst}} has moved {{v}} since this story was first seen at {{time}}.",
@@ -656,7 +656,7 @@
     "inval": "Invalidation",
     "levels": "Levels used",
     "asOf": "Data as of {{time}} ({{utc}})",
-    "dual": "{{baghdad}} Baghdad, {{utc}} UTC"
+    "dual": "{{local}} {{city}}, {{utc}} UTC"
   },
   "ld": {
     "stop": "Stop",
@@ -706,7 +706,7 @@
       "notPaused": "Trading is already running.",
       "cycle": "Cycle requested. The Orchestrator will announce it.",
       "pin": "{{inst}} is pinned to today's watchlist.",
-      "block": "{{inst}} is blocked until 23:59 Baghdad today.",
+      "block": "{{inst}} is blocked until {{time}} {{city}} today.",
       "alreadyBlocked": "{{inst}} is already on the blocklist with no end time. Change it in Settings → Markets."
     },
     "err": {
@@ -905,8 +905,8 @@
       "post_mortem": "Post-mortem"
     },
     "days": "Recent days",
-    "timeline": "Replay time, Baghdad",
-    "timeAria": "{{time}} Baghdad, {{shown}} of {{total}} messages shown",
+    "timeline": "Replay time, {{city}}",
+    "timeAria": "{{time}} {{city}}, {{shown}} of {{total}} messages shown",
     "play": "Play",
     "pause": "Pause",
     "speed": "Speed",
