@@ -178,7 +178,10 @@
     "view": "Positions",
     "empty": {
       "title": "No open positions",
-      "body": "Positions on the OKX demo account appear here as soon as Atlas syncs them."
+      "body": {
+        "demo": "Positions on the OKX demo account appear here as soon as Atlas syncs them.",
+        "live": "Positions on the OKX live account appear here as soon as Atlas syncs them."
+      }
     },
     "error": {
       "title": "Couldn’t load positions",

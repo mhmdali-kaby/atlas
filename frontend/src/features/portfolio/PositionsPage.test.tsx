@@ -94,10 +94,13 @@ interface BackendOptions {
   connection?: Connection | null
   /** Overrides the default success answer for POST …/close. */
   close?: (positionId: string) => Response
+  /** The env Atlas trades on (ATL-244); default demo. */
+  env?: 'demo' | 'live'
 }
 
 function fakeBackend(positions: PositionsPayload | 'fail', opts: BackendOptions = {}) {
   const conn = opts.connection === undefined ? connection() : opts.connection
+  const env = opts.env ?? 'demo'
   const reply = (status: number, body?: unknown) =>
     new Response(body === undefined ? null : JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
   const fetch = vi.fn(async (input: RequestInfo | URL, init: RequestInit = {}) => {
@@ -105,6 +108,11 @@ function fakeBackend(positions: PositionsPayload | 'fail', opts: BackendOptions 
     const url = new URL(String(input))
     const method = (init.method ?? 'GET').toUpperCase()
     if (path === '/sanctum/csrf-cookie') return reply(204)
+    if (url.pathname === '/api/environment') {
+      return reply(200, {
+        data: { active_env: env, live_started_at: null, first_month_ends_at: null, in_first_live_month: false, switched_at: null, confirmation_text: 'TRADE LIVE', preflight: { ok: true, items: [] } },
+      })
+    }
     if (url.pathname === '/api/portfolio/summary') return reply(200, { data: SUMMARY })
     if (url.pathname === '/api/connections') return reply(200, { data: conn ? [conn] : [] })
     if (url.pathname === '/api/portfolio/positions') {
@@ -235,6 +243,18 @@ describe('Portfolio Positions', () => {
     expect(await screen.findByText('No open positions')).toBeInTheDocument()
     expect(screen.getByText(/No open positions on the OKX demo account\./)).toBeInTheDocument()
     expect(screen.queryByTestId('positions-table')).toBeNull()
+  })
+
+  it('in live, the empty state names the OKX live account, in English and Arabic (ATL-244)', async () => {
+    fakeBackend({ taken_at: '2026-10-28T17:36:00.000000Z', items: [] }, { env: 'live' })
+    renderPositions()
+    expect(await screen.findByText('No open positions')).toBeInTheDocument()
+    expect(screen.getByText(/No open positions on the OKX live account\./)).toBeInTheDocument()
+    expect(screen.queryByText(/demo account/)).toBeNull()
+
+    await i18n.changeLanguage('ar')
+    expect(await screen.findByText(/حساب OKX الحقيقي/)).toBeInTheDocument()
+    expect(screen.queryByText(/التجريبي/)).toBeNull()
   })
 
   it('shows the syncing state before the first positions tick', async () => {

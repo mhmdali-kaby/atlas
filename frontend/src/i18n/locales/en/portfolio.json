@@ -11,7 +11,10 @@
   "stale": "Last synced {{ago}}",
   "staleNever": "Not synced with OKX yet",
   "staleTip": "OKX hasn’t answered for a few minutes. Atlas keeps retrying every minute; figures may be out of date.",
-  "sealCaption": "OKX demo account",
+  "sealCaption": {
+    "demo": "OKX demo account",
+    "live": "OKX live account"
+  },
   "range": {
     "label": "Chart range",
     "1D": "1D",
@@ -44,7 +47,10 @@
   "figures": "Account figures",
   "empty": {
     "title": "No data yet",
-    "body": "Atlas is syncing your OKX demo account. The first sync takes about a minute; figures appear here as soon as OKX answers."
+    "body": {
+      "demo": "Atlas is syncing your OKX demo account. The first sync takes about a minute; figures appear here as soon as OKX answers.",
+      "live": "Atlas is syncing your OKX live account. The first sync takes about a minute; figures appear here as soon as OKX answers."
+    }
   },
   "waiting": "Waiting for OKX…",
   "error": {
@@ -81,7 +87,10 @@
     "unrealisedTotal": "Unrealised",
     "empty": {
       "title": "No open positions",
-      "body": "No open positions on the OKX demo account. Positions you open on OKX appear here within a minute."
+      "body": {
+        "demo": "No open positions on the OKX demo account. Positions you open on OKX appear here within a minute.",
+        "live": "No open positions on the OKX live account. Positions you open on OKX appear here within a minute."
+      }
     },
     "filteredEmpty": {
       "title": "No open position on {{inst}}",
@@ -107,7 +116,10 @@
       "toast": "{{inst}} closed",
       "failTitle": "OKX didn’t close it",
       "errorGeneric": "Atlas couldn’t reach the trading service. Try again.",
-      "disconnected": "Closing needs the OKX demo connection.",
+      "disconnected": {
+        "demo": "Closing needs the OKX demo connection.",
+        "live": "Closing needs the OKX live connection."
+      },
       "connect": "Open Connections"
     }
   },

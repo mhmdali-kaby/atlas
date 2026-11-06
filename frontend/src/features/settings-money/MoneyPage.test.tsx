@@ -70,7 +70,8 @@ function previewFor(equity: string | null, m: Money, used = '0.00'): RiskPreview
   }
 }
 
-function fakeBackend(opts: { equity?: string | null; money?: Partial<Money>; reject422?: boolean } = {}) {
+function fakeBackend(opts: { equity?: string | null; money?: Partial<Money>; reject422?: boolean; env?: 'demo' | 'live' } = {}) {
+  const env = opts.env ?? 'demo'
   const state = {
     version: 4,
     equity: opts.equity === undefined ? '5068412.56' : opts.equity,
@@ -81,7 +82,7 @@ function fakeBackend(opts: { equity?: string | null; money?: Partial<Money>; rej
   const doc = () => ({
     data: {
       id: 's1',
-      env: 'demo',
+      env,
       version: state.version,
       settings: { risk_profile: 'balanced', ...BALANCED, autonomy_level: 2, onboarding_completed: 1, ...state.money },
       presets: PRESETS,
@@ -101,7 +102,12 @@ function fakeBackend(opts: { equity?: string | null; money?: Partial<Money>; rej
       if (path === '/api/auth/status') return reply(200, { owner_exists: true })
       if (path === '/api/auth/me') return reply(200, { data: OWNER })
       if (path === '/api/connections') return reply(200, { data: [] })
-      if (path === '/api/settings?env=demo' && method === 'GET') return reply(200, doc())
+      if (url.pathname === '/api/environment') {
+        return reply(200, {
+          data: { active_env: env, live_started_at: null, first_month_ends_at: null, in_first_live_month: false, switched_at: null, confirmation_text: 'TRADE LIVE', preflight: { ok: true, items: [] } },
+        })
+      }
+      if (path === `/api/settings?env=${env}` && method === 'GET') return reply(200, doc())
       if (path.startsWith('/api/settings/history')) return reply(200, { data: [], meta: { total: 0 } })
       if (url.pathname === '/api/settings/risk-preview') {
         state.previews.push(url.searchParams)
@@ -209,7 +215,7 @@ describe('Settings → Money limits (ATL-130)', () => {
     renderPage()
     const notice = await screen.findByTestId('ml-no-equity')
     expect(notice).toHaveTextContent(en.noEq.title)
-    expect(notice).toHaveTextContent(en.noEq.body)
+    expect(notice).toHaveTextContent(en.noEq.body.demo)
     expect(within(notice).getByRole('link', { name: en.noEq.btn })).toHaveAttribute('href', '/settings/connections')
     expect(screen.getByTestId('ml-preview').textContent).not.toMatch(/\$/)
     expect(screen.queryByTestId('ml-sentence')).toBeNull()
@@ -260,6 +266,18 @@ describe('Settings → Money limits (ATL-130)', () => {
     await user.click(screen.getByRole('button', { name: 'Save changes' }))
     await waitFor(() => expect(state.patches).toEqual([{ env: 'demo', version: 4, changes: { bot_capital_cap_usdt: null } }]))
     await waitFor(() => expect(screen.getByTestId('settings-version')).toHaveTextContent('Version 5'))
+  })
+
+  it('in live, the subtitle names the OKX live account, in English and Arabic (ATL-244)', async () => {
+    fakeBackend({ env: 'live' })
+    renderPage()
+    expect(await screen.findByRole('heading', { level: 1, name: 'Money limits' })).toBeInTheDocument()
+    expect(await screen.findByText(/Caps in USDT on what Atlas may put into trades on the OKX live account\./)).toBeInTheDocument()
+    expect(screen.queryByText(/OKX demo account/)).toBeNull()
+
+    await i18n.changeLanguage('ar')
+    expect(await screen.findByText(/حساب OKX الحقيقي/)).toBeInTheDocument()
+    expect(screen.queryByText(/التجريبي/)).toBeNull()
   })
 })
 

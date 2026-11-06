@@ -156,7 +156,7 @@ export function HoldingsPage() {
 
   const data = holdings.data?.data
   if (data && data.taken_at === null) {
-    return <StateBlock kind="empty" title={t('empty.title')} body={t('empty.body')} />
+    return <StateBlock kind="empty" title={t('empty.title')} body={t(`empty.body.${env}`)} />
   }
 
   const loading = holdings.isPending

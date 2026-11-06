@@ -156,7 +156,7 @@ export function InstrumentList({
       add(exact.inst_id)
       return
     }
-    const msg = t('unknownInst', { text: typed })
+    const msg = t(`unknownInst.${env}`, { text: typed })
     setRefusal(msg)
     announce(msg)
   }

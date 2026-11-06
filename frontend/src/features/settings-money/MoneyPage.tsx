@@ -57,7 +57,7 @@ function PaneHeader({ version, scope }: { version: number | null; scope: EnvScop
       </span>
       <div className="grid gap-0.5">
         <h2 className="text-title-2">{t('nav')}</h2>
-        <p className="max-w-[60ch] text-subheadline text-label-secondary">{t('intro')}</p>
+        <p className="max-w-[60ch] text-subheadline text-label-secondary">{t(`intro.${scope.env}`)}</p>
       </div>
       <div className="lv-aside">
         {version !== null && (
@@ -256,6 +256,7 @@ function MoneyPane({ scope }: { scope: EnvScope }) {
           seed={connections.data?.data.find((c) => c.env === ENV)?.uid_last4 ? `okx-demo-${connections.data.data.find((c) => c.env === ENV)?.uid_last4}` : 'okx-demo'}
           now={now}
           lang={lang}
+          env={ENV}
           onRetry={() => void preview.refetch()}
         />
 
