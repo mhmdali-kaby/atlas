@@ -136,6 +136,16 @@ function mount(url: string) {
 
 const sleep = (ms: number) => act(() => new Promise<void>((resolve) => setTimeout(resolve, ms)))
 
+/*
+ * ATL-258: the exact-countdown tests used to give the render a 300 ms margin on the real clock
+ * (354 s − 300 ms reads 5:54). On a loaded machine the first render took longer and the pill
+ * read 5:53. Freezing only Date keeps the deadline exact however long the render takes, while
+ * setTimeout/setInterval stay real for motion; the test moves the clock with setSystemTime.
+ */
+function freezeClock() {
+  vi.useFakeTimers({ toFake: ['Date'], now: Date.now() })
+}
+
 beforeEach(async () => {
   resetCsrfForTests()
   localStorage.clear()
@@ -144,14 +154,15 @@ beforeEach(async () => {
   await i18n.changeLanguage('en')
 })
 afterEach(async () => {
+  vi.useRealTimers()
   vi.unstubAllGlobals()
   await i18n.changeLanguage('en')
 })
 
 describe('the approval pill', () => {
   it('reads "1 to approve 5:54" for one proposal and counts down', async () => {
-    // 5:54 left, less a margin for the render, so the rounded-up seconds read 354.
-    fakeBackend([waiting('p1', 354_000 - 300)])
+    freezeClock()
+    fakeBackend([waiting('p1', 354_000)])
     mount('/portfolio')
     const pill = await screen.findByTestId('approval-pill')
     expect(pill).toHaveTextContent('1 to approve5:54')
@@ -163,8 +174,9 @@ describe('the approval pill', () => {
     const toolbar = screen.getByRole('banner')
     const stop = within(toolbar).getByTestId('kill-switch')
     expect(pill.compareDocumentPosition(stop) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-    await sleep(1100)
-    expect(screen.getByTestId('approval-pill-time')).toHaveTextContent('5:53')
+    // One second later, the next tick of the pill's clock reads 5:53.
+    vi.setSystemTime(Date.now() + 1_000)
+    await waitFor(() => expect(screen.getByTestId('approval-pill-time')).toHaveTextContent('5:53'))
   })
 
   it('is not rendered when nothing waits', async () => {
@@ -184,7 +196,8 @@ describe('the approval pill', () => {
   })
 
   it('counts every waiting proposal and times the nearest deadline', async () => {
-    fakeBackend([waiting('p1', 600_000), waiting('p2', 120_000 - 300, { inst_id: 'XAU-USDT-SWAP' })])
+    freezeClock()
+    fakeBackend([waiting('p1', 600_000), waiting('p2', 120_000, { inst_id: 'XAU-USDT-SWAP' })])
     mount('/portfolio')
     const pill = await screen.findByTestId('approval-pill')
     expect(screen.getByTestId('approval-pill-label')).toHaveTextContent('2 to approve')
@@ -224,7 +237,8 @@ describe('the approval pill', () => {
 
   it('reads in Arabic', async () => {
     await i18n.changeLanguage('ar')
-    fakeBackend([waiting('p1', 354_000 - 300)])
+    freezeClock()
+    fakeBackend([waiting('p1', 354_000)])
     mount('/portfolio')
     const pill = await screen.findByTestId('approval-pill')
     expect(screen.getByTestId('approval-pill-label')).toHaveTextContent('صفقة تنتظر موافقتك')

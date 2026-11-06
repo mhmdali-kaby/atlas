@@ -288,10 +288,21 @@ function renderApp(initial: string, { defaultRetries = false } = {}) {
   return { router, view }
 }
 
+/*
+ * ATL-258: the owner copies these three values from OKX and pastes them. Typing them key by key
+ * (69 characters, each a re-render of the whole step) made every test that connects take over a
+ * second on an idle machine and past the 5 s limit on a loaded one, while proving nothing more:
+ * the Arabic test below still types every key.
+ */
+async function pasteInto(user: ReturnType<typeof userEvent.setup>, field: HTMLElement, value: string) {
+  await user.click(field)
+  await user.paste(value)
+}
+
 async function fillAndTest(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(await screen.findByLabelText('API key'), KEY)
-  await user.type(screen.getByLabelText('Secret key'), SECRET)
-  await user.type(screen.getByLabelText('Passphrase'), PASS)
+  await pasteInto(user, await screen.findByLabelText('API key'), KEY)
+  await pasteInto(user, screen.getByLabelText('Secret key'), SECRET)
+  await pasteInto(user, screen.getByLabelText('Passphrase'), PASS)
   await user.click(screen.getByRole('button', { name: 'Test connection' }))
 }
 
@@ -931,7 +942,9 @@ describe('Claude and Meet your team steps (ATL-234)', () => {
     await waitFor(() => expect(router.state.location.pathname).toBe('/warroom'))
     expect(order).toEqual(['welcome', '?step=connect', '?step=claude', '?step=sources', '?step=risk', '?step=autonomy', '?step=backfill', '?step=team'])
     expect(backend.settings.settings.onboarding_completed).toBe(1)
-  })
+    // ATL-258: eight full steps, each change waiting for the real exit fade (AnimatePresence
+    // mode="wait"): about 2 s on an idle machine, so 5 s was not enough under a parallel run.
+  }, 15_000)
 
   it('shows the claude login instruction when signed out, and Check again re-queries until it passes', async () => {
     const backend = fakeBackend({ stored: connectionRow(VERIFIED) })

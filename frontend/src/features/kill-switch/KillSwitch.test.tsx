@@ -184,6 +184,15 @@ const KEPT_REPORT: KillReport = {
  */
 const sleep = (ms: number) => act(() => new Promise<void>((resolve) => setTimeout(resolve, ms)))
 
+/*
+ * ATL-258: the hold tests wait out the real 1.5 s hold twice, plus the early-release pauses:
+ * about 3.6 s of deliberate sleeping before any rendering. On a loaded machine that left too
+ * little of the default 5 s for the sheet itself, the test timed out inside an act() sleep,
+ * and the unfinished act scope made every later test in the file miss its first render. The
+ * sleeps are the behaviour under test, so these tests get their own budget.
+ */
+const HOLD_TEST_TIMEOUT = 15_000
+
 interface Call {
   method: string
   path: string
@@ -449,14 +458,12 @@ describe('the Stop sheet (decision 251)', () => {
     fireEvent.pointerDown(hold, { button: 0, pointerId: 2 })
     expect(sheet).toHaveTextContent('Keep holding…')
     await sleep(HOLD_MS)
-    await waitFor(() => expect(api.kills()).toHaveLength(1), {
-      timeout: 1000,
-    })
+    await waitFor(() => expect(api.kills()).toHaveLength(1))
     expect(api.kills()[0]!.body).toEqual({
       confirm: 'KILL',
       flatten: true,
     })
-  })
+  }, HOLD_TEST_TIMEOUT)
 
   it.each([' ', 'Enter'])('with close-all on, holding %j for 1.5 s sends flatten true; an early key release sends nothing', async (key) => {
     const api = fakeBackend()
@@ -477,14 +484,12 @@ describe('the Stop sheet (decision 251)', () => {
     await sleep(700)
     fireEvent.keyDown(hold, { key, repeat: true })
     await sleep(HOLD_MS - 700)
-    await waitFor(() => expect(api.kills()).toHaveLength(1), {
-      timeout: 1000,
-    })
+    await waitFor(() => expect(api.kills()).toHaveLength(1))
     expect(api.kills()[0]!.body).toEqual({
       confirm: 'KILL',
       flatten: true,
     })
-  })
+  }, HOLD_TEST_TIMEOUT)
 
   it('reports the cancelled and closed counts and each failure’s message', async () => {
     fakeBackend({ report: REPORT })
@@ -515,7 +520,7 @@ describe('the Stop sheet (decision 251)', () => {
     // The cancelled list opens on demand.
     await user.click(within(report).getByRole('button', { name: /Show all/ }))
     expect(within(report).getByText('SOL-USDT-SWAP').closest('ul')).not.toHaveAttribute('hidden')
-  })
+  }, HOLD_TEST_TIMEOUT)
 
   it('says plainly that nothing was stopped when trading_core is down', async () => {
     const api = fakeBackend({ killDown: true })

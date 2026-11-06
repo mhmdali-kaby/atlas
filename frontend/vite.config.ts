@@ -57,6 +57,10 @@ export default defineConfig({
         // Every story runs as a test in real Chromium; play functions assert computed styles.
         extends: true,
         plugins: [storybookTest({ configDir: path.join(dirname, '.storybook') })],
+        // ATL-258: the browser project's server inherits the dev server's strictPort (port 3000
+        // must stay fixed for Sanctum). With it, a second `vitest --run` at the same time dies on
+        // "Port 63315 is already in use"; without it, Vitest moves to the next free port.
+        server: { strictPort: false },
         test: {
           name: 'storybook',
           browser: {
