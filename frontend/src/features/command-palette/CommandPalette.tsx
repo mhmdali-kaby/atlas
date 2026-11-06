@@ -26,7 +26,11 @@ export function CommandPalette() {
 
   useEffect(() => {
     function onKey(e: globalThis.KeyboardEvent) {
-      if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey || e.key.toLowerCase() !== 'k') return
+      // The physical key, not the character it types: on an Arabic layout Ctrl+K types 'ن', not
+      // 'k', but e.code still reports the physical "K" key. Fall back to e.key only when a
+      // synthetic event carries no code at all.
+      const isK = e.code ? e.code === 'KeyK' : e.key.toLowerCase() === 'k'
+      if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey || !isK) return
       const state = usePaletteStore.getState()
       if (!state.open && document.querySelector('[data-sheet]')) return // a sheet is asking: answer it first
       e.preventDefault()
