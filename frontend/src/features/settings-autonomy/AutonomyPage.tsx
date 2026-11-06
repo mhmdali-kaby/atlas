@@ -25,6 +25,7 @@ import { EnvScopeNotice, useEnvScope, type EnvScope } from '../settings-risk/Env
 import { useSettingsHistory } from '../settings-risk/model'
 import '../settings-risk/risk.css'
 import './autonomy.css'
+import { dayText } from '../settings-environment/model'
 import { savedAsk } from './model'
 import { Changes, LevelName, LoadError, LoadingBody, PaneHeader, Section } from './parts'
 import { useAutonomySave } from './useAutonomySave'
@@ -77,6 +78,9 @@ function AutonomyPane({ scope }: { scope: EnvScope }) {
     const choice = s.sheet?.level ?? s.busyLevel ?? level
     const editText = s.askEdit ?? askInputText(savedAsk(doc))
     const dirty = s.askEdit !== null && parseAsk(s.askEdit) !== ask
+    // First live month (ATL-238/ATL-240): 3 and 4 are refused on the live row until the end date.
+    const monthEnds = doc.first_live_month_ends_at ?? null
+    const endsText = monthEnds ? dayText(monthEnds, lang, true) : null
     const timeout = Number(doc.settings.approval_timeout_minutes ?? DEFAULT_APPROVAL_TIMEOUT_MINUTES)
     const field =
       level === 3 && choice === 3 ? (
@@ -132,7 +136,7 @@ function AutonomyPane({ scope }: { scope: EnvScope }) {
           </div>
         </Section>
 
-        <Section id="au-levels-title" title={t('levels')} note={t('levelsNote')}>
+        <Section id="au-levels-title" title={t('levels')} note={endsText ? t('firstMonthNote', { date: endsText }) : t('levelsNote')}>
           <div ref={levelsRef}>
             <AutonomyPicker
               value={choice}
@@ -141,6 +145,7 @@ function AutonomyPane({ scope }: { scope: EnvScope }) {
               savedLevel={level}
               busyLevel={s.busyLevel}
               extra={field}
+              disabledReason={endsText ? t('firstMonth', { date: endsText }) : undefined}
             />
           </div>
         </Section>

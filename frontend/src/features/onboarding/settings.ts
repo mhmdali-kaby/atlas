@@ -36,6 +36,10 @@ export interface SettingsDoc {
   presets: Record<PresetId, RiskLimits>
   /** Highest autonomy level the backend accepts this build phase (ATL-33 AC2); absent only in stale fixtures. */
   max_enabled_autonomy_level?: number
+  /** Live row only, while the first live month runs (ATL-238): when it ends. Null otherwise. */
+  first_live_month_ends_at?: string | null
+  /** The highest live autonomy level during the first live month (2). */
+  max_live_autonomy_level?: number
   updated_at: string
 }
 
@@ -49,7 +53,9 @@ export const DEFAULT_AUTONOMY = 2
 
 /** The levels the owner may pick right now, from GET /api/settings's phase gate. */
 export function enabledAutonomyLevels(doc: SettingsDoc | undefined): readonly number[] {
-  const max = doc?.max_enabled_autonomy_level ?? Math.max(...ENABLED_AUTONOMY)
+  let max = doc?.max_enabled_autonomy_level ?? Math.max(...ENABLED_AUTONOMY)
+  // The first live month caps the live row (ATL-238); the API refuses anything above with a 422.
+  if (doc?.first_live_month_ends_at) max = Math.min(max, doc.max_live_autonomy_level ?? 2)
 
   return AUTONOMY_LEVELS.filter((level) => level <= max)
 }

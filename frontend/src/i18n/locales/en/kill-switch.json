@@ -10,6 +10,7 @@
   },
   "title": "Stop all trading?",
   "intro": "Atlas stops trading on {{account}} straight away. You can resume whenever you like.",
+  "introLive": "Atlas stops trading on {{account}} straight away. These are real orders and real positions. You can resume whenever you like.",
   "what": "What happens",
   "w": {
     "cancelKeep": "Cancel <f>{{open}}</f> open orders and <f>{{tp}}</f> take-profit orders on {{account}}",

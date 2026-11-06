@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 
-/* ATL-19: onboarding steps 3–4 (risk profile, autonomy) and Finish → /portfolio. */
+/* ATL-19: onboarding's risk profile and autonomy steps, then (ATL-233) Market history and Finish → /portfolio. */
 
 const OWNER = { id: '01a18376-1d35-70c2-ad01-6d1d2cd870ad', name: 'Mohammed Ali', email: 'owner@atlas.test', locale: 'en', theme: 'system' }
 const SHOTS = '../../evidence/ATL-19'
@@ -116,6 +116,13 @@ for (const [lang, theme] of [['en', 'light'], ['en', 'dark'], ['ar', 'light'], [
     await page.keyboard.press('Tab')
     await page.keyboard.press('Tab')
     await expect(page.getByTestId('ob-next')).toBeFocused()
+    await page.keyboard.press('Enter')
+
+    // ATL-233: Market history follows Autonomy and never blocks; Finish is enabled at once.
+    await expect(page).toHaveURL(/step=backfill$/)
+    expect(api.settings.autonomy_level).toBe(1)
+    await expect(page.getByTestId('ob-next')).toBeEnabled()
+    await page.getByTestId('ob-next').focus()
     await page.keyboard.press('Enter')
 
     await expect(page).toHaveURL(/\/portfolio$/)

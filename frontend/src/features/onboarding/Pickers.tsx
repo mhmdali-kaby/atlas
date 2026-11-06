@@ -213,6 +213,8 @@ export interface AutonomyPickerProps {
   busyLevel?: number | null
   /** Shown in the chosen level 3 card's joined lower part (the "Ask me above" field). */
   extra?: ReactNode
+  /** Why a disabled level is disabled, in place of "Available in a later phase" (the first live month). */
+  disabledReason?: string
 }
 
 /**
@@ -220,7 +222,7 @@ export interface AutonomyPickerProps {
  * Choosing 3 or 4 opens a sheet, so selection does not follow focus: arrows and Home/End
  * move focus only, and Space, Return or a click chooses.
  */
-export function AutonomyPicker({ value, onChange, enabled = ENABLED_AUTONOMY, savedLevel, busyLevel = null, extra }: AutonomyPickerProps) {
+export function AutonomyPicker({ value, onChange, enabled = ENABLED_AUTONOMY, savedLevel, busyLevel = null, extra, disabledReason }: AutonomyPickerProps) {
   const { t } = useTranslation('onboarding')
   const { t: tAu } = useTranslation('autonomy')
   const lang = useLang()
@@ -288,7 +290,7 @@ export function AutonomyPicker({ value, onChange, enabled = ENABLED_AUTONOMY, sa
                 {isDisabled(n) && (
                   <span id={`${uid}-${n}-later`} className="ob-au-later">
                     <Lock aria-hidden="true" strokeWidth={1.5} />
-                    {t('laterPhase')}
+                    {disabledReason ?? t('laterPhase')}
                   </span>
                 )}
               </span>

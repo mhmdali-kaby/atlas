@@ -72,7 +72,8 @@
     "trades_zero": "None made today.",
     "trades_one": "1 made today.",
     "trades_other": "{{n}} made today.",
-    "tradesAll": "All {{n}} made today. Resets at 00:00 Baghdad."
+    "tradesAll": "All {{n}} made today. Resets at 00:00 Baghdad.",
+    "capLive": "Required before switching to live, and for the first 30 days after. Your risk profile’s percentages apply to it."
   },
   "ph": {
     "noCap": "No cap"
@@ -88,7 +89,8 @@
     "decimals": "Use at most 8 decimal places.",
     "min": "Must be more than 0 USDT.",
     "max": "Can’t be more than 1,000,000,000,000 USDT.",
-    "int": "Enter a whole number from 1 to 1,000."
+    "int": "Enter a whole number from 1 to 1,000.",
+    "capRequired": "A bot capital cap is required until {{date}}."
   },
   "dec": "Decrease {{label}}",
   "inc": "Increase {{label}}",

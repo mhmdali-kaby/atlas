@@ -1,12 +1,14 @@
 {
   "title": "Set up Atlas",
   "progress": "Setup steps",
-  "stepOf": "Step {{n}} of 4",
+  "stepOf": "Step <f>{{n}}</f> of <f>{{total}}</f>",
   "steps": {
     "welcome": "Welcome",
     "connect": "Connect OKX",
+    "sources": "Data sources",
     "risk": "Risk profile",
-    "autonomy": "Autonomy"
+    "autonomy": "Autonomy",
+    "backfill": "Market history"
   },
   "done": "Done",
   "continue": "Continue",
@@ -233,5 +235,69 @@
   "complete": {
     "title": "Setup complete",
     "body": "Atlas is syncing your OKX demo account."
+  },
+  "skip": "Skip",
+  "saving": "Saving…",
+  "sources": {
+    "title": "Choose where news comes from",
+    "lead": "News Intelligence reads these sources around the clock. Most need nothing from you, and two work better with a free key. You can change all of this later in Settings → Data sources.",
+    "works_one": "{{n}} of {{count}} source will work",
+    "works_other": "{{n}} of {{count}} sources will work",
+    "noKey_one": "{{n}} of {{count}} source works without a key",
+    "noKey_other": "{{n}} of {{count}} sources work without a key",
+    "need1": "{{a}} needs a free key. Add it below, or later in Settings → Data sources.",
+    "need2": "{{a}} and {{b}} need a free key. Add them below, or later in Settings → Data sources.",
+    "allSet": "Every source you turned on can work.",
+    "noneOn": "Every source is off, so News Intelligence would have nothing to read.",
+    "keys": "Keys (optional)",
+    "keysNote": "Each key is kept encrypted on this Mac. Atlas shows only its last 4 characters, and tests it the first time it uses it.",
+    "keyField": "{{provider}} key",
+    "keyFree": "Free from {{site}}",
+    "keyUsed_one": "Used by 1 source",
+    "keyUsed_other": "Used by {{count}} sources",
+    "keyPh": "Paste a key, or leave empty",
+    "savedKey": "Saved key ending in {{last4}}",
+    "replace": "Replace",
+    "list": "Sources",
+    "st": {
+      "free": "Works without a key",
+      "needs": "Needs a {{provider}} key",
+      "uses": "Uses your {{provider}} key",
+      "off": "Off"
+    },
+    "invalid": "{{provider}} didn’t accept that key. Check it on {{site}}, or clear the field and add it later.",
+    "limited": "Too many tries. Wait a minute, then try again.",
+    "down": "Atlas’s server didn’t answer, so the key wasn’t saved. Try again, or skip and add it later.",
+    "savedToast_one": "Key saved",
+    "savedToast_other": "Keys saved",
+    "savedBody": "Atlas tests each key the first time it uses it.",
+    "toggleFailed": "{{name}} is back as it was",
+    "toggleFailedBody": "Atlas’s server didn’t answer. Try again in a moment.",
+    "loading": "Loading the data sources",
+    "error": {
+      "title": "Couldn’t load the data sources",
+      "body": "Atlas’s server didn’t answer. You can skip this step and set them up later in Settings → Data sources."
+    }
+  },
+  "backfill": {
+    "title": "Atlas is collecting market history",
+    "lead": "The agents read years of prices before they judge today’s. Each square is one instrument on the OKX demo, and it fills as its history arrives.",
+    "carryOn": "You can carry on. It keeps going in the background, and Settings → Data shows its progress.",
+    "doneNote": "From now on Atlas adds each new bar as it closes.",
+    "insts_one": "<f>{{done}}</f> of <f>{{count}}</f> instrument done",
+    "insts_other": "<f>{{done}}</f> of <f>{{count}}</f> instruments done",
+    "progress": "Market history collected",
+    "mapLabel": "Market history for {{n}} instruments: {{done}} done, {{fetching}} fetching, {{waiting}} waiting, {{failed}} failed.",
+    "failedN_one": "1 instrument failed",
+    "failedN_other": "{{count}} instruments failed",
+    "failedBody": "OKX returned errors for {{list}}. Atlas tries again on the next sync.",
+    "notStarted": {
+      "title": "Market history hasn’t started yet",
+      "body": "Atlas starts collecting it in the background. Nothing here needs you."
+    },
+    "error": {
+      "title": "Couldn’t load the market history progress",
+      "body": "Atlas’s server didn’t answer. The collection carries on without this page."
+    }
   }
 }
