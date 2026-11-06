@@ -1,0 +1,132 @@
+{
+  "nav": "Backup",
+  "intro": "A copy of Atlas’s database, made every day on this Mac.",
+  "version": "Version {{v}}",
+  "latest": "Latest backup",
+  "runningLabel": "Backing up now",
+  "when": {
+    "today": "Today at {{time}}",
+    "yesterday": "Yesterday at {{time}}",
+    "tomorrow": "Tomorrow at {{time}}",
+    "day": "{{day}} at {{time}}",
+    "todayLower": "today at {{time}}",
+    "tomorrowLower": "tomorrow at {{time}}"
+  },
+  "now": "Back up now",
+  "nowBusy": "Backing up…",
+  "elapsed": "Started at {{time}}.",
+  "next": "Next backup",
+  "nextOff": "Off",
+  "oldest": "Oldest kept",
+  "space": "Space used",
+  "spaceVal": "{{size}} in {{copies}}",
+  "copies_one": "1 copy",
+  "copies_other": "{{count}} copies",
+  "days_one": "1 day",
+  "days_other": "{{count}} days",
+  "overdue": {
+    "title": "No recent backup: none for {{days}}",
+    "body": "{{cmd}} warns about this until one succeeds."
+  },
+  "failed": {
+    "title": "The last backup failed",
+    "body": "Check the folder below, then back up now.",
+    "doctor": "{{cmd}} warns about this until one succeeds."
+  },
+  "none": {
+    "title": "No recent backup: none yet",
+    "body": "The first runs {{when}}, or back up now.",
+    "bodyOff": "Daily backups are off. Back up now to make the first one."
+  },
+  "shelf": "The last 14 days",
+  "today": "Today",
+  "slot": {
+    "ok": "{{day}}: backed up at {{time}}, {{size}}",
+    "failed": "{{day}}: failed at {{time}}. {{why}}",
+    "missed": "{{day}}: no backup at {{time}}.",
+    "unknown": "{{day}}: older than the runs Atlas lists.",
+    "running": "Today: backing up now"
+  },
+  "why": {
+    "folder": "The folder wasn’t there.",
+    "other": "pg_dump stopped with an error."
+  },
+  "settings": "Backup settings",
+  "enabled": "Back up every day",
+  "enabledSub": "At the time below. Back up now works either way.",
+  "enabledOffSub": "Daily backups are off. Back up now still works, and {{cmd}} warns after 26 hours.",
+  "folder": "Folder",
+  "folderHint": "An absolute path on this Mac, outside the Atlas folder. Atlas checks it can write there.",
+  "e": {
+    "folderEmpty": "Enter a folder.",
+    "time": "Use 24-hour time, like 03:00.",
+    "keep": "Keep between 1 and 90 copies."
+  },
+  "time": "Time",
+  "timeSub": "Every day, in Baghdad time like the team’s schedule.",
+  "timeLocal": "{{time}} in Baghdad is {{local}} in {{city}}.",
+  "keep": "Keep",
+  "keepSub": "About {{size}} at today’s size. Older copies are deleted after a new one succeeds.",
+  "keepSubNone": "Older copies are deleted after a new one succeeds.",
+  "unit_one": "copy",
+  "unit_other": "copies",
+  "decrease": "Fewer copies",
+  "increase": "More copies",
+  "unsaved": "Unsaved changes",
+  "revert": "Revert",
+  "save": "Save",
+  "saving": "Saving…",
+  "savedToast": "Backup settings saved",
+  "savedBody": "The next backup runs {{when}}.",
+  "savedOffBody": "Daily backups are off. Back up now still works.",
+  "conflict": "These settings changed in another window. Your edits are kept on top of version {{v}}; save again.",
+  "e500": {
+    "title": "Couldn’t save the backup settings",
+    "body": "Atlas’s server didn’t answer. Your changes are still here."
+  },
+  "list": "Kept backups",
+  "listNote_one": "Atlas keeps the newest copy and deletes older ones after a new backup succeeds.",
+  "listNote_other": "Atlas keeps the newest {{count}} copies and deletes older ones after a new backup succeeds.",
+  "st": {
+    "ok": "Complete",
+    "failed": "Failed",
+    "running": "Backing up…"
+  },
+  "took": "Took {{d}}",
+  "copyPath": "Copy path",
+  "copyPathAria": "Copy the path of the {{day}} backup",
+  "pathCopied": "Path copied",
+  "use": "Use for restore",
+  "used": "Chosen for restore",
+  "showAll": "Show all {{n}}",
+  "showFewer": "Show fewer",
+  "restore": "How to restore",
+  "r": {
+    "s1": "Stop Atlas.",
+    "s2": "Restore the backup you chose in the list above. This replaces everything in Atlas’s database. Put your database password where it says <DB_PASSWORD>.",
+    "s3": "Start Atlas again, then check it. It checks your OKX account before it does anything.",
+    "warn": "Restoring replaces everything in Atlas’s database with the backup. Atlas never restores by itself.",
+    "note": "The same steps, with the Docker variant, are in {{file}}.",
+    "none": "Once a backup exists, the steps to restore it appear here.",
+    "copy": "Copy",
+    "copied": "Copied",
+    "copyAria": "Copy step {{n}}"
+  },
+  "doneToast": "Backup finished",
+  "doneBody": "{{size}}, took {{d}}.",
+  "failToast": "Backup failed",
+  "failBody": "The error is in the list of kept backups.",
+  "e429": {
+    "title": "A backup was just requested",
+    "body": "Atlas starts one backup a minute at most. Try again in a minute."
+  },
+  "eRun": {
+    "title": "Couldn’t start a backup",
+    "body": "Atlas’s server didn’t answer. Try again in a moment."
+  },
+  "err": {
+    "title": "Couldn’t load your backups",
+    "body": "Atlas’s server didn’t answer. Check that Atlas is running with ./atlas up, then try again.",
+    "retry": "Try again"
+  }
+}
