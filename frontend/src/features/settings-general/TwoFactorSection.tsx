@@ -25,7 +25,7 @@ import { formatDate, formatTime } from '../warroom/time'
 import './twofactor.css'
 
 /*
- * Settings → General → Sign-in (ATL-247; decision #265 (1); design v22 §5.2–5.3) on ATL-245's
+ * Settings → General → Sign-in (ATL-247; decision 265 (1); design v22 §5.2–5.3) on ATL-245's
  * /api/me/two-factor. Off: one row with Turn on…. On: the date, eight marks for the recovery
  * codes left, New codes… and Turn off…, each behind the password. Turning on is one sheet in
  * three steps (password → scan + code → codes); the codes step ignores Esc and clicks outside,
