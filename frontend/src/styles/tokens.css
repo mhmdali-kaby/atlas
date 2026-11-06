@@ -243,6 +243,11 @@
   --demo: var(--sys-teal);
   --demo-ink: var(--ui-demo-ink);
   --demo-wash: var(--ui-demo-wash);
+  /* Live readiness §2: live is the system orange; black text on it (9.6:1 / 10.9:1). */
+  --live: var(--sys-orange);
+  --live-on: #000000;
+  --live-ink: var(--ui-warning-ink);
+  --live-wash: var(--ui-warning-wash);
   --destructive-solid: var(--ui-destructive-solid);
   --neutral: var(--sys-grey);
 
@@ -418,6 +423,10 @@
   --color-demo: var(--demo);
   --color-demo-ink: var(--demo-ink);
   --color-demo-wash: var(--demo-wash);
+  --color-live: var(--live);
+  --color-live-on: var(--live-on);
+  --color-live-ink: var(--live-ink);
+  --color-live-wash: var(--live-wash);
   --color-destructive-solid: var(--destructive-solid);
   --color-neutral: var(--neutral);
 
