@@ -3,8 +3,9 @@ import { API_URL, SHOTS, SPA_URL } from '../support/stack'
 
 /**
  * Brief §19 onboarding flow on the real stack (ATL-25): a new owner walks Welcome → Connect (a
- * fixture key, tested through Laravel → trading_core → recorded OKX JSON) → Data sources (Skip) →
- * Risk Conservative → Autonomy 2 → Market history and lands on Portfolio. The key below is made up; fixture mode never calls OKX.
+ * fixture key, tested through Laravel → trading_core → recorded OKX JSON) → Claude (this Mac's real
+ * check: Continue when it passes, Set up later when not) → Data sources (Skip) → Risk Conservative →
+ * Autonomy 2 → Market history → Meet your team and lands on the War Room (ATL-234). The key below is made up; fixture mode never calls OKX.
  */
 const FIXTURE_KEY = { key: 'e2e00000-0000-4000-8000-00000000f1x7', secret: 'E2E-FIXTURE-SECRET', pass: 'e2e-fixture-pass' }
 
@@ -18,7 +19,7 @@ async function apiGet<T>(page: Page, path: string): Promise<T> {
 type Connection = { env: string; last_verified_at: string | null; permissions: string[] | null; api_key_last4: string; account_mode: string | null }
 type SettingsDoc = { data: { version: number; settings: Record<string, unknown> } }
 
-test('a new owner goes from Welcome to Portfolio through Connect, Risk and Autonomy', async ({ page }) => {
+test('a new owner goes from Welcome to the War Room through Connect, Claude, Risk, Autonomy and the team', async ({ page }) => {
   await page.addInitScript(() => {
     localStorage.setItem('atlas.lang', 'en')
     localStorage.setItem('atlas.theme', 'light')
@@ -52,8 +53,17 @@ test('a new owner goes from Welcome to Portfolio through Connect, Risk and Auton
   expect(connections[0].last_verified_at).not.toBeNull()
   expect(connections[0].permissions).toEqual(expect.arrayContaining(['read_only', 'trade', 'withdraw']))
 
-  // Data sources (ATL-233): optional; Skip saves no key.
+  // Claude (ATL-234): the real claude-status check on this machine. Ready → Continue; not ready →
+  // the fix and Set up later, which carries on with the agents offline.
   await page.getByTestId('ob-next').click()
+  await expect(page).toHaveURL(/step=claude$/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sign in to Claude')
+  await expect(page.getByTestId('ob-later').or(page.locator('[data-testid="ob-next"]:enabled'))).toBeVisible({ timeout: 30_000 })
+  await page.screenshot({ path: `${SHOTS}/onboarding-claude.png`, fullPage: true })
+  if (await page.getByTestId('ob-later').isVisible()) await page.getByTestId('ob-later').click()
+  else await page.getByTestId('ob-next').click()
+
+  // Data sources (ATL-233): optional; Skip saves no key.
   await expect(page).toHaveURL(/step=sources$/)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Choose where news comes from')
   await expect(page.getByTestId('sources-summary')).toBeVisible()
@@ -79,9 +89,16 @@ test('a new owner goes from Welcome to Portfolio through Connect, Risk and Auton
   await expect(page.getByTestId('ob-next')).toBeEnabled()
   await page.getByTestId('ob-next').click()
 
-  await expect(page).toHaveURL(/\/portfolio$/)
-  await expect(page.getByTestId('hero-equity')).toBeVisible()
-  await page.screenshot({ path: `${SHOTS}/onboarding-landed-portfolio.png`, fullPage: true })
+  // Meet your team (ATL-234): one card per agent GET /api/agents returns, then Open the War Room.
+  await expect(page).toHaveURL(/step=team$/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Meet your team')
+  await expect(page.getByTestId('team-agent')).toHaveCount(9)
+  await page.screenshot({ path: `${SHOTS}/onboarding-team.png`, fullPage: true })
+  await expect(page.getByTestId('ob-next')).toHaveText('Open the War Room')
+  await page.getByTestId('ob-next').click()
+
+  await expect(page).toHaveURL(/\/warroom$/)
+  await page.screenshot({ path: `${SHOTS}/onboarding-landed-warroom.png`, fullPage: true })
 
   // The choices are saved in Laravel's settings, not just in the page.
   const { data: doc } = await apiGet<SettingsDoc>(page, '/api/settings?env=demo')

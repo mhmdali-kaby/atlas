@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
-/* ATL-19: onboarding's risk profile and autonomy steps, then (ATL-233) Market history and Finish → /portfolio. */
+/* ATL-19: onboarding's risk profile and autonomy steps, then (ATL-233) Market history,
+   (ATL-234) Meet your team and Open the War Room → /warroom. */
 
 const OWNER = { id: '01a18376-1d35-70c2-ad01-6d1d2cd870ad', name: 'Mohammed Ali', email: 'owner@atlas.test', locale: 'en', theme: 'system' }
 const SHOTS = '../../evidence/ATL-19'
@@ -125,11 +126,20 @@ for (const [lang, theme] of [['en', 'light'], ['en', 'dark'], ['ar', 'light'], [
     await page.getByTestId('ob-next').focus()
     await page.keyboard.press('Enter')
 
-    await expect(page).toHaveURL(/\/portfolio$/)
+    // ATL-234: Meet your team is last; its Continue opens the War Room.
+    await expect(page).toHaveURL(/step=team$/)
+    // The step's title takes focus when it mounts; press Enter only once the step has settled.
+    await expect(page.locator('section[data-step="team"]')).toHaveCSS('opacity', '1')
+    await expect(page.locator('#ob-step-title')).toBeFocused()
+    await expect(page.getByTestId('ob-next')).toBeEnabled()
+    await page.getByTestId('ob-next').focus()
+    await page.keyboard.press('Enter')
+
+    await expect(page).toHaveURL(/\/warroom$/)
     expect(api.settings.autonomy_level).toBe(1)
     expect(api.settings.onboarding_completed).toBe(1)
     await page.goto('/onboarding')
-    await expect(page).toHaveURL(/\/portfolio$/)
+    await expect(page).toHaveURL(/\/warroom$/)
   })
 }
 
