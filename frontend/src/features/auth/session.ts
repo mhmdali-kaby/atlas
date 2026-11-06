@@ -46,11 +46,19 @@ export function useSession() {
   })
 }
 
-/** Guest GET /api/auth/status: whether `./atlas create-owner` has run yet. */
+/**
+ * Guest GET /api/auth/status: whether `./atlas create-owner` has run yet, and (ATL-246) whether
+ * this session holds an unexpired two-factor challenge, so a reload reopens the code step.
+ */
+export interface AuthStatus {
+  owner_exists: boolean
+  two_factor_pending?: boolean
+}
+
 export function useAuthStatus(enabled = true) {
-  return useQuery<{ owner_exists: boolean }, ApiError>({
+  return useQuery<AuthStatus, ApiError>({
     queryKey: AUTH_STATUS_KEY,
-    queryFn: ({ signal }) => api.get<{ owner_exists: boolean }>('/api/auth/status', { signal }),
+    queryFn: ({ signal }) => api.get<AuthStatus>('/api/auth/status', { signal }),
     retry: false,
     enabled,
   })
@@ -61,13 +69,59 @@ export interface Credentials {
   password: string
 }
 
+/**
+ * What POST /api/auth/login answered: signed in, or (ATL-246) the password was right but the
+ * owner has two-factor sign-in on, so nobody is signed in until the code step passes.
+ */
+export type LoginResult = { kind: 'signed_in'; user: SessionUser } | { kind: 'two_factor' }
+
 export function useLogin() {
   const client = useQueryClient()
-  return useMutation<SessionUser, ApiError, Credentials>({
-    mutationFn: async (credentials) => (await api.post<{ data: SessionUser }>('/api/auth/login', credentials)).data,
+  return useMutation<LoginResult, ApiError, Credentials>({
+    mutationFn: async (credentials) => {
+      const res = await api.post<{ data: SessionUser } | { two_factor: true }>('/api/auth/login', credentials)
+      return 'two_factor' in res && res.two_factor ? { kind: 'two_factor' } : { kind: 'signed_in', user: (res as { data: SessionUser }).data }
+    },
+    onSuccess: (result) => {
+      if (result.kind === 'two_factor') {
+        client.setQueryData<AuthStatus>(AUTH_STATUS_KEY, (s) => ({ owner_exists: true, ...s, two_factor_pending: true }))
+        return
+      }
+      client.setQueryData(SIGNED_OUT_KEY, false)
+      client.setQueryData(SESSION_KEY, result.user)
+    },
+  })
+}
+
+/** The code step's answer: a 6-digit code from the authenticator app, or one recovery code. */
+export type ChallengeAnswer = { code: string } | { recovery_code: string }
+
+/** The `error` key of a challenge 422: a wrong code, or no live challenge (expired after 5 min). */
+export function challengeErrorKind(err: ApiError): 'code_wrong' | 'challenge_expired' | null {
+  if (err.status !== 422) return null
+  const kind = (err.body as { error?: string } | null)?.error
+  return kind === 'challenge_expired' ? 'challenge_expired' : 'code_wrong'
+}
+
+/** Seconds from a 429's Retry-After, or a minute when it is missing. */
+export function retryAfterSeconds(err: ApiError): number {
+  const header = Number(err.headers?.get('Retry-After'))
+  return Number.isFinite(header) && header > 0 ? Math.ceil(header) : 60
+}
+
+/** POST /api/auth/two-factor-challenge: on success the owner is signed in, exactly as after /login. */
+export function useTwoFactorChallenge() {
+  const client = useQueryClient()
+  return useMutation<SessionUser, ApiError, ChallengeAnswer>({
+    mutationFn: async (answer) => (await api.post<{ data: SessionUser }>('/api/auth/two-factor-challenge', answer)).data,
     onSuccess: (user) => {
+      client.setQueryData<AuthStatus>(AUTH_STATUS_KEY, (s) => ({ owner_exists: true, ...s, two_factor_pending: false }))
       client.setQueryData(SIGNED_OUT_KEY, false)
       client.setQueryData(SESSION_KEY, user)
+    },
+    onError: (err) => {
+      if (challengeErrorKind(err) === 'challenge_expired')
+        client.setQueryData<AuthStatus>(AUTH_STATUS_KEY, (s) => ({ owner_exists: true, ...s, two_factor_pending: false }))
     },
   })
 }
