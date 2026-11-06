@@ -8,6 +8,8 @@ import { expect, test, type Page } from '@playwright/test'
 const OWNER = { id: '01a18376-1d35-70c2-ad01-6d1d2cd870ad', name: 'Mohammed Ali', email: 'owner@atlas.test', locale: 'en', theme: 'system' }
 const SHOTS = '../../evidence/ATL-20'
 const ID = 'a0c7c3a2-6f4e-4f0b-9a7f-0d6b8c1e2f30'
+const LIVE_ID = 'b1d8d4b3-7a5f-4a1c-8b80-1e7c9d2f3a41'
+const LIVE_SHOTS = '../../evidence/ATL-241'
 
 function connection(over: Record<string, unknown> = {}) {
   return {
@@ -30,8 +32,20 @@ function connection(over: Record<string, unknown> = {}) {
   }
 }
 
-async function fakeApi(page: Page, opts: { stored?: Record<string, unknown> | null; failTest?: boolean } = {}) {
+/** ATL-235's live row; verified = last_verified_at and withdraw_off_verified_at. */
+function liveConnection(over: Record<string, unknown> = {}) {
+  const at = new Date(Date.now() - 20 * 60_000).toISOString()
+  return connection({ id: LIVE_ID, env: 'live', label: 'OKX live', api_key_last4: 'lv42', uid_last4: '9876', last_verified_at: at, withdraw_off_verified_at: at, ...over })
+}
+const refusedLive = () =>
+  liveConnection({ permissions: ['read_only', 'trade', 'withdraw'], last_verified_at: null, withdraw_off_verified_at: null, last_test_error: 'withdraw_permission_enabled' })
+
+async function fakeApi(
+  page: Page,
+  opts: { stored?: Record<string, unknown> | null; failTest?: boolean; live?: Record<string, unknown> | null; liveWithdraw?: boolean } = {},
+) {
   let stored: Record<string, unknown> | null = opts.stored === undefined ? connection() : opts.stored
+  let live: Record<string, unknown> | null = opts.live ?? null
   await page.route(/^http:\/\/localhost:8000\//, async (route) => {
     const req = route.request()
     const url = new URL(req.url())
@@ -48,7 +62,21 @@ async function fakeApi(page: Page, opts: { stored?: Record<string, unknown> | nu
     if (url.pathname === '/sanctum/csrf-cookie') return json(204)
     if (url.pathname === '/api/auth/status') return json(200, { owner_exists: true })
     if (url.pathname === '/api/auth/me') return json(200, { data: OWNER })
-    if (url.pathname === '/api/connections' && method === 'GET') return json(200, { data: stored ? [stored] : [] })
+    if (url.pathname === '/api/connections' && method === 'GET') return json(200, { data: [stored, live].filter(Boolean) })
+    if (url.pathname === '/api/connections' && method === 'POST') {
+      const body = req.postDataJSON() as Record<string, string>
+      live = liveConnection({ label: body.label, api_key_last4: body.api_key.slice(-4), permissions: null, last_verified_at: null, withdraw_off_verified_at: null })
+      return json(201, { data: live })
+    }
+    if (url.pathname === `/api/connections/${LIVE_ID}/test` && method === 'POST') {
+      if (opts.liveWithdraw) {
+        live = { ...refusedLive(), label: live?.label, api_key_last4: live?.api_key_last4 }
+        return json(200, { ok: false, error: 'withdraw_permission_enabled', okx_code: null, acct_lv: '2', account_mode: 'futures', position_mode: 'net_mode', permissions: ['read_only', 'trade', 'withdraw'], warnings: [], uid_last4: '9876', verified_at: null, message: null, connection: live })
+      }
+      const at = new Date().toISOString()
+      live = { ...liveConnection({ last_verified_at: at, withdraw_off_verified_at: at }), label: live?.label, api_key_last4: live?.api_key_last4 }
+      return json(200, { ok: true, error: null, okx_code: null, acct_lv: '2', account_mode: 'futures', position_mode: 'net_mode', permissions: ['read_only', 'trade'], warnings: [], uid_last4: '9876', verified_at: at, message: null, connection: live })
+    }
     if (url.pathname === `/api/connections/${ID}` && method === 'PATCH') {
       const body = req.postDataJSON() as Record<string, string>
       stored = connection({ ...stored, label: body.label, api_key_last4: body.api_key.slice(-4), last_verified_at: null })
@@ -91,12 +119,12 @@ for (const lang of ['en', 'ar'] as const) {
       await expect(page.locator('html')).toHaveAttribute('dir', dir)
       await expect(page.getByTestId('key-tail')).toHaveText('•••• ab12')
       await expect(page.locator('nav a[aria-current="page"]')).toHaveText(lang === 'ar' ? 'الاتصالات' : 'Connections')
-      await expect(page.getByTestId('live-row')).toHaveAttribute('aria-disabled', 'true')
+      await expect(page.getByTestId('live-empty')).toBeVisible()
       // Dates follow the page direction (design .num), unlike LTR-isolated figures.
       await expect(page.getByTestId('last-verified')).toHaveCSS('direction', dir)
       await page.waitForTimeout(400)
       await page.screenshot({ path: `${SHOTS}/connections-${dir}-${theme}.png`, fullPage: true })
-      await page.getByTestId('live-row').scrollIntoViewIfNeeded()
+      await page.getByTestId('live-empty').scrollIntoViewIfNeeded()
       await page.screenshot({ path: `${SHOTS}/connections-${dir}-${theme}-bottom.png` })
     })
   }
@@ -160,3 +188,53 @@ test('a demo key with Withdraw keeps the orange notice', async ({ page }) => {
   await expect(page.getByTestId('withdraw-warning')).toBeVisible()
   await page.screenshot({ path: `${SHOTS}/withdraw-warning.png`, fullPage: true })
 })
+
+/* ATL-241: the Live account section, every state at 1280 and 390 px, light/dark, en/ar. */
+for (const width of [1280, 390] as const) {
+  for (const lang of ['en', 'ar'] as const) {
+    for (const theme of ['light', 'dark'] as const) {
+      const dir = lang === 'ar' ? 'rtl' : 'ltr'
+      const tag = `${width}-${dir}-${theme}`
+      test(`Live account states ${tag}`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 })
+        // Empty, then connect a key that can withdraw (refused, red), then replace it with a Read + Trade one.
+        await fakeApi(page, { liveWithdraw: true })
+        await open(page, lang, theme)
+        const section = page.getByTestId('live-section')
+        await expect(section.getByTestId('live-empty')).toBeVisible()
+        await page.waitForTimeout(400)
+        await section.screenshot({ path: `${LIVE_SHOTS}/live-empty-${tag}.png` })
+        await section.getByRole('button', { name: lang === 'ar' ? 'ربط OKX الحقيقي' : 'Connect OKX live' }).click()
+        const sheet = page.getByRole('dialog')
+        await sheet.locator('#lck-key').fill('bbbb1111-2222-3333-4444-55556666lv42')
+        await sheet.locator('#lck-secret').fill('LIVE-SECRET-1')
+        await sheet.locator('#lck-pass').fill('Live-pass-1')
+        await page.waitForTimeout(400)
+        await page.screenshot({ path: `${LIVE_SHOTS}/live-connect-sheet-${tag}.png` })
+        await sheet.locator('form').getByRole('button', { name: lang === 'ar' ? 'حفظ واختبار' : 'Save and test' }).click()
+        await expect(sheet.getByTestId('test-error')).toBeVisible()
+        await page.screenshot({ path: `${LIVE_SHOTS}/live-connect-refused-sheet-${tag}.png` })
+        await page.keyboard.press('Escape')
+        await expect(section.getByTestId('live-refused')).toBeVisible()
+        await expect(section.getByTestId('live-card')).toHaveAttribute('data-state', 'refused')
+        await expect(section.getByTestId('live-key-tail')).toHaveText('•••• lv42')
+        await expect(section).not.toContainText('LIVE-SECRET-1')
+        await page.waitForTimeout(400)
+        await section.screenshot({ path: `${LIVE_SHOTS}/live-refused-${tag}.png` })
+      })
+      test(`Live account verified ${tag}`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 })
+        await fakeApi(page, { live: liveConnection() })
+        await open(page, lang, theme)
+        const section = page.getByTestId('live-section')
+        await expect(section.getByTestId('live-card')).toHaveAttribute('data-state', 'verified')
+        await expect(section.getByTestId('uid-tail')).toHaveText('•••• 9876')
+        await expect(section.getByTestId('live-env-link')).toHaveAttribute('href', '/settings/environment')
+        await expect(page.getByTestId('trading-demo')).toBeVisible()
+        await page.waitForTimeout(400)
+        await page.screenshot({ path: `${LIVE_SHOTS}/live-verified-page-${tag}.png`, fullPage: true })
+        await section.screenshot({ path: `${LIVE_SHOTS}/live-verified-${tag}.png` })
+      })
+    }
+  }
+}

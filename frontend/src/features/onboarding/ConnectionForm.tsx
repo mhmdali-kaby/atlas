@@ -52,8 +52,9 @@ export function ConnectionForm({
 }: ConnectionFormProps) {
   const { t } = useTranslation('onboarding')
   const saveAndTest = useSaveAndTest(env)
+  const defaultLabel = t(env === 'live' ? 'cf.defaultLabelLive' : 'cf.defaultLabel')
   const [values, setValues] = useState<ConnectionValues>({
-    label: connection?.label ?? t('cf.defaultLabel'),
+    label: connection?.label ?? defaultLabel,
     apiKey: '',
     secret: '',
     passphrase: '',
@@ -80,7 +81,7 @@ export function ConnectionForm({
     event.preventDefault()
     if (testing) return
     const found: FieldErrors = {}
-    const label = values.label.trim() || t('cf.defaultLabel')
+    const label = values.label.trim() || defaultLabel
     if (!values.apiKey.trim()) found.apiKey = t('cf.required.apiKey')
     if (!values.secret.trim()) found.secret = t('cf.required.secret')
     if (!values.passphrase.trim()) found.passphrase = t('cf.required.passphrase')
@@ -183,12 +184,13 @@ export function ConnectionForm({
   )
 }
 
-/** The info notice above an empty form: how to create a Read + Trade demo key. */
-export function KeyHelp() {
+/** The info notice above an empty form: how to create a Read + Trade key (demo, or live with its IP allow-list). */
+export function KeyHelp({ env = 'demo' }: { env?: Connection['env'] }) {
   const { t } = useTranslation('onboarding')
+  const live = env === 'live'
   return (
-    <Notice tone="info" icon={KeyRound} title={t('cf.where.title')}>
-      {t('cf.where.body')}
+    <Notice tone="info" icon={KeyRound} title={t(live ? 'cf.where.liveTitle' : 'cf.where.title')}>
+      {t(live ? 'cf.where.liveBody' : 'cf.where.body')}
     </Notice>
   )
 }
@@ -233,8 +235,15 @@ export function AccountRows({
   leading = [],
   trailing = [],
   className = 'rounded-card bg-background-secondary',
+  show = 'all',
 }: {
   connection: Connection
+  /**
+   * Which OKX rows to list after `leading`. 'permissions': a live key refused because it can
+   * withdraw (ATL-241), so only its permissions, with Withdraw as a red chip. 'none': a key OKX
+   * refused, so nothing about the account is known.
+   */
+  show?: 'all' | 'permissions' | 'none'
   accountMode?: string | null
   /** Extra rows before the account mode (Settings: label, API key tail). */
   leading?: AccountRow[]
@@ -247,55 +256,57 @@ export function AccountRows({
   const mode = accountMode ?? connection.account_mode
   const perms = connection.permissions ?? []
   const withdraw = perms.includes('withdraw')
-  const rows: AccountRow[] = [
-    ...leading,
-    [
-      t('acct.mode'),
-      mode === 'spot' ? (
-        <span key="mode" className="inline-flex items-center gap-1.5 font-medium text-warning-ink">
-          <TriangleAlert aria-hidden="true" strokeWidth={1.5} className="size-3.5" />
-          {t('mode.spot')}
-        </span>
-      ) : mode ? (
-        t(`mode.${mode}`, { defaultValue: t('mode.unknown') })
-      ) : (
-        '—'
-      ),
-    ],
-    [t('acct.posMode'), connection.position_mode ? t(`pos.${connection.position_mode}`, { defaultValue: connection.position_mode }) : '—'],
-    [
-      t('acct.perms'),
-      <span key="perms" className="inline-flex flex-wrap justify-end gap-1.5">
-        {perms
-          .filter((p) => p !== 'withdraw')
-          .map((p) => (
-            <Badge key={p} tone="quiet" icon={<Check />}>
-              {t(`perm.${p}`, { defaultValue: p })}
-            </Badge>
-          ))}
-        {withdraw ? (
-          <Badge tone="warning" icon={<ShieldAlert />}>
-            {t('perm.withdraw')}
-          </Badge>
-        ) : (
-          <Badge tone="profit" icon={<ShieldCheck />}>
-            {t('perm.withdrawOff')}
-          </Badge>
-        )}
-      </span>,
-    ],
-    [
-      t('acct.uid'),
-      connection.uid_last4 ? (
-        <bdi key="uid" dir="ltr" className="fig" data-testid="uid-tail">
-          •••• {connection.uid_last4}
-        </bdi>
-      ) : (
-        '—'
-      ),
-    ],
-    ...trailing,
+  const modeRow: AccountRow = [
+    t('acct.mode'),
+    mode === 'spot' ? (
+      <span key="mode" className="inline-flex items-center gap-1.5 font-medium text-warning-ink">
+        <TriangleAlert aria-hidden="true" strokeWidth={1.5} className="size-3.5" />
+        {t('mode.spot')}
+      </span>
+    ) : mode ? (
+      t(`mode.${mode}`, { defaultValue: t('mode.unknown') })
+    ) : (
+      '—'
+    ),
   ]
+  const posRow: AccountRow = [
+    t('acct.posMode'),
+    connection.position_mode ? t(`pos.${connection.position_mode}`, { defaultValue: connection.position_mode }) : '—',
+  ]
+  const permsRow: AccountRow = [
+    t('acct.perms'),
+    <span key="perms" className="inline-flex flex-wrap justify-end gap-1.5" data-testid="perm-list">
+      {perms
+        .filter((p) => p !== 'withdraw')
+        .map((p) => (
+          <Badge key={p} tone="quiet" icon={<Check />}>
+            {t(`perm.${p}`, { defaultValue: p })}
+          </Badge>
+        ))}
+      {withdraw ? (
+        // A demo key with Withdraw is a warning (decision 240); a refused live key is red.
+        <Badge tone={show === 'permissions' ? 'loss' : 'warning'} icon={<ShieldAlert />}>
+          {t('perm.withdraw')}
+        </Badge>
+      ) : (
+        <Badge tone="profit" icon={<ShieldCheck />}>
+          {t('perm.withdrawOff')}
+        </Badge>
+      )}
+    </span>,
+  ]
+  const uidRow: AccountRow = [
+    t('acct.uid'),
+    connection.uid_last4 ? (
+      <bdi key="uid" dir="ltr" className="fig" data-testid="uid-tail">
+        •••• {connection.uid_last4}
+      </bdi>
+    ) : (
+      '—'
+    ),
+  ]
+  const okxRows = show === 'all' ? [modeRow, posRow, permsRow, uidRow] : show === 'permissions' ? [permsRow] : []
+  const rows: AccountRow[] = [...leading, ...okxRows, ...trailing]
   return (
     <dl className={`grid ${className}`}>
       {rows.map(([label, value], i) => (
@@ -314,11 +325,12 @@ export function AccountRows({
   )
 }
 
-function Badge({ tone, icon, children }: { tone: 'quiet' | 'profit' | 'warning'; icon: ReactNode; children: ReactNode }) {
+function Badge({ tone, icon, children }: { tone: 'quiet' | 'profit' | 'warning' | 'loss'; icon: ReactNode; children: ReactNode }) {
   const cls = {
     quiet: 'bg-transparent shadow-[inset_0_0_0_1px_var(--separator)] text-label-secondary',
     profit: 'bg-profit-wash text-profit-ink',
     warning: 'bg-warning-wash text-warning-ink',
+    loss: 'bg-loss-wash text-loss-ink',
   }[tone]
   return (
     <span className={`inline-flex h-[22px] items-center gap-[5px] rounded-full px-2 text-footnote font-semibold whitespace-nowrap ${cls} [&_svg]:size-[13px] [&_svg]:stroke-2`}>
@@ -391,9 +403,21 @@ export function TestSuccess({
 }
 
 /** A failed test or save: the mapped error, read out as an alert. */
-export function TestFailure({ error, okxCode, ref }: { error: string; okxCode?: string | null; ref?: Ref<HTMLDivElement> }) {
+export function TestFailure({
+  error,
+  okxCode,
+  env = 'demo',
+  ref,
+}: {
+  error: string
+  okxCode?: string | null
+  /** A live key reads some errors the other way round (it belongs to demo; it can withdraw). */
+  env?: Connection['env']
+  ref?: Ref<HTMLDivElement>
+}) {
   const { t, i18n } = useTranslation('onboarding')
   const key = i18n.exists(`onboarding:tr.errors.${error}.title`) ? error : 'unknown'
+  const group = env === 'live' && i18n.exists(`onboarding:tr.errorsLive.${key}.title`) ? 'errorsLive' : 'errors'
   const icon = key === 'withdraw_permission_enabled' ? ShieldAlert : key === 'trading_core_unavailable' ? ServerOff : CircleAlert
   return (
     <Notice
@@ -402,10 +426,10 @@ export function TestFailure({ error, okxCode, ref }: { error: string; okxCode?: 
       role="alert"
       tabIndex={-1}
       icon={icon}
-      title={t(`tr.errors.${key}.title`)}
+      title={t(`tr.${group}.${key}.title`)}
       data-testid="test-error"
     >
-      {t(`tr.errors.${key}.body`, { code: okxCode ?? '—' })}
+      {t(`tr.${group}.${key}.body`, { code: okxCode ?? '—' })}
     </Notice>
   )
 }
