@@ -70,7 +70,7 @@ describe('MoreMenu', () => {
     )
   }
 
-  it('lists the page actions, language, appearance and the account, in that order', async () => {
+  it('lists the palette, the page actions, language, appearance and the account, in that order', async () => {
     const user = userEvent.setup()
     render(
       <>
@@ -81,7 +81,8 @@ describe('MoreMenu', () => {
     await user.click(screen.getByRole('button', { name: 'More' }))
     await screen.findByRole('menu')
     const items = Array.from(document.querySelectorAll('[role^="menuitem"]')).map((el) => el.textContent?.trim())
-    expect(items).toEqual(['Replay', 'Show or hide the inspector', 'العربية, switch language', 'System', 'Light', 'Dark', 'Sign out'])
+    // ATL-249: the ⌘K palette's door comes first (design v22 §6).
+    expect(items).toEqual([expect.stringMatching(/^Search or jump to…(⌘K|Ctrl K)$/), 'Replay', 'Show or hide the inspector', 'العربية, switch language', 'System', 'Light', 'Dark', 'Sign out'])
     expect(screen.getByRole('menuitemcheckbox', { name: 'Show or hide the inspector' })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByRole('group', { name: 'War Room' })).toBeInTheDocument()
     expect(screen.getByText('owner@atlas.test')).toBeInTheDocument()

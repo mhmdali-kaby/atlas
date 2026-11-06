@@ -7,6 +7,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { SIGNED_OUT_KEY, useLogout, useSession } from '../features/auth/session'
 import { toast } from '../ui'
 import { ApprovalPill } from '../features/approvals/ApprovalPill'
+import { CommandPalette } from '../features/command-palette/CommandPalette'
 import { KillSwitchButton } from '../features/kill-switch/KillSwitch'
 import { NotificationBell } from '../features/notifications/NotificationBell'
 import { TradingBanner } from '../features/kill-switch/TradingBanner'
@@ -138,6 +139,7 @@ export function AppShell({ shell = registeredShell }: { shell?: ShellRegistry })
         </div>
       </div>
       <RiskFooter />
+      <CommandPalette />
     </MotionConfig>
   )
 }

@@ -1,9 +1,10 @@
-import { Check, Ellipsis, Globe, LogOut, Monitor, Moon, Plug, Settings, Sun, type LucideIcon } from 'lucide-react'
+import { Check, Ellipsis, Globe, LogOut, Monitor, Moon, Plug, Search, Settings, Sun, type LucideIcon } from 'lucide-react'
 import { DropdownMenu } from 'radix-ui'
 import { useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router'
 import { useQueryClient } from '@tanstack/react-query'
+import { openPalette, paletteKeys } from '../../features/command-palette/store'
 import type { Language } from '../../i18n/language'
 import { applyPreference, saveErrorOf, useSavePreference, type PreferenceField } from '../../lib/preferences'
 import { isThemeChoice, THEME_CHOICES, type ThemeChoice } from '../../theme/theme'
@@ -249,6 +250,15 @@ export function MoreMenu({
         </button>
       }
     >
+      {/* The ⌘K palette's door in the compact toolbar (ATL-249, design v22 §6); opened after the menu closes. */}
+      <DropdownMenu.Item className={menuItem} onSelect={() => window.setTimeout(openPalette, 0)} data-testid="more-palette">
+        <Search aria-hidden="true" strokeWidth={1.5} />
+        <span>{t('command-palette:open')}</span>
+        <kbd className="menu-keys" dir="ltr">
+          {paletteKeys()}
+        </kbd>
+      </DropdownMenu.Item>
+      <Separator />
       {actions.length > 0 && (
         <>
           <DropdownMenu.Group aria-label={pageTitle} data-testid="more-page-actions">
