@@ -10,6 +10,7 @@ use App\Http\Requests\Connections\UpdateConnectionRequest;
 use App\Http\Resources\ConnectionResource;
 use App\Models\Connection;
 use App\Support\Auditable;
+use App\Support\System\ActiveEnv;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -58,10 +59,14 @@ class ConnectionsController extends Controller
         return (new ConnectionResource($connection))->response()->setStatusCode(201);
     }
 
-    public function update(UpdateConnectionRequest $request, Connection $connection): ConnectionResource
+    public function update(UpdateConnectionRequest $request, Connection $connection): ConnectionResource|JsonResponse
     {
         /** @var array<string, string> $changes */
         $changes = $request->safe()->only(['label', ...Connection::SECRET_FIELDS]);
+
+        if ($this->changesSecret($connection, $changes) && $this->liveInUse($connection)) {
+            return $this->liveInUseResponse();
+        }
 
         DB::transaction(function () use ($connection, $changes): void {
             $before = $connection->auditSnapshot();
@@ -93,8 +98,12 @@ class ConnectionsController extends Controller
         return new ConnectionResource($connection->refresh());
     }
 
-    public function destroy(Connection $connection): Response
+    public function destroy(Connection $connection): Response|JsonResponse
     {
+        if ($this->liveInUse($connection)) {
+            return $this->liveInUseResponse();
+        }
+
         DB::transaction(function () use ($connection): void {
             $before = $connection->auditSnapshot();
             $connection->delete();
@@ -108,5 +117,33 @@ class ConnectionsController extends Controller
         });
 
         return response()->noContent();
+    }
+
+    /**
+     * @param  array<string, string>  $changes
+     */
+    private function changesSecret(Connection $connection, array $changes): bool
+    {
+        foreach (Connection::SECRET_FIELDS as $field) {
+            if (array_key_exists($field, $changes) && $changes[$field] !== $connection->getAttribute($field)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /** Live rule 4/§18: a live connection Atlas is trading on cannot be deleted or re-keyed from here. */
+    private function liveInUse(Connection $connection): bool
+    {
+        return $connection->env === 'live' && ActiveEnv::get() === 'live';
+    }
+
+    private function liveInUseResponse(): JsonResponse
+    {
+        return response()->json([
+            'message' => __('connections.live_connection_in_use'),
+            'error' => 'live_connection_in_use',
+        ], 409);
     }
 }
