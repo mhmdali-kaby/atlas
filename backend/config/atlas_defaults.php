@@ -489,6 +489,8 @@ return [
         'window' => 1,
         'recovery_codes' => 8,
         'attempts_per_minute' => 5,
+        'challenge_minutes' => 5,
+        'challenge_attempts_per_minute' => 5,
         'qr_size_px' => 192,
     ],
     'doctor' => [
