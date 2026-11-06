@@ -89,8 +89,9 @@ export function useAgents(env: TradingEnv) {
   })
 }
 
-export function useClaudeStatus() {
+export function useClaudeStatus(enabled = true) {
   return useApiQuery<{ data: ClaudeStatus }>(CLAUDE_KEY, '/api/agents/claude-status', {
+    enabled,
     staleTime: Infinity,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
