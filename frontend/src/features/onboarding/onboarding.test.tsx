@@ -288,10 +288,21 @@ function renderApp(initial: string, { defaultRetries = false } = {}) {
   return { router, view }
 }
 
+/*
+ * ATL-258: the owner copies these three values from OKX and pastes them. Typing them key by key
+ * (69 characters, each a re-render of the whole step) made every test that connects take over a
+ * second on an idle machine and past the 5 s limit on a loaded one, while proving nothing more:
+ * the Arabic test below still types every key.
+ */
+async function pasteInto(user: ReturnType<typeof userEvent.setup>, field: HTMLElement, value: string) {
+  await user.click(field)
+  await user.paste(value)
+}
+
 async function fillAndTest(user: ReturnType<typeof userEvent.setup>) {
-  await user.type(await screen.findByLabelText('API key'), KEY)
-  await user.type(screen.getByLabelText('Secret key'), SECRET)
-  await user.type(screen.getByLabelText('Passphrase'), PASS)
+  await pasteInto(user, await screen.findByLabelText('API key'), KEY)
+  await pasteInto(user, screen.getByLabelText('Secret key'), SECRET)
+  await pasteInto(user, screen.getByLabelText('Passphrase'), PASS)
   await user.click(screen.getByRole('button', { name: 'Test connection' }))
 }
 

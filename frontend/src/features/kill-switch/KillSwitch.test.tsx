@@ -184,6 +184,13 @@ const KEPT_REPORT: KillReport = {
  */
 const sleep = (ms: number) => act(() => new Promise<void>((resolve) => setTimeout(resolve, ms)))
 
+/*
+ * ATL-258: the hold tests sleep about 3.6 s on purpose (the real 1.5 s hold, twice, plus the
+ * early-release pauses). Under load that used to cross the 5 s default; the timeout fired inside
+ * an act() sleep, and the unfinished act scope made every later test in the file miss its first
+ * render. The unit project's testTimeout now leaves room for them (vite.config.ts).
+ */
+
 interface Call {
   method: string
   path: string
@@ -449,9 +456,7 @@ describe('the Stop sheet (decision 251)', () => {
     fireEvent.pointerDown(hold, { button: 0, pointerId: 2 })
     expect(sheet).toHaveTextContent('Keep holding…')
     await sleep(HOLD_MS)
-    await waitFor(() => expect(api.kills()).toHaveLength(1), {
-      timeout: 1000,
-    })
+    await waitFor(() => expect(api.kills()).toHaveLength(1))
     expect(api.kills()[0]!.body).toEqual({
       confirm: 'KILL',
       flatten: true,
@@ -477,9 +482,7 @@ describe('the Stop sheet (decision 251)', () => {
     await sleep(700)
     fireEvent.keyDown(hold, { key, repeat: true })
     await sleep(HOLD_MS - 700)
-    await waitFor(() => expect(api.kills()).toHaveLength(1), {
-      timeout: 1000,
-    })
+    await waitFor(() => expect(api.kills()).toHaveLength(1))
     expect(api.kills()[0]!.body).toEqual({
       confirm: 'KILL',
       flatten: true,

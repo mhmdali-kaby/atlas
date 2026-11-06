@@ -225,7 +225,9 @@ describe('finding pages', () => {
 
 describe('instruments (ATL-250)', () => {
   it('"xau" lists XAU-USDT-SWAP from the API under Instruments, with its asset class and state', async () => {
-    const user = userEvent.setup()
+    // ATL-258: no delay between keys, so a busy machine cannot let the search debounce fire on
+    // "xa" between two keystrokes; the one-request assertion below is about the debounce.
+    const user = userEvent.setup({ delay: null })
     renderShell()
     await user.keyboard('{Meta>}k{/Meta}')
     await user.keyboard('xau')
