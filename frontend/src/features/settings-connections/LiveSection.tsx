@@ -32,7 +32,7 @@ import {
 } from '../onboarding'
 import { useLang, useNow } from '../portfolio/hooks'
 import { formatAgo, formatClock, formatDayTime } from '../portfolio/time'
-import { SERVICE_ERRORS, useStoreConnection, type Failure } from './shared'
+import { isLiveVerified, SERVICE_ERRORS, useStoreConnection, type Failure } from './shared'
 import { KeysSheet, RemoveSheet } from './sheets'
 
 /*
@@ -54,8 +54,6 @@ export function TradingBadge({ env }: { env: Connection['env'] }) {
 }
 
 type LiveState = 'testing' | 'verified' | 'refused' | 'failed' | 'untested'
-
-export const isLiveVerified = (c: Connection) => c.last_verified_at !== null && !!c.withdraw_off_verified_at
 
 export function LiveSection({ connection }: { connection: Connection | null }) {
   const { t } = useTranslation('settings')
