@@ -242,3 +242,15 @@ a.pr-chip:hover { background: var(--fill-2); }
 /* The proposal card's note in Replay, where its actions would be. */
 .pr-readonly { display: flex; align-items: center; gap: 6px; font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
 .pr-readonly .icon { width: 14px; height: 14px; flex: none; }
+
+/* ---- the real-order sheet (ATL-240, design v21 proposal.css .lvo) ---------------------------- */
+.pr-live-sheet { --pr-bg: var(--bg-tertiary); }
+.lvo { margin: 0; padding: 4px 16px; display: grid; border-radius: 12px; background: var(--fill-4); }
+.lvo-row { display: grid; grid-template-columns: minmax(96px, auto) minmax(0, 1fr); gap: 4px 16px; align-items: baseline; padding: 10px 0; }
+.lvo-row + .lvo-row { border-top: 0.5px solid var(--separator); }
+.lvo dt { font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); color: var(--label-secondary); }
+.lvo dd { margin: 0; display: grid; justify-items: end; gap: 2px; text-align: end; min-width: 0; }
+.lvo-v { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; font-size: var(--fs-callout); line-height: var(--lh-callout); font-weight: 600; color: var(--label); font-variant-numeric: tabular-nums; }
+.lvo-v .pr-dir { height: 24px; font-size: var(--fs-footnote); }
+.lvo-s { font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.pr-live-sheet .pr-band { margin: 0; }

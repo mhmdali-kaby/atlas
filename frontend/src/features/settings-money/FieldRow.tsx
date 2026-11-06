@@ -23,13 +23,40 @@ interface Props {
   onStep: (dir: 1 | -1) => void
   onBlur: () => void
   onCap: (set: boolean) => void
+  /** The first live month's end, as a date (ATL-238/ATL-240): the cap is required and can't be cleared. */
+  capRequiredUntil?: string | null
 }
 
-function useSub(field: MoneyField, texts: MoneyTexts, usedToday: bigint | null, tradesToday: number | null, lang: Lang, onCap: (set: boolean) => void): { node: ReactNode; warn?: boolean } {
+function useSub(
+  field: MoneyField,
+  texts: MoneyTexts,
+  usedToday: bigint | null,
+  tradesToday: number | null,
+  lang: Lang,
+  onCap: (set: boolean) => void,
+  capRequired: boolean,
+): { node: ReactNode; warn?: boolean } {
   const { t } = useTranslation('settings-money')
   const raw = texts[field]
   if (field === 'bot_capital_cap_usdt') {
     const none = clean(raw) === ''
+    // First live month: required, so there is no "Remove cap"; an empty field offers "Set a cap".
+    if (capRequired)
+      return {
+        node: (
+          <>
+            {t('sub.capLive')}
+            {none && (
+              <>
+                {' '}
+                <button type="button" className="ml-cap-act" onClick={() => onCap(true)}>
+                  {t('capSet')}
+                </button>
+              </>
+            )}
+          </>
+        ),
+      }
     return {
       node: (
         <>
@@ -57,12 +84,14 @@ function useSub(field: MoneyField, texts: MoneyTexts, usedToday: bigint | null, 
   return { node: fill(t('sub.trades', { count: n }), { n: <Fig>{n}</Fig> }) }
 }
 
-export function FieldRow({ field, texts, changed, binds, serverError, usedToday, tradesToday, lang, onChange, onStep, onBlur, onCap }: Props) {
+export function FieldRow({ field, texts, changed, binds, serverError, usedToday, tradesToday, lang, onChange, onStep, onBlur, onCap, capRequiredUntil = null }: Props) {
   const { t } = useTranslation('settings-money')
   const raw = texts[field]
+  const capRequired = field === 'bot_capital_cap_usdt' && capRequiredUntil !== null
   const clientError = fieldError(field, raw)
-  const error = serverError ?? (clientError ? t(`err.${clientError}`) : undefined)
-  const sub = useSub(field, texts, usedToday, tradesToday, lang, onCap)
+  const missingCap = capRequired && clean(raw) === ''
+  const error = serverError ?? (clientError ? t(`err.${clientError}`) : missingCap ? t('err.capRequired', { date: capRequiredUntil }) : undefined)
+  const sub = useSub(field, texts, usedToday, tradesToday, lang, onCap, capRequired)
   const label = t(`f.${field}`)
   const id = `ml-${field}`
   const int = isInteger(field)

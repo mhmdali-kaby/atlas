@@ -31,7 +31,8 @@ const initial = () => ({
   max_instruments_per_day: 5, whitelist: [] as string[], blocklist: [] as string[],
 }) as Record<string, unknown>
 
-async function fakeApi(page: Page, lang: Lang, opts: { firstMonth?: boolean } = {}) {
+/** `staleDoc`: the month began after the page loaded, so GET shows no end date but PATCH refuses (ATL-240 disables 3–4 otherwise). */
+async function fakeApi(page: Page, lang: Lang, opts: { firstMonth?: boolean; staleDoc?: boolean } = {}) {
   const rows: Record<Env, { version: number; settings: Record<string, unknown> }> = {
     demo: { version: 7, settings: initial() },
     live: { version: 1, settings: initial() },
@@ -39,7 +40,7 @@ async function fakeApi(page: Page, lang: Lang, opts: { firstMonth?: boolean } = 
   const state = { rows, patches: [] as Patch[], gets: [] as Env[] }
   const doc = (env: Env) => ({
     id: `s-${env}`, env, version: rows[env].version, settings: rows[env].settings, presets: PRESETS, max_enabled_autonomy_level: 4,
-    first_live_month_ends_at: env === 'live' && opts.firstMonth ? ENDS : null, max_live_autonomy_level: 2, updated_at: '2026-10-28T08:05:00Z',
+    first_live_month_ends_at: env === 'live' && opts.firstMonth && !opts.staleDoc ? ENDS : null, max_live_autonomy_level: 2, updated_at: '2026-10-28T08:05:00Z',
   })
   await page.route(/^http:\/\/localhost:8000\//, async (route) => {
     const req = route.request()
@@ -89,7 +90,7 @@ async function fakeApi(page: Page, lang: Lang, opts: { firstMonth?: boolean } = 
   return state
 }
 
-async function open(page: Page, path: string, lang: Lang, opts: { firstMonth?: boolean } = {}) {
+async function open(page: Page, path: string, lang: Lang, opts: { firstMonth?: boolean; staleDoc?: boolean } = {}) {
   await page.setViewportSize({ width: 1280, height: 900 })
   await page.addInitScript((l) => localStorage.setItem('atlas.lang', l), lang)
   const state = await fakeApi(page, lang, opts)
@@ -151,8 +152,19 @@ for (const lang of ['en', 'ar'] as const) {
       expect(JSON.stringify(state.rows.demo)).toBe(demoBefore)
     })
 
-    test('during the first live month, live autonomy 3 is refused with the API message', async ({ page }) => {
+    test('during the first live month, levels 3 and 4 are disabled with the end date', async ({ page }) => {
       const state = await open(page, '/settings/autonomy?env=live', lang, { firstMonth: true })
+      await expect(levels(page).locator('[role="radio"][data-value="3"]')).toHaveAttribute('aria-disabled', 'true')
+      await expect(levels(page).locator('[role="radio"][data-value="4"]')).toHaveAttribute('aria-disabled', 'true')
+      // aria-disabled: Playwright would wait for it to enable, so force the press the owner could still make.
+      await levels(page).locator('[role="radio"][data-value="3"]').click({ force: true })
+      await expect(page.getByRole('dialog')).toHaveCount(0)
+      await page.screenshot({ path: `../../evidence/ATL-240/autonomy-first-month-${lang}.png` })
+      expect(state.patches).toEqual([])
+    })
+
+    test('a first live month that began after the page loaded: live autonomy 3 is refused with the API message', async ({ page }) => {
+      const state = await open(page, '/settings/autonomy?env=live', lang, { firstMonth: true, staleDoc: true })
       await levels(page).locator('[role="radio"][data-value="3"]').click()
       const sheet = page.getByRole('dialog')
       await sheet.getByRole('button', { name: CONFIRM3[lang] }).click()

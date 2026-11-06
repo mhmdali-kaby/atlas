@@ -11,6 +11,7 @@ import { useConnections } from '../portfolio/api'
 import { useLang, useNow } from '../portfolio/hooks'
 import '../settings-connections/settings.css'
 import '../settings-risk/risk.css'
+import { dayText } from '../settings-environment/model'
 import { fieldErrors, historyKey, useSaveSettings, useSettingsHistory } from '../settings-risk/model'
 import { EnvScopeControl, EnvScopeNotice, useEnvScope, type EnvScope } from '../settings-risk/EnvScope'
 import { MoneyActivity } from './Activity'
@@ -145,7 +146,10 @@ function MoneyPane({ scope }: { scope: EnvScope }) {
 
   const texts = edits ?? (doc ? textsFrom(doc) : null)
   const errors = texts ? clientErrors(texts) : {}
-  const invalid = Object.keys(errors).length > 0
+  // First live month (ATL-238): the live cap is required until the end date, so an empty cap can't be saved.
+  const capRequiredUntil = doc?.first_live_month_ends_at ? dayText(doc.first_live_month_ends_at, lang, true) : null
+  const missingCap = capRequiredUntil !== null && texts !== null && clean(texts.bot_capital_cap_usdt) === ''
+  const invalid = Object.keys(errors).length > 0 || missingCap
   const liveQs = doc && texts && !invalid ? previewParams(texts, doc, ENV) : null
   // While a field is invalid the preview keeps its last good answer (design §5.5).
   const debouncedQs = useDebounced(liveQs, DEBOUNCE_MS)
@@ -277,6 +281,7 @@ function MoneyPane({ scope }: { scope: EnvScope }) {
                   const tidy = groupText(f, texts[f])
                   if (tidy !== texts[f] && !serverErrors[f]) setEdits({ ...texts, [f]: tidy })
                 }}
+                capRequiredUntil={capRequiredUntil}
                 onCap={(set) => {
                   setField('bot_capital_cap_usdt', set ? '100,000' : '')
                   pageRef.current?.querySelector<HTMLInputElement>('#ml-bot_capital_cap_usdt')?.focus()

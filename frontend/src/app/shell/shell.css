@@ -180,6 +180,12 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.shell-toolbar-env.is-live {
+  color: var(--live-ink);
+}
+.shell-toolbar-env.is-live .dot {
+  background: var(--live);
+}
 .shell-toolbar-env:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
@@ -313,6 +319,61 @@
   z-index: 30;
   height: var(--footer-height);
   box-shadow: 0 -0.5px 0 var(--separator);
+}
+
+/* Live (ATL-240): the env word in a small solid capsule, the same orange as the toolbar badge. */
+.shell-footer-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 16px;
+  padding-inline: 6px;
+  border-radius: var(--radius-full, 999px);
+  background: var(--live);
+  color: var(--live-on);
+  font-weight: 700;
+  vertical-align: middle;
+}
+.shell-footer-live::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--live-on);
+}
+/* The LIVE tag inside sheets (the real-order sheet, Stop trading). */
+.shell-live-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding-inline: 8px;
+  border-radius: var(--radius-full, 999px);
+  background: var(--live);
+  color: var(--live-on);
+  font-size: var(--text-footnote);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+  margin-inline-start: 6px;
+}
+.shell-live-tag::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--live-on);
+}
+/* The live wire: a 3 px orange edge along the top of the window, on every page. */
+:root.is-live body::before {
+  content: '';
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline: 0;
+  height: 3px;
+  z-index: 100;
+  background: var(--live);
+  pointer-events: none;
 }
 
 /* Narrow windows: the sidebar floats over the content and starts closed. */

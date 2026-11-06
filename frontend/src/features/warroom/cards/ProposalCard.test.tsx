@@ -448,3 +448,61 @@ describe('edit rules', () => {
     expect(s.perTradeCap).toBe('3000')
   })
 })
+
+describe('live Approve: the real-order sheet (ATL-240)', () => {
+  const approvePath = `/api/proposals/${PROPOSAL_ID}/approve`
+  const sentReply = () => reply(200, { ok: true, error: null, message: null, proposal: { ...sentDetail(), env: 'live' } })
+
+  it('a demo proposal approves at once with no body and no extra sheet', async () => {
+    const fetch = backend({ detail: proposalDetail() }, { [`POST ${approvePath}`]: () => reply(200, { ok: true, error: null, message: null, proposal: sentDetail() }) })
+    draw()
+    await waitFor(() => expect(card()).toHaveAttribute('data-status', 'awaiting_owner'))
+    await user().click(within(card()).getByTestId('pr-approve'))
+    await waitFor(() => expect(calls(fetch, 'POST', approvePath)).toHaveLength(1))
+    expect(screen.queryByTestId('pr-live-sheet')).toBeNull()
+    expect(calls(fetch, 'POST', approvePath)[0]![1]?.body ?? null).toBeNull()
+  })
+
+  it('a live proposal opens the sheet first; Cancel sends nothing', async () => {
+    const fetch = backend({ detail: proposalDetail({ env: 'live' }) }, { [`POST ${approvePath}`]: sentReply })
+    draw()
+    await waitFor(() => expect(card()).toHaveAttribute('data-status', 'awaiting_owner'))
+    await user().click(within(card()).getByTestId('pr-approve'))
+    const sheet = await screen.findByRole('dialog')
+    expect(within(sheet).getByTestId('pr-live-title')).toHaveTextContent('This places a real order')
+    expect(within(sheet).getByTestId('live-tag')).toHaveTextContent('Live')
+    const p = proposalDetail({ env: 'live' })
+    const stake = stakeOf(p)
+    expect(within(sheet).getByTestId('lvo-inst')).toHaveTextContent(p.inst_id)
+    expect(within(sheet).getByTestId('lvo-order')).toHaveTextContent(p.side === 'buy' ? 'Buy' : 'Sell')
+    expect(within(sheet).getByTestId('lvo-size')).toHaveTextContent('$')
+    expect(stake.risk).not.toBeNull()
+    expect(within(sheet).getByTestId('lvo-risk')).toHaveTextContent('$')
+    await user().click(within(sheet).getByTestId('pr-live-cancel'))
+    await waitFor(() => expect(sheet).toHaveAttribute('data-state', 'closed'))
+    expect(calls(fetch, 'POST', approvePath)).toHaveLength(0)
+    expect(card()).toHaveAttribute('data-status', 'awaiting_owner')
+  })
+
+  it('Confirm sends live_confirmed: true', async () => {
+    const fetch = backend({ detail: proposalDetail({ env: 'live' }) }, { [`POST ${approvePath}`]: sentReply })
+    draw()
+    await waitFor(() => expect(card()).toHaveAttribute('data-status', 'awaiting_owner'))
+    await user().click(within(card()).getByTestId('pr-approve'))
+    const sheet = await screen.findByRole('dialog')
+    expect(within(sheet).getByTestId('pr-live-go')).toHaveFocus()
+    await user().click(within(sheet).getByTestId('pr-live-go'))
+    await waitFor(() => expect(calls(fetch, 'POST', approvePath)).toHaveLength(1))
+    expect(JSON.parse(String(calls(fetch, 'POST', approvePath)[0]![1]!.body))).toEqual({ live_confirmed: true })
+  })
+
+  it('in Arabic the sheet reads in Arabic', async () => {
+    backend({ detail: proposalDetail({ env: 'live' }) })
+    draw('ar')
+    await waitFor(() => expect(card()).toHaveAttribute('data-status', 'awaiting_owner'))
+    await user().click(within(card()).getByTestId('pr-approve'))
+    const sheet = await screen.findByRole('dialog')
+    expect(within(sheet).getByTestId('pr-live-title')).toHaveTextContent('هذا يضع أمرًا حقيقيًا')
+    expect(within(sheet).getByTestId('live-tag')).toHaveTextContent('حقيقي')
+  })
+})

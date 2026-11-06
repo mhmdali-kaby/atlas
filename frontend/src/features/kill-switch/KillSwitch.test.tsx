@@ -194,7 +194,8 @@ function fakeBackend({
   health = RUNNING,
   report = KEPT_REPORT,
   killDown = false,
-}: { health?: SystemHealth; report?: KillReport; killDown?: boolean } = {}) {
+  env = 'demo',
+}: { health?: SystemHealth; report?: KillReport; killDown?: boolean; env?: 'demo' | 'live' } = {}) {
   const calls: Call[] = []
   const state = { health }
   vi.stubGlobal(
@@ -213,6 +214,11 @@ function fakeBackend({
       if (path === '/api/auth/status') return reply(200, { owner_exists: true })
       if (path === '/api/auth/me') return reply(200, { data: OWNER })
       if (path === '/api/system/health') return reply(200, { data: state.health })
+      if (path === '/api/environment') {
+        return reply(200, {
+          data: { active_env: env, live_started_at: null, first_month_ends_at: null, in_first_live_month: false, switched_at: null, confirmation_text: 'TRADE LIVE', preflight: { ok: true, items: [] } },
+        })
+      }
       if (path === '/api/portfolio/orders') {
         return reply(200, {
           data: {
@@ -394,6 +400,30 @@ describe('the Stop sheet (decision 251)', () => {
     })
     const report = await screen.findByTestId('kill-report')
     expect(within(report).getByTestId('kill-kept')).toHaveTextContent('2 stops. Each open position keeps its stop on OKX.')
+  })
+
+  it('in live the sheet carries the LIVE tag and a real-money line, and still stops with one press (ATL-240)', async () => {
+    const api = fakeBackend({ env: 'live' })
+    withClient(<KillSwitchButton />)
+    const user = userEvent.setup()
+    await user.click(screen.getByTestId('kill-switch'))
+    const sheet = await screen.findByRole('dialog', { name: /Stop all trading\?/ })
+    expect(await within(sheet).findByTestId('live-tag')).toHaveTextContent('Live')
+    expect(sheet).toHaveTextContent('These are real orders and real positions.')
+    await within(sheet).findByText(/Keep the/)
+    await user.click(within(sheet).getByTestId('kill-go'))
+    await waitFor(() => expect(api.kills()).toHaveLength(1))
+    expect(api.kills()[0]!.body).toEqual({ confirm: 'KILL', flatten: false })
+  })
+
+  it('in demo the sheet has no LIVE tag', async () => {
+    fakeBackend()
+    withClient(<KillSwitchButton />)
+    const user = userEvent.setup()
+    await user.click(screen.getByTestId('kill-switch'))
+    const sheet = await screen.findByRole('dialog', { name: 'Stop all trading?' })
+    await within(sheet).findByText(/Keep the/)
+    expect(within(sheet).queryByTestId('live-tag')).toBeNull()
   })
 
   it('with close-all on, a release before 1.5 s sends nothing; holding the pointer 1.5 s sends flatten true', async () => {

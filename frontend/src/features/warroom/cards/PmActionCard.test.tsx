@@ -96,3 +96,21 @@ describe('Portfolio Manager action card (ATL-219 criterion 5)', () => {
     expect(c.queryByTestId('au-note')).toBeNull()
   })
 })
+
+describe('Portfolio Manager action card in live (ATL-240)', () => {
+  it('Approve on a live stop change opens the real-order sheet; Confirm sends live_confirmed: true', async () => {
+    const detail = pmActionDetail('amend_stop', { env: 'live' })
+    const fetch = backend({ detail })
+    draw(pm('amend_stop'))
+    const c = within(card())
+    const user = (await import('@testing-library/user-event')).default.setup({ advanceTimers: vi.advanceTimersByTime })
+    await user.click(await c.findByTestId('pr-approve'))
+    const sheet = await screen.findByRole('dialog')
+    expect(within(sheet).getByTestId('pr-live-title')).toHaveTextContent('This moves a real stop')
+    expect(within(sheet).getByTestId('live-tag')).toHaveTextContent('Live')
+    await user.click(within(sheet).getByTestId('pr-live-go'))
+    const approves = () => fetch.mock.calls.filter(([input]) => new URL(String(input)).pathname === `/api/proposals/${PM_PROPOSAL_ID}/approve`)
+    await waitFor(() => expect(approves()).toHaveLength(1))
+    expect(JSON.parse(String((approves()[0] as unknown as [unknown, RequestInit])[1].body))).toEqual({ live_confirmed: true })
+  })
+})
