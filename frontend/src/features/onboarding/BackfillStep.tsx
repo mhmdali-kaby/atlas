@@ -19,7 +19,7 @@ import {
   type SummaryState,
 } from '../settings-data/model'
 import { Fig, NS as DATA_NS, Tr } from '../settings-data/parts'
-import { useEtaText } from '../settings-data/Summary'
+import { useEtaText } from '../settings-data/eta'
 import '../settings-data/data.css'
 import { Notice } from './Notice'
 import { StepHead, StepMain, type StepProps } from './steps'

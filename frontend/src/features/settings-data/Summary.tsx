@@ -6,7 +6,6 @@ import type { ActionAnswer } from './api'
 import {
   CLASS_ORDER,
   compact,
-  etaParts,
   exact,
   jobFraction,
   pctText,
@@ -19,6 +18,7 @@ import {
   type Status,
   type SummaryState,
   DATASET, tKey } from './model'
+import { useEtaText } from './eta'
 import { Fig, InstId, NS, Tip, Tr, useTimeText } from './parts'
 import { formatClock } from '../portfolio/time'
 import type { ApiJob } from './api'
@@ -122,17 +122,6 @@ function SummaryIcon({ state }: { state: SummaryState }) {
       <Spinner />
     </span>
   )
-}
-
-export function useEtaText() {
-  const { t } = useTranslation(NS)
-  return (sec: number) => {
-    const parts = etaParts(sec)
-    if (parts === 'lessThanMinute') return t('eta.lessThanMinute')
-    return [parts.h ? t('eta.h', { count: parts.h }) : '', parts.m ? t('eta.m', { count: parts.m }) : '']
-      .filter(Boolean)
-      .join(t('eta.join'))
-  }
 }
 
 const LEGEND_FILTER: Record<Status, InstFilter> = { done: 'done', failed: 'failed', fetching: 'progress', waiting: 'progress', paused: 'progress' }

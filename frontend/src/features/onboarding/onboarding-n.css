@@ -385,3 +385,9 @@
   background: var(--accent-solid);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 25%, transparent);
 }
+
+/* the key fields are monospace; their hint text is a sentence in the page's language */
+.ob-key-row input::placeholder {
+  font-family: var(--font-stack-sans);
+  letter-spacing: normal;
+}
