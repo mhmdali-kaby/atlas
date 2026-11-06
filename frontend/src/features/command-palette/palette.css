@@ -1,0 +1,130 @@
+/* ==========================================================================
+   ⌘K command palette (ATL-249), from design v22 css/palette.css. Spotlight's shape in Atlas's materials: the
+   popover glass, the sheet radius and shadow, the menu's blue selection.
+   No new colours or type sizes.
+   ========================================================================== */
+.pal-scrim { position: fixed; inset: 0; z-index: 84; background: var(--palette-scrim); animation: pal-fade var(--dur-fast) var(--ease-out); }
+.pal {
+  position: fixed; z-index: 85; top: max(64px, 13vh); inset-inline-start: 50%; translate: -50% 0;
+  width: min(680px, calc(100vw - 32px)); max-height: min(600px, calc(100dvh - 96px));
+  display: flex; flex-direction: column; overflow: hidden;
+  border-radius: var(--radius-sheet);
+  background: var(--material-popover);
+  -webkit-backdrop-filter: saturate(180%) blur(30px); backdrop-filter: saturate(180%) blur(30px);
+  box-shadow: var(--shadow-sheet), 0 0 0 0.5px var(--hairline-color), var(--glass-edge);
+  animation: pal-in 220ms var(--ease-settle);
+}
+[dir="rtl"] .pal { translate: 50% 0; }
+@keyframes pal-in { from { opacity: 0; transform: scale(0.97) translateY(-6px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .pal, .pal-scrim { animation: none; } }
+
+/* the search line: Spotlight-large */
+.pal-search { display: flex; align-items: center; gap: 12px; min-height: 60px; padding-inline: 20px 14px; border-bottom: 0.5px solid var(--separator); }
+.pal-search-icon { width: 22px; height: 22px; color: var(--label-secondary); flex: none; stroke-width: 1.75; }
+.pal-input {
+  flex: 1; min-width: 0; height: 58px; border: 0; outline: none; background: none; color: var(--label);
+  font-size: var(--text-title-3); line-height: var(--lh-title-3); letter-spacing: var(--tr-title-3);
+}
+.pal-input::placeholder { color: var(--label-secondary); }
+.pal-input:focus, .pal-input:focus-visible { box-shadow: none; outline: none; }
+.pal-esc {
+  flex: none; height: 24px; padding-inline: 8px; border-radius: 6px; font-size: var(--text-caption); font-weight: 600;
+  color: var(--label-secondary); background: var(--fill-3); letter-spacing: 0.02em;
+}
+.pal-esc:hover { background: var(--fill-2); color: var(--label); }
+
+/* results */
+.pal-list { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: 6px 8px 8px; scroll-padding-block: 30px 8px; }
+.pal-group + .pal-group { margin-top: 4px; }
+.pal-group [cmdk-group-heading] { padding: 10px 10px 4px; font-size: var(--text-caption); line-height: var(--lh-caption); font-weight: 600; color: var(--label-secondary); }
+.pal-opt {
+  display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; column-gap: 12px;
+  min-height: 44px; padding: 6px 10px; border-radius: 10px; cursor: default; color: var(--label);
+}
+.pal-icon {
+  width: 28px; height: 28px; border-radius: 7px; display: grid; place-items: center;
+  background: var(--fill-3); color: var(--label-secondary);
+}
+.pal-icon svg { width: 16px; height: 16px; }
+.pal-icon.is-stop { background: var(--loss-wash); color: var(--loss-ink); }
+.pal-icon.is-crypto, .pal-icon.is-spot { background: var(--accent-wash); color: var(--accent-ink); }
+.pal-icon.is-commodity { background: var(--warning-wash); color: var(--warning-ink); }
+.pal-text { display: grid; min-width: 0; }
+.pal-label { font-size: var(--text-subheadline); line-height: var(--lh-subheadline); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pal-label b { font-weight: 700; }
+.pal-inst { font-family: var(--font-num); font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
+.pal-sub { font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pal-end { display: inline-flex; align-items: center; gap: 8px; justify-self: end; }
+.pal-area { font-size: var(--text-footnote); color: var(--label-secondary); white-space: nowrap; }
+.pal-hint { display: none; font-size: var(--text-footnote); white-space: nowrap; }
+.pal-enter { display: none; }
+.pal-enter svg { width: 15px; height: 15px; }
+.pal-badge { display: inline-flex; align-items: center; height: 20px; padding-inline: 7px; border-radius: var(--radius-full); font-size: var(--text-caption); font-weight: 600; background: var(--fill-3); color: var(--label-secondary); white-space: nowrap; }
+.pal-badge.is-suspend { background: var(--warning-wash); color: var(--warning-ink); }
+.pal-state { font-size: var(--text-footnote); color: var(--label-secondary); white-space: nowrap; }
+.pal-opt[data-selected='true'] .pal-state { color: var(--on-solid); }
+
+/* the chosen row: the menu's blue, white text, its icon on a white tile */
+.pal-opt[data-selected='true'] { background: var(--accent-solid); color: var(--on-solid); }
+.pal-opt[data-selected='true'] .pal-sub, .pal-opt[data-selected='true'] .pal-area, .pal-opt[data-selected='true'] .pal-hint { color: var(--on-solid); }   /* 4.7:1 on the blue; 86% white would be 3.8:1 */
+.pal-opt[data-selected='true'] .pal-icon { background: color-mix(in srgb, var(--on-solid) 22%, transparent); color: var(--on-solid); }
+.pal-opt[data-selected='true'] .pal-icon.is-stop { background: var(--on-solid); color: var(--destructive-solid); }
+.pal-opt[data-selected='true'] .pal-enter { display: inline-grid; color: var(--on-solid); }
+.pal-opt[data-selected='true'].is-inst .pal-hint { display: inline; }
+.pal-opt[data-selected='true'] .pal-badge { background: color-mix(in srgb, var(--on-solid) 22%, transparent); color: var(--on-solid); }
+.pal-opt.is-disabled { opacity: 0.5; }
+.pal-opt.is-disabled .pal-label { color: var(--label-secondary); }
+
+.pal-status { display: flex; align-items: center; gap: 10px; min-height: 40px; padding-block: 6px; padding-inline: 50px 10px; font-size: var(--text-footnote); color: var(--label-secondary); }
+.pal-status .spinner { width: 14px; height: 14px; }
+.pal-status svg { width: 16px; height: 16px; flex: none; }
+.pal-status.is-error { color: var(--label); }
+.pal-status.is-error svg { color: var(--warning-ink); }
+.pal-empty { display: grid; justify-items: center; gap: 4px; padding: 40px 24px 44px; text-align: center; }
+.pal-empty-icon { width: 30px; height: 30px; color: var(--label-tertiary); margin-bottom: 6px; stroke-width: 1.5; }
+.pal-empty-title { font-size: var(--text-callout); line-height: var(--lh-callout); font-weight: 600; color: var(--label); }
+.pal-empty-body { font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+
+/* the keys */
+.pal-foot {
+  display: flex; align-items: center; gap: 18px; min-height: 38px; padding-inline: 18px;
+  border-top: 0.5px solid var(--separator); font-size: var(--text-caption); color: var(--label-secondary);
+  background: color-mix(in srgb, var(--fill-4) 60%, transparent);
+}
+.pal-keys { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.pal-keys > span { margin-inline-start: 3px; }
+.pal-keys-end { margin-inline-start: auto; }
+.pal-kbd {
+  display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding-inline: 5px; border-radius: 5px;
+  font-family: var(--font-sans); font-size: 11px; font-weight: 600; line-height: 1; color: var(--label);
+  background: var(--bg-elevated); box-shadow: 0 0 0 0.5px var(--separator-strong), 0 1px 0 var(--separator-strong);
+}
+.dark .pal-kbd { background: var(--fill-2); }
+
+/* the sidebar's search capsule: the palette's door */
+.sb-search {
+  margin-inline-start: auto; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding-inline: 8px 6px;
+  border-radius: var(--radius-full); color: var(--label-secondary);
+  background: var(--fill-4); box-shadow: inset 0 0 0 0.5px var(--hairline-color);
+}
+.sb-search:hover { background: var(--fill-3); color: var(--label); }
+.sb-search svg { width: 15px; height: 15px; stroke-width: 1.75; }
+.sb-search kbd { font-family: var(--font-sans); font-size: 11px; font-weight: 600; letter-spacing: 0.02em; color: inherit; }
+
+@media (max-width: 640px) {
+  .pal { top: 12px; max-height: calc(100dvh - 24px); }
+  .pal-foot { display: none; }
+  .pal-area { display: none; }
+  .pal-opt[data-selected='true'].is-inst .pal-hint { display: none; }
+  .pal-search { padding-inline: 16px 10px; }
+}
+.menu-keys { margin-inline-start: auto; font-family: var(--font-sans); font-size: 11px; font-weight: 600; color: var(--label-secondary); }
+[data-highlighted] .menu-keys { color: var(--on-solid); }
+
+/* cmdk wraps the panel; it fills the dialog so the list can scroll */
+.pal-cmd { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+.pal-list [cmdk-list-sizer] { display: block; }
+.pal-search-icon { stroke-width: 1.75; }
+.pal-empty-icon { stroke-width: 1.5; }
+.pal:focus { outline: none; }
+@keyframes pal-fade { from { opacity: 0; } to { opacity: 1; } }

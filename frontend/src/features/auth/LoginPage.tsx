@@ -1,17 +1,20 @@
-import { Check, Clock, Copy, Info, Lock, RefreshCw, ServerOff } from 'lucide-react'
+import { Clock, ClockAlert, Info, Lock, RefreshCw, ServerOff } from 'lucide-react'
 import { MotionConfig, motion } from 'motion/react'
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Navigate, useNavigate, useSearchParams } from 'react-router'
 import { RiskFooter } from '../../app/shell/RiskFooter'
 import { LanguageButton, ThemeMenu, ToolbarGroup } from '../../app/shell/Prefs'
-import { ApiError } from '../../lib/api'
 import { AppIcon, Button, SecureField, Seal, TextField } from '../../ui'
 import { FADE } from '../../ui/motion'
-import { safeNextPath, useAuthStatus, useLogin, useSession } from './session'
+import { CommandChip, Notice } from './loginParts'
+import { retryAfterSeconds, safeNextPath, useAuthStatus, useLogin, useSession } from './session'
+import { TwoFactorStep, type CodeMode } from './TwoFactorStep'
 
 const CREATE_OWNER_COMMAND = './atlas create-owner'
-const COPIED_FEEDBACK_MS = 2000
+
+/** password → (two-factor owners) the code step, or its recovery-code form. */
+type Step = 'password' | CodeMode
 
 interface FieldErrors {
   email?: string
@@ -21,7 +24,8 @@ interface FieldErrors {
 /**
  * /login (design: js/pages/login.js, css/auth.css). Centred 380px column over a faint
  * seal: app icon, "Atlas", the form. States: first run (no owner yet), wrong password,
- * throttled (429 countdown), locked after idle, server unreachable.
+ * throttled (429 countdown), locked after idle, server unreachable. ATL-248: when the owner has
+ * two-factor sign-in on, a right password opens the code step (TwoFactorStep) instead.
  */
 export function LoginPage() {
   const { t } = useTranslation(['auth', 'common'])
@@ -39,6 +43,10 @@ export function LoginPage() {
   const [errors, setErrors] = useState<FieldErrors>({})
   const [retryIn, setRetryIn] = useState(0)
   const [failed, setFailed] = useState(false)
+  // null until the owner acts: then a reload with a live challenge (ATL-246 two_factor_pending)
+  // opens straight on the code step.
+  const [chosenStep, setStep] = useState<Step | null>(null)
+  const [expired, setExpired] = useState(false)
   const emailRef = useRef<HTMLInputElement>(null)
   const passwordRef = useRef<HTMLInputElement>(null)
 
@@ -50,14 +58,16 @@ export function LoginPage() {
   }, [retryIn])
 
   const firstRun = status.data?.owner_exists === false
+  const step: Step = chosenStep ?? (status.data?.two_factor_pending ? 'code' : 'password')
   const serverDown =
     (status.isError && status.error.network) || (login.isError && login.error.network) || (session.isError && session.error.network)
 
   useEffect(() => {
-    if (firstRun) return
-    if (errors.password) passwordRef.current?.focus()
+    if (firstRun || step !== 'password') return
+    if (expired) passwordRef.current?.focus()
+    else if (errors.password) passwordRef.current?.focus()
     else if (errors.email) emailRef.current?.focus()
-  }, [errors, firstRun])
+  }, [errors, firstRun, step, expired])
 
   if (session.data) return <Navigate to={next} replace />
 
@@ -73,11 +83,17 @@ export function LoginPage() {
     setErrors(found)
     setFailed(false)
     if (found.email || found.password) return
+    setExpired(false)
 
     login.mutate(
       { email: email.trim(), password },
       {
-        onSuccess: () => {
+        onSuccess: (result) => {
+          if (result.kind === 'two_factor') {
+            setPassword('')
+            setStep('code')
+            return
+          }
           void navigate(next, { replace: true })
         },
         onError: (err) => {
@@ -126,7 +142,9 @@ export function LoginPage() {
               <h1 id="auth-title" className="text-large-title text-label">
                 {t('common:appName')}
               </h1>
-              <p className="text-callout text-label-secondary">{firstRun ? t('first.title') : t('lead')}</p>
+              <p className="text-callout text-label-secondary">
+                {firstRun ? t('first.title') : step === 'code' ? t('tf.lead') : step === 'recovery' ? t('tf.leadRecovery') : t('lead')}
+              </p>
             </motion.div>
 
             <motion.div
@@ -137,9 +155,28 @@ export function LoginPage() {
             >
               {firstRun ? (
                 <FirstRun onCheck={() => void status.refetch()} checking={status.isFetching} />
+              ) : step !== 'password' ? (
+                <TwoFactorStep
+                  mode={step}
+                  onModeChange={setStep}
+                  onSignedIn={() => void navigate(next, { replace: true })}
+                  onExpired={() => {
+                    setPassword('')
+                    setErrors({})
+                    setExpired(true)
+                    setStep('password')
+                  }}
+                  onBack={() => {
+                    setPassword('')
+                    setErrors({})
+                    setStep('password')
+                  }}
+                />
               ) : (
                 <>
-                  {serverDown ? (
+                  {expired ? (
+                    <Notice tone="info" icon={<ClockAlert />} title={t('tf.expired.title')} body={t('tf.expired.body')} />
+                  ) : serverDown ? (
                     <Notice tone="error" icon={<ServerOff />} title={t('down.title')} body={t('down.body')} />
                   ) : idleLocked ? (
                     <Notice tone="info" icon={<Lock />} title={t('locked.title')} body={t('locked.body')} />
@@ -191,75 +228,12 @@ export function LoginPage() {
   )
 }
 
-function retryAfterSeconds(err: ApiError): number {
-  const header = Number(err.headers?.get('Retry-After'))
-  return Number.isFinite(header) && header > 0 ? Math.ceil(header) : 60
-}
-
-function Notice({ tone, icon, title, body }: { tone: 'info' | 'error'; icon: ReactNode; title: string; body?: string }) {
-  return (
-    <div
-      role={tone === 'error' ? 'alert' : 'status'}
-      className={
-        'flex items-start gap-3 rounded-card px-4 py-3.5 text-start shadow-[inset_0_0_0_0.5px_var(--hairline-color)] ' +
-        (tone === 'error' ? 'bg-loss-wash' : 'bg-fill-4')
-      }
-    >
-      <span aria-hidden="true" className={'mt-px shrink-0 [&_svg]:size-5 [&_svg]:stroke-[1.5] ' + (tone === 'error' ? 'text-loss-ink' : 'text-accent')}>
-        {icon}
-      </span>
-      <div>
-        <p className="text-subheadline font-semibold text-label">{title}</p>
-        {body && <p className="mt-0.5 text-footnote text-label-secondary">{body}</p>}
-      </div>
-    </div>
-  )
-}
-
 function FirstRun({ onCheck, checking }: { onCheck: () => void; checking: boolean }) {
   const { t } = useTranslation('auth')
-  const [copied, setCopied] = useState(false)
-
-  useEffect(() => {
-    if (!copied) return
-    const id = setTimeout(() => setCopied(false), COPIED_FEEDBACK_MS)
-    return () => clearTimeout(id)
-  }, [copied])
-
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(CREATE_OWNER_COMMAND)
-      setCopied(true)
-    } catch {
-      // Clipboard blocked: the command stays selectable on screen.
-    }
-  }
-
   return (
     <div className="grid justify-items-start gap-3.5 rounded-panel bg-background-elevated p-5 text-start shadow-[0_0_0_0.5px_var(--hairline-color),var(--ui-shadow-2)]">
       <p className="text-subheadline text-label">{t('first.body')}</p>
-      <span
-        dir="ltr"
-        className="inline-flex items-center gap-2 rounded-[8px] bg-background-secondary py-2 ps-3.5 pe-2 font-mono text-subheadline text-label shadow-[inset_0_0_0_0.5px_var(--hairline-color)]"
-      >
-        <code className="select-all">{CREATE_OWNER_COMMAND}</code>
-        <button
-          type="button"
-          onClick={() => void copy()}
-          aria-label={copied ? t('first.copied') : t('first.copy')}
-          title={copied ? t('first.copied') : t('first.copy')}
-          className="grid size-[26px] place-items-center rounded-[6px] text-label-secondary hover:bg-fill-2 hover:text-label focus-visible:shadow-focus"
-        >
-          {copied ? (
-            <Check aria-hidden="true" className="size-4 text-profit-ink" strokeWidth={1.5} />
-          ) : (
-            <Copy aria-hidden="true" className="size-4" strokeWidth={1.5} />
-          )}
-        </button>
-      </span>
-      <p role="status" className="sr-only">
-        {copied ? t('first.copied') : ''}
-      </p>
+      <CommandChip command={CREATE_OWNER_COMMAND} />
       <p className="text-subheadline text-label-secondary">{t('first.after')}</p>
       <Button size="lg" className="mt-1 w-full" icon={<RefreshCw />} loading={checking} onClick={onCheck}>
         {t('first.check')}
