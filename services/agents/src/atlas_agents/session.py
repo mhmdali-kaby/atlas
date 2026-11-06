@@ -243,6 +243,7 @@ class AgentSession:
         self._last_total_cost: Decimal = Decimal(0)
         self._rate_limited_until: datetime | None = None
         self._next_spec: AgentSpec | None = None
+        self._next_prompt: tuple[int | None, Callable[[], str] | None] | None = None
 
     # -- settings (ATL-114) -----------------------------------------------------------------------
 
@@ -254,7 +255,22 @@ class AgentSession:
             raise ValueError(f"spec for [{spec.slug}] given to the session of [{self.spec.slug}]")
         self._next_spec = spec
 
+    def update_prompt(self, prompt_version: int | None, system_prompt: Callable[[], str] | None) -> None:
+        """Take another prompt (an owner pin or its removal, ATL-252) at the start of the next run,
+        never during one. The open client is disconnected then, so the next connect renders it."""
+        self._next_prompt = (prompt_version, system_prompt)
+
+    async def _apply_pending_prompt(self) -> None:
+        pending, self._next_prompt = self._next_prompt, None
+        if pending is None:
+            return
+        self.prompt_version, self._system_prompt = pending
+        if self._client is not None:
+            log.info("agent %s: prompt version now %s; reconnecting", self.spec.slug, self.prompt_version)
+            await self.close()
+
     async def _apply_pending_spec(self) -> None:
+        await self._apply_pending_prompt()
         spec, self._next_spec = self._next_spec, None
         if spec is None:
             return

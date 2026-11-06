@@ -70,6 +70,12 @@ class PromptSource:
     def body(self) -> str:
         return self.preamble + self.role
 
+    @classmethod
+    def stored(cls, agent: str, body: str, sha256: str) -> PromptSource:
+        """A ``prompt_versions`` body (preamble + role as stored, ATL-252). The stored body is not
+        split: it is held whole in ``preamble`` and ``role`` is empty."""
+        return cls(agent=agent, preamble=body, role="", sha256=sha256)
+
 
 @dataclass(frozen=True)
 class ScoreLine:
@@ -209,12 +215,10 @@ def render(
     """The full system prompt: preamble, role, Current settings, Your last 7 days scorecard."""
     src = source or load_source(agent_slug, prompts_dir)
     values = variables(ctx)
-    parts = [
-        fill(src.preamble, values, agent=agent_slug).rstrip("\n"),
-        fill(src.role, values, agent=agent_slug).rstrip("\n"),
-        settings_block(ctx),
-        scorecard_block(ctx),
-    ]
+    parts = [fill(src.preamble, values, agent=agent_slug).rstrip("\n")]
+    if src.role:  # empty for a stored (pinned) body, which holds preamble + role in one
+        parts.append(fill(src.role, values, agent=agent_slug).rstrip("\n"))
+    parts += [settings_block(ctx), scorecard_block(ctx)]
     out = "\n\n".join(parts) + "\n"
     if "{{" in out:  # generated blocks hold only numbers and dates, but never let braces through
         raise PromptError(f"rendered prompt for [{agent_slug}] still contains '{{{{'")
@@ -265,6 +269,19 @@ def load_context(tool_ctx: ToolContext) -> PromptContext:
 def renderer(tool_ctx: ToolContext, source: PromptSource) -> Callable[[], str]:
     """A zero-argument hook that renders ``source`` with fresh settings and scores."""
     return lambda: render(source.agent, load_context(tool_ctx), source=source)
+
+
+def load_stored(engine: Engine, agent: str, version: int) -> PromptSource | None:
+    """``prompt_versions`` row ``version`` of ``agent`` as a source, or None when there is none."""
+    with Session(engine) as db:
+        row = db.execute(
+            select(PromptVersion.body, PromptVersion.sha256).where(
+                PromptVersion.agent == agent, PromptVersion.version == version
+            )
+        ).first()
+    if row is None:
+        return None
+    return PromptSource.stored(agent, str(row.body), str(row.sha256))
 
 
 def sync_versions(
@@ -335,6 +352,7 @@ __all__ = [
     "has_prompt",
     "load_context",
     "load_source",
+    "load_stored",
     "render",
     "renderer",
     "sync_versions",
