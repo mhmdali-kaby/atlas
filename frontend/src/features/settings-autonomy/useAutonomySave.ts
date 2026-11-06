@@ -29,12 +29,16 @@ export interface SheetState {
  * The save rules of Settings → Autonomy (ATL-216, design §4.4). Raising autonomy (to 3 or 4, or a
  * higher amount at 3) opens the turn-on sheet, which saves; lowering saves at once.
  */
-export function useAutonomySave(query: ReturnType<typeof useSettings>, levelsRef: RefObject<HTMLDivElement | null>) {
+export function useAutonomySave(
+  query: ReturnType<typeof useSettings>,
+  levelsRef: RefObject<HTMLDivElement | null>,
+  rowEnv: SettingsDoc['env'] = 'demo',
+) {
   const { t } = useTranslation('settings-autonomy')
   const { t: tAu } = useTranslation('autonomy')
   const lang = useLang()
   const client = useQueryClient()
-  const save = useSaveSettings('demo')
+  const save = useSaveSettings(rowEnv)
   const doc = query.data?.data
 
   const [sheet, setSheet] = useState<SheetState | null>(null)
@@ -55,12 +59,12 @@ export function useAutonomySave(query: ReturnType<typeof useSettings>, levelsRef
   const saved = (title: string, body: string) => {
     setFlash((f) => f + 1)
     toast({ tone: 'success', title, body })
-    void client.invalidateQueries({ queryKey: historyKey('demo') })
+    void client.invalidateQueries({ queryKey: historyKey(rowEnv) })
   }
 
   const conflict = async (err: ApiError): Promise<number | null> => {
     const fresh = await query.refetch()
-    void client.invalidateQueries({ queryKey: historyKey('demo') })
+    void client.invalidateQueries({ queryKey: historyKey(rowEnv) })
     return fresh.data?.data.version ?? (err.body as { current_version?: number } | null)?.current_version ?? null
   }
 
@@ -87,7 +91,7 @@ export function useAutonomySave(query: ReturnType<typeof useSettings>, levelsRef
           const field = fieldErrors(err)[ASK_FIELD]
           if (field && onFieldError) return onFieldError(field)
           if (err instanceof ApiError && err.status === 409) await conflict(err)
-          const level = client.getQueryData<{ data: SettingsDoc }>(settingsKey('demo'))?.data.settings.autonomy_level ?? doc.settings.autonomy_level
+          const level = client.getQueryData<{ data: SettingsDoc }>(settingsKey(rowEnv))?.data.settings.autonomy_level ?? doc.settings.autonomy_level
           toast({ tone: 'error', title: t('t.fail'), body: t('t.failBody', { n: formatFixed(level, 0, lang) }) })
         },
       },
@@ -155,8 +159,12 @@ export function useAutonomySave(query: ReturnType<typeof useSettings>, levelsRef
             )
         },
         onError: async (err) => {
-          const field = fieldErrors(err)[ASK_FIELD]
+          const errors = fieldErrors(err)
+          const field = errors[ASK_FIELD]
           if (field) return setSheetError(field)
+          // ATL-238: live autonomy above 2 during the first live month, in the API's own words.
+          const refused = errors.autonomy_level
+          if (refused) return setSheetNotice({ kind: 'refused', message: refused })
           if (err instanceof ApiError && err.status === 409) {
             const v = await conflict(err)
             if (v !== null) return setSheetNotice({ kind: 'conflict', version: v })

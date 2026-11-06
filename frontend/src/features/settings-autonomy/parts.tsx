@@ -7,6 +7,7 @@ import { MoneyFig } from '../onboarding'
 import { useLang } from '../portfolio/hooks'
 import { formatDayTime } from '../portfolio/time'
 import { fill } from '../settings-money/parts'
+import { EnvScopeControl, type EnvScope } from '../settings-risk/EnvScope'
 import type { HistoryEntry } from '../settings-risk/model'
 import { ASK_FIELD } from './model'
 
@@ -24,7 +25,7 @@ export function Section({ id, title, note, children }: { id: string; title: stri
   )
 }
 
-export function PaneHeader({ version }: { version: number | null }) {
+export function PaneHeader({ version, scope }: { version: number | null; scope: EnvScope }) {
   const { t } = useTranslation('settings-autonomy')
   const lang = useLang()
   return (
@@ -36,11 +37,14 @@ export function PaneHeader({ version }: { version: number | null }) {
         <h2 className="text-title-2">{t('nav')}</h2>
         <p className="max-w-[54ch] text-subheadline text-label-secondary">{t('intro')}</p>
       </div>
-      {version !== null && (
-        <span className="st-version" data-testid="settings-version">
-          {t('version', { v: formatFixed(version, 0, lang) })}
-        </span>
-      )}
+      <div className="lv-aside">
+        {version !== null && (
+          <span className="st-version" data-testid="settings-version">
+            {t('version', { v: formatFixed(version, 0, lang) })}
+          </span>
+        )}
+        <EnvScopeControl scope={scope} />
+      </div>
     </header>
   )
 }
