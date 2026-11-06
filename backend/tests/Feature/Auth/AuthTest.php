@@ -139,7 +139,7 @@ it('puts security headers on every API response, including errors', function (st
 it('reports owner_exists false on a fresh database, without a session', function (): void {
     $this->getJson('/api/auth/status')
         ->assertOk()
-        ->assertExactJson(['owner_exists' => false]);
+        ->assertExactJson(['owner_exists' => false, 'two_factor_pending' => false]);
 });
 
 it('reports owner_exists true after atlas:create-owner and leaks nothing else', function (): void {
@@ -152,7 +152,7 @@ it('reports owner_exists true after atlas:create-owner and leaks nothing else', 
 
     $response = $this->getJson('/api/auth/status')
         ->assertOk()
-        ->assertExactJson(['owner_exists' => true]);
+        ->assertExactJson(['owner_exists' => true, 'two_factor_pending' => false]);
 
     expect($response->getContent())->not->toContain('owner@atlas.test')->not->toContain('Mohammed');
 });

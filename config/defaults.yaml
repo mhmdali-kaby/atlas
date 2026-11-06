@@ -492,6 +492,10 @@ two_factor:
   recovery_codes: 8
   # Enrolment writes (start, confirm, regenerate, disable) per user per minute.
   attempts_per_minute: 5
+  # ATL-246: minutes a correct password waits for its code at sign-in before the owner must start again.
+  challenge_minutes: 5
+  # ATL-246: sign-in code / recovery-code attempts per minute, per session + client IP.
+  challenge_attempts_per_minute: 5
   qr_size_px: 192
 
 # ATL-13, brief §18: `php artisan atlas:doctor` thresholds.
