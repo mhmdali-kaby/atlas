@@ -36,6 +36,7 @@ return [
     // ATL-222: SettingsLabels composes these two for agents.<slug>.<setting> and
     // notifications.<event>.<channel>, so nine agents and eleven events don't need 69 separate
     // attribute translations.
+    'prompt_version_unknown' => 'Prompt version :version is not one of this agent\'s saved versions.',
     'attr_agent_setting' => ':agent: :setting',
     'attr_notification' => ':event: :channel',
 
@@ -59,6 +60,7 @@ return [
         'model' => 'model',
         'daily_tokens' => 'daily tokens',
         'daily_turns' => 'daily turns',
+        'prompt_version' => 'prompt version',
     ],
 
     // Brief §17's eleven notification events (config/defaults.yaml notifications.events).

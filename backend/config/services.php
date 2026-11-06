@@ -47,6 +47,12 @@ return [
         'bin' => env('ATLAS_CLAUDE_BIN'),
     ],
 
+    // ATL-251: the agents' prompt files (services/agents/prompts), read only to tell which stored
+    // prompt_versions row is the current file. Never served: the API returns stored bodies only.
+    'agent_prompts' => [
+        'dir' => env('ATLAS_AGENT_PROMPTS_DIR', base_path('../services/agents/prompts')),
+    ],
+
     // ATL-231, decision #255 (3): the pg_dump `php artisan atlas:backup` runs. Its major version
     // must be at least the server's (PostgreSQL 16); Homebrew's libpq ships one
     // (/opt/homebrew/opt/libpq/bin/pg_dump).

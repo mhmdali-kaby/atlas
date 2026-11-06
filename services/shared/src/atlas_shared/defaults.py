@@ -484,6 +484,12 @@ DEFAULTS: Final[dict[str, Any]] = {
     "internal_api": {
         "max_body_bytes": 1048576,
     },
+    "two_factor": {
+        "window": 1,
+        "recovery_codes": 8,
+        "attempts_per_minute": 5,
+        "qr_size_px": 192,
+    },
     "doctor": {
         "max_clock_drift_ms": 2000,
         "min_free_disk_gb": 5,
