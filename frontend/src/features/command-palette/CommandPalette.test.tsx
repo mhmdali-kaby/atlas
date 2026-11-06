@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, render, renderHook, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createMemoryRouter, RouterProvider, useLocation } from 'react-router'
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -143,6 +143,34 @@ describe('opening and closing', () => {
     await user.keyboard('{Meta>}k{/Meta}')
     await waitFor(() => expect(palette()).not.toBeInTheDocument())
     expect(screen.getByTestId('palette-open')).toHaveFocus()
+  })
+})
+
+describe('Ctrl+K on an Arabic keyboard layout (ATL-257)', () => {
+  it('opens on Ctrl + physical K even when the layout types ن', async () => {
+    renderShell()
+    expect(palette()).not.toBeInTheDocument()
+    fireEvent(window, new KeyboardEvent('keydown', { key: 'ن', code: 'KeyK', ctrlKey: true, bubbles: true, cancelable: true }))
+    expect(await screen.findByTestId('command-palette')).toBeInTheDocument()
+  })
+
+  it('still opens for {key: "k", code: "KeyK", metaKey: true}', async () => {
+    renderShell()
+    fireEvent(window, new KeyboardEvent('keydown', { key: 'k', code: 'KeyK', metaKey: true, bubbles: true, cancelable: true }))
+    expect(await screen.findByTestId('command-palette')).toBeInTheDocument()
+  })
+
+  it('still opens for {key: "k", code: "KeyK", ctrlKey: true}', async () => {
+    renderShell()
+    fireEvent(window, new KeyboardEvent('keydown', { key: 'k', code: 'KeyK', ctrlKey: true, bubbles: true, cancelable: true }))
+    expect(await screen.findByTestId('command-palette')).toBeInTheDocument()
+  })
+
+  it('plain k with no modifier does not open it', async () => {
+    renderShell()
+    fireEvent(window, new KeyboardEvent('keydown', { key: 'k', code: 'KeyK', bubbles: true, cancelable: true }))
+    await new Promise((r) => setTimeout(r, 10))
+    expect(palette()).not.toBeInTheDocument()
   })
 })
 
