@@ -16,6 +16,7 @@ import { Medallion } from '../warroom/Medallion'
 import '../warroom/warroom.css'
 import { AgentActivity } from './Activity'
 import { DomainList } from './DomainList'
+import { PromptRow } from './PromptRow'
 import {
   ALIAS,
   BOUNDS,
@@ -415,6 +416,7 @@ const AgentSection = memo(function AgentSection({
             />
           )
         })}
+        <PromptRow slug={slug} />
       </div>
       {!on && (
         <p className="sa-group-note sa-offnote">

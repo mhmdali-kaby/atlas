@@ -1,0 +1,139 @@
+/*
+ * Settings → Agents → Prompt history (brief §14.7; design v22 css/prompts.css). A version rail
+ * beside the text. The text is always left to right (the prompts are English). No new colours
+ * or type sizes.
+ */
+.pmt-page { display: grid; gap: 18px; align-content: start; }
+.pmt-back { justify-self: start; margin-inline-start: -8px; margin-bottom: -6px; }
+.pmt-back svg { width: 15px; height: 15px; }
+.pmt-head { display: flex; align-items: flex-start; gap: 16px 24px; flex-wrap: wrap; }
+.pmt-head-main { display: flex; align-items: center; gap: 16px; flex: 1 1 520px; min-width: 0; }
+.pmt-head-text { display: grid; gap: 2px; min-width: 0; }
+.pmt-head-text p { max-width: 70ch; }
+
+/* the agent pop-up: medallion, name, chevrons (an NSPopUpButton) */
+.pmt-pick {
+  position: relative; display: inline-flex; align-items: center; gap: 8px; height: 34px; padding-inline: 8px 30px;
+  border-radius: 8px; background: var(--field-bg); box-shadow: 0 0 0 0.5px var(--field-border), var(--shadow-1);
+  font-size: var(--text-subheadline); color: var(--label); flex: none;
+}
+:root.dark .pmt-pick { background: var(--fill-2); }
+.pmt-pick select { appearance: none; -webkit-appearance: none; border: 0; background: none; font: inherit; font-weight: 600; color: inherit; padding: 0; cursor: default; outline: none; }
+.pmt-pick:focus-within { box-shadow: 0 0 0 1px var(--accent), var(--focus-ring); }
+.pmt-pick-caret { position: absolute; inset-inline-end: 8px; width: 14px; height: 14px; color: var(--label-secondary); pointer-events: none; }
+
+/* which version the agent uses, in one line */
+.pmt-status {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; border-radius: var(--radius-card);
+  background: var(--bg-grouped-row); box-shadow: 0 0 0 0.5px var(--hairline-color);
+  font-size: var(--text-subheadline); line-height: var(--lh-subheadline); color: var(--label);
+}
+.pmt-status > svg { width: 17px; height: 17px; color: var(--profit-ink); flex: none; }
+.pmt-status > span { flex: 1 1 220px; min-width: 0; }
+.pmt-status.is-pinned { background: var(--accent-wash); box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--accent) 30%, transparent); }
+.pmt-status.is-pinned > svg { color: var(--accent-ink); }
+
+/* the split: rail | text */
+.pmt-split { display: grid; grid-template-columns: minmax(260px, 320px) minmax(0, 1fr); gap: 20px; align-items: start; }
+.pmt-rail { position: sticky; top: 16px; }
+.pmt-rail ol { position: relative; display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+/* the rail line runs through every dot */
+.pmt-rail ol::before { content: ""; position: absolute; top: 26px; bottom: 26px; inset-inline-start: 21px; width: 1.5px; border-radius: 1px; background: var(--separator); }
+.pmt-node-btn {
+  position: relative; width: 100%; display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; align-items: start;
+  padding-block: 10px; padding-inline: 10px 12px; border-radius: var(--radius-card); color: var(--label); text-align: start;
+}
+.pmt-node-btn:hover { background: var(--fill-4); }
+.pmt-node-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.pmt-node.is-sel .pmt-node-btn { background: var(--bg-grouped-row); box-shadow: 0 0 0 0.5px var(--hairline-color), var(--shadow-1); }
+.pmt-dot { position: relative; z-index: 1; width: 12px; height: 12px; margin-block-start: 5px; margin-inline-start: 6px; border-radius: 50%; background: var(--bg-grouped); box-shadow: inset 0 0 0 1.5px var(--separator-strong); }
+.pmt-node.is-use .pmt-dot { background: var(--profit); box-shadow: 0 0 0 3px var(--profit-wash); }
+.pmt-node.is-sel:not(.is-use) .pmt-dot { box-shadow: inset 0 0 0 1.5px var(--accent); background: var(--bg-grouped-row); }
+.pmt-node-main { display: grid; gap: 2px; min-width: 0; }
+.pmt-node-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.pmt-node-name { font-size: var(--text-subheadline); line-height: var(--lh-subheadline); font-weight: 600; }
+.pmt-badge {
+  display: inline-flex; align-items: center; gap: 3px; height: 20px; padding-inline: 7px; border-radius: var(--radius-full);
+  font-size: var(--text-caption); line-height: 1; font-weight: 600;
+}
+.pmt-badge svg { width: 11px; height: 11px; stroke-width: 2; }
+.pmt-badge.is-use { background: var(--profit-wash); color: var(--profit-ink); }
+.pmt-badge.is-file { box-shadow: inset 0 0 0 1px var(--separator); color: var(--label-secondary); }
+.pmt-node-meta { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.pmt-node-meta code, .pmt-view-meta code, .pmt-sheet-fact code { font-family: var(--font-mono); font-size: 0.92em; color: var(--label-secondary); }
+.pmt-node-delta { font-size: var(--text-caption); line-height: var(--lh-caption); color: var(--label-secondary); }
+.pmt-add { color: var(--profit-ink); }
+.pmt-rem { color: var(--loss-ink); }
+.pmt-rail-sk { display: grid; gap: 8px; }
+
+/* the text */
+.pmt-view { min-width: 0; display: grid; gap: 12px; padding: 16px 18px 18px; border-radius: var(--radius-panel); background: var(--bg-grouped-row); box-shadow: 0 0 0 0.5px var(--hairline-color); }
+.pmt-view-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px 16px; flex-wrap: wrap; }
+.pmt-view-title { display: grid; gap: 2px; min-width: 0; }
+.pmt-view-meta { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.pmt-view-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pmt-from { display: inline-flex; align-items: center; gap: 8px; font-size: var(--text-footnote); color: var(--label-secondary); }
+.pmt-select { position: relative; display: inline-flex; align-items: center; }
+.pmt-select select {
+  appearance: none; -webkit-appearance: none; height: 28px; padding-inline: 10px 28px; border-radius: 7px; border: 0;
+  background: var(--fill-3); font: inherit; font-size: var(--text-footnote); font-weight: 600; color: var(--label);
+}
+.pmt-select svg { position: absolute; inset-inline-end: 7px; width: 13px; height: 13px; color: var(--label-secondary); pointer-events: none; }
+.pmt-select select:focus-visible { box-shadow: var(--focus-ring); outline: none; }
+.pmt-counts { display: flex; gap: 12px; font-size: var(--text-footnote); font-weight: 600; }
+.pmt-only { display: flex; gap: 8px; align-items: flex-start; font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.pmt-only svg { width: 15px; height: 15px; flex: none; margin-top: 1.5px; }
+.pmt-same { font-size: var(--text-subheadline); color: var(--label-secondary); }
+.pmt-text-sk { display: grid; gap: 10px; padding: 6px 0; }
+.pmt-text-err { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: var(--text-subheadline); color: var(--loss-ink); }
+
+.pmt-text {
+  max-height: min(70vh, 900px); overflow: auto; border-radius: var(--radius-card); background: var(--bg-secondary);
+  box-shadow: inset 0 0 0 0.5px var(--hairline-color); padding-block: 10px; text-align: start;
+  font-family: var(--font-mono); font-size: var(--text-footnote); line-height: 1.6; color: var(--label);
+}
+:root.dark .pmt-text { background: var(--fill-4); }
+.pmt-text ol { margin: 0; padding: 0; list-style: none; }
+.pmt-lines li, .pmt-difflines li:not(.pmt-fold) { display: grid; grid-template-columns: 44px minmax(0, 1fr); align-items: start; }
+.pmt-difflines li:not(.pmt-fold) { grid-template-columns: 38px 38px 20px minmax(0, 1fr); }
+.pmt-ln { padding-inline: 0 12px; text-align: end; color: var(--label-secondary); user-select: none; font-variant-numeric: tabular-nums; }
+.pmt-l { white-space: pre-wrap; overflow-wrap: anywhere; padding-inline-end: 16px; }
+.pmt-sign { text-align: center; user-select: none; font-weight: 700; }
+.pmt-d.is-add { background: color-mix(in srgb, var(--profit) 13%, transparent); }
+.pmt-d.is-add .pmt-sign { color: var(--profit-ink); }
+.pmt-d.is-rem { background: color-mix(in srgb, var(--loss) 11%, transparent); }
+.pmt-d.is-rem .pmt-sign { color: var(--loss-ink); }
+.pmt-d.is-rem .pmt-l { text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--loss-ink) 45%, transparent); }
+.pmt-fold { padding-block: 2px; }
+.pmt-fold-btn {
+  display: inline-flex; align-items: center; gap: 6px; margin-inline-start: 84px; height: 26px; padding-inline: 8px; border-radius: 6px;
+  font-family: var(--font-sans); font-size: var(--text-caption); font-weight: 600; color: var(--accent-ink); background: var(--accent-wash);
+}
+.pmt-fold-btn:hover { filter: brightness(0.97); }
+.pmt-fold-btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.pmt-fold-btn svg { width: 13px; height: 13px; }
+
+/* the row in Settings → Agents */
+.pmt-row .sa-row-sub { display: flex; align-items: center; gap: 5px; }
+.pmt-row-pin { display: inline-flex; align-items: center; gap: 5px; color: var(--accent-ink); }
+.pmt-row-pin svg { width: 13px; height: 13px; flex: none; }
+
+/* the sheet */
+.pmt-sheet-fact { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border-radius: 10px; background: var(--fill-4); font-size: var(--text-subheadline); }
+.pmt-sheet-fact > svg { width: 17px; height: 17px; color: var(--accent-ink); }
+.pmt-sheet-fact > span:first-of-type { font-weight: 600; }
+
+@media (max-width: 900px) {
+  .pmt-split { grid-template-columns: minmax(0, 1fr); }
+  .pmt-rail { position: static; }
+  .pmt-rail ol { grid-auto-flow: column; grid-auto-columns: minmax(200px, 1fr); overflow-x: auto; gap: 6px; padding-bottom: 4px; }
+  .pmt-rail ol::before { display: none; }
+  .pmt-node-btn { box-shadow: 0 0 0 0.5px var(--hairline-color); background: var(--bg-grouped-row); }
+}
+@media (max-width: 640px) {
+  .pmt-view { padding: 12px; }
+  .pmt-difflines li:not(.pmt-fold) { grid-template-columns: 30px 30px 16px minmax(0, 1fr); }
+  .pmt-fold-btn { margin-inline-start: 62px; }
+  .pmt-lines li { grid-template-columns: 34px minmax(0, 1fr); }
+  .pmt-pick { width: 100%; }
+}
