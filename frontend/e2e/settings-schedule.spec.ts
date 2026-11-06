@@ -27,7 +27,7 @@ const SCHEDULE: Record<string, string | number | boolean> = {
 type Entry = { id: string; version: number; diff: Record<string, { from: unknown; to: unknown }>; changed_by: null; created_at: string }
 
 /** A Laravel that keeps what is PATCHed, so a reload shows the saved version. */
-async function fakeApi(page: Page, zone = 'Asia/Baghdad') {
+async function fakeApi(page: Page, zone = 'Asia/Baghdad', lang: 'en' | 'ar' = 'en') {
   const state = {
     version: 7,
     settings: { risk_profile: 'balanced', ...BALANCED, autonomy_level: 2, onboarding_completed: 1, ...SCHEDULE } as Record<string, unknown>,
@@ -48,8 +48,8 @@ async function fakeApi(page: Page, zone = 'Asia/Baghdad') {
       return route.fulfill({ status: 204, headers: { ...cors, 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': 'GET,POST,PUT,PATCH,DELETE' } })
     if (url.pathname === '/sanctum/csrf-cookie') return json(204)
     if (url.pathname === '/api/auth/status') return json(200, { owner_exists: true })
-    if (url.pathname === '/api/auth/me') return json(200, { data: OWNER })
-    if (url.pathname === '/api/me/preferences') return json(200, { data: { name: OWNER.name, locale: 'en', timezone: zone, theme: 'system' } })
+    if (url.pathname === '/api/auth/me') return json(200, { data: { ...OWNER, locale: lang } })
+    if (url.pathname === '/api/me/preferences') return json(200, { data: { name: OWNER.name, locale: lang, timezone: zone, theme: 'system' } })
     if (url.pathname === '/api/settings/history') return json(200, { data: state.history })
     const doc = () => ({ data: { id: '9f6c', env: 'demo', version: state.version, settings: state.settings, presets: PRESETS, max_enabled_autonomy_level: 4, updated_at: '2026-11-06T08:05:00Z' } })
     if (url.pathname === '/api/settings' && method === 'GET') return json(200, doc())
@@ -137,7 +137,7 @@ for (const lang of ['en', 'ar'] as const) {
     for (const width of [1280, 390]) {
       test(`${lang} ${theme} ${width}px: every schedule key with its saved value`, async ({ page }) => {
         await open(page, lang, theme, width)
-        await fakeApi(page, width === 390 ? 'Europe/London' : 'Asia/Baghdad')
+        await fakeApi(page, width === 390 ? 'Europe/London' : 'Asia/Baghdad', lang)
         await page.goto('/settings/schedule')
         await expect(page.locator('html')).toHaveAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr')
         await expect(every(page)).toHaveValue('30')
@@ -174,6 +174,7 @@ for (const lang of ['en', 'ar'] as const) {
           })
         })
         expect(xs[0]!).toBeLessThan(xs[1]!)
+        await expect(page.getByTestId('sch-dayline').getByTestId('dayline')).toBeVisible()
         if (width === 390) await expect(page.getByTestId('sch-news_morning_brief-alt')).toBeVisible()
         await page.waitForTimeout(600)
         expect(await axe(page)).toEqual([])

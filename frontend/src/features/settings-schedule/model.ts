@@ -1,14 +1,14 @@
+import { zoneOffsetMin } from '../../lib/ownerZone'
 import type { SettingsChanges, SettingsDoc } from '../onboarding'
+import { clock, DAY_MIN, hm, SCHEDULE_DEFAULTS, scheduleFrom as dayScheduleFrom, slots as daySlots, type ScheduleValues } from '../settings-general/dayModel'
+
+export { clock, DAY_MIN, hm }
 
 /*
  * Settings → Schedule (decision 255 (2), ATL-228 keys; design v21 js/pages/settings-schedule.js).
- * Pure maths for the page: every time is a Baghdad wall-clock "HH:MM" (the clock the team keeps);
+ * Pure maths for the page: every time is a team (Baghdad) wall-clock "HH:MM" (the clock the team keeps);
  * the owner's zone only adds a second reading beside each one.
  */
-
-/** The team's clock. Schedules, quiet hours and the weekly review are all set in it. */
-export const TEAM_TZ = 'Asia/Baghdad'
-export const DAY_MIN = 1440
 
 export const JOB_KEYS = ['news_morning_brief', 'historian_regime_table', 'scout_watchlist', 'pm_daily_report'] as const
 export type JobKey = (typeof JOB_KEYS)[number]
@@ -36,37 +36,15 @@ export const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as con
 export type Weekday = (typeof WEEKDAYS)[number]
 export type Weekend = 'allow' | 'no_new_trades'
 
-export interface Schedule {
-  news_morning_brief: string
-  historian_regime_table: string
-  scout_watchlist: string
-  pm_daily_report: string
+/** The DayLine's schedule values plus the two keys only this page edits. */
+export interface Schedule extends ScheduleValues {
   /** "Sun 18:00" */
   historian_weekly_review: string
-  analysis_interval_minutes: number
-  analysis_first_slot: string
-  analysis_last_slot: string
-  quiet_hours_enabled: boolean
-  quiet_hours_start: string
-  quiet_hours_end: string
   stock_perps_weekend: Weekend
 }
 
 /** config/defaults.yaml, for a row saved before ATL-228 (the API fills them too). */
-export const DEFAULTS: Schedule = {
-  news_morning_brief: '07:30',
-  historian_regime_table: '07:30',
-  scout_watchlist: '08:00',
-  pm_daily_report: '23:30',
-  historian_weekly_review: 'Sun 18:00',
-  analysis_interval_minutes: 30,
-  analysis_first_slot: '08:10',
-  analysis_last_slot: '23:00',
-  quiet_hours_enabled: false,
-  quiet_hours_start: '23:00',
-  quiet_hours_end: '07:00',
-  stock_perps_weekend: 'allow',
-}
+export const DEFAULTS: Schedule = { ...SCHEDULE_DEFAULTS, historian_weekly_review: 'Sun 18:00', stock_perps_weekend: 'allow' }
 
 export const INTERVAL = { min: 15, max: 240, step: 15 } as const
 
@@ -77,21 +55,13 @@ export const settingKey = (f: Field) => `schedule.${f}`
 
 export function scheduleFrom(doc: SettingsDoc): Schedule {
   const s = doc.settings as Record<string, unknown>
-  const out = { ...DEFAULTS } as Record<string, unknown>
-  for (const f of FIELDS) {
-    const v = s[settingKey(f)]
-    if (v !== undefined && v !== null) out[f] = v
+  const weekly = s[settingKey(WEEKLY_KEY)]
+  const weekend = s[settingKey('stock_perps_weekend')]
+  return {
+    ...dayScheduleFrom(s),
+    historian_weekly_review: typeof weekly === 'string' && WEEKLY_RE.test(weekly) ? weekly : DEFAULTS.historian_weekly_review,
+    stock_perps_weekend: weekend === 'no_new_trades' ? 'no_new_trades' : 'allow',
   }
-  return out as unknown as Schedule
-}
-
-export const hm = (s: string): number => {
-  const m = TIME_RE.exec(s)
-  return m ? Number(m[1]) * 60 + Number(m[2]) : NaN
-}
-export const clock = (min: number): string => {
-  const m = ((Math.round(min) % DAY_MIN) + DAY_MIN) % DAY_MIN
-  return `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`
 }
 
 export const weeklyParts = (v: string): { day: Weekday; time: string } => {
@@ -99,14 +69,11 @@ export const weeklyParts = (v: string): { day: Weekday; time: string } => {
   return { day: (WEEKDAYS as readonly string[]).includes(day ?? '') ? (day as Weekday) : 'Sun', time: time ?? '' }
 }
 
-/** Analysis slots in Baghdad minutes: first + k × interval up to and including last (ATL-229). */
-export function slots(first: string, last: string, interval: number): number[] {
-  const a = hm(first)
-  const b = hm(last)
-  if (!Number.isFinite(a) || !Number.isFinite(b) || !Number.isInteger(interval) || interval < INTERVAL.min || interval > INTERVAL.max || b <= a) return []
-  const out: number[] = []
-  for (let m = a; m <= b; m += interval) out.push(m)
-  return out
+/** The analysis slots for the preview (dayModel's rule), none while the interval is outside 15–240 or first ≥ last. */
+export function previewSlots(v: ScheduleValues): number[] {
+  const iv = v.analysis_interval_minutes
+  if (!Number.isInteger(iv) || iv < INTERVAL.min || iv > INTERVAL.max || hm(v.analysis_last_slot) <= hm(v.analysis_first_slot)) return []
+  return daySlots(v)
 }
 
 /** "08:10, 08:40 … 22:40": the first two slots, an ellipsis, the last; all of them when three or fewer. */
@@ -218,27 +185,6 @@ export function scheduleErrors(byKey: Partial<Record<string, string>>): Partial<
 
 /* ---------------------------------------------------------------- zones */
 
-/** The zone's UTC offset in minutes at that moment (from Intl's "GMT+3:30"). */
-export function offsetMin(zone: string, at: number): number {
-  try {
-    const part = new Intl.DateTimeFormat('en-US', { timeZone: zone, timeZoneName: 'longOffset' })
-      .formatToParts(new Date(at))
-      .find((p) => p.type === 'timeZoneName')?.value
-    const m = /GMT([+-−])(\d{1,2})(?::(\d{2}))?/.exec(part ?? '')
-    if (!m) return 0
-    const sign = m[1] === '+' ? 1 : -1
-    return sign * (Number(m[2]) * 60 + Number(m[3] ?? 0))
-  } catch {
-    return 0
-  }
-}
-
-/** Minutes the owner's zone is ahead of Baghdad (negative = behind). */
-export const diffFromTeam = (zone: string, at: number) => offsetMin(zone, at) - offsetMin(TEAM_TZ, at)
-
-/** "Europe/London" → "London"; "America/Argentina/Buenos_Aires" → "Buenos Aires". */
-export const zoneCity = (zone: string) => (zone.split('/').pop() ?? zone).replace(/_/g, ' ')
-
 /** The same moment in the owner's zone: the time and whether it falls a day later or earlier. */
 export function inZone(time: string, diff: number): { time: string; shift: -1 | 0 | 1 } | null {
   const m = hm(time)
@@ -269,7 +215,7 @@ export function usWeekend(now: number): { from: number; to: number } {
   const add = (5 - dow + 7) % 7
   const at = (dd: number, hh: number) => {
     const wall = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day) + dd, hh)
-    return wall - offsetMin(NY, wall + 5 * 3600e3) * 60e3
+    return wall - zoneOffsetMin(NY, wall + 5 * 3600e3) * 60e3
   }
   return { from: at(add, 20), to: at(add + 2, 20) }
 }

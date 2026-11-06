@@ -8,10 +8,11 @@
 .sch-group-note { padding: 8px 16px 0; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
 
 /* ---- The team's day ------------------------------------------------------ */
-.sch-hero { display: grid; gap: 6px; padding: 16px 20px; }
+.sch-hero { display: grid; gap: 14px; padding: 18px 20px 14px; }
+.sch-hero-foot { display: grid; gap: 6px; padding-top: 12px; border-top: 0.5px solid var(--separator); }
 .sch-cap { font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); color: var(--label); }
 .sch-preview { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); color: var(--label-secondary); }
-.sch-zone { display: flex; align-items: flex-start; gap: 6px; padding-top: 8px; margin-top: 4px; border-top: 0.5px solid var(--separator); font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.sch-zone { display: flex; align-items: flex-start; gap: 6px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
 .sch-zone svg, .sch-hint svg { width: 14px; height: 14px; margin-top: 2px; flex-shrink: 0; color: var(--accent-ink); }
 
 /* ---- Rows ---------------------------------------------------------------- */

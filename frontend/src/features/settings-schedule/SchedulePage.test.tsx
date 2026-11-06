@@ -6,17 +6,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { routes } from '../../app/router'
 import i18n from '../../i18n'
 import { API_URL, resetCsrfForTests } from '../../lib/api'
+import { diffFromTeam } from '../../lib/zones'
 import { useToasts } from '../../ui'
 import {
   changesFor,
   crossesMidnight,
   DEFAULTS,
-  diffFromTeam,
   draftFrom,
   inZone,
   parseTime,
   previewTimes,
-  slots,
+  previewSlots,
   steppedInterval,
   usWeekend,
 } from './model'
@@ -125,6 +125,10 @@ afterEach(async () => {
   await i18n.changeLanguage('en')
 })
 
+/** The preview's slots for a first/last/interval on top of the defaults. */
+const slots = (first: string, last: string, every: number) =>
+  previewSlots({ ...DEFAULTS, analysis_first_slot: first, analysis_last_slot: last, analysis_interval_minutes: every })
+
 describe('schedule maths', () => {
   it('slots run first + k × interval up to and including the last slot', () => {
     expect(previewTimes(slots('08:10', '23:00', 30))).toBe('08:10, 08:40 … 22:40')
@@ -196,11 +200,16 @@ describe('Settings → Schedule page (ATL-230)', () => {
     const user = userEvent.setup()
     renderPage()
     await waitFor(() => expect(plain(screen.getByTestId('sch-preview').textContent)).toBe('Cycles at 08:10, 08:40 … 22:40'))
+    const line = within(screen.getByTestId('sch-dayline')).getByTestId('dayline')
+    expect(line.querySelectorAll('.dl-tooth')).toHaveLength(30)
 
     const every = screen.getByRole('textbox', { name: EVERY })
     await user.clear(every)
     await user.type(every, '60')
     expect(plain(screen.getByTestId('sch-preview').textContent)).toBe('Cycles at 08:10, 09:10 … 22:10')
+    // The DayLine draws the draft too: one tooth per hourly cycle, before anything is saved.
+    expect(line.querySelectorAll('.dl-tooth')).toHaveLength(15)
+    expect(plain(line.querySelector('.dl-lab.is-run .dl-long')?.textContent)).toBe('Analysis every 60 min')
     expect(plain(screen.getByTestId('sch-cap').textContent)).toBe('15 analysis cycles a day, every hour from 08:10 to 23:00.')
     expect(state.patches).toEqual([])
 

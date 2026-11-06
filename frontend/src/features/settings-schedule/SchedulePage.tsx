@@ -3,6 +3,8 @@ import { CalendarClock, CircleAlert, Earth, Info, Minus, MoonStar, Plus, RotateC
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useTradingEnv, type TradingEnv } from '../../app/shell/tradingEnv'
+import { useOwnerZone } from '../../lib/ownerZone'
+import { diffFromTeam, spanWords, zoneCity } from '../../lib/zones'
 import { ApiError } from '../../lib/api'
 import { formatFixed, type Lang } from '../../lib/format'
 import { Button, Skeleton, Toggle, toast } from '../../ui'
@@ -13,6 +15,8 @@ import { formatDayTime } from '../portfolio/time'
 import '../settings-connections/settings.css'
 import '../settings-risk/risk.css'
 import { fieldErrors, historyKey, useSaveSettings, useSettingsHistory, type HistoryEntry } from '../settings-risk/model'
+import { DayLine } from '../settings-general/DayLine'
+import { SCHEDULE_DEFAULTS } from '../settings-general/dayModel'
 import { Medallion } from '../warroom/Medallion'
 import '../warroom/warroom.css'
 import {
@@ -21,7 +25,6 @@ import {
   clientErrors,
   clock,
   crossesMidnight,
-  diffFromTeam,
   draftFrom,
   FIELDS,
   hm,
@@ -35,7 +38,7 @@ import {
   scheduleFrom,
   settingKey,
   shiftDay,
-  slots,
+  previewSlots,
   steppedInterval,
   TIME_RE,
   unsendable,
@@ -43,7 +46,6 @@ import {
   weeklyParts,
   western,
   WEEKLY_KEY,
-  zoneCity,
   type Draft,
   type Field,
   type JobKey,
@@ -53,7 +55,7 @@ import {
   type Weekend,
 } from './model'
 import { DaySelect, FieldError, TimeInput } from './parts'
-import { dayName, iso, NS, teamWeekdayTime, useOwnerZone } from './words'
+import { dayName, iso, NS, teamWeekdayTime } from './words'
 import './schedule.css'
 
 /*
@@ -153,13 +155,7 @@ function Loading() {
 function useWords(lang: Lang) {
   const { t } = useTranslation(NS)
   const every = (iv: number) => (iv % 60 === 0 ? t('everyHours', { count: iv / 60 }) : t('everyMin', { count: iv }))
-  const span = (min: number) => {
-    const a = Math.abs(min)
-    const h = Math.floor(a / 60)
-    const m = a % 60
-    if (h && m) return t('spanBoth', { h: t('hours', { count: h }), m: t('minutes', { count: m }) })
-    return h ? t('hours', { count: h }) : t('minutes', { count: m })
-  }
+  const span = (min: number) => spanWords(min, lang)
   const value = (field: string, v: string | number | boolean | null): string => {
     if (v === null || v === undefined) return '—'
     if (field === 'analysis_interval_minutes') return t('min', { n: iso(String(v)) })
@@ -274,7 +270,7 @@ function SchedulePane({ env }: { env: TradingEnv }) {
   const saved = doc ? scheduleFrom(doc) : null
   const draft = edits ?? (saved ? draftFrom(saved) : null)
   const diff = diffFromTeam(zone, now)
-  const city = zoneCity(zone)
+  const city = zoneCity(zone, lang)
 
   /** Any edit clears the server's messages: order rules span two fields, so fixing either one counts. */
   const update = (next: Draft, _field?: Field) => {
@@ -382,7 +378,14 @@ function SchedulePane({ env }: { env: TradingEnv }) {
     const changed = changedFields(draft, saved)
     const blocking = unsendable(draft) + Object.keys(serverErrors).length
     const iv = intervalOf(draft)
-    const list = iv === null || draft.raw.analysis_first_slot !== undefined || draft.raw.analysis_last_slot !== undefined ? [] : slots(v.analysis_first_slot, v.analysis_last_slot, iv)
+    const list = iv === null || draft.raw.analysis_first_slot !== undefined || draft.raw.analysis_last_slot !== undefined ? [] : previewSlots({ ...v, analysis_interval_minutes: iv })
+    /** The draft as the DayLine draws it (design lineValues): an unusable interval or slot order falls back. */
+    const lineIv = iv !== null && previewSlots({ ...SCHEDULE_DEFAULTS, analysis_interval_minutes: iv }).length > 0 ? iv : saved.analysis_interval_minutes
+    const lineValues = {
+      ...v,
+      analysis_interval_minutes: lineIv,
+      analysis_last_slot: hm(v.analysis_last_slot) <= hm(v.analysis_first_slot) ? v.analysis_first_slot : v.analysis_last_slot,
+    }
 
     /** "07:30 in London" beside a Baghdad time, or nothing when the zones agree. */
     const altOf = (k: TimeField): string | undefined => {
@@ -490,33 +493,38 @@ function SchedulePane({ env }: { env: TradingEnv }) {
             {t('day')}
           </h2>
           <div className="st-group sch-hero">
-            <p className="sch-cap" data-testid="sch-cap" aria-live="polite">
-              {list.length === 0 ? t('capNone') : t('cap', { count: list.length, every: every(iv ?? 0), first: iso(v.analysis_first_slot), last: iso(v.analysis_last_slot) })}
-            </p>
-            {list.length > 0 && (
-              <p className="sch-preview" data-testid="sch-preview">
-                {t('preview', { times: '\u0000' })
-                  .split('\u0000')
-                  .map((piece, i) =>
-                    i === 0 ? (
-                      <span key={i}>{piece}</span>
-                    ) : (
-                      <span key={i}>
-                        <bdi dir="ltr" className="sch-times" data-testid="sch-preview-times">
-                          {previewTimes(list)}
-                        </bdi>
-                        {piece}
-                      </span>
-                    ),
-                  )}
+            <div className="sch-line" data-testid="sch-dayline">
+              <DayLine values={lineValues} frame="team" now={now} lang={lang} />
+            </div>
+            <div className="sch-hero-foot">
+              <p className="sch-cap" data-testid="sch-cap" aria-live="polite">
+                {list.length === 0 ? t('capNone') : t('cap', { count: list.length, every: every(iv ?? 0), first: iso(v.analysis_first_slot), last: iso(v.analysis_last_slot) })}
               </p>
-            )}
-            {diff !== 0 && (
-              <p className="sch-zone" data-testid="sch-zone">
-                <Earth aria-hidden="true" strokeWidth={1.75} />
-                <span>{t(diff < 0 ? 'zoneBehind' : 'zoneAhead', { city, span: span(diff) })}</span>
-              </p>
-            )}
+              {list.length > 0 && (
+                <p className="sch-preview" data-testid="sch-preview">
+                  {t('preview', { times: '\u0000' })
+                    .split('\u0000')
+                    .map((piece, i) =>
+                      i === 0 ? (
+                        <span key={i}>{piece}</span>
+                      ) : (
+                        <span key={i}>
+                          <bdi dir="ltr" className="sch-times" data-testid="sch-preview-times">
+                            {previewTimes(list)}
+                          </bdi>
+                          {piece}
+                        </span>
+                      ),
+                    )}
+                </p>
+              )}
+              {diff !== 0 && (
+                <p className="sch-zone" data-testid="sch-zone">
+                  <Earth aria-hidden="true" strokeWidth={1.75} />
+                  <span>{t(diff < 0 ? 'zoneBehind' : 'zoneAhead', { city, span: span(diff) })}</span>
+                </p>
+              )}
+            </div>
           </div>
         </section>
 

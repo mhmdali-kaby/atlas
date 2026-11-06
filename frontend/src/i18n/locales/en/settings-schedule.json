@@ -13,11 +13,6 @@
   "everyHours_other": "every {{count}} hours",
   "zoneBehind": "Your time zone is {{city}}, {{span}} behind Baghdad. Beside each time is the same moment in {{city}}.",
   "zoneAhead": "Your time zone is {{city}}, {{span}} ahead of Baghdad. Beside each time is the same moment in {{city}}.",
-  "hours_one": "1 hour",
-  "hours_other": "{{count}} hours",
-  "minutes_one": "1 minute",
-  "minutes_other": "{{count}} minutes",
-  "spanBoth": "{{h}} {{m}}",
   "jobs": "Daily jobs",
   "jobsNote": "Each job runs once at its time. The team picks up a change from its next tick, with no restart.",
   "j": {
