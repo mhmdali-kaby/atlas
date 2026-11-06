@@ -24,7 +24,11 @@ export function Ltr({ children, className, testId }: { children: ReactNode; clas
   )
 }
 
-export const Doctor = () => <code dir="ltr">./atlas doctor</code>
+export const Doctor = () => (
+  <bdi dir="ltr">
+    <code>./atlas doctor</code>
+  </bdi>
+)
 
 const LRI = '⁦'
 const PDI = '⁩'

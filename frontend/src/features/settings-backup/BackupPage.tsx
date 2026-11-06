@@ -41,7 +41,7 @@ import { Restore, RunsList } from './Runs'
 import { StatusCard } from './Status'
 
 /*
- * Settings → Backup (decision #255 (3), ATL-232; design v21 js/pages/settings-backup.js).
+ * Settings → Backup (decision 255 (3), ATL-232; design v21 js/pages/settings-backup.js).
  * GET /api/backup is the page's one read. The four backup.* settings are versioned settings keys,
  * saved with PATCH /api/settings on the env GET /api/backup names. "Back up now" is POST
  * /api/backup/run (202, queued); a run is recorded only when it finishes, so the page polls until
@@ -116,7 +116,9 @@ function LoadError({ onRetry }: { onRetry: () => void }) {
         {parts.length === 2 ? (
           <>
             {parts[0]}
-            <code dir="ltr">./atlas up</code>
+            <bdi dir="ltr">
+              <code>./atlas up</code>
+            </bdi>
             {parts[1]}
           </>
         ) : (

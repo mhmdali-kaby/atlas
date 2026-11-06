@@ -193,7 +193,11 @@ export function Restore({ doc, chosen }: { doc: BackupDoc; chosen: string | null
           </ol>
         </div>
       )}
-      <p className="bk-group-note">{fill(t('r.note'), { file: <code dir="ltr">docs/RUNBOOK.md</code> })}</p>
+      <p className="bk-group-note">{fill(t('r.note'), { file: (
+          <bdi dir="ltr">
+            <code>docs/RUNBOOK.md</code>
+          </bdi>
+        ) })}</p>
     </section>
   )
 }
