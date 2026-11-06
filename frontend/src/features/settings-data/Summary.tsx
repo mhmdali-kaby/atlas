@@ -124,7 +124,7 @@ function SummaryIcon({ state }: { state: SummaryState }) {
   )
 }
 
-function useEtaText() {
+export function useEtaText() {
   const { t } = useTranslation(NS)
   return (sec: number) => {
     const parts = etaParts(sec)
