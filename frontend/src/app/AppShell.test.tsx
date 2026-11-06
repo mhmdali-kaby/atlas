@@ -119,7 +119,11 @@ afterEach(async () => {
 
 describe('risk footer', () => {
   it('names the environment in English and Arabic', async () => {
-    render(<RiskFooter />)
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <RiskFooter />
+      </QueryClientProvider>,
+    )
     expect(screen.getByRole('contentinfo')).toHaveTextContent('Automated trading can lose money. Demo/Live: Demo')
     await act(() => i18n.changeLanguage('ar'))
     expect(screen.getByRole('contentinfo')).toHaveTextContent('قد يؤدي التداول الآلي إلى خسارة المال. تجريبي/حقيقي: تجريبي')
