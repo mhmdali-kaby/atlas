@@ -12,6 +12,7 @@ import type { RiskLimits, SettingsDoc } from './settings'
 import { report, source } from '../settings-data-sources/testFixtures'
 import type { SourcesReport } from '../settings-data-sources/model'
 import type { BackfillReport } from '../settings-data/api'
+import type { AgentRow, ClaudeStatus } from '../agents/api'
 
 const OWNER = { id: '01a18376-1d35-70c2-ad01-6d1d2cd870ad', name: 'Mohammed Ali', email: 'owner@atlas.test', locale: 'en', theme: 'system' }
 const ID = 'a0c7c3a2-6f4e-4f0b-9a7f-0d6b8c1e2f30'
@@ -113,6 +114,54 @@ function backfillReport(done: number, total: number): BackfillReport {
 
 const VERIFIED = { last_verified_at: '2026-10-28T08:00:00Z', permissions: ['read_only', 'trade'], account_mode: 'futures', position_mode: 'net_mode', uid_last4: '6123' }
 
+/** GET /api/agents/claude-status: passing, or signed out (the claude CLI installed, not logged in). */
+function claudeStatus(ok = true): ClaudeStatus {
+  return {
+    ok,
+    installed: true,
+    logged_in: ok,
+    api_key_env_clear: true,
+    login_command: 'claude login',
+    checks: [
+      { name: 'claude_cli', ok: true, status: 'pass', detail: 'claude 2.4.1 (Claude Code)' },
+      { name: 'claude_cli_login', ok, status: ok ? 'pass' : 'fail', detail: ok ? 'logged in' : 'not logged in' },
+      { name: 'claude_api_key', ok: true, status: 'pass', detail: 'ANTHROPIC_API_KEY not set' },
+    ],
+    checked_at: '2026-10-28T08:00:00Z',
+  }
+}
+
+const AGENT_SLUGS = [
+  ['orchestrator', 'Orchestrator'],
+  ['market_scout', 'Market Scout'],
+  ['news_intelligence', 'News Intelligence'],
+  ['historian', 'Historian'],
+  ['technical_analyst', 'Technical Analyst'],
+  ['derivatives_sentiment', 'Derivatives & Sentiment'],
+  ['strategist', 'Strategist'],
+  ['devils_advocate', 'Devil’s Advocate'],
+  ['portfolio_manager', 'Portfolio Manager'],
+] as const
+
+/** GET /api/agents: the nine roster agents (the API's roster order), every one enabled unless listed in `off`. */
+function agentRows(off: string[] = []): AgentRow[] {
+  return AGENT_SLUGS.map(([slug, name]) => ({
+    slug,
+    name,
+    handle: name,
+    enabled: !off.includes(slug),
+    model: 'strong',
+    model_name: null,
+    state: off.includes(slug) ? 'disabled' : 'idle',
+    state_since: null,
+    current_task: null,
+    today: { tokens: 0, tokens_in: 0, tokens_out: 0, turns: 0, runs: 0, cost_usd_notional: '0.000000' },
+    budget: { daily_tokens: 400000, daily_turns: 60 },
+    prompt: null,
+    last_run: null,
+  }))
+}
+
 /**
  * A fake Laravel API: auth, /api/connections CRUD, the test endpoint and GET/PATCH /api/settings
  * (version check, preset rules for risk_profile). Records every exchange.
@@ -123,6 +172,8 @@ function fakeBackend(
   const state = {
     sources: sourcesReport(),
     backfill: backfillReport(0, 4),
+    claude: claudeStatus(true) as ClaudeStatus | null,
+    agents: agentRows() as AgentRow[] | null,
     keyRefused: opts.keyRefused ?? false,
     mode: opts.mode ?? 'ok',
     stored: opts.stored ?? null,
@@ -187,6 +238,11 @@ function fakeBackend(
         return reply(200, { data: state.sources.data.find((x) => x.key === key) })
       }
       if (path === '/api/data/backfill?env=demo') return reply(200, { data: state.backfill })
+      if (path === '/api/agents/claude-status') return state.claude ? reply(200, { data: state.claude }) : reply(503, { message: 'down' })
+      if (path === '/api/agents?env=demo') {
+        if (!state.agents) return reply(503, { message: 'down' })
+        return reply(200, { data: state.agents, meta: { env: 'demo', day: '2026-10-28', timezone: 'Asia/Baghdad', day_start: '', day_end: '', settings_version: 1 } })
+      }
       if (path === '/api/connections' && method === 'GET') return reply(200, { data: state.stored ? [state.stored] : [] })
       if (path === '/api/connections' && method === 'POST') {
         state.stored = connectionRow({ label: body?.label ?? 'OKX demo', api_key_last4: (body?.api_key ?? '').slice(-4) })
@@ -252,7 +308,7 @@ afterEach(async () => {
 })
 
 describe('onboarding', () => {
-  it('sends a signed-in owner with no verified demo connection from / to Welcome, with a 6-step stepper', async () => {
+  it('sends a signed-in owner with no verified demo connection from / to Welcome, with an 8-step stepper', async () => {
     fakeBackend()
     const user = userEvent.setup()
     const { router } = renderApp('/')
@@ -263,12 +319,14 @@ describe('onboarding', () => {
     expect(within(stepper).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
       '1Welcome',
       '2Connect OKX',
-      '3Data sources',
-      '4Risk profile',
-      '5Autonomy',
-      '6Market history',
+      '3Claude',
+      '4Data sources',
+      '5Risk profile',
+      '6Autonomy',
+      '7Market history',
+      '8Your team',
     ])
-    expect(screen.getByTestId('ob-step-of')).toHaveTextContent('Step 1 of 6')
+    expect(screen.getByTestId('ob-step-of')).toHaveTextContent('Step 1 of 8')
     expect(within(stepper.querySelector('ol')!).getByText('Welcome').closest('[aria-current="step"]')).not.toBeNull()
     expect(screen.getByText(/Automated trading can lose money\. Start on demo/)).toBeInTheDocument()
     expect(screen.getByRole('contentinfo')).toHaveTextContent('Demo/Live: Demo')
@@ -279,7 +337,7 @@ describe('onboarding', () => {
     expect(router.state.location.search).toBe('?step=connect')
     await waitFor(() => expect(title).toHaveFocus())
     expect(continueButton()).toBeDisabled()
-    expect(screen.getByTestId('ob-step-of')).toHaveTextContent('Step 2 of 6')
+    expect(screen.getByTestId('ob-step-of')).toHaveTextContent('Step 2 of 8')
   })
 
   it('opens an owner who already finished onboarding at the War Room, never at the new steps', async () => {
@@ -540,7 +598,7 @@ describe('onboarding steps 3–4 (ATL-19)', () => {
     expect(radio('Autonomy', 'Approve each trade')).toHaveFocus()
   })
 
-  it('finishes on /portfolio and never reopens onboarding, even when every default is kept', async () => {
+  it('finishes on /warroom and never reopens onboarding, even when every default is kept', async () => {
     const backend = fakeBackend({ stored: connectionRow(VERIFIED) })
     const user = userEvent.setup()
     const first = renderApp('/onboarding?step=risk')
@@ -551,19 +609,22 @@ describe('onboarding steps 3–4 (ATL-19)', () => {
     await user.click(continueButton())
     await screen.findByRole('heading', { level: 1, name: 'Atlas is collecting market history' })
     expect(patches(backend).at(-1)?.body).toEqual({ env: 'demo', version: 1, changes: { autonomy_level: 2 } })
-    expect(continueButton()).toHaveTextContent('Finish setup')
+    expect(continueButton()).toHaveTextContent('Continue')
+    await user.click(continueButton())
+    await screen.findByRole('heading', { level: 1, name: 'Meet your team' })
+    expect(continueButton()).toHaveTextContent('Open the War Room')
     await user.click(continueButton())
 
-    await waitFor(() => expect(first.router.state.location.pathname).toBe('/portfolio'))
+    await waitFor(() => expect(first.router.state.location.pathname).toBe('/warroom'))
     expect(patches(backend).at(-1)?.body).toEqual({ env: 'demo', version: 1, changes: { onboarding_completed: 1 } })
     expect(backend.settings.version).toBe(2)
     first.view.unmount()
 
     const again = renderApp('/onboarding')
-    await waitFor(() => expect(again.router.state.location.pathname).toBe('/portfolio'))
+    await waitFor(() => expect(again.router.state.location.pathname).toBe('/warroom'))
     again.view.unmount()
     const home = renderApp('/onboarding?step=autonomy')
-    await waitFor(() => expect(home.router.state.location.pathname).toBe('/portfolio'))
+    await waitFor(() => expect(home.router.state.location.pathname).toBe('/warroom'))
   })
 
   it('saves autonomy level 1 when chosen', async () => {
@@ -576,7 +637,9 @@ describe('onboarding steps 3–4 (ATL-19)', () => {
     expect(backend.settings.settings.autonomy_level).toBe(1)
     expect(backend.settings.settings.onboarding_completed).toBe(0)
     await user.click(continueButton())
-    await waitFor(() => expect(router.state.location.pathname).toBe('/portfolio'))
+    await screen.findByRole('heading', { level: 1, name: 'Meet your team' })
+    await user.click(continueButton())
+    await waitFor(() => expect(router.state.location.pathname).toBe('/warroom'))
     expect(backend.settings.settings.autonomy_level).toBe(1)
     expect(backend.settings.settings.onboarding_completed).toBe(1)
   })
@@ -657,8 +720,8 @@ describe('onboarding steps 3–4 (ATL-19)', () => {
     expect(continueButton()).toHaveTextContent('متابعة')
     await user.click(continueButton())
     expect(await screen.findByRole('heading', { level: 1, name: 'يجمع أطلس سجل السوق' })).toBeInTheDocument()
-    expect(screen.getByTestId('ob-step-of')).toHaveTextContent('الخطوة 6 من 6')
-    expect(continueButton()).toHaveTextContent('إنهاء الإعداد')
+    expect(screen.getByTestId('ob-step-of')).toHaveTextContent('الخطوة 7 من 8')
+    expect(continueButton()).toHaveTextContent('متابعة')
   })
 })
 
@@ -666,16 +729,20 @@ describe('Data sources and Market history steps (ATL-233)', () => {
   const keyPuts = (backend: ReturnType<typeof fakeBackend>) => backend.requests.filter((r) => r.method === 'PUT' && r.path.endsWith('/key'))
   const FINNHUB_KEY = 'fh-test-key-0000-9XyZ'
 
-  it('follows Connect with Data sources, step 3 of 6', async () => {
+  it('follows Connect with Claude, then Data sources, step 4 of 8', async () => {
     fakeBackend()
     const user = userEvent.setup()
     const { router } = renderApp('/onboarding?step=connect')
     await fillAndTest(user)
     await screen.findByTestId('test-success')
     await user.click(continueButton())
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sign in to Claude' })).toBeInTheDocument()
+    expect(router.state.location.search).toBe('?step=claude')
+    await waitFor(() => expect(continueButton()).toBeEnabled())
+    await user.click(continueButton())
     expect(await screen.findByRole('heading', { level: 1, name: 'Choose where news comes from' })).toBeInTheDocument()
     expect(router.state.location.search).toBe('?step=sources')
-    expect(screen.getByTestId('ob-step-of')).toHaveTextContent('Step 3 of 6')
+    expect(screen.getByTestId('ob-step-of')).toHaveTextContent('Step 4 of 8')
     const stepper = screen.getByRole('navigation', { name: 'Setup steps' })
     expect(within(stepper.querySelector('ol')!).getByText('Data sources').closest('[aria-current="step"]')).not.toBeNull()
   })
@@ -771,7 +838,7 @@ describe('Data sources and Market history steps (ATL-233)', () => {
     expect(bar).toHaveAttribute('aria-valuetext', '0%')
     expect(screen.getByTestId('backfill-insts')).toHaveTextContent('0 of 4 instruments done')
     expect(screen.getByTestId('backfill-carry')).toHaveTextContent('You can carry on')
-    expect(screen.getByTestId('ob-step-of')).toHaveTextContent('Step 6 of 6')
+    expect(screen.getByTestId('ob-step-of')).toHaveTextContent('Step 7 of 8')
     await waitFor(() => expect(continueButton()).toBeEnabled())
   })
 
@@ -810,18 +877,182 @@ describe('Data sources and Market history steps (ATL-233)', () => {
     renderApp('/onboarding?step=sources')
     expect(await screen.findByRole('heading', { level: 1, name: 'اختر من أين تأتي الأخبار' })).toBeInTheDocument()
     expect(document.documentElement.dir).toBe('rtl')
-    expect(screen.getByTestId('ob-step-of')).toHaveTextContent('الخطوة 3 من 6')
+    expect(screen.getByTestId('ob-step-of')).toHaveTextContent('الخطوة 4 من 8')
     const stepper = screen.getByRole('navigation', { name: 'خطوات الإعداد' })
     expect(within(stepper).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
       'مكتملة: الترحيب',
       'مكتملة: ربط OKX',
-      '3مصادر البيانات',
-      '4مستوى المخاطرة',
-      '5الاستقلالية',
-      '6سجل السوق',
+      'مكتملة: Claude',
+      '4مصادر البيانات',
+      '5مستوى المخاطرة',
+      '6الاستقلالية',
+      '7سجل السوق',
+      '8فريقك',
     ])
     expect(await screen.findByLabelText('مفتاح Finnhub')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'تخطٍّ' }))
     expect(await screen.findByRole('heading', { level: 1, name: 'اختر مستوى المخاطرة' })).toBeInTheDocument()
+  })
+})
+
+describe('Claude and Meet your team steps (ATL-234)', () => {
+  const claudeCalls = (backend: ReturnType<typeof fakeBackend>) => backend.requests.filter((r) => r.path === '/api/agents/claude-status').length
+
+  it('walks the whole flow in order and lands on the War Room', async () => {
+    const backend = fakeBackend()
+    const user = userEvent.setup()
+    const { router } = renderApp('/onboarding')
+    const order: string[] = []
+    const at = async (title: string) => {
+      await screen.findByRole('heading', { level: 1, name: title })
+      order.push(router.state.location.search || 'welcome')
+    }
+    await at('Welcome to Atlas')
+    await user.click(continueButton())
+    await at('Connect your OKX demo account')
+    await fillAndTest(user)
+    await screen.findByTestId('test-success')
+    await user.click(continueButton())
+    await at('Sign in to Claude')
+    await waitFor(() => expect(continueButton()).toBeEnabled())
+    await user.click(continueButton())
+    await at('Choose where news comes from')
+    await user.click(screen.getByTestId('ob-skip'))
+    await at('Choose a risk profile')
+    await screen.findByRole('radiogroup', { name: 'Risk profile' })
+    await user.click(continueButton())
+    await at('Choose how much Atlas does on its own')
+    await user.click(continueButton())
+    await at('Atlas is collecting market history')
+    await user.click(continueButton())
+    await at('Meet your team')
+    expect(screen.getByTestId('ob-step-of')).toHaveTextContent('Step 8 of 8')
+    await user.click(continueButton())
+    await waitFor(() => expect(router.state.location.pathname).toBe('/warroom'))
+    expect(order).toEqual(['welcome', '?step=connect', '?step=claude', '?step=sources', '?step=risk', '?step=autonomy', '?step=backfill', '?step=team'])
+    expect(backend.settings.settings.onboarding_completed).toBe(1)
+  })
+
+  it('shows the claude login instruction when signed out, and Check again re-queries until it passes', async () => {
+    const backend = fakeBackend({ stored: connectionRow(VERIFIED) })
+    backend.claude = claudeStatus(false)
+    const user = userEvent.setup()
+    renderApp('/onboarding?step=claude')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Sign in to Claude' })).toBeInTheDocument()
+    expect(await screen.findByTestId('claude-login-command')).toHaveTextContent('claude login')
+    expect(screen.getByTestId('claude-fix')).toHaveTextContent('Claude isn’t signed in on this Mac')
+    const login = screen.getByTestId('claude-checks').querySelector('[data-check="login"]')!
+    expect(login).toHaveAttribute('data-state', 'fail')
+    expect(login).toHaveTextContent('Not signed in')
+    expect(continueButton()).toBeDisabled()
+    expect(screen.getByTestId('claude-later-note')).toHaveTextContent('The agents stay offline until Claude is ready')
+    expect(screen.getByTestId('ob-later')).toHaveTextContent('Set up later')
+    expect(claudeCalls(backend)).toBe(1)
+
+    backend.claude = claudeStatus(true)
+    await user.click(screen.getByTestId('claude-check'))
+    await waitFor(() => expect(claudeCalls(backend)).toBe(2))
+    await waitFor(() => expect(screen.getByTestId('claude-checks')).toHaveAttribute('data-view', 'ok'))
+    const passed = screen.getByTestId('claude-checks').querySelector('[data-check="login"]')!
+    expect(passed).toHaveAttribute('data-state', 'pass')
+    expect(passed).toHaveTextContent('Signed in')
+    expect(passed).toHaveClass('is-pass')
+    expect(screen.queryByTestId('claude-fix')).toBeNull()
+    expect(screen.queryByTestId('ob-later')).toBeNull()
+    await waitFor(() => expect(useToasts.getState().toasts.map((x) => x.title)).toContain('Claude is ready'))
+    expect(continueButton()).toBeEnabled()
+  })
+
+  it('lets the owner carry on without Claude, saying the agents stay offline', async () => {
+    const backend = fakeBackend({ stored: connectionRow(VERIFIED) })
+    backend.claude = claudeStatus(false)
+    const user = userEvent.setup()
+    const { router } = renderApp('/onboarding?step=claude')
+    await user.click(await screen.findByTestId('ob-later'))
+    expect(await screen.findByRole('heading', { level: 1, name: 'Choose where news comes from' })).toBeInTheDocument()
+    expect(router.state.location.search).toBe('?step=sources')
+    expect(useToasts.getState().toasts.map((x) => x.title)).toContain('The agents stay offline for now')
+  })
+
+  it('reports a check that could not run, with Try again and Set up later', async () => {
+    const backend = fakeBackend({ stored: connectionRow(VERIFIED) })
+    backend.claude = null
+    renderApp('/onboarding?step=claude')
+    expect(await screen.findByTestId('claude-failed')).toHaveTextContent('Couldn’t check Claude')
+    expect(screen.getByTestId('ob-later')).toBeInTheDocument()
+    expect(continueButton()).toBeDisabled()
+  })
+
+  it('shows one card per agent the API returns, in the order work flows, with name, role and glyph', async () => {
+    fakeBackend({ stored: connectionRow(VERIFIED) })
+    renderApp('/onboarding?step=team')
+    expect(await screen.findByRole('heading', { level: 1, name: 'Meet your team' })).toBeInTheDocument()
+    const cards = await screen.findAllByTestId('team-agent')
+    expect(cards).toHaveLength(9)
+    expect(cards.map((c) => c.dataset.slug)).toEqual([
+      'orchestrator',
+      'news_intelligence',
+      'historian',
+      'market_scout',
+      'technical_analyst',
+      'derivatives_sentiment',
+      'strategist',
+      'devils_advocate',
+      'portfolio_manager',
+    ])
+    expect(cards[0]).toHaveTextContent('Orchestrator')
+    expect(cards[0]).toHaveTextContent('Runs the process and answers you first')
+    expect(cards[0]).toHaveTextContent('Always on, and the first to answer you')
+    expect(cards[3]).toHaveTextContent('Market Scout')
+    expect(cards[3]).toHaveTextContent('Picks what the team watches each day')
+    for (const c of cards) expect(c.querySelector('.medal .medal-glyph')).not.toBeNull()
+    expect(screen.queryByTestId('team-off-note')).toBeNull()
+    expect(screen.getByTestId('ob-step-of')).toHaveTextContent('Step 8 of 8')
+    expect(continueButton()).toHaveTextContent('Open the War Room')
+  })
+
+  it('shows an agent the owner turned off greyed, with Off in words', async () => {
+    const backend = fakeBackend({ stored: connectionRow(VERIFIED) })
+    backend.agents = agentRows(['derivatives_sentiment'])
+    renderApp('/onboarding?step=team')
+    const cards = await screen.findAllByTestId('team-agent')
+    const off = cards.find((c) => c.dataset.slug === 'derivatives_sentiment')!
+    expect(off).toHaveClass('is-off')
+    expect(off).toHaveTextContent('Off')
+    expect(off).toHaveTextContent('It won’t work until you turn it on')
+    expect(off.querySelector('.medal')).toHaveAttribute('data-status', 'offline')
+    expect(screen.getByTestId('team-off-note')).toHaveTextContent('1 agent is off')
+  })
+
+  it('still finishes to the War Room when the team cannot load', async () => {
+    const backend = fakeBackend({ stored: connectionRow(VERIFIED) })
+    backend.agents = null
+    const user = userEvent.setup()
+    const { router } = renderApp('/onboarding?step=team')
+    expect(await screen.findByTestId('team-error')).toHaveTextContent('Atlas couldn’t load your team')
+    await waitFor(() => expect(continueButton()).toBeEnabled())
+    await user.click(continueButton())
+    await waitFor(() => expect(router.state.location.pathname).toBe('/warroom'))
+  })
+
+  it('shows both new steps in Arabic, right to left', async () => {
+    const backend = fakeBackend({ stored: connectionRow(VERIFIED) })
+    backend.claude = claudeStatus(false)
+    await i18n.changeLanguage('ar')
+    const view = renderApp('/onboarding?step=claude')
+    expect(await screen.findByRole('heading', { level: 1, name: 'سجّل الدخول إلى Claude' })).toBeInTheDocument()
+    expect(document.documentElement.dir).toBe('rtl')
+    expect(screen.getByTestId('ob-step-of')).toHaveTextContent('الخطوة 3 من 8')
+    expect(await screen.findByTestId('claude-login-command')).toHaveTextContent('claude login')
+    expect(screen.getByTestId('ob-later')).toHaveTextContent('الإعداد لاحقًا')
+    view.view.unmount()
+
+    renderApp('/onboarding?step=team')
+    expect(await screen.findByRole('heading', { level: 1, name: 'تعرّف على فريقك' })).toBeInTheDocument()
+    const cards = await screen.findAllByTestId('team-agent')
+    expect(cards).toHaveLength(9)
+    expect(cards[0]).toHaveTextContent('يدير سير العمل ويردّ عليك أولًا')
+    expect(screen.getByTestId('ob-step-of')).toHaveTextContent('الخطوة 8 من 8')
+    expect(continueButton()).toHaveTextContent('افتح غرفة العمليات')
   })
 })
