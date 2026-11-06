@@ -9,7 +9,7 @@ import { InstrumentId } from '../text'
 import { decimalsOf, directionOf, stakeOf, zoneOf, type ProposalSummary } from './proposal'
 
 /*
- * The real-order sheet (ATL-240, decision #255 (7), design v21 wr-proposal `liveSheet`). In live,
+ * The real-order sheet (ATL-240, decision 255 (7), design v21 wr-proposal `liveSheet`). In live,
  * Approve never sends at once: this sheet names what goes to OKX live, and only "Approve real
  * order" sends, with `live_confirmed: true`. Cancel sends nothing. Demo never opens it.
  */
@@ -89,11 +89,15 @@ export function LiveOrderSheet({
         key="order"
         id="order"
         k={t('lv.order')}
-        v={fillSlots(t('lv.orderV', { side: slot('side'), type: slot('type'), zone: slot('zone') }), {
-          side: <span>{t(`lv.side.${p.side}`)}</span>,
-          type: <span>{type}</span>,
-          zone: <Fig>{zoneText}</Fig>,
-        })}
+        v={
+          <span>
+            {fillSlots(t('lv.orderV', { side: slot('side'), type: slot('type'), zone: slot('zone') }), {
+              side: t(`lv.side.${p.side}`),
+              type,
+              zone: <Fig>{zoneText}</Fig>,
+            })}
+          </span>
+        }
       />,
       <Row
         key="size"

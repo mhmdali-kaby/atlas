@@ -159,7 +159,7 @@ export function KillSheet({
       </SheetClose>
     )
   } else {
-    // Live (ATL-240, decision #251): the LIVE tag on the title and a real-money line; still one press.
+    // Live (ATL-240, decision 251): the LIVE tag on the title and a real-money line; still one press.
     title =
       env === 'live' ? (
         <>

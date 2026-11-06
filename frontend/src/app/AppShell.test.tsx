@@ -129,6 +129,30 @@ describe('risk footer', () => {
     expect(screen.getByRole('contentinfo')).toHaveTextContent('قد يؤدي التداول الآلي إلى خسارة المال. تجريبي/حقيقي: تجريبي')
   })
 
+  it.each(['en', 'ar'] as const)('in live reads Live in the live capsule and lights the live wire (%s)', async (lang) => {
+    await i18n.changeLanguage(lang)
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify({ data: { active_env: 'live', live_started_at: null, first_month_ends_at: null, in_first_live_month: false, switched_at: null, confirmation_text: 'TRADE LIVE', preflight: { ok: true, items: [] } } }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } },
+        ),
+      ),
+    )
+    const { unmount } = render(
+      <QueryClientProvider client={new QueryClient()}>
+        <RiskFooter />
+      </QueryClientProvider>,
+    )
+    const word = lang === 'en' ? 'Live' : 'حقيقي'
+    await waitFor(() => expect(screen.getByTestId('footer-env')).toHaveTextContent(word))
+    expect(screen.getByTestId('footer-env')).toHaveClass('shell-footer-live')
+    expect(document.documentElement).toHaveClass('is-live')
+    unmount()
+    expect(document.documentElement).not.toHaveClass('is-live')
+  })
+
   it('is on the login page and on every shell page', async () => {
     fakeBackend()
     const router = renderShell(['/portfolio'])

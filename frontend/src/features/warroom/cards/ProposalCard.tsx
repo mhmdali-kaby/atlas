@@ -191,7 +191,7 @@ export function ProposalCard({ cardRef, lang, onJump }: { cardRef: ProposalCardR
     return { title, body: known || message || t('why409.unknown') }
   }
 
-  // Live (ATL-240, decision #255 (7)): Approve opens the real-order sheet first; only its confirm
+  // Live (ATL-240, decision 255 (7)): Approve opens the real-order sheet first; only its confirm
   // sends, with live_confirmed: true. Demo approves at once, as before.
   const isLiveProposal = needsLiveConfirm(p)
   const approve = async (liveConfirmed = false) => {
