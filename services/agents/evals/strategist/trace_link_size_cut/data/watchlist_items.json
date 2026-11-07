@@ -1,0 +1,17 @@
+[
+ {
+  "id": "cf235288-6c01-5b60-9463-7d0387767c37",
+  "watchlist_id": "c439a09d-e85f-5374-aaa4-20b9807f4d33",
+  "inst_id": "LINK-USDT-SWAP",
+  "rank": 1,
+  "asset_class": "crypto",
+  "bias": "long",
+  "conviction": "0.6",
+  "thesis": "Long bias on LINK-USDT-SWAP from structure and flow.",
+  "catalysts": [],
+  "key_levels": {},
+  "invalidation": "1H close beyond 11.399",
+  "pinned_by_owner": false,
+  "data_as_of": "2026-09-06T10:00:00Z"
+ }
+]

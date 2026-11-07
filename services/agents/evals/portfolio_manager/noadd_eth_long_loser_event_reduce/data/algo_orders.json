@@ -1,0 +1,16 @@
+[
+ {
+  "env": "demo",
+  "order_id": "ed9a5254-34b6-5537-8ffa-b099cf532fb1",
+  "algo_id": "a937af33e",
+  "algo_cl_ord_id": "s9bad7208",
+  "inst_id": "ETH-USDT-SWAP",
+  "side": "sell",
+  "sz": "2",
+  "state": "live",
+  "origin": "atlas",
+  "created_at": "2087-05-13T06:00:00Z",
+  "kind": "sl",
+  "trigger_px": "2950"
+ }
+]

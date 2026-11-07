@@ -1,0 +1,35 @@
+[
+ {
+  "id": "94a69c46-2c5a-5c1c-9bbc-093de5afe636",
+  "env": "demo",
+  "proposal_id": "24fbf2eb-4b7e-54a1-b75e-3926e6df3e52",
+  "agent": "technical_analyst",
+  "vote": "take",
+  "confidence": "0.75",
+  "reason": "Breakout retest.",
+  "created_at": "2026-05-30T07:40:00Z",
+  "updated_at": "2026-05-30T07:40:00Z"
+ },
+ {
+  "id": "35bd3b2b-d85a-5e8c-882f-8005db06a40c",
+  "env": "demo",
+  "proposal_id": "24fbf2eb-4b7e-54a1-b75e-3926e6df3e52",
+  "agent": "historian",
+  "vote": "take",
+  "confidence": "0.6",
+  "reason": "History supports, n = 41.",
+  "created_at": "2026-05-30T07:41:00Z",
+  "updated_at": "2026-05-30T07:41:00Z"
+ },
+ {
+  "id": "611595e6-8204-5d00-9bc7-1ab5e241a93d",
+  "env": "demo",
+  "proposal_id": "24fbf2eb-4b7e-54a1-b75e-3926e6df3e52",
+  "agent": "devils_advocate",
+  "vote": "take",
+  "confidence": "0.7",
+  "reason": "Risk 2/5. Minor crowding.",
+  "created_at": "2026-05-30T07:42:00Z",
+  "updated_at": "2026-05-30T07:42:00Z"
+ }
+]

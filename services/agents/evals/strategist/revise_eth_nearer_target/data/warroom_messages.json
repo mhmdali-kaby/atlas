@@ -1,0 +1,130 @@
+[
+ {
+  "id": "82b0bfeb-6949-524e-a52d-0300bf14ba4c",
+  "env": "demo",
+  "thread_id": "4520cfa5-aa84-5aed-908b-2830e4f87ba2",
+  "event_id": "af849d11-d947-544d-b42d-07a34c58e457",
+  "author_type": "agent",
+  "author": "technical_analyst",
+  "kind": "research_report",
+  "content_md": "TechnicalSetup card",
+  "card": {
+   "type": "technical_setup",
+   "inst_id": "ETH-USDT-SWAP",
+   "timeframe_bias": {
+    "1D": "down",
+    "4H": "down",
+    "1H": "range",
+    "15m": "down"
+   },
+   "setup_type": "rally_to_resistance",
+   "direction": "short",
+   "entry_zone": [
+    2478.01,
+    2481.98
+   ],
+   "trigger": "1H close back below 2478.01 inside 1H:z2",
+   "stop": 2505.78,
+   "targets": [
+    {
+     "price": 2449.05,
+     "r_multiple": 1.2,
+     "reason": "1H:z4",
+     "close_pct": null
+    },
+    {
+     "price": 2428.42,
+     "r_multiple": 2.0,
+     "reason": "1H:z5",
+     "close_pct": null
+    },
+    {
+     "price": 2407.79,
+     "r_multiple": 2.8,
+     "reason": "1H:z6",
+     "close_pct": null
+    }
+   ],
+   "expected_r": 2.8,
+   "invalidation": "1H close above 2505.78",
+   "quality_score": 0.66,
+   "est_slippage_bps": null,
+   "levels_used": [
+    {
+     "id": "1H:z2",
+     "price": 2479.995
+    },
+    {
+     "id": "1H:z1",
+     "price": 2487.93
+    },
+    {
+     "id": "1H:z0",
+     "price": 2500.82
+    },
+    {
+     "id": "1H:z4",
+     "price": 2449.05
+    },
+    {
+     "id": "1H:z5",
+     "price": 2428.42
+    },
+    {
+     "id": "1H:z6",
+     "price": 2407.79
+    }
+   ],
+   "no_setup_reason": null,
+   "data_as_of": "2026-09-08T08:48:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-08T08:48:00Z",
+  "updated_at": "2026-09-08T08:48:00Z"
+ },
+ {
+  "id": "a8462162-2cee-593e-aa32-4c8df0e51a99",
+  "env": "demo",
+  "thread_id": "4520cfa5-aa84-5aed-908b-2830e4f87ba2",
+  "event_id": "50721920-4b40-5ba7-a9ca-e7d360345fd2",
+  "author_type": "agent",
+  "author": "historian",
+  "kind": "research_report",
+  "content_md": "HistoryVerdict card",
+  "card": {
+   "type": "history_verdict",
+   "question": "analog check for a short on ETH-USDT-SWAP",
+   "inst_id": "ETH-USDT-SWAP",
+   "bar": "1H",
+   "n": 34,
+   "distribution": {
+    "24h": {
+     "median": -0.3,
+     "p10": -2.1,
+     "p90": 2.4,
+     "pct_positive": 42.0
+    }
+   },
+   "verdict": "supports",
+   "key_stat": "42% of 34 analogs positive at 24h",
+   "data_as_of": "2026-09-08T08:52:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-08T08:52:00Z",
+  "updated_at": "2026-09-08T08:52:00Z"
+ },
+ {
+  "id": "41284dda-def6-5792-9881-3a570106e204",
+  "env": "demo",
+  "thread_id": "4520cfa5-aa84-5aed-908b-2830e4f87ba2",
+  "event_id": "8a77b8e3-f289-5d97-ba77-86d924b6ce80",
+  "author_type": "agent",
+  "author": "devils_advocate",
+  "kind": "text",
+  "content_md": "Strongest objection: the final target sits beyond a strong zone; stop at 2428.42.",
+  "card": null,
+  "mentions": [],
+  "created_at": "2026-09-08T08:58:00Z",
+  "updated_at": "2026-09-08T08:58:00Z"
+ }
+]

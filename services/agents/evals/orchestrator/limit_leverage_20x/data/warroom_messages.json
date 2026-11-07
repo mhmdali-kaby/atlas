@@ -1,0 +1,17 @@
+[
+ {
+  "id": "49387dbf-32b1-55b1-af1e-0d936dfb85b5",
+  "env": "demo",
+  "thread_id": "27f1fff6-e0b1-517e-a277-2d85156b76e3",
+  "event_id": "5d371834-013f-5a3f-83d0-365d13d9b520",
+  "author_type": "human",
+  "author": "owner",
+  "kind": "text",
+  "content_md": "Use 20x leverage on the next BTC trade",
+  "card": null,
+  "reply_to": null,
+  "mentions": [],
+  "created_at": "2026-05-12T07:59:59Z",
+  "updated_at": "2026-05-12T07:59:59Z"
+ }
+]

@@ -1,0 +1,20 @@
+[
+ {
+  "id": "8e4cd0db-6ed0-5871-9091-fe92d174b631",
+  "env": "demo",
+  "inst_id": "BTC-USDT-SWAP",
+  "inst_type": "SWAP",
+  "inst_family": "BTC-USDT",
+  "base_ccy": "BTC",
+  "quote_ccy": "USDT",
+  "settle_ccy": "USDT",
+  "ct_val": "1",
+  "lot_sz": "1",
+  "min_sz": "1",
+  "tick_sz": "0.1",
+  "max_lever": "100",
+  "state": "live",
+  "asset_class": "crypto",
+  "list_time": "2025-08-05T09:00:00Z"
+ }
+]

@@ -1,0 +1,2078 @@
+# Atlas defaults — the single source of truth for every default number (brief §21).
+#
+# After editing, run:  cd backend && php artisan atlas:defaults
+# That regenerates backend/config/atlas_defaults.php and
+# services/shared/src/atlas_shared/defaults.py. A Pest test fails if they are stale.
+#
+# Rules:
+#   - Percentages, money, ratios and R multiples are QUOTED strings (decimal), never floats.
+#     The generator refuses to run if it finds an unquoted float.
+#   - Counts, leverage multipliers and durations in seconds/minutes are integers.
+#   - Percentages are in percent units: "1.0" means 1.0 % of equity.
+
+env:
+  default: demo            # brief §1.4: demo first
+  allowed: [demo, live]
+  # ATL-237: trading_core and the agents follow system_state.active_env on system.env_changed, and
+  # re-read it this often in case the event was missed (Redis down when Laravel published).
+  watch_poll_seconds: 30
+  # ATL-236, decision #255 (4)(5): the live pre-flight and the guarded switch.
+  #   min_demo_days: the earliest demo equity_curve point must be at least this old.
+  #   max_live_autonomy: live autonomy must be at or below this level to switch (first live month).
+  #   first_month_days: the first live month, counted from live_started_at.
+  #   switch_attempts_per_minute: POST /api/environment/switch limiter, per user.
+  live_preflight:
+    min_demo_days: 28
+    max_live_autonomy: 2
+    first_month_days: 30
+    switch_attempts_per_minute: 5
+    confirmation_text: TRADE LIVE
+
+timezone:
+  display: Asia/Baghdad    # brief §1.9: UTC in DB, Asia/Baghdad in UI
+  storage: UTC
+
+# Brief §14.3 risk table, exact values.
+risk_profiles:
+  default: balanced
+  conservative:
+    max_loss_per_trade_pct: "0.5"
+    max_position_pct: "2"
+    max_daily_loss_pct: "2"
+    max_weekly_loss_pct: "5"
+    max_leverage: 2
+    max_open_positions: 3
+    max_share_per_instrument_pct: "15"
+    max_correlated_exposure_pct: "20"
+    min_expected_r: "2.0"
+    max_consecutive_losses: 2
+  balanced:
+    max_loss_per_trade_pct: "1.0"
+    max_position_pct: "5"
+    max_daily_loss_pct: "4"
+    max_weekly_loss_pct: "10"
+    max_leverage: 5
+    max_open_positions: 6
+    max_share_per_instrument_pct: "25"
+    max_correlated_exposure_pct: "35"
+    min_expected_r: "1.8"
+    max_consecutive_losses: 3
+  aggressive:
+    max_loss_per_trade_pct: "2.0"
+    max_position_pct: "10"
+    max_daily_loss_pct: "8"
+    max_weekly_loss_pct: "20"
+    max_leverage: 10
+    max_open_positions: 10
+    max_share_per_instrument_pct: "40"
+    max_correlated_exposure_pct: "50"
+    min_expected_r: "1.5"
+    max_consecutive_losses: 4
+
+# Brief §14.6.
+autonomy:
+  default_level: 2                 # 1 advise only, 2 approve each trade, 3 auto within limits, 4 full auto
+  levels: [1, 2, 3, 4]
+  on_approval_timeout: reject
+  # ATL-160: how long an awaiting_owner proposal stays approvable (proposals.approval_expires_at).
+  # A settings-table value `approval_timeout_minutes` overrides it. ATL-162 expires it.
+  approval_timeout_minutes: 15
+  # ATL-33 gated autonomy 3-4 until the Risk Engine and Executor existed; ATL-212 (decision #254)
+  # enables both. Settings refuse any level above this.
+  max_enabled_level: 4
+  # ATL-212: at autonomy 3 an entry (or a stop/target amend) whose notional is above this many USD
+  # waits for the owner; at or below it is sent. Settings key `autonomy_ask_above_usd` overrides it.
+  ask_above_usd: "1000"
+
+# ATL-228, decision #255 (2): the owner's Settings → Schedule keys (`schedule.*` in the settings
+# table). The job times and analysis slots default from agents.schedule above/below
+# (news_morning_brief, historian_regime_table, scout_watchlist, pm_daily_report,
+# historian_weekly_review, analysis_interval_minutes, analysis_first_slot, analysis_last_slot);
+# agents.schedule.scoring/reliability/tick_seconds stay config-only. All times are Asia/Baghdad.
+#   analysis_interval_minutes_min/max: the range the owner may set.
+#   quiet_hours_*: no new analysis cycles and only critical notifications inside the window
+#     (start..end, which may cross midnight). Off by default.
+#   stock_perps_weekend: allow | no_new_trades (Risk Engine check 2 refuses stock/ETF perps from
+#     Friday 20:00 to Sunday 20:00 US/Eastern).
+schedule:
+  analysis_interval_minutes_min: 15
+  analysis_interval_minutes_max: 240
+  quiet_hours_enabled: false
+  quiet_hours_start: "23:00"
+  quiet_hours_end: "07:00"
+  stock_perps_weekend: allow
+  stock_perps_weekend_choices: [allow, no_new_trades]
+
+# Brief §7.1 / §14.5. Volumes are USD notional over 24h.
+markets:
+  min_24h_volume_usd:
+    crypto_perp: "20000000"
+    stock_perp: "5000000"
+    commodity_perp: "5000000"
+    spot: "10000000"
+  max_spread_bps: "8"
+  max_instruments_per_day: 5
+  max_instruments_per_day_min: 1
+  max_instruments_per_day_max: 10
+  # ATL-124, brief §14.5: Settings -> Markets. `kinds` is every asset-class toggle; enabled_markets
+  # is the toggles that are on (dated futures and options start off). whitelist / blocklist are
+  # instIds (stored upper-case); the blocklist always wins. list_max caps each list's length.
+  kinds: [spot, crypto_perp, stock_perp, commodity_perp, futures, options]
+  enabled_markets: [spot, crypto_perp, stock_perp, commodity_perp]
+  whitelist: []
+  blocklist: []
+  avoid_stock_perps_outside_us_hours: true
+  list_max: 500
+
+# ATL-124, brief §14.4: Settings -> Money limits, in USDT. The Risk Engine uses whichever of the
+# percentage (risk profile) and USDT limit is smaller. The brief gives no numbers; these start small
+# on purpose (decision recorded in docs/DECISIONS.md) and the owner raises them in Settings.
+money_limits:
+  bot_capital_cap_usdt: "10000"
+  max_usdt_per_trade: "1000"
+  max_new_exposure_per_day_usdt: "5000"
+  max_trades_per_day: 10
+
+# ATL-124, brief §10: Risk Engine parameters (trading_core/risk), editable in Settings.
+#   min_stop_atr_mult: stop distance >= this x ATR(1H). max_stop_pct: stop distance <= this % of entry.
+#   slippage_bps: assumed slippage in the risk sizing. liq_buffer_mult: the estimated liquidation
+#   price must sit at least this x the stop distance beyond the stop.
+#   block_new_trades_minutes_before_high_impact_event: importance-5 event blackout (0 = off).
+#   volatility_halt_sigma: 1-minute move that trips the circuit breaker on a held instrument.
+#   market_data_max_age_seconds: older market data is stale (check 1). margin_buffer: margin must
+#   be <= available balance x this.
+risk_engine:
+  min_stop_atr_mult: "0.8"
+  max_stop_pct: "8"
+  slippage_bps: "2"
+  liq_buffer_mult: "2.0"
+  block_new_trades_minutes_before_high_impact_event: 15
+  volatility_halt_sigma: "6"
+  market_data_max_age_seconds: 30
+  margin_buffer: "0.9"
+
+# ATL-127, brief §10: fixed rules of the Risk Engine's checks (trading_core/risk/engine.py). Not
+# owner limits (those are in Settings above); these say how a check measures.
+#   us_session: the US cash session for avoid_stock_perps_outside_us_hours, in its own timezone, so
+#   DST comes from the tz database. weekdays are ISO (1 = Monday). Exchange holidays are not modelled.
+#   stock_perps_weekend (ATL-229, decision #255): with schedule.stock_perps_weekend = no_new_trades,
+#   check 2 rejects stock/ETF/index perps from start to end in that timezone (DST from the tz database).
+#   atr_bar/atr_window/atr_lookback_bars: ATR(1H) for check 3 (Wilder, atlas_quant), from closed bars.
+#   correlation_*: check 5's 30-day Pearson correlation of daily log returns; a pair with fewer
+#   overlapping returns than min_obs is "unknown" (not counted as correlated, listed in the check).
+#   maint_margin_ratio: maintenance margin assumed by check 7's isolated liquidation estimate.
+#   fallback_taker_fee_rate: used by sizing until trade-fee rates are stored per instType; the
+#   check records fee_source = "config_fallback" when it is used.
+#   high_impact_importance: check 8's blackout counts economic events at or above this importance.
+#   used_statuses: proposal statuses whose approved size counts as used today (daily exposure, trades).
+#   evaluable_statuses: the only proposal statuses evaluate() accepts. passed = the vote passed;
+#   risk_checked = an owner Edit re-runs the check (brief §12). Any other status (cancelled, rejected,
+#   expired, sent, filled ...) is refused before anything is written, so it cannot re-enter approval.
+#   position_actions (ATL-184): the Portfolio Manager's amend_stop/amend_targets/partial_close/close
+#   checks. positions_max_age_seconds: the newest positions snapshot must be this fresh to prove a
+#   position is open. protecting_states/stop_kinds: the algo orders that count as the live exchange
+#   stop (sl trigger_px, oco sl_trigger_px). paused_allowed_kinds: the kinds that reduce risk and so
+#   pass while trading is paused or a breaker is tripped (a stop must still tighten).
+risk_rules:
+  position_actions:
+    positions_max_age_seconds: 300
+    protecting_states: [live, partially_effective]
+    stop_kinds: [sl, oco]
+    paused_allowed_kinds: [amend_stop, partial_close, close]
+  us_session:
+    timezone: America/New_York
+    open: "09:30"
+    close: "16:00"
+    weekdays: [1, 2, 3, 4, 5]
+  stock_perps_weekend:
+    timezone: America/New_York
+    start: "Fri 20:00"
+    end: "Sun 20:00"
+  atr_bar: 1H
+  atr_window: 14
+  atr_lookback_bars: 120
+  correlation_threshold: "0.8"
+  correlation_lookback_days: 30
+  correlation_min_obs: 20
+  maint_margin_ratio: "0.005"
+  fallback_taker_fee_rate: "0.0005"
+  high_impact_importance: 5
+  used_statuses: [sent, partially_filled, filled, closed]
+  evaluable_statuses: [passed, risk_checked]
+
+# ATL-145, brief §10: circuit breakers (trading_core/risk/breakers.py). Fixed engineering values;
+# the owner limits they enforce (loss limits, max_consecutive_losses, volatility_halt_sigma,
+# market_data_max_age_seconds) come from Settings.
+#   evaluate_interval_seconds: the loop that re-checks every breaker.
+#   okx_errors: threshold errors from the trade client within window_seconds trip it; ignored_codes
+#   are answers that are part of normal recovery (51016 duplicate clOrdId after a lost answer;
+#   51400-51402 cancel of an order already gone).
+#   data_stale: clears itself once every held/watchlist instrument has been fresh this long.
+#   volatility: sigma of the 1m log returns over lookback_hours, needing min_returns of them; the
+#   newest closed 1m bar must have opened within max_bar_age_seconds to be judged.
+#   stream_block_ms: how long one XREAD of atlas.system/atlas.market waits for events.
+circuit_breakers:
+  evaluate_interval_seconds: 15
+  okx_errors:
+    threshold: 3
+    window_seconds: 300
+    ignored_codes: ["51016", "51400", "51401", "51402"]
+  data_stale:
+    clear_after_fresh_seconds: 60
+  volatility:
+    bar: 1m
+    lookback_hours: 24
+    min_returns: 60
+    max_bar_age_seconds: 180
+  stream_block_ms: 1000
+
+# ATL-141, brief §4.4, §11: Executor parameters (trading_core/execution), editable in Settings.
+#   entry_timeout_minutes: an unfilled limit entry is cancelled after this long.
+#   td_mode_perps: OKX tdMode for perps (one of td_modes_perps); spot always uses "cash".
+#   stop_verify_seconds: after an entry, the server-side stop must be seen on OKX within this long,
+#   or the position is market-closed and an alert raised. order_max_retries: tries per OKX call
+#   (network/5xx), always with the same clOrdId. emergency_stop_atr_mult: reconciliation places a
+#   stop this many ATR(1H) from entry on any position with no server-side stop and no proposal stop.
+executor:
+  entry_timeout_minutes: 30
+  td_mode_perps: isolated
+  td_modes_perps: [isolated, cross]
+  stop_verify_seconds: 3
+  order_max_retries: 3
+  emergency_stop_atr_mult: "2.0"
+  # ATL-143. Fixed engineering values, not owner settings.
+  retry_backoff_base_seconds: "0.5"
+  retry_backoff_max_seconds: 4
+  stop_verify_poll_seconds: "0.5"
+  # OKX sCodes meaning "TP/SL cannot be attached to this order/instrument": place the entry bare and
+  # protect it with an OCO algo order instead (brief §11).
+  attach_refused_codes: ["51010"]
+  # ATL-144: how often trading_core looks for limit/post_only entries past entry_timeout_minutes and for
+  # filled entries whose protection does not yet match the filled size (restart recovery).
+  lifecycle_sweep_seconds: 30
+
+# ATL-146, brief §4.4 and rule 8: reconciliation (trading_core/execution/reconcile.py). Runs at startup
+# (the Executor refuses /execute until one run succeeded), every interval_seconds and after every
+# private WebSocket re-login. Fixed engineering values, not owner settings.
+#   fills_lookback_days: fills-history window re-read on every run (OKX's trade/fills window).
+#   max_pages: safety cap on each paged OKX list per run.
+#   protect_grace_seconds: an unprotected position is left to the Executor while an Atlas order on
+#   that instrument is still new/sending or was created less than this many seconds ago (its own
+#   3 s stop check is still running).
+#   fill_ts_slack_seconds: fills this much before a position's cTime still count toward its size.
+reconciliation:
+  interval_seconds: 300
+  fills_lookback_days: 3
+  max_pages: 50
+  protect_grace_seconds: 30
+  fill_ts_slack_seconds: 1
+
+# Brief §4.1. Checked against the OKX v5 docs (https://www.okx.com/docs-v5/en/) at build time.
+okx:
+  environments:
+    demo:
+      rest_base_url: https://www.okx.com
+      ws_public_url: wss://wspap.okx.com:8443/ws/v5/public
+      ws_private_url: wss://wspap.okx.com:8443/ws/v5/private
+      ws_business_url: wss://wspap.okx.com:8443/ws/v5/business
+      headers:
+        x-simulated-trading: "1"
+    live:
+      rest_base_url: https://www.okx.com
+      ws_public_url: wss://ws.okx.com:8443/ws/v5/public
+      ws_private_url: wss://ws.okx.com:8443/ws/v5/private
+      ws_business_url: wss://ws.okx.com:8443/ws/v5/business
+      headers: {}
+
+# Decision #235: trading_core polling intervals, in seconds.
+sync:
+  instruments_interval_seconds: 3600
+  account_interval_seconds: 60
+  bills_interval_seconds: 300
+  # ATL-172: account/positions-history + trade/fills-history → positions_closed, fills. Later runs
+  # page back only to the last successful run minus history_overlap_seconds.
+  history_interval_seconds: 300
+  history_overlap_seconds: 3600
+  # A closed position is linked to the Atlas entry order whose first fill is within this many
+  # seconds before the position's open time (cTime), or later but before it closed.
+  history_link_tolerance_seconds: 5
+  # trade/fills-history needs instType; these are paged every run.
+  history_fill_inst_types: [SPOT, SWAP, FUTURES]
+
+# ATL-172, brief §13 History: GET /api/portfolio/history and /api/exports/{fills|closed}.csv.
+portfolio_history:
+  per_page_default: 50
+  per_page_max: 200
+  # Decimal places of R in the API and CSV.
+  r_scale: 2
+
+# ATL-200, brief §16: GET /api/journal, /api/agents/scores and /api/agents/notebook (read-only).
+#   score_days: the windows ?days= accepts (Baghdad days ending today); score_days_default when absent.
+#   hit_rate_scale / brier_scale: decimal places of the window summary figures.
+journal_api:
+  per_page_default: 50
+  per_page_max: 200
+  max_tags: 20
+  score_days: [7, 30, 90]
+  score_days_default: 30
+  hit_rate_scale: 4
+  brier_scale: 6
+  notebook_max_notes: 500
+
+# ATL-174, brief §13 Performance: GET /api/portfolio/performance.
+portfolio_performance:
+  ranges: ["1M", "3M", "YTD", "ALL"]
+  default_range: ALL
+  # Sharpe and Sortino need at least this many owner (Asia/Baghdad) days of equity.
+  min_days_for_ratios: 10
+  # Daily ratios are annualised by sqrt(annualisation_days); crypto and perps trade every day.
+  annualisation_days: 365
+  # Decimal places of each output kind (HALF_UP). Money averages keep 8 and are stripped.
+  pct_scale: 2
+  ratio_scale: 4
+  money_scale: 8
+  # Internal precision for means, variances and square roots.
+  calc_scale: 24
+
+# ATL-176, brief §13 Holdings: avg_cost_usd and change_24h_pct on GET /api/portfolio/holdings.
+#   quotes: USD quotes searched, in order, for an asset's price instrument (CCY-<quote>[-SWAP]).
+#   avg_cost_min_scale: decimals of avg_cost_usd; more when the spot instrument's tickSz has more.
+#   avg_cost_small_scale: decimals when there is no spot instrument and the cost is below 1 USD.
+#   change_bars: candle bars tried, in order, for the 24 h change (the newest close vs the newest
+#     close at least 24 h before it).
+portfolio_holdings:
+  quotes: ["USDT", "USDC"]
+  avg_cost_min_scale: 2
+  avg_cost_small_scale: 8
+  change_bars: ["1H", "1D"]
+  change_window_hours: 24
+
+# ATL-176, brief §13 Overview: GET /api/portfolio/benchmark?symbol=&range=. The series is the
+# symbol's perp candle closes rebased to the equity curve's first point in the range.
+#   symbols: symbol → instIds tried in order; the first in the env's universe is used (the demo
+#     and live universes differ).
+#   bars: range → candle bars tried in order (the first with candles in the range wins).
+#   value_scale: decimals of each rebased value (HALF_UP, then trailing zeros stripped).
+portfolio_benchmark:
+  symbols:
+    BTC: ["BTC-USDT-SWAP", "BTC-USDC-SWAP"]
+    SPY: ["SPY-USDT-SWAP", "SPY-USDC-SWAP"]
+    XAU: ["XAU-USDT-SWAP", "XAU-USDC-SWAP"]
+  bars:
+    1D: ["15m", "1H"]
+    1W: ["1H", "4H"]
+    1M: ["4H", "1D"]
+    3M: ["1D"]
+    YTD: ["1D"]
+    ALL: ["1D"]
+  value_scale: 8
+
+# ATL-46, brief §7.3: the resumable history backfill in trading_core. How far back each dataset
+# goes is backfill.depth_days (below, shared with the Data API); null depths walk back to
+# full_history_floor, i.e. until OKX returns no older data. Datasets are created and claimed in
+# dataset_order (daily and hourly bars before the 1m bars). One rate limiter is shared by all
+# `concurrency` workers, so OKX's per-endpoint limits hold whatever the concurrency.
+backfill_runner:
+  interval_seconds: 300
+  concurrency: 4
+  # Brief §14.5 market toggles that are on by default; dated futures and options stay off.
+  enabled_markets: [spot, crypto_perp, stock_perp, commodity_perp]
+  dataset_order: ["candles:1D", "candles:1H", "candles:4H", funding, open_interest, "candles:15m", "candles:5m", "candles:1m"]
+  # Open interest history is OKX rubik's per-currency series (crypto only); 1D goes back furthest.
+  open_interest_period: 1D
+  full_history_floor: "2009-01-01T00:00:00Z"
+  # Postgres accepts at most 65535 bind parameters per statement; batches are also capped at batch_rows.
+  max_bind_params: 65535
+  batch_rows: 2000
+  last_error_max_chars: 500
+
+# ATL-47, brief §7.3 + decision #242: closed bars stay fresh by REST polling (no WebSocket feed in
+# Phase 1). After each bar closes, the poller waits close_delay_seconds (OKX confirms a bar a moment
+# after its close), then fetches the bars newer than the newest stored one for every instrument whose
+# candles:<bar> backfill job is done. The job ticks every tick_seconds, so a closed bar is written
+# within close_delay_seconds + tick_seconds plus the rate limiter's wait. Requests share one OKX client
+# (one token bucket for market/candles), `concurrency` at a time, smallest bar first.
+# Bar grids: OKX aligns 4H and 1D to UTC+8, so 1D bars open at 16:00 UTC (offset in minutes from 00:00 UTC).
+candle_poller:
+  tick_seconds: 1
+  close_delay_seconds: 3
+  concurrency: 4
+  bars: ["1m", "5m", "15m", "1H", "4H", "1D"]
+  page_limit: 100
+# ATL-134, brief §7.5: OKX rubik long/short account ratio and taker volume, polled every
+# interval_seconds at rubik period `period` for always_ccys + the crypto base currencies of the
+# market feed's instruments (today's watchlist and open positions). taker_inst_type is rubik's
+# instType (CONTRACTS = perps + futures). Upserted on (env, ccy, period, ts). The same tick stores
+# public/open-interest for each -SWAP in that instrument set (open_interest, keyed by OKX ts), the
+# 5-minute OI the derivatives features' 1h/4h windows need. It also reads market/index-tickers once
+# per index_quote_ccys entry that a watched -SWAP's index (instFamily, BTC-USDT) uses, and writes the
+# index into the atlas:md:<env>:<instId> hash as `index` (JSON {idxPx, ts}) and `index_ms` (OKX ts)
+# for the basis (agents.derivatives.index_max_age_multiplier).
+derivatives_poller:
+  interval_seconds: 300
+  period: 5m
+  taker_inst_type: CONTRACTS
+  always_ccys: [BTC, ETH]
+  index_quote_ccys: [USDT, USDC]
+  concurrency: 2
+candle_grid:
+  offset_minutes: { "1m": 0, "5m": 0, "15m": 0, "1H": 0, "4H": 0, "1D": 960 }
+
+# ATL-125, brief §4.1/§4.2 + decision #249 (F): trading_core's public + business WebSocket market
+# feed. URLs come from okx.environments.<env>.ws_public_url / ws_business_url. Subscriptions cover
+# always_subscribe + today's (Asia/Baghdad) watchlist + open positions, re-read every
+# subscriptions_refresh_seconds. An instrument with no message for market_data_max_age_seconds is
+# stale. The latest ticker, mark price, books5 and last-message time per instrument live in the
+# Redis hash <key_prefix>:<env>:<instId> (see atlas_shared.market_data). market.tick is published
+# at most once per tick_publish_min_interval_seconds per instrument; candle.closed once per bar.
+# Reconnects wait min(reconnect_max_seconds, reconnect_base_seconds * 2^attempt), scaled by a
+# random factor in [1 - reconnect_jitter, 1].
+market_ws:
+  ping_interval_seconds: 25
+  market_data_max_age_seconds: 30
+  reconnect_base_seconds: 1
+  reconnect_max_seconds: 60
+  reconnect_jitter: "0.5"
+  subscriptions_refresh_seconds: 15
+  tick_publish_min_interval_seconds: 1
+  stale_check_seconds: 5
+  always_subscribe: ["BTC-USDT-SWAP"]
+  public_channels: [tickers, mark-price, books5]
+  business_channels: [candle1m, candle5m, candle1H]
+  key_prefix: "atlas:md"
+  snapshot_ttl_seconds: 86400
+
+# ATL-142, brief §4.2: trading_core's private OKX WebSocket (URL okx.environments.<env>.ws_private_url),
+# logged in with the env's verified connection. Ping, reconnect backoff and the 30 s staleness rule
+# are market_ws's. Freshness lives in the Redis hash <key>:<env> (see atlas_shared.market_data
+# private_* helpers). Balance/position snapshot ticks from pushes are written at most once per
+# snapshot_min_interval_seconds (a skipped one is flushed by the stale check; the account.* events
+# carry the live values in between). With no verified
+# connection the feed retries every no_connection_retry_seconds.
+private_ws:
+  key: "atlas:pws"
+  channels:
+    - { channel: account }
+    - { channel: positions, instType: ANY }
+    - { channel: balance_and_position }
+    - { channel: orders, instType: ANY }
+    - { channel: orders-algo, instType: ANY }
+    - { channel: liquidation-warning, instType: ANY }
+  no_connection_retry_seconds: 60
+  snapshot_min_interval_seconds: 30
+
+# ATL-47, brief §7.3 data-quality checks, every interval_seconds and on demand
+# (POST /internal/quality/check). Each run looks at the last window_bars bars of every candle series
+# whose backfill is done. Gaps = missing ts in the bar grid (re-fetched from REST; repaired_at when
+# every missing bar exists). Duplicates = two or more rows in one grid slot (an off-grid ts).
+# Zero-volume runs are logged, never "repaired" (stock perps have quiet hours). Outliers = a
+# close-to-close log return beyond outlier_sigma standard deviations of the previous
+# outlier_window returns (needs outlier_min_samples of them); outliers are logged, never deleted.
+quality:
+  interval_seconds: 900
+  window_bars: 500
+  outlier_sigma: 8
+  outlier_window: 100
+  outlier_min_samples: 30
+  repair_page_limit: 100
+  # A gap OKX itself never had (maintenance) stays open after this many REST attempts, not re-fetched forever.
+  max_repair_attempts: 3
+
+# ATL-35: InternalSignatureMiddleware rejects any /internal request body larger than this (by
+# Content-Length, and by a running total while reading chunked bodies) before it is ever handed
+# to the MAC check, so an unsigned caller cannot force trading_core to buffer an unbounded body.
+internal_api:
+  max_body_bytes: 1048576
+
+# ATL-245, decision #265 (1): optional TOTP for the owner's login.
+two_factor:
+  # 30-second steps accepted either side of now when checking a code.
+  window: 1
+  # Single-use recovery codes issued on confirm and on regenerate.
+  recovery_codes: 8
+  # Enrolment writes (start, confirm, regenerate, disable) per user per minute.
+  attempts_per_minute: 5
+  # ATL-246: minutes a correct password waits for its code at sign-in before the owner must start again.
+  challenge_minutes: 5
+  # ATL-261: sign-in code / recovery-code attempts per minute, keyed on the pending user id (or the
+  # client IP when there is none) rather than the session id, so a fresh password login cannot
+  # reset the count.
+  challenge_attempts_per_minute: 5
+  # ATL-261: wrong sign-in codes (not every attempt) allowed per user within the window below before
+  # every pending challenge for that user, even a correct code, is refused until the window clears.
+  challenge_failures_per_window: 10
+  challenge_failure_window_minutes: 15
+  qr_size_px: 192
+
+# ATL-13, brief §18: `php artisan atlas:doctor` thresholds.
+doctor:
+  max_clock_drift_ms: 2000
+  min_free_disk_gb: 5
+  trading_core_timeout_seconds: 5
+  # ATL-33 AC4: the one place this number lives. config/session.php's SESSION_LIFETIME
+  # fallback and Doctor::security() both read it, so they cannot drift apart.
+  max_session_lifetime_minutes: 15
+  # ATL-95, decision #242: `claude --version` / `claude auth status --json` timeout.
+  claude_cli_timeout_seconds: 15
+  # The non-interactive prompt probe (`claude -p "ok" --max-turns 1`) used only when the
+  # installed CLI has no status/auth command to ask instead; a real model turn is slower.
+  claude_cli_probe_timeout_seconds: 30
+
+# ATL-122, security round 11 finding 2: GET /api/agents/claude-status would otherwise spawn
+# the claude CLI (and could fall back to a paid prompt turn) on every request. Rate-limited
+# per user; the result is cached so a burst of calls shares one run of the checks, and the
+# HTTP path never runs the `-p` probe (atlas:doctor on the CLI keeps it).
+agents_api:
+  claude_status_per_minute: 6
+  claude_status_cache_seconds: 60
+
+# ATL-10: account sync. Funding-account coins are valued in USD with OKX SPOT tickers
+# (<CCY>-<quote> last price, quotes tried in order). Stablecoins count 1:1 with USD in Phase 0.
+account_sync:
+  usd_stablecoins: [USDT, USDC]
+  price_quotes: [USDT, USDC]
+
+# ATL-9, brief §2/§4.3: instrument universe sync. OPTION is off in Phase 0 (options disabled by default).
+# asset_class is derived from OKX instCategory; unknown or missing categories become "other".
+# Stock-category instruments whose base symbol is listed in stock_class_overrides get that class instead.
+instruments:
+  inst_types: [SPOT, SWAP, FUTURES]
+  delisted_state: delisted_local
+  category_asset_class:
+    "1": crypto
+    "3": stock
+    "4": commodity
+  stock_class_overrides:
+    SPY: etf
+    QQQ: etf
+    IWM: etf
+    TQQQ: etf
+    SQQQ: etf
+    US100: index
+
+# ATL-7: OKX REST client behaviour. Rate limits are the documented per-endpoint OKX v5 limits
+# (https://www.okx.com/docs-v5/en/), as "requests per per_seconds"; keys are paths after /api/v5/.
+okx_rest:
+  timeout_seconds: 10
+  max_attempts: 3
+  backoff_base_seconds: "0.5"
+  backoff_max_seconds: "8"
+  clock_sync_interval_seconds: 600
+  # OKX body codes that mean "try again": 50001 service unavailable, 50011 rate limit, 50013 system busy.
+  retryable_codes: ["50001", "50011", "50013"]
+  rate_limits:
+    public/time: { requests: 10, per_seconds: 2 }
+    public/instruments: { requests: 20, per_seconds: 2 }
+    market/tickers: { requests: 20, per_seconds: 2 }
+    account/config: { requests: 5, per_seconds: 2 }
+    account/balance: { requests: 10, per_seconds: 2 }
+    account/positions: { requests: 10, per_seconds: 2 }
+    account/positions-history: { requests: 10, per_seconds: 10 }
+    account/bills: { requests: 5, per_seconds: 1 }
+    account/bills-archive: { requests: 5, per_seconds: 2 }
+    account/trade-fee: { requests: 5, per_seconds: 2 }
+    asset/balances: { requests: 6, per_seconds: 1 }
+    asset/deposit-history: { requests: 6, per_seconds: 1 }
+    asset/withdrawal-history: { requests: 6, per_seconds: 1 }
+    # ATL-45: public market data (brief §4.2). Limits per IP from the OKX v5 docs; see
+    # docs/handoff/ATL-45-market-data-client.md for the doc date.
+    market/candles: { requests: 40, per_seconds: 2 }
+    market/history-candles: { requests: 20, per_seconds: 2 }
+    public/funding-rate: { requests: 10, per_seconds: 2 }
+    public/funding-rate-history: { requests: 10, per_seconds: 2 }
+    public/open-interest: { requests: 20, per_seconds: 2 }
+    public/mark-price: { requests: 10, per_seconds: 2 }
+    # ATL-134: index prices for the basis (OKX v5 docs: 20 requests / 2 s per IP).
+    market/index-tickers: { requests: 20, per_seconds: 2 }
+    rubik/stat/contracts/open-interest-volume: { requests: 5, per_seconds: 2 }
+    rubik/stat/contracts/long-short-account-ratio: { requests: 5, per_seconds: 2 }
+    rubik/stat/taker-volume: { requests: 5, per_seconds: 2 }
+    # ATL-141: trade and account-write endpoints (per user ID, OKX v5 docs, Oct 2026). GET and POST
+    # trade/order share one bucket (the stricter reading of OKX's separate 60/2 s limits).
+    trade/order: { requests: 60, per_seconds: 2 }
+    trade/batch-orders: { requests: 60, per_seconds: 2 }
+    trade/amend-order: { requests: 60, per_seconds: 2 }
+    trade/cancel-order: { requests: 60, per_seconds: 2 }
+    trade/close-position: { requests: 20, per_seconds: 2 }
+    trade/order-algo: { requests: 20, per_seconds: 2 }
+    trade/cancel-algos: { requests: 20, per_seconds: 2 }
+    # ATL-144: resize a pending SL/OCO to the filled size.
+    trade/amend-algos: { requests: 20, per_seconds: 2 }
+    trade/orders-pending: { requests: 60, per_seconds: 2 }
+    trade/orders-algo-pending: { requests: 20, per_seconds: 2 }
+    trade/orders-history: { requests: 40, per_seconds: 2 }
+    trade/fills: { requests: 60, per_seconds: 2 }
+    trade/fills-history: { requests: 10, per_seconds: 2 }
+    account/set-leverage: { requests: 20, per_seconds: 2 }
+    account/max-size: { requests: 20, per_seconds: 2 }
+  # ATL-45: the largest `limit` OKX accepts per request on paged market endpoints.
+  page_limits:
+    market/candles: 300
+    market/history-candles: 100
+    public/funding-rate-history: 100
+    # ATL-141: trade read endpoints.
+    trade/orders-pending: 100
+    trade/orders-algo-pending: 100
+    trade/orders-history: 100
+    trade/fills: 100
+    trade/fills-history: 100
+    # ATL-141: most orders per trade/batch-orders and algo orders per trade/cancel-algos call.
+    trade/batch-orders: 20
+    trade/cancel-algos: 10
+  # ATL-45: OKX codes that mean "too many requests". On these (and HTTP 429) the retry waits at least
+  # one full rate-limit window of that endpoint before trying again.
+  rate_limit_codes: ["50011"]
+
+# ATL-36: Redis Streams event bus (brief §3.2). Each XADD trims its stream to about this many
+# entries (MAXLEN ~), so the bus never grows without bound; Postgres is the record.
+event_bus:
+  stream_maxlen: 100000
+
+# ATL-38: War Room API (brief §12, §16). `agents` lists the nine agents in brief §7 order:
+# key = slug stored in warroom_messages.mentions; name = display name; handle = the one-word
+# @mention the composer offers; aliases = extra spellings that also resolve. The slug and the
+# name (spaces/punctuation removed) always resolve too. Matching is case-insensitive and
+# ignores "_", "-" and "'".
+warroom:
+  page_limit_default: 50
+  page_limit_max: 100
+  post_per_minute: 30
+  content_max_chars: 4000
+  # ATL-89: atlas:bridge rebroadcasts warroom.thinking without storing it; a payload whose JSON
+  # is longer than this many bytes has its longest strings cut to fit and gets truncated: true.
+  thinking_max_bytes: 16384
+  agents:
+    orchestrator: { name: Orchestrator, handle: Orch, aliases: [] }
+    market_scout: { name: Market Scout, handle: Scout, aliases: [] }
+    news_intelligence: { name: News Intelligence, handle: News, aliases: [newsintel] }
+    historian: { name: Historian, handle: Historian, aliases: [] }
+    technical_analyst: { name: Technical Analyst, handle: Technical, aliases: [ta] }
+    derivatives_sentiment: { name: "Derivatives & Sentiment", handle: Derivatives, aliases: [sentiment] }
+    strategist: { name: Strategist, handle: Strategist, aliases: [] }
+    devils_advocate: { name: "Devil's Advocate", handle: Devil, aliases: [da] }
+    portfolio_manager: { name: Portfolio Manager, handle: PM, aliases: [portfolio] }
+
+# ATL-48 (read by the Data API; ATL-46's backfill should create jobs from the same numbers):
+# history depth per backfill dataset, in days back from when the job is created (brief §7.3:
+# 1D full history, 1H 2 years, 15m 180 days, 1m 30 days; funding and OI as far back as OKX gives).
+# null = full history ("as far back as OKX provides"); the API then reports no expected/percent
+# until the job is done.
+backfill:
+  depth_days:
+    "candles:1m": 30
+    "candles:5m": 180
+    "candles:15m": 180
+    "candles:1H": 730
+    "candles:4H": 730
+    "candles:1D": null
+    funding: null
+    open_interest: null
+    long_short_ratio: null
+    taker_volume: null
+
+# ATL-48: Settings → Data API (brief §14.10, §16). Re-sync and pause go to trading_core and are
+# throttled per user; repaired quality issues stay listed for this many days.
+risk_api:
+  # POST /api/risk/check (ATL-128): owner manual risk checks per minute.
+  checks_per_minute: 20
+
+# ATL-205: trading_core's signed POST /internal/backtest (decision #253 L, brief §7.3 backtest_rule).
+#   max_bars: (period end - start) / bar per instrument; a longer request is refused with 422.
+#   timeout_seconds: wall-clock limit of one run; over it the call answers 422 reason "timeout".
+#   max_inst_ids: instruments per request. warmup_bars: bars loaded before the period to warm the
+#     indicators (the same role as agents.history.backtest.warmup_bars).
+#   equity_curve_max_points / trades_max_rows: the response's equity curve is downsampled to at most
+#     this many points (first and last kept) and the trade list cut to the first this many rows.
+#   taker_fee_rates: fraction per OKX instType. No trade-fee rate is stored in Postgres yet, so these
+#     are what a run uses (fee_source "config"); an instType not listed uses fallback_taker_fee_rate.
+backtest:
+  max_bars: 50000
+  timeout_seconds: 60
+  max_inst_ids: 5
+  warmup_bars: 250
+  equity_curve_max_points: 1000
+  trades_max_rows: 1000
+  fallback_taker_fee_rate: "0.0005"
+  taker_fee_rates:
+    SPOT: "0.001"
+    SWAP: "0.0005"
+    FUTURES: "0.0005"
+
+# ATL-208: /api/backtests. The owner starts a backtest (POST, throttled per user) and a queued job on
+# its own Horizon queue calls trading_core's synchronous POST /internal/backtest (≤ backtest.timeout_seconds).
+#   http_timeout_seconds: the HTTP client's wait, a little above backtest.timeout_seconds.
+#   job_timeout_seconds: the job's hard limit; must stay below the redis queue's retry_after (90 s) so a
+#     run is never handed to a second worker. Tries is 1: a failed backtest is stored, never retried.
+#   list_limit: how many recent runs GET /api/backtests returns.
+backtests_api:
+  starts_per_minute: 6
+  http_timeout_seconds: 70
+  job_timeout_seconds: 80
+  list_limit: 50
+  queue: backtests
+
+data_api:
+  resync_per_minute: 1
+  pause_per_minute: 5
+  repaired_issue_days: 7
+  quality_issue_limit: 500
+
+# ATL-66: Settings → Data sources API. The owner may set a source's poll interval only inside
+# these bounds; writes (toggle, poll, set/remove key) are throttled per user.
+# ATL-103: owner watchlist pin/remove/restore writes per user per minute.
+watchlists_api:
+  writes_per_minute: 30
+
+# ATL-163: POST /api/cycles (the composer's /cycle now). One manual cycle request per user per
+# minute; the Orchestrator also refuses a second one while a cycle runs.
+cycles_api:
+  start_per_minute: 1
+
+# ATL-162: /api/proposals (brief §12, §16). Approve, reject, edit and ask-team per user per minute;
+# list page size.
+proposals_api:
+  writes_per_minute: 30
+  list_limit: 50
+  list_max_limit: 200
+
+# ATL-148: /api/system (health, pause, resume, kill) and the owner's order cancel / position close.
+# control_per_minute is the kill switch's own limiter (pause, resume, kill), per user; those routes are
+# excluded from the shared api limiter (api_per_minute, every other /api route, per user or IP) so a
+# flood of other requests can never make the kill switch answer 429. trades_per_minute covers
+# POST /api/orders/{id}/cancel and POST /api/portfolio/positions/{id}/close.
+system_api:
+  control_per_minute: 30
+  trades_per_minute: 30
+  api_per_minute: 1200
+
+# ATL-162: trading_core's approval sweeper. Every sweep_seconds it rejects awaiting_owner proposals
+# whose approval_expires_at has passed (autonomy.on_approval_timeout) and posts one reminder when
+# reminder_fraction of the approval window has gone by.
+approvals:
+  sweep_seconds: 15
+  reminder_fraction: "0.5"
+
+# ATL-214, brief §17, decision #254 (2): owner notifications. atlas:bridge maps these events to rows
+# in `notifications` and broadcasts `notification.created` on private-system. Each event has the
+# settings keys notifications.<event>.<channel> (booleans); a fresh env starts from
+# channel_defaults. An event with every channel off stores nothing; with in_app and browser off it
+# is not broadcast (telegram alone still stores the row for the Telegram sender, ATL-215).
+notifications:
+  events:
+    - proposal_awaiting_approval
+    - order_filled
+    - stop_hit
+    - target_hit
+    - circuit_breaker
+    - kill_switch
+    - daily_report
+    - news_alert
+    - agent_degraded
+    - data_stale
+    - reconciliation_mismatch
+    # ATL-231: `php artisan atlas:backup` failed (decision #255 (3)).
+    - backup_failed
+    # ATL-261: the per-user sign-in-code failure cap (two_factor.challenge_failures_per_window)
+    # tripped.
+    - auth_two_factor_failures
+  channels: [in_app, browser, telegram]
+  channel_defaults:
+    in_app: true
+    browser: true
+    telegram: false
+  # ATL-229, decision #255 (2): during quiet hours (schedule.quiet_hours_*) only these events still
+  # go to browser and Telegram; every other event keeps its in-app row but is not delivered there.
+  quiet_hours_always_deliver:
+    - circuit_breaker
+    - kill_switch
+    - stop_hit
+    - target_hit
+    - proposal_awaiting_approval
+  # agent states that count as "agent degraded" (system.agent_state).
+  degraded_agent_states: [degraded, rate_limited]
+  # longest string kept in a notification param (headlines, reasons).
+  param_max_length: 300
+  per_page_default: 50
+  per_page_max: 200
+  writes_per_minute: 120
+
+# ATL-215, decision #254 (3): the optional Telegram bot. Outgoing messages go through the queue job
+# SendTelegramNotification; button presses are read by `php artisan atlas:telegram-poll` with
+# getUpdates long polling (no webhook, no public URL, brief §18). poll_timeout_seconds is Telegram's
+# long-poll wait; http_timeout_seconds must stay above it. Approve/Reject buttons expire at the
+# proposal's approval_expires_at.
+telegram:
+  api_base: https://api.telegram.org
+  queue: default
+  poll_timeout_seconds: 25
+  http_timeout_seconds: 35
+  send_timeout_seconds: 10
+  # pause after a failed getUpdates before the next try.
+  error_backoff_seconds: 5
+  send_tries: 3
+  writes_per_minute: 30
+  # bytes of HMAC-SHA256 kept in callback_data (base64url: 24 chars), so it fits Telegram's 64 bytes.
+  callback_mac_bytes: 18
+
+# ATL-231, decision #255 (3): the daily database backup (`php artisan atlas:backup`, pg_dump -Fc).
+# The owner's settings keys `backup.enabled`, `backup.folder`, `backup.time` (HH:MM Asia/Baghdad)
+# and `backup.keep` default from enabled/folder/time/keep; an empty folder means `<repo>/../backups`.
+# The scheduler and the API read the active env's settings row.
+#   keep_min/keep_max: the range of backup.keep.
+#   timeout_seconds: pg_dump's hard limit; job_timeout_seconds sits above it.
+#   lock_minutes: the scheduler's withoutOverlapping expiry and the run lock (above timeout).
+#   stale_after_hours: atlas:doctor warns when the newest good backup is older.
+#   error_max_length: longest pg_dump error text stored on a failed run.
+#   queue/queue_connection: POST /api/backup/run's job runs on its own Horizon supervisor and redis
+#     connection, whose retry_after sits above job_timeout_seconds so a long dump is never re-run.
+backup:
+  enabled: true
+  folder: ""
+  default_folder_name: backups
+  time: "03:00"
+  keep: 14
+  keep_min: 1
+  keep_max: 90
+  timeout_seconds: 1800
+  job_timeout_seconds: 1860
+  lock_minutes: 40
+  stale_after_hours: 26
+  runs_listed: 10
+  error_max_length: 2000
+  queue: backups
+  queue_connection: redis-backups
+  runs_per_minute: 1
+
+data_sources_api:
+  poll_seconds_min: 60
+  poll_seconds_max: 86400
+  api_key_max_length: 255
+  writes_per_minute: 20
+
+# ATL-57: news and calendar ingest (brief §7.2, decision #243). kind = transport
+# (rss|api|calendar|earnings|sentiment); category = topic the UI groups by (exchange|crypto_news|
+# markets_news|calendar|earnings|sentiment). NewsSourcesSeeder inserts one
+# news_sources row per entry in `sources` (insert-only: an owner's later edits are kept).
+# poll_seconds follow the brief §7.2 table: exchange 2 min, news 2-5 min, calendar 15 min,
+# earnings daily, sentiment 15-60 min. A source that fails `failure_threshold` times in a row is
+# disabled for `disable_minutes` (status degraded); a requires_key source with no key is needs_key.
+# URLs were not re-checked against the live feeds (no network at build time): re-verify when the
+# collectors are recorded on a networked run.
+news:
+  failure_threshold: 3
+  disable_minutes: 30
+  # atlas_ingest runtime (ATL-59): how often enabled rows are re-read, the tick of the poll loop,
+  # and article-text extraction (trafilatura) for feeds that only carry a summary.
+  reload_seconds: 60
+  tick_seconds: 1
+  extract:
+    timeout_seconds: 8
+    max_bytes: 2000000
+    max_per_poll: 25
+  # ATL-73: every source response (feed XML, provider JSON) is read with the same streamed cap as
+  # article extraction uses, just more generous — a feed or an API page is naturally bigger than
+  # one article. Content-Length over the cap is rejected before any read; an unbounded or
+  # understated body is aborted the moment the cap is passed.
+  max_response_bytes: 10000000
+  # ATL-60: API collectors. Provider terms could not be re-read at build time (no network); the
+  # values below follow the providers' published free tiers and are recorded in each module's
+  # docstring. Finnhub's free tier allows 60 calls/minute per key (and 30/second); finnhub.news
+  # spends at most max_calls_per_poll of them per poll (1 general + the rest company news,
+  # rotating through the stock/ETF underlyings), leaving room for finnhub.calendar/earnings on the
+  # same key. A 429 delays the source's next poll by Retry-After, else rate_limit_window_seconds.
+  collectors:
+    finnhub:
+      max_calls_per_poll: 20
+      request_interval_seconds: "0.25"
+      company_news_days: 2
+      rate_limit_window_seconds: 60
+    cryptopanic:
+      rate_limit_window_seconds: 60
+    okx_announcements:
+      language: en-US
+  # Per-symbol feed templates expand {symbol} for every stock/ETF perp underlying in instruments.
+  # ATL-65: headline RSS feeds poll every 60 s so an alert lands < 90 s after the story is posted
+  # (brief §7.2 latency target); the per-symbol Yahoo template stays at 300 s (one request per symbol).
+  # ATL-71: provider owns the API key (one key per provider, written to all its sources).
+  # ATL-106 (decision #247 (4), brief §7.2): reputable / official decide a story cluster's status in
+  # code. CONFIRMED = any official source or 2+ distinct reputable sources; REPORTED = exactly one
+  # reputable; else RUMOUR. Official = the exchange's own announcements. Reputable = newsrooms with
+  # editorial standards (CoinDesk, The Block, CNBC, MarketWatch) and Finnhub's news feed. Not
+  # reputable: CryptoPanic (aggregated community/social posts), Cointelegraph and Decrypt (more
+  # opinion and sponsored content), Yahoo per-symbol feeds (mixed press releases). The seeder and the
+  # migration set these on install; the owner cannot edit them (read-only in the Data sources API).
+  # covers: source keys this source takes over when it is enabled and keyed (decision #244:
+  # Finnhub's calendar replaces ForexFactory); the API reports it as covered_by on those sources.
+  sources:
+    okx.announcements: { provider: okx, kind: api, category: exchange, name: OKX announcements, url: "https://www.okx.com/api/v5/support/announcements", poll_seconds: 120, requires_key: false, reputable: true, official: true }
+    cryptopanic: { provider: cryptopanic, kind: api, category: crypto_news, name: CryptoPanic, url: "https://cryptopanic.com/api/v1/posts/", poll_seconds: 180, requires_key: true, reputable: false, official: false }
+    rss.coindesk: { provider: coindesk, kind: rss, category: crypto_news, name: CoinDesk, url: "https://www.coindesk.com/arc/outboundfeeds/rss", poll_seconds: 60, requires_key: false, reputable: true, official: false }
+    rss.cointelegraph: { provider: cointelegraph, kind: rss, category: crypto_news, name: Cointelegraph, url: "https://cointelegraph.com/rss", poll_seconds: 60, requires_key: false, reputable: false, official: false }
+    rss.theblock: { provider: theblock, kind: rss, category: crypto_news, name: The Block, url: "https://www.theblock.co/rss.xml", poll_seconds: 60, requires_key: false, reputable: true, official: false }
+    rss.decrypt: { provider: decrypt, kind: rss, category: crypto_news, name: Decrypt, url: "https://decrypt.co/feed", poll_seconds: 60, requires_key: false, reputable: false, official: false }
+    rss.cnbc: { provider: cnbc, kind: rss, category: markets_news, name: CNBC Top News, url: "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114", poll_seconds: 60, requires_key: false, reputable: true, official: false }
+    rss.marketwatch: { provider: marketwatch, kind: rss, category: markets_news, name: MarketWatch Top Stories, url: "https://feeds.content.dowjones.io/public/rss/mw_topstories", poll_seconds: 60, requires_key: false, reputable: true, official: false }
+    rss.yahoo: { provider: yahoo, kind: rss, category: markets_news, name: Yahoo Finance (per symbol), url: "https://feeds.finance.yahoo.com/rss/2.0/headline?s={symbol}&region=US&lang=en-US", poll_seconds: 300, requires_key: false, reputable: false, official: false }
+    finnhub.news: { provider: finnhub, kind: api, category: markets_news, name: Finnhub news, url: "https://finnhub.io/api/v1/news", poll_seconds: 180, requires_key: true, reputable: true, official: false }
+    finnhub.calendar: { provider: finnhub, kind: calendar, category: calendar, name: Finnhub economic calendar, url: "https://finnhub.io/api/v1/calendar/economic", poll_seconds: 900, requires_key: true, covers: [forexfactory.calendar], reputable: false, official: false }
+    finnhub.earnings: { provider: finnhub, kind: earnings, category: earnings, name: Finnhub earnings calendar, url: "https://finnhub.io/api/v1/calendar/earnings", poll_seconds: 86400, requires_key: true, reputable: false, official: false }
+    forexfactory.calendar: { provider: forexfactory, kind: calendar, category: calendar, name: ForexFactory weekly calendar, url: "https://nfs.faireconomy.media/ff_calendar_thisweek.json", poll_seconds: 900, requires_key: false, reputable: false, official: false }
+    alternative_me.fng: { provider: alternative_me, kind: sentiment, category: sentiment, name: Crypto Fear & Greed Index, url: "https://api.alternative.me/fng/", poll_seconds: 3600, requires_key: false, reputable: false, official: false }
+
+  # ATL-64: local embeddings (atlas_ingest.embedding) and story clustering (atlas_ingest.clustering).
+  # The model is multilingual (Arabic, CJK and European headlines join their English story) and
+  # 384-d like news_items.embedding. Weights are cached outside the repository; ATLAS_MODEL_CACHE
+  # overrides cache_dir.
+  embedding:
+    model: paraphrase-multilingual-MiniLM-L12-v2
+    cache_dir: "~/Library/Caches/atlas/models"
+    device: cpu
+  # An item joins the best-scoring candidate cluster when score > join_threshold and the cluster
+  # would still span <= window_hours (earliest to latest published_at). Candidates are the
+  # candidate_limit nearest items (pgvector cosine, HNSW) published within window_hours. Per pair:
+  #   score = cosine
+  #         + title_weight      * rapidfuzz token_set_ratio(titles) / 100
+  #         + number_weight     when both texts state the same figure ($48M = $48 million, 4,050 = 4050)
+  #         + instrument_weight when the linked instruments overlap
+  #         - conflict_penalty  when both have linked instruments and none are shared
+  #         + event_type_weight when both have the same event_type
+  # Tuned on the 300-headline fixture: pairwise F1 0.94 (in-sample).
+  # novelty = 1 - max cosine to any item published in the novelty_hours before it (1.0 when none).
+  clustering:
+    window_hours: 12
+    join_threshold: "0.8"
+    title_weight: "0.2"
+    number_weight: "0.2"
+    instrument_weight: "0.1"
+    conflict_penalty: "0.2"
+    event_type_weight: "0.2"
+    candidate_limit: 20
+    novelty_hours: 72
+
+  # ATL-65: news.alert on atlas.warroom (brief §7.2 step 6). An item alerts when its importance is
+  # >= importance, or >= held_importance and it links an instrument the env holds a position in
+  # (newest positions_snapshots tick). One alert per story cluster (news_clusters.alerted_at).
+  # The alias table is re-synced from instruments at most every alias_resync_seconds.
+  alerts:
+    importance: 5
+    held_importance: 4
+    alias_resync_seconds: 60
+
+  # ATL-63: rule-based headline importance (brief §7.2 step 4, decision #243), read by
+  # atlas_ingest.classify.importance:
+  #   score = base[event_type] (default_base when unlisted)
+  #         + tier1_bonus           when the source is in tier1_sources (case-insensitive name or key)
+  #         + strong_sentiment_bonus when |sentiment| >= strong_sentiment
+  #         + multi_instrument_bonus when linked_count >= multi_instrument_min
+  #         - unlinked_penalty      when linked_count == 0 and the type is not a market-wide one
+  #                                 (macro_release, central_bank, geopolitics)
+  #         + high_novelty_bonus    when novelty is known and >= high_novelty
+  #         - low_novelty_penalty   when novelty is known and < low_novelty (a rehash of known news)
+  #   clamped to 1..5.
+  importance:
+    min: 1
+    max: 5
+    default_base: 2
+    base:
+      hack_exploit: 4
+      central_bank: 4
+      macro_release: 4
+      delisting: 4
+      regulation: 3
+      earnings: 3
+      guidance: 3
+      listing: 3
+      ETF_flow: 3
+      "M&A": 3
+      lawsuit: 3
+      token_unlock: 3
+      geopolitics: 3
+      supply_shock: 3
+      product: 2
+      partnership: 2
+      other: 1
+    market_wide_types: [macro_release, central_bank, geopolitics]
+    tier1_bonus: 1
+    tier1_sources: [reuters, bloomberg, associated press, ap, financial times, wall street journal, wsj, okx announcements, okx.announcements]
+    strong_sentiment: "0.6"
+    strong_sentiment_bonus: 1
+    multi_instrument_min: 3
+    multi_instrument_bonus: 1
+    unlinked_penalty: 1
+    high_novelty: "0.6"
+    high_novelty_bonus: 1
+    low_novelty: "0.15"
+    low_novelty_penalty: 1
+
+  # ATL-67: read-only /api/news, /api/news/clusters/{id}, /api/calendar, /api/sentiment/latest.
+  # Earnings rows carry a date plus Finnhub's hour hint; the calendar places bmo/amc at these
+  # US/Eastern wall-clock times (DST handled by Postgres), and dmh/unknown at 00:00 UTC.
+  api:
+    page_limit_default: 50
+    page_limit_max: 100
+    max_inst_ids: 50
+    calendar_default_hours: 48
+    earnings_timezone: America/New_York
+    earnings_bmo_time: "09:30"
+    earnings_amc_time: "16:00"
+    default_sentiment_index: crypto_fng
+  # ATL-61: calendar, earnings and sentiment collectors write economic_events, earnings_events and
+  # market_sentiment (not news_items). ForexFactory impact -> economic_events.importance; 0 means
+  # "not stored" (the column is CHECKed 1..5, and holidays are not tradeable events). Unknown
+  # impacts get unmapped_importance. Finnhub's lowercase impacts use the same map, case-insensitively.
+  calendar_importance:
+    High: 5
+    Medium: 3
+    Low: 1
+    Holiday: 0
+  calendar:
+    unmapped_importance: 1
+    # Brief §7.2: calendar every 15 min (the source's poll_seconds), and every fast_poll_seconds
+    # while any stored event with importance >= fast_min_importance is within ±fast_window_minutes.
+    fast_poll_seconds: 60
+    fast_window_minutes: 10
+    fast_min_importance: 1
+    # When finnhub.calendar is enabled, keyed and not degraded it is the calendar source and
+    # forexfactory.calendar makes no request.
+    finnhub_days_back: 1
+    finnhub_days_ahead: 7
+  earnings:
+    days_back: 3
+    days_ahead: 14
+  sentiment:
+    fng_index_key: crypto_fng
+    fng_limit: 10
+
+# ATL-79, brief §7.3: atlas_quant statistics (Historian, Risk Engine). Annualisation multiplies a
+# per-bar statistic by sqrt(days_per_year[asset_class] * 86400 / bar_seconds): OKX perps trade
+# around the clock, so a stock or commodity perp's bar count per day is the same as crypto's and only
+# the day count differs. Unknown asset classes use days_per_year.other.
+quant:
+  days_per_year:
+    crypto: 365
+    stock: 252
+    etf: 252
+    index: 252
+    commodity: 252
+    other: 365
+  default_asset_class: crypto
+  # Wilder ATR: seed = mean of the first atr_window true ranges, then (prev * (w - 1) + TR) / w.
+  atr_window: 14
+  # Intraday-by-hour tables are given in UTC and in this display timezone.
+  hour_table_timezone: Asia/Baghdad
+  # ATL-82: event_study. Window in hours around each event; ATR-unit moves are reported for these
+  # horizons (hours), using Wilder ATR(atr_window) of the bars closed by the event time.
+  event_study:
+    window_hours: [-24, 72]
+    atr_horizons_hours: [1, 4, 24]
+  # ATL-82: backtest_rule. Default slippage per fill (bps of price) when the caller passes none;
+  # the period is cut into walk_forward_splits + 1 equal blocks (anchored walk-forward: fold j is
+  # in-sample on blocks 0..j-1 and out-of-sample on block j). overfit_warning is raised when the
+  # mean OOS Sharpe < overfit_sharpe_fraction x the mean IS Sharpe (IS Sharpe > 0).
+  backtest:
+    slippage_bps: 2
+    walk_forward_splits: 3
+    overfit_sharpe_fraction: "0.5"
+  # ATL-81: find_analogs. Distance² = sum of weight * mean squared z-difference per feature group
+  # (each feature column is z-normalised over the eligible windows only, so nothing after as_of
+  # enters the scaling). Chosen neighbours never overlap each other or the query window.
+  analogs:
+    k: 20
+    horizons: ["1h", "4h", "24h", "72h"]
+    weights:
+      returns_path: "1"
+      realised_vol: "1"
+      volume_z: "1"
+      funding: "1"
+  # ATL-81: seasonality. The funding buckets are the hours from -window to +window - 1 around the
+  # nearest settlement time (UTC); every other bar falls in the "outside" bucket.
+  seasonality:
+    funding_hours_utc: [0, 8, 16]
+    funding_window_hours: 2
+  # ATL-80: detect_regime. A Gaussian HMM (seeded) on [log return %, ln(rolling vol %)]; a state whose
+  # mean rolling vol is >= high_vol_ratio x the calmest state's is high_vol, the calmest state is
+  # low_vol when some state clears that ratio, other states are trend_up/trend_down when the t-statistic
+  # of their mean return (mean / std * sqrt(bars in the state)) is >= trend_t, else range. Falls back to ADX + vol percentile when
+  # fewer than min_bars feature rows exist, the fit raises, or EM stops at n_iter without converging.
+  regime:
+    n_states: 3
+    min_bars: 200
+    vol_window: 20
+    hmm_n_iter: 1000
+    hmm_tol: "0.0001"
+    hmm_covariance_type: full
+    random_state: 42
+    high_vol_ratio: "2.0"
+    trend_t: "3.0"
+    adx_window: 14
+    adx_trend_threshold: "25"
+    vol_percentile_lookback: 250
+    high_vol_percentile: "80"
+    low_vol_percentile: "20"
+  # ATL-80: volatility_forecast. GARCH(1,1) (arch, normal errors) on percent log returns; EWMA with
+  # ewma_lambda when there are fewer than garch_min_bars returns, the optimiser does not converge or the
+  # fit is not stationary (alpha + beta >= 1). garch_mean: constant | zero.
+  volatility:
+    garch_min_bars: 100
+    garch_mean: constant
+    ewma_lambda: "0.94"
+  # ATL-80: drawdown_profile reports the top_n deepest close-to-close drawdowns.
+  drawdown:
+    top_n: 5
+
+# ATL-83, decisions #242/#245: the agent runtime (services/agents). Agents run on the owner's
+# logged-in Claude Code CLI (subscription), never an API key, so budgets are tokens and turns per
+# agent per Asia/Baghdad day; the SDK's cost is a notional display figure only.
+#   models: tier -> the alias handed to the CLI's --model ("opus" = the strongest available model).
+#   defaults: every agent's spec unless its roster entry overrides a field.
+#     model / routine_model: model tier for normal runs / for cheap routine checks.
+#     daily_tokens: tokens_in + tokens_out (input incl. cache reads/writes) per day.
+#     daily_turns: model turns per day; max_turns_per_run: --max-turns for one run.
+#   budget_warning_pct: share of either daily budget that publishes system.agent_budget once a day.
+agents:
+  budget_warning_pct: "80"
+  # ATL-113, brief §14.7: bounds for the owner-editable agent settings (PATCH /api/settings keys
+  # agents.<slug>.enabled|model|daily_tokens|daily_turns and agents.web.allow_domains|deny_domains).
+  # Their defaults are agents.defaults + agents.roster and agents.web below.
+  #   web_domains_max: entries per web domain list.
+  settings_bounds:
+    daily_tokens: { min: 1, max: 1000000000 }
+    daily_turns: { min: 1, max: 100000 }
+    web_domains_max: 200
+  models:
+    strong: opus
+    standard: sonnet
+    routine: haiku
+  defaults:
+    enabled: false
+    model: standard
+    routine_model: routine
+    daily_tokens: 3000000
+    daily_turns: 300
+    max_turns_per_run: 25
+  roster:
+    orchestrator: { enabled: true }  # ATL-161: on by default (runs the analysis cycles)
+    market_scout: { model: strong, enabled: true }
+    news_intelligence: { model: strong, enabled: true }
+    historian: { model: strong, enabled: true }
+    technical_analyst: {}
+    derivatives_sentiment: {}
+    strategist: { model: strong }
+    devils_advocate: { model: strong }
+    portfolio_manager: { model: strong }
+  # ATL-160, brief §7.9/§8: the Orchestrator's cycle state machine (code, atlas_agents.orchestrator).
+  #   check_seconds: how often the orchestrator's schedule hook looks for a due slot.
+  #   research_timeout_seconds / review_timeout_seconds / vote_seconds: research (Technical +
+  #     Derivatives per watchlist instrument), the Devil's Advocate review per proposal, the vote.
+  #   strategist_timeout_seconds: the Strategist's whole cycle run; late = recorded, no proposals.
+  #   poll_seconds: how often a wait re-reads the DB (DA card, votes).
+  #   research_agents: the agents whose runs the cycle starts and waits for.
+  #   blocking_agents: when any is in one of unavailable_states (or not enabled), the cycle makes no
+  #     new proposals and closes after research with the reason.
+  #   risk_timeout_seconds: the signed call to trading_core /internal/risk/evaluate/{id}.
+  #   execute_timeout_seconds: the signed POST /internal/proposals/{id}/execute an autonomy 3-4
+  #     send_now makes (ATL-213): a fresh risk check plus the Executor's order and stop check.
+  #   trading_core_url: default for the TRADING_CORE_URL env var.
+  #   watchlist_max_instruments: research runs per agent per cycle.
+  orchestrator:
+    check_seconds: 60
+    research_timeout_seconds: 300
+    review_timeout_seconds: 120
+    vote_seconds: 180
+    strategist_timeout_seconds: 900
+    poll_seconds: 5
+    research_agents: [technical_analyst, derivatives_sentiment]
+    blocking_agents: [technical_analyst, strategist]
+    unavailable_states: [degraded, rate_limited, paused, disabled]
+    risk_timeout_seconds: 30
+    execute_timeout_seconds: 60
+    trading_core_url: "http://127.0.0.1:8100"
+    watchlist_max_instruments: 10
+    # ATL-161, brief §7.9: the Orchestrator agent (atlas_agents.orchestrator.owner/status/loops).
+    #   ack_target_seconds: owner-message acknowledgement target; every latency is stored in
+    #     agent_scores (orchestrator, data.ack_latency_seconds), hit_rate = share within target.
+    #   assign_deadline_minutes: deadline of an assign when the model gives none.
+    #   routing_retries: follow-ups when the routing answer is not valid JSON.
+    #   why_max_words: a /why answer has fewer words than this (links included).
+    #   why_max_messages: linked War Room messages a /why reads.
+    #   loop_max_replies: two agents replying to each other more than this many times on one
+    #     thread get a summary and an early vote.
+    #   where_we_are: the "Where we are" card, every every_minutes from first to last (Baghdad).
+    ack_target_seconds: 10
+    assign_deadline_minutes: 30
+    routing_retries: 1
+    why_max_words: 150
+    why_max_messages: 12
+    loop_max_replies: 3
+    where_we_are: { first: "08:10", last: "23:00", every_minutes: 120 }
+  # ATL-92, brief §7.11/§9: the eval harness (python -m atlas_agents.evals).
+  #   max_drop_points: `run` exits 1 when the overall pass rate (percent) is more than this many
+  #     points below the agent's committed evals/<agent>/baseline.json.
+  #   guard: the no_invented_numbers checker. auto = atlas_agents.numguard when installed, else the
+  #     harness's built-in stub; numguard / stub force one.
+  evals:
+    max_drop_points: "5"
+    guard: auto
+  # ATL-87, brief §7.3: the history tools (atlas_agents.tools.history) and the Historian's
+  # verdict rules (atlas_agents.schemas.enforce_verdict_rules).
+  #   <tool>.bar / lookback_bars: the series each tool loads when the caller gives no bar/lookback,
+  #     always ending at as_of (replay_as_of in replay, else now).
+  #   backtest.taker_fee_rate: fraction (0.0005 = 0.05 %) used until a stored trade-fee read exists;
+  #     a caller's costs.taker_fee_rate overrides it. warmup_bars load before the period to warm the
+  #     indicators. slippage comes from quant.backtest.slippage_bps unless the caller passes one.
+  #   event_study.event_types: event_type -> name regexes (case-insensitive) matched against
+  #     economic_events.name, optionally limited to countries. "earnings" reads earnings_events for
+  #     the instrument's base currency; earnings_hour_utc maps Finnhub's time field to an hour
+  #     (approximate: US open/close in UTC, ignoring DST).
+  #   verdict.min_n: below this many cases a verdict cannot be stronger than weakly_supports.
+  history:
+    compute_stats: { bar: 1D, lookback_bars: 365 }
+    detect_regime: { bar: 1D, lookback_bars: 730 }
+    volatility_forecast: { bar: 1H, lookback_bars: 2000 }
+    drawdown_profile: { bar: 1D, lookback_bars: 3650 }
+    seasonality: { bar: 1H, lookback_bars: 8760 }
+    cross_asset_lead_lag: { bar: 1H, lookback_bars: 720 }
+    find_analogs: { bar: 1H, window_bars: 24 }
+    event_study:
+      bar: 1H
+      max_instruments: 10
+      max_events: 200
+      event_types:
+        cpi: { names: ['\bCPI\b', 'consumer price index'], countries: [US, USD] }
+        ppi: { names: ['\bPPI\b', 'producer price index'], countries: [US, USD] }
+        fomc: { names: ['\bFOMC\b', 'federal funds rate', 'fed interest rate decision'], countries: [US, USD] }
+        nfp: { names: ['non-?farm', '\bNFP\b'], countries: [US, USD] }
+        gdp: { names: ['\bGDP\b'], countries: [US, USD] }
+        retail_sales: { names: ['retail sales'], countries: [US, USD] }
+        unemployment: { names: ['unemployment rate', 'jobless claims'], countries: [US, USD] }
+      earnings_hour_utc: { bmo: 13, amc: 21, dmh: 17, default: 21 }
+    backtest:
+      bar: 1H
+      lookback_bars: 8760
+      warmup_bars: 250
+      taker_fee_rate: "0.0005"
+    verdict:
+      min_n: 20
+    # ATL-199, brief §7.3 weekly review (atlas_agents.historian_weekly), run at
+    # agents.schedule.historian_weekly_review.
+    #   lookback_days: Baghdad days aggregated, ending with the review's day.
+    #   output_retries: follow-ups when the reply is not one verdict + exactly one suggested change.
+    #   verdict_max_chars / change_max_chars: the model's verdict line and suggestion are cut to these.
+    weekly_review:
+      lookback_days: 7
+      output_retries: 1
+      verdict_max_chars: 240
+      change_max_chars: 400
+  # ATL-84, brief §6.2/§7.11 and rule 7: the agents' tool layer (atlas_agents.tools).
+  #   max_result_tokens: a tool result whose JSON is estimated (chars / chars_per_token) above this
+  #     is trimmed by code: every list is cut to trim_rows rows, then the longest list is halved
+  #     until it fits; the result is marked truncated: true.
+  #   injection_patterns: case-insensitive regexes; text passed through untrusted() that matches
+  #     any of them is flagged as instruction-like so the caller can raise a War Room alert.
+  # ATL-85, brief §6.2: okx_market / atlas_data read tools (Postgres only, decision #245).
+  #   ticker_bar: the bar get_tickers and list_instruments' 24h volume are computed from.
+  #   ticker_window_hours: the "24h" window for change and volume.
+  #   mark_price_bar: get_mark_price answers with this bar's last close, labelled a proxy.
+  #   series_limit: rows returned by get_long_short_ratio / get_taker_volume.
+  #   min_correlation_obs: fewer overlapping daily returns than this gives corr null.
+  market_tools:
+    ticker_bar: 1H
+    ticker_window_hours: 24
+    mark_price_bar: 1m
+    series_limit: 200
+    min_correlation_obs: 3
+  # ATL-106, brief §7.2: price_move_since_first_seen_atr on news clusters (atlas_quant.move_since_atr):
+  #   (price now - close of the last `bar` closed by first_seen) / Wilder ATR(quant.atr_window) of the
+  #   `bar` bars closed by first_seen, read from the last `history_bars` of them. Price now is the
+  #   market_tools.mark_price_bar proxy (newest closed 1m close).
+  news_price_move:
+    bar: 1H
+    history_bars: 200
+  tools:
+    max_result_tokens: 4000
+    chars_per_token: 4
+    trim_rows: 50
+    injection_patterns:
+      - '\bignore\s+(?:all\s+|any\s+|the\s+)?(?:previous|prior|above|earlier)\b'
+      - '\bdisregard\s+(?:all\s+|any\s+|the\s+)?(?:previous|prior|above|earlier|your)\b'
+      - '\bforget\s+(?:all\s+|everything\s+|your\s+)?(?:previous|prior|instructions|rules)\b'
+      - '\byou\s+are\s+now\b'
+      - '\bpretend\s+(?:to\s+be|you\s+are)\b'
+      - '\bsystem\s+prompt\b'
+      - '\bnew\s+instructions?\b'
+      - '\boverride\s+(?:your|the|all)\s+(?:instructions|rules|limits|settings)\b'
+      - '\bsystem\s+override\b'
+      - '\bignore\s+(?:all\s+|any\s+)?(?:your|these|those|its)\s+(?:rules|instructions|limits|guidelines|prompt)\b'
+      - '\bdeveloper\s+mode\b'
+      - '\bjailbreak\b'
+      - '<\s*/?\s*(?:system|assistant|user|untrusted_source|function_calls|invoke|tool_use)\b'
+      - '\bmcp__\w+'
+      - '"(?:tool_use|tool_call|function_call)"'
+      - '\b(?:submit_proposal|cast_vote|post_message|place_order)\s*\('
+  # ATL-100/ATL-121, brief §6.1/§7.10 (security round 9 low, round 11 medium finding 1):
+  # news.fetch_article's live-fetch domain policy (atlas_agents.tools.news.domain_allowed) and the
+  # PreToolUse hook that gates the built-in WebSearch tool for Market Scout/News Intelligence
+  # (atlas_agents.access). Checked against the URL's host before the guarded SSRF fetch
+  # (atlas_ingest.extract.Extractor) and against every redirect hop's host inside it, so a denied
+  # or non-allow-listed host is never requested; WebSearch gets allowed_domains injected from the
+  # same effective list. A host matches an entry when it equals it or is a subdomain of it
+  # ("coindesk.com" matches "www.coindesk.com"). deny_domains wins over allow_domains.
+  #
+  # allow_domains ships non-empty: the host of every configured news_sources feed (§ news.sources
+  # above), plus okx.com. ATL-121: an EMPTY allow_domains now means "nothing allowed" (not "any
+  # public host"), so the owner widening it in Settings -> Agents is an explicit choice, not an
+  # accidental "allow everything" left by clearing the field. Never applied to a stored article
+  # body (fetch_article's "stored" origin).
+  web:
+    allow_domains:
+      - api.alternative.me
+      - cointelegraph.com
+      - cryptopanic.com
+      - decrypt.co
+      - feeds.content.dowjones.io
+      - feeds.finance.yahoo.com
+      - finnhub.io
+      - nfs.faireconomy.media
+      - okx.com
+      - search.cnbc.com
+      - www.coindesk.com
+      - www.okx.com
+      - www.theblock.co
+    deny_domains: []
+  # ATL-88, brief §6.1: live warroom.thinking events while a run streams (atlas_agents.streaming).
+  #   max_events_per_second: per run; deltas that arrive faster are coalesced into one event.
+  #   event_text_max_chars: thinking/text in one event is cut to this (the final message's
+  #     reasoning_md keeps everything).
+  #   tool_input_max_chars / tool_output_max_chars: a tool call's JSON input and its output are
+  #     cut to these in events and in the final message's tool_calls.
+  streaming:
+    max_events_per_second: 10
+    event_text_max_chars: 4000
+    tool_input_max_chars: 2000
+    tool_output_max_chars: 2000
+  # ATL-91, brief §7.11: the numeric hallucination guard (atlas_agents.numguard). Every number an
+  # agent states is matched against the numeric leaves of that turn's tool outputs.
+  #   rel_tolerance: |stated - tool| <= rel_tolerance x |tool| matches (0.005 = 0.5 %).
+  #   abs_floor: the smallest absolute tolerance, so tiny values (0.0001) are not held to 0.5 % of
+  #     themselves.
+  #   rounding_aware: a stated number also matches a tool value that rounds to it at the precision
+  #     written ("4.1%" matches 0.04132; "1.2M" matches 1,234,000).
+  #   derive_pairs: also match the difference or ratio of two tool numbers.
+  #   max_pair_leaves: only the first N distinct tool numbers are paired (N^2 candidates).
+  numguard:
+    rel_tolerance: "0.005"
+    abs_floor: "0.0001"
+    rounding_aware: true
+    derive_pairs: true
+    max_pair_leaves: 200
+  # ATL-93, brief §6.3/§7.3/§8: the supervisor's triggers and output validation.
+  #   output_retries: an invalid card is sent back to the agent this many times (with the
+  #     validation errors) inside the same run; still invalid after that marks the agent degraded.
+  #   schedule.<job>: Asia/Baghdad wall-clock time (HH:MM) of a daily job. A job runs once per
+  #     Baghdad day (recorded in agent_runs), at that time or at the first tick after it.
+  #   schedule.tick_seconds: how often the supervisor's own loop checks the schedule.
+  #   regime_table.top_n: instruments in the 07:30 table, ranked by 24h quote volume.
+  #   mentions.block_ms / batch: XREAD block time and entries per read on atlas.warroom.
+  #   mentions.max_depth (ATL-101): an agent-written @mention is one deeper than the run that wrote
+  #     it (owner, system and scheduled runs are depth 0); a mention at this depth or deeper starts
+  #     no run, so with 2 the chain A -> B -> C stops before C.
+  #   mentions.parent_wait_seconds (ATL-108): how long a mention handler waits for atlas:bridge to
+  #     store an agent-written mention before replying to Main (so the reply carries reply_to).
+  output_retries: 1
+  schedule:
+    historian_regime_table: "07:30"
+    news_morning_brief: "07:30"
+    scout_watchlist: "08:00"
+    # ATL-110: the daily agent_scores job (atlas_agents.scoring), run per agent (Market Scout,
+    # News Intelligence) for the previous Baghdad days in agents.scoring.lookback_days.
+    scoring: "00:15"
+    # ATL-198, brief §7.9: the voters' 30-day reliability weights, after every 00:15 scorer (it
+    # reads the paper trades the Strategist's scorer writes). Run under the Orchestrator's slug.
+    reliability: "00:30"
+    # ATL-170, brief §7.8: the Portfolio Manager's daily report.
+    pm_daily_report: "23:30"
+    # ATL-199, brief §7.3: the Historian's weekly review ("<Day> HH:MM" = weekly, Baghdad).
+    historian_weekly_review: "Sun 18:00"
+    tick_seconds: 30
+    # ATL-160, brief §8: Orchestrator analysis cycles start every analysis_interval_minutes from
+    # analysis_first_slot while the slot is at or before analysis_last_slot (Asia/Baghdad), so the
+    # defaults give 08:10, 08:40 ... 22:40. A slot is caught up only inside its own interval.
+    analysis_interval_minutes: 30
+    analysis_first_slot: "08:10"
+    analysis_last_slot: "23:00"
+  # ATL-110, brief §7.1 Scoring / §7.2 latency / §9.3 + decision #247 (6): agent_scores written by
+  # code (atlas_agents.scoring) at agents.schedule.scoring for each Baghdad day in
+  # [today - lookback_days, today - 1]. Re-scoring a day overwrites its row (one per agent/env/day).
+  #   scout.outcome_hours: a pick's move is close-to-close over this many hours from the watchlist's
+  #     created_at (the day's current version); the day is skipped until that window has closed.
+  #   scout.price_bar / max_price_lag_minutes: the prices at both ends are the close of the last
+  #     price_bar candle closed by that instant, refused when it closed more than this long before.
+  #   scout.atr_bar: the move is divided by Wilder ATR(quant.atr_window) of these bars closed by
+  #     created_at (ATR(1D)); scout.atr_bars is how many bars are loaded for it.
+  #   news.latency_target_seconds: the brief's ingest-to-alert target (< 90 s for RSS sources); the
+  #     share of alerts within it is the News Intelligence row's hit_rate.
+  scoring:
+    lookback_days: 3
+    scout:
+      outcome_hours: 24
+      price_bar: 1H
+      max_price_lag_minutes: 120
+      atr_bar: 1D
+      atr_bars: 100
+    news:
+      latency_target_seconds: 90
+    # ATL-195, brief §7.4 Scoring: the Technical Analyst's TechnicalSetup cards of the day
+    # (atlas_agents.scorecards.technical). Each card is scored from its created_at (t0).
+    #   walk_bar: candles walked for trigger, stop and target (ambiguous bar = stop first).
+    #   atr_bar/atr_bars: tolerance unit, Wilder ATR(quant.atr_window) of these bars closed by t0.
+    #   level_tolerance_atr: a level is held while no walk_bar close crosses it by more than this.
+    #   outcome_hours: level-hold and "no setup" range window; trade_hours: trigger + resolution.
+    technical:
+      walk_bar: 15m
+      atr_bar: 1H
+      atr_bars: 100
+      level_tolerance_atr: "0.25"
+      outcome_hours: 24
+      trade_hours: 24
+    # ATL-195, brief §7.5 Scoring: the Derivatives & Sentiment Analyst's PositioningReport cards
+    # (atlas_agents.scorecards.derivatives), each from its created_at (t0).
+    #   supports_hours: supports_direction is checked against the sign of the price_bar
+    #     close-to-close move over this many hours (zero move = miss).
+    #   squeeze_call_min: a squeeze call is squeeze_risk >= this; it hits when price moves
+    #     squeeze_move_atr x ATR(atr_bar) in the squeeze direction (high/low of price_bar bars)
+    #     within squeeze_hours. The Brier score covers every stated squeeze probability.
+    derivatives:
+      price_bar: 1H
+      max_price_lag_minutes: 120
+      atr_bar: 1D
+      atr_bars: 100
+      supports_hours: 24
+      squeeze_call_min: "0.6"
+      squeeze_move_atr: 2
+      squeeze_hours: 48
+    # ATL-197, brief §7.8 Scoring: the Portfolio Manager (atlas_agents.scorecards.portfolio_manager).
+    # Closed trades = the PM's post-mortem journal entries (ATL-194) whose data.actual.closed_at is on
+    # the day. r_captured = sum(realised_r) / sum(mfe_r) over trades with mfe_r > 0; a loser
+    # (data.outcome loss) is "within" when realised_r >= -loser_limit_r. Rule compliance covers the
+    # PM's proposals created that day: the rule name must be one code emits for that kind, and an
+    # amend_stop must be strictly tighter than the stop before it (the position's previous live
+    # amend_stop, else its entry proposal's stop). Below 100 % posts one War Room system_alert per
+    # new set of violations.
+    portfolio_manager:
+      loser_limit_r: "1.1"
+    # ATL-197, brief §7.9 Scoring: the Orchestrator (atlas_agents.scorecards.orchestrator). Cycles
+    # started on the day are on time when closed_at <= max(started_at + the cycle budget, the latest
+    # stored step deadline) + grace_seconds; the budget is research + strategist + review + vote +
+    # risk timeouts from agents.orchestrator. A cycle still open before that instant is pending (not
+    # counted). Ack latency = owner message -> first Orchestrator reply (reply_to); loops stopped =
+    # the Orchestrator's loop_summary cards.
+    orchestrator:
+      grace_seconds: 120
+    # ATL-197, brief §7.3 / §9.3: the Historian's calibration (atlas_agents.scorecards.historian).
+    # Every history_verdict card's distribution[h].pct_positive / 100 for each horizon in horizons
+    # is a probability that the close-to-close move over h from the card's created_at is positive
+    # (closes of price_bar candles, refused when older than max_price_lag_minutes). The day is
+    # skipped until the longest horizon has closed, so lookback_days must exceed it.
+    historian:
+      horizons: ["1h", "4h", "24h", "72h"]
+      price_bar: 5m
+      max_price_lag_minutes: 30
+      lookback_days: 5
+    # ATL-196, brief §7.6/§7.7 Scoring (atlas_agents.scorecards.paper/strategist/devils_advocate).
+    #   paper.statuses: an entry proposal's latest version in one of these, never filled by the
+    #     Executor, is simulated as a paper trade from that version's created_at.
+    #   paper.bars: candles walked, first that has bars in the window wins (1m, then 15m). In a bar
+    #     that touches both the stop and a target the stop is taken first. A limit/post_only entry
+    #     fills only when price trades through its limit (the entry, else the zone edge the Executor
+    #     uses) within executor.entry_timeout_minutes; a market entry fills at the next bar's open.
+    #     Exits: the stop (the bar's open when it gaps past), each TP at its price for its pct, the
+    #     rest at the close of the last bar ending by the time stop, else by max_hold_hours.
+    #   paper.fee_rate: taker fee per side from backtest.taker_fee_rates by instType (no trade-fee
+    #     rate is stored yet), backtest.fallback_taker_fee_rate otherwise.
+    #   lookback_days: these days are re-scored each run (a trade must close inside it to count).
+    #   devils_advocate.high_rating / low_rating: rated >= high is a "do not trade" call, <= low a
+    #     "clean" call; scratch_r: |R| below it is neither a win nor a loss.
+    paper:
+      statuses: ["rejected", "expired", "advise_only"]
+      bars: ["1m", "15m"]
+      max_hold_hours: 72
+    strategist:
+      lookback_days: 7
+    devils_advocate:
+      lookback_days: 7
+      high_rating: 4
+      low_rating: 2
+      scratch_r: "0.1"
+    # ATL-198, brief §7.9 Voting: each voter's reliability weight (atlas_agents.scorecards.reliability),
+    # read by votes.py. Sample = the voter's newest vote on every Strategist entry chain whose latest
+    # version was created in the reliability_days Baghdad days ending yesterday, with an outcome:
+    # the taken trade's realised R, else its filled paper trade's (not-filled paper trades, open
+    # trades and |R| < scratch_r are left out). Correct = take, or change with its fix applied,
+    # before a win (R >= scratch_r); skip, or change without the fix, before a loss.
+    # weight = clamp(base + accuracy, agents.votes.reliability_min/max); below min_n scored votes
+    # the weight is agents.votes.reliability_default. Written as data.reliability_weight (with
+    # reliability_accuracy, reliability_n, reliability_correct) on the voter's row for yesterday.
+    reliability:
+      days: 30
+      min_n: 10
+      base: "0.5"
+      scratch_r: "0.1"
+  # ATL-132, brief §7.4: the Technical Analyst's deterministic precompute (atlas_agents.ta), per
+  # timeframe. EMA/RSI/ATR/ADX are atlas_quant.indicators (the backtester's definitions).
+  #   slope_bars: EMA slope = (EMA_t / EMA_{t-k} - 1) x 100 / k, in % per bar.
+  #   zigzag_atr_mult: a swing is confirmed once price reverses this many ATR(atr_window) of that bar
+  #     (the ATR of the confirming bar) from the running extreme.
+  #   swings_reported: newest confirmed swings listed in the table.
+  #   divergence_max_age_bars: a divergence flag needs its later swing pivot within this many bars.
+  #   bb_width_lookback / squeeze_percentile: squeeze = Bollinger width's percentile among the last
+  #     bb_width_lookback widths (share <= current, x100) is below squeeze_percentile.
+  #   keltner: EMA(ema) ± mult x ATR(atr); breakout = the close outside a band.
+  ta:
+    timeframes: ["1D", "4H", "1H", "15m", "5m"]
+    ema_spans: [20, 50, 200]
+    slope_bars: 5
+    adx_window: 14
+    rsi_window: 14
+    macd: { fast: 12, slow: 26, signal: 9 }
+    roc_window: 10
+    atr_window: 14
+    zigzag_atr_mult: "1.5"
+    swings_reported: 10
+    divergence_max_age_bars: 60
+    bollinger: { window: 20, std: "2" }
+    bb_width_lookback: 180
+    squeeze_percentile: "10"
+    keltner: { ema: 20, atr: 10, mult: "2" }
+  # ATL-134, brief §7.5: derivatives features (atlas_agents.derivatives.features), pure functions
+  # over DB frames. funding: z-scores are (newest - mean) / std (ddof 1) of the rates with ts in the
+  # last N days, newest included, null below min_funding_obs rows; annualised = current x funding
+  # periods per year, the period being the median gap between stored rates (default_interval_hours
+  # when fewer than two). sign_flip_days: sign changes between consecutive non-zero rates.
+  # oi_windows_hours: OI and price change (%) from the newest value at least that old. A window is
+  # "flat" when |price %| < price_dead_band_pct or |OI %| < oi_dead_band_pct. long_short_period /
+  # taker_period: the rubik period read; taker_windows_hours: sum(buy) / sum(sell) over rows with
+  # ts in the last N hours. max_age_minutes: the newest rubik / OI row older than this is null
+  # (reason stale). window_stretch: the reference row of an N-hour change must be no older than
+  # N x window_stretch before the newest row (so a 1D series never passes for a 1h change).
+  # index_max_age_multiplier: the basis' stored index (polled every 5 min by derivatives_poller) is
+  # stale when older than market_ws.market_data_max_age_seconds x this.
+  # Zero OI or zero candle/taker volume marks the reading unreliable and nothing is computed on it.
+  derivatives:
+    funding_z_days: [7, 30]
+    min_funding_obs: 3
+    sign_flip_days: 3
+    default_interval_hours: 8
+    oi_windows_hours: [1, 4, 24]
+    price_dead_band_pct: "0.25"
+    oi_dead_band_pct: "0.5"
+    long_short_period: 5m
+    long_short_change_hours: 24
+    taker_period: 5m
+    taker_windows_hours: [1, 4]
+    max_age_minutes: 30
+    window_stretch: "1.5"
+    index_max_age_multiplier: 10
+  regime_table:
+    top_n: 60
+  mentions:
+    block_ms: 5000
+    batch: 50
+    max_depth: 2
+    parent_wait_seconds: 3
+  # ATL-107, brief §7.2 + decision #247 (5): News Intelligence (atlas_agents.news_intelligence).
+  #   alerts_per_hour: ingest news.alert envelopes that start an alert analysis per rolling hour;
+  #     the rest are skipped and logged (counted in the supervisor's memory, so a restart resets it).
+  #   asset_class_categories: asset class -> news_sources.category values that cover it. When every
+  #     source of those categories is disabled, needs_key or degraded (disabled_until in the future),
+  #     the class is listed in the brief card's degraded_asset_classes, and Market Scout (ATL-108) caps
+  #     that class's convictions at agents.scout.partial_conviction_cap.
+  #   mention_lookback_hours: the window an instrument brief covers (brief: last 72h).
+  #   alert_parent_tries / alert_parent_wait_ms: atlas:bridge stores the alert message from the same
+  #     stream, so the analysis looks it up this many times, this far apart, before replying in Main.
+  #   morning_brief: the code-computed context of the 07:30 brief. top_stories clusters by max
+  #     importance then item count over lookback_hours; events_hours of economic events at or above
+  #     min_event_importance (at most max_events); top_instruments by item count over lookback_hours.
+  news_intelligence:
+    alerts_per_hour: 6
+    asset_class_categories:
+      crypto: [crypto_news]
+      stock: [markets_news]
+      etf: [markets_news]
+      index: [markets_news]
+      commodity: [markets_news]
+    mention_lookback_hours: 72
+    alert_parent_tries: 10
+    alert_parent_wait_ms: 500
+    morning_brief:
+      lookback_hours: 24
+      top_stories: 10
+      events_hours: 48
+      min_event_importance: 2
+      max_events: 30
+      top_instruments: 5
+  # ATL-133, brief §7.4 (second part): structure precompute for the Technical Analyst
+  # (atlas_agents.ta.levels / volume / patterns / microstructure; exact rules in each module's
+  # docstring). ATR multiples are of the ATR the caller passes (the timeframe's Wilder ATR(14)).
+  # Sessions are UTC days and weeks are ISO weeks (Monday 00:00 UTC).
+  #   levels: swings in the last lookback_bars bars cluster into zones no wider than merge_atr_mult
+  #     x ATR. strength = touch_weight x min(touches / touch_cap, 1) + recency_weight x (1 - bars
+  #     since the last touch / lookback_bars). round_numbers: round_count levels each side of the
+  #     price, for round_asset_classes only.
+  #   volume: relative volume vs the mean of the rel_volume_bars bars before the bar; OBV trend =
+  #     least-squares slope of OBV over obv_bars / mean volume of those bars, flat within
+  #     +/- obv_flat_slope; the profile spreads each bar's volume evenly over its high-low range in
+  #     profile_bins rows over the last profile_sessions sessions; the value area holds
+  #     value_area_pct of it.
+  #   patterns: breakout_retest, failed_breakout, range, flag (flag/pennant) and double (top/bottom);
+  #     the geometric rule for each is in atlas_agents.ta.patterns.
+  #   microstructure: book imbalance over the top imbalance_depths levels of each side.
+  # ATL-135, brief §7.4: the Technical Analyst agent (atlas_agents.technical_analyst).
+  #   history_bars: closed bars per timeframe loaded for okx_market.get_ta_table (§7.4 inputs).
+  #   stale_bars / stale_check_bars: a run refuses (and posts a data alert) when the newest closed
+  #     bar of any of these timeframes is more than stale_bars bars late.
+  #   min_stop_atr_mult: the stop must be at least this many ATR(1H) from the entry-zone midpoint,
+  #     else code turns the setup into "none".
+  #   max_slippage_bps: estimated slippage at the Risk Engine's max size above this adds a
+  #     thin-liquidity note. Max size = sizing equity x max_position_pct (settings).
+  #   watchlist_max_runs: at most this many picks of one watchlist card are analysed.
+  #   mention_max_instruments: at most this many instruments named in one @Technical mention.
+  #   position_bar: the closed bar (candle.closed) that re-checks an instrument with an open position.
+  #   zones_reported: the nearest zones per timeframe kept in the table (half below, half above price).
+  # ATL-153, brief §7.6: the Strategist's six-point checklist, enforced in code by
+  # warroom.submit_proposal before a proposal is saved (atlas_agents.proposals).
+  #   setup_max_age_minutes: item 2, the newest TechnicalSetup card must be younger than this.
+  #   news_lookback_hours / contradict_sentiment: item 3, a CONFIRMED story on the instrument
+  #     published in the lookback whose mean sentiment opposes the side by at least this much fails.
+  #   event_blackout_minutes / blackout_importance: item 3, an economic event at or above this
+  #     importance scheduled within this many minutes from now fails. A settings-table value of
+  #     event_blackout_minutes overrides this default.
+  #   min_expectancy: item 5, p x R - (1 - p) must be greater than this. min R is the owner's
+  #     settings min_expected_r.
+  #   pending_statuses: item 6, proposal statuses that count as "pending" on the same inst + side.
+  #   open_statuses: a proposal can be voted on, revised or withdrawn only in these statuses.
+  #   max_revisions: revise() may create at most this many revisions of an original proposal.
+  strategist:
+    checklist:
+      setup_max_age_minutes: 60
+      news_lookback_hours: 24
+      contradict_sentiment: "0.2"
+      event_blackout_minutes: 60
+      blackout_importance: 5
+      min_expectancy: "0.2"
+      pending_statuses: [draft, under_review, voting, passed, risk_checked, awaiting_owner, sent, partially_filled]
+      open_statuses: [under_review, voting]
+      max_revisions: 1
+    # ATL-158, brief §7.6: the Strategist's code rules (atlas_agents.strategist).
+    #   sizing: size_suggestion_pct = base_pct (the owner's max_position_pct) x conviction multiplier
+    #     x volatility multiplier. Conviction (the watchlist pick's) < conviction_low -> [0];
+    #     conviction_low..conviction_high -> [1]; > conviction_high -> [2]. ATR% percentile (ATR(atr_window)
+    #     on atr_bar, percentile of the newest value over atr_percentile_lookback bars) < vol_low -> [0];
+    #     vol_low..vol_high -> [1]; > vol_high -> [2]. An unknown conviction or percentile uses the
+    #     unknown_* multiplier. Leverage = the lowest that fits: ceil(notional / (available x
+    #     margin_buffer)), at least 1, capped at the owner's max_leverage and the instrument's maxLever.
+    #   probability: the model's p is clamped to the Historian analog hit rate +/- max_adjust_points
+    #     (percentage points). The hit rate is the newest history_verdict's pct_positive (100 - it for
+    #     a sell) at the first of analog_horizons the card has.
+    #   take_profit_split: % to close at TP1/TP2/TP3 when the model gives no pct.
+    #   time_stop: default when the model gives none: crypto_minutes, or for us_session_asset_classes
+    #     the end of the us_sessions-th US regular session (us_open..us_close, us_timezone, Mon-Fri)
+    #     counting a session in progress as the first.
+    #   setup_max_age_minutes for the "no trade" short-cut is checklist.setup_max_age_minutes.
+    sizing:
+      conviction_low: "0.55"
+      conviction_high: "0.7"
+      conviction_multipliers: ["0.5", "0.75", "1.0"]
+      vol_low_percentile: "60"
+      vol_high_percentile: "85"
+      vol_multipliers: ["1.0", "0.75", "0.5"]
+      unknown_conviction_multiplier: "0.5"
+      unknown_vol_multiplier: "0.5"
+      atr_bar: 1H
+      atr_window: 14
+      atr_percentile_lookback: 180
+      margin_buffer: "0.9"
+    probability:
+      max_adjust_points: "15"
+      analog_horizons: ["24h", "4h", "72h", "1h"]
+    take_profit_split: ["50", "30", "20"]
+    time_stop:
+      crypto_minutes: 1440
+      us_sessions: 2
+      us_session_asset_classes: [stock, etf, index]
+      us_timezone: America/New_York
+      us_open: "09:30"
+      us_close: "16:00"
+    positioning_author: derivatives_sentiment
+    mention_max_instruments: 3
+    cycle_max_instruments: 10
+  # ATL-154, brief §7.9: the weighted vote, computed in code (atlas_agents.votes.close_vote).
+  #   voters: the agents whose votes count; a voter with no vote counts as skip at
+  #     missing_confidence.
+  #   scores: points per vote. A "change" vote scores change_applied when it was cast on an earlier
+  #     version and the proposal was revised after it (the Strategist applied a fix), else change.
+  #   threshold: pass when weighted score / total weight >= this. The settings-table key
+  #     threshold_setting (flat, like the other agents.* settings) overrides it.
+  #   reliability_*: weight = confidence x the voter's reliability weight, read from the newest
+  #     agent_scores.data.reliability_weight within reliability_days, clamped to [min, max];
+  #     reliability_default when there is none.
+  #   da_*: the Devil's Advocate review card (warroom_messages author da_agent, card.type
+  #     da_card_type, card.proposal_id, integer card.risk_rating 1-5). The vote fails when the
+  #     newest rating on any version of the proposal is above da_max_rating, or there is none.
+  #   closable_statuses: close_vote refuses a proposal in any other status.
+  #   ATL-182: when the cycle opens a vote (and again for each revised version), code starts one
+  #     vote run per run_voters agent that is enabled, available and within budget and has not yet
+  #     voted on that version, on the agent's routine model. voter_cards: the research_report card
+  #     type each one reads as its own latest card (news_brief names its instruments in inst_ids).
+  #     voter_run_timeout_seconds: each run's own deadline is min(vote deadline, run start + this);
+  #     warroom.cast_vote refuses a vote after either deadline, so a late run casts nothing.
+  votes:
+    run_voters: [technical_analyst, derivatives_sentiment, news_intelligence, historian]
+    voter_cards:
+      technical_analyst: technical_setup
+      derivatives_sentiment: positioning_report
+      news_intelligence: news_brief
+      historian: history_verdict
+    voter_run_timeout_seconds: 150
+    voters: [technical_analyst, derivatives_sentiment, news_intelligence, historian, devils_advocate]
+    scores: { take: "1", change_applied: "0.5", change: "0", skip: "0" }
+    missing_confidence: "0.5"
+    threshold: "0.6"
+    threshold_setting: agents.vote_threshold
+    reliability_days: 30
+    reliability_min: "0.5"
+    reliability_max: "1.5"
+    reliability_default: "1"
+    da_agent: devils_advocate
+    da_card_type: da_review
+    da_max_rating: 4
+    closable_statuses: [under_review, voting]
+  technical_analyst:
+    history_bars: { "1D": 400, "4H": 500, "1H": 500, "15m": 500, "5m": 300 }
+    stale_bars: 2
+    stale_check_bars: ["1H"]
+    min_stop_atr_mult: "1.0"
+    max_slippage_bps: "10"
+    watchlist_max_runs: 10
+    mention_max_instruments: 3
+    position_bar: 1H
+    zones_reported: 8
+  # ATL-159, brief §7.7: the Devil's Advocate (atlas_agents.devils_advocate). A proposal.opened
+  # (new or revised) on atlas.proposals starts one review; an event older than
+  # review_deadline_seconds when it is picked up is skipped (logged), and a review posted later than
+  # that is marked late in the card's meta. The Strategist's reply to a review starts exactly one
+  # re-rate (round 2); a reply to a re-rate, or a second reply, starts nothing.
+  #   Code precomputes for the model: stop_noise (stop distance / (noise_mult x median high-low range
+  #   of the last range_lookback_bars range_bar bars); < 1 = inside noise), chasing (entry distance
+  #   from the nearest level of the newest TechnicalSetup and the move over the last
+  #   chase_move_bars atr_bar bars, both in ATR(atr_window) of atr_bar; flagged above chase_entry_atr
+  #   / chase_move_atr), correlation (open positions with |30-day corr| > correlation_threshold over
+  #   correlation_lookback_days) and events (economic events with importance >= event_min_importance
+  #   and earnings of the underlying inside [now, now + the proposal's time stop, else
+  #   default_window_minutes]).
+  #   Rating guide (code): 5 if any item is loss_gt_1r, 4 if two or more are serious, 3 if one is,
+  #   2 if only minor, 1 if none. A "take" with a rating above take_max_rating and no applied fix
+  #   becomes "change" (or "skip" when there is no fix); a "change" with no fix becomes "skip".
+  devils_advocate:
+    review_deadline_seconds: 60
+    noise_mult: "0.8"
+    range_bar: 4H
+    range_lookback_bars: 30
+    atr_bar: 1H
+    atr_window: 14
+    atr_lookback_bars: 100
+    chase_entry_atr: "1.5"
+    chase_move_atr: "3"
+    chase_move_bars: 24
+    correlation_threshold: "0.8"
+    correlation_lookback_days: 30
+    event_min_importance: 4
+    default_window_minutes: 1440
+    take_max_rating: 2
+  # ATL-136, brief §7.5: the Derivatives & Sentiment Analyst (atlas_agents.derivatives.report,
+  # hooks in atlas_agents.agents.derivatives). Disabled by default (roster).
+  #   watchlist_max_runs / mention_max_instruments: as for the Technical Analyst.
+  #   debounce_minutes: each trigger (watchlist, mention, funding, extreme) runs at most once per
+  #     instrument in this window (kept in the supervisor's memory; a restart resets it).
+  #   funding_settlement_hours_utc / funding_delay_minutes: runs for watchlist + held instruments
+  #     at each settlement + delay (00:05/08:05/16:05 UTC); funding_grace_minutes: a check later than
+  #     this after the slot (process was down) skips that slot instead of running late.
+  #   schedule_check_seconds: how often the funding slot and the extreme readings are checked.
+  #   extreme_check_seconds: how often the features of watched instruments are re-read for the code
+  #     trigger: |OI change| over extreme_oi_window_hours > extreme_oi_change_pct, or |funding z|
+  #     (any of extreme_funding_z_keys) > extreme_funding_z.
+  #   regime_windows_hours: the card's regime is the quadrant of the first of these windows that
+  #     has one ("flat" when none has). Unreliable data does not force "flat": zero taker volume
+  #     alone leaves the OI quadrants, so a card can carry a quadrant with data_reliable false.
+  derivatives_sentiment:
+    watchlist_max_runs: 10
+    mention_max_instruments: 3
+    debounce_minutes: 60
+    funding_settlement_hours_utc: [0, 8, 16]
+    funding_delay_minutes: 5
+    funding_grace_minutes: 30
+    schedule_check_seconds: 60
+    extreme_check_seconds: 300
+    extreme_oi_window_hours: 1
+    extreme_oi_change_pct: "10"
+    extreme_funding_z: "2.5"
+    extreme_funding_z_keys: ["7d"]
+    regime_windows_hours: [24, 4, 1]
+  ta_structure:
+    levels:
+      lookback_bars: 120
+      merge_atr_mult: "0.3"
+      touch_cap: 4
+      touch_weight: "0.6"
+      recency_weight: "0.4"
+      round_count: 2
+      round_asset_classes: [stock, etf, index, commodity]
+    volume:
+      rel_volume_bars: 20
+      obv_bars: 20
+      obv_flat_slope: "0.05"
+      profile_sessions: 5
+      profile_bins: 50
+      value_area_pct: "70"
+    patterns:
+      breakout_buffer_atr: "0.1"
+      retest_tol_atr: "0.25"
+      breakout_max_age_bars: 20
+      failed_within_bars: 3
+      range_bars: 30
+      range_max_atr: "4"
+      range_edge_tol_atr: "0.25"
+      range_min_touches: 2
+      pole_bars: 8
+      pole_min_atr: "3"
+      flag_min_bars: 3
+      flag_max_bars: 15
+      flag_max_range_frac: "0.5"
+      flag_max_retrace_frac: "0.5"
+      double_peak_tol_atr: "0.25"
+      double_min_depth_atr: "1"
+      double_min_separation_bars: 5
+    microstructure:
+      imbalance_depths: [10, 50]
+  # ATL-104, brief §7.1 steps 1-2 + decision #247 (2): Market Scout's code-run universe filter and
+  # feature table (atlas_agents.scout). Every value is in force at the table's as_of (replay-bounded).
+  #   universe: the filter. Per-market minimum 24h quote volume (USD) and max_spread_bps come from the
+  #     settings row (Settings -> Markets: min_24h_volume_usd_<market>, max_spread_bps) and fall back
+  #     to `markets` above. enabled_markets and blocklist are read from settings data when a later
+  #     Settings -> Markets screen writes them, else from here. usd_quote_ccys: quote currencies whose
+  #     volume counts as USD 1:1 (USDC and USD are treated as USDT; a small depeg is ignored); any
+  #     other quote currency is rejected as volume_unknown. min_listed_days: OKX listTime must be more
+  #     than this many days before as_of. Spread: Atlas stores no order book in Phase 1, so an
+  #     instrument whose spread is unknown is kept and flagged spread_unknown.
+  #   features: the per-instrument table. *_bars are closed bars loaded back from as_of.
+  #     return_days: close-to-close returns on 1D bars. atr_bars: Wilder ATR(14) runs over the last
+  #     atr_bars bars of each bar size. vol_ratio: realised vol of the last short_returns 1H returns
+  #     over that of the last long_returns. volume_z_days: the latest closed day's quote volume vs the
+  #     mean/std (ddof 1) of the days before it. ma_days: distance (%) of the last close to each SMA.
+  #     breakout_days: last close above the prior N bars' high / below their low. funding_z_days: the
+  #     latest funding rate vs the rates in the last N days (min_funding_obs rows, else null).
+  #     oi_hours: OI change (%) from the newest row at least that old. long_short_period: rubik period
+  #     read; long_short_max_age_hours: an older latest ratio is null. corr_days: daily log returns
+  #     overlapping (min_corr_obs). references: the first instrument with 1D bars is the benchmark
+  #     (SPY, then US100 in demo). catalyst_hours ahead; calendar_min_importance for economic events;
+  #     calendar_countries: economic events from these countries are catalysts for every instrument;
+  #     earnings match a stock/etf instrument's base currency. valid_minutes: valid_until - as_of.
+  scout:
+    # ATL-103, brief §8 + decision #247 (3): minutes after a watchlist is saved during which the owner
+    # may pin, remove or restore items (POST /api/watchlists/...). Market Scout stamps
+    # watchlists.edit_window_ends_at = created_at + this; Laravel uses the same rule when it is null.
+    watchlist_edit_window_minutes: 10
+    # ATL-108, brief §7.1 steps 4-6 + failure behaviour: the 08:00 pipeline (atlas_agents.agents.
+    # market_scout). Code mentions @News (shortlist instruments with catalysts) and @Historian (top
+    # historian_top_n), polls warroom_messages every poll_seconds for their replies (reply_to = the
+    # mention's row) up to wait_seconds, then runs the Scout session. After the model: a feature
+    # table older than stale_minutes or a teammate that did not reply makes the watchlist
+    # partial_evidence with every conviction capped at partial_conviction_cap; a group of more than
+    # max_correlated_picks picks/open positions linked by 30-day correlation above
+    # prescore.correlation.threshold is refused once (in-run retry), then trimmed from the lowest
+    # rank; blocked or owner-removed instruments are dropped. history_days: past days of own picks
+    # shown to the model. link_seconds: how long to wait for the bridge to store the card before
+    # watchlists.message_id is left null.
+    # A class in agents.news_intelligence.asset_class_categories none of whose news sources is up is
+    # listed in the card's degraded_asset_classes and its picks' convictions are capped at
+    # partial_conviction_cap (cap_reason news_class_down).
+    wait_seconds: 300
+    poll_seconds: 2
+    historian_top_n: 8
+    stale_minutes: 15
+    partial_conviction_cap: "0.5"
+    max_correlated_picks: 2
+    history_days: 5
+    link_seconds: 5
+    # ATL-109, brief §7.1 step 6: intraday re-runs (atlas_agents.scout.rerun), code triggers only.
+    # A news.alert of importance >= rerun_alert_importance, or a universe instrument not on today's
+    # watchlist whose latest closed 1H bar's |return| > spike_sigma x the stdev of its previous
+    # spike_lookback_days of 1H returns (at least spike_min_returns of them), re-runs the watchlist.
+    # The spike check runs every spike_check_seconds. Re-runs start only inside rerun_window
+    # (Asia/Baghdad, start inclusive, end exclusive) and at most once per rerun_min_minutes.
+    spike_sigma: "3"
+    rerun_min_minutes: 60
+    rerun_window: { start: "08:10", end: "23:00" }
+    rerun_alert_importance: 5
+    spike_check_seconds: 300
+    spike_lookback_days: 30
+    spike_min_returns: 100
+    universe:
+      enabled_markets: [spot, crypto_perp, stock_perp, commodity_perp]
+      blocklist: []
+      min_listed_days: 7
+      usd_quote_ccys: [USDT, USDC, USD]
+    features:
+      daily_bars: 400
+      hourly_bars: 800
+      return_days: [1, 3, 7, 30]
+      atr_bars: 100
+      vol_ratio: { short_returns: 24, long_returns: 720 }
+      volume_z_days: 30
+      ma_days: [20, 50, 200]
+      breakout_days: 20
+      funding_z_days: 7
+      min_funding_obs: 3
+      oi_hours: 24
+      long_short_period: 1H
+      long_short_max_age_hours: 48
+      corr_days: 30
+      min_corr_obs: 20
+      references:
+        btc: [BTC-USDT-SWAP, BTC-USDT]
+        spy: [SPY-USDT-SWAP, US100-USDT-SWAP, SPY-USDC-SWAP]
+      news_hours: 24
+      catalyst_hours: 48
+      calendar_min_importance: 3
+      calendar_countries: [US, USD]
+      valid_minutes: 15
+    # ATL-105, brief §7.1 step 3: the pre-score (atlas_agents.scout.prescore; components defined in
+    # its docstring). score = sum(weight x component z). Each component's raw value is z-scored
+    # cross-sectionally across every feature-table row (population std), clipped to +/- clip_z; a
+    # null raw value contributes 0 and is listed in the row's null_components. shortlist_size rows
+    # are kept by score (ties by inst_id); owner-pinned instruments are always added, marked pinned.
+    #   earnings_points: added to catalyst_score's raw value when the instrument has its own
+    #     earnings in the catalyst window. oi_scale_pct: |OI 24h change %| / this is one
+    #     derivatives_signal part (|funding_z_7d| is the other).
+    #   correlation: shortlist pairs whose 30-day daily-return correlation is above threshold are
+    #     flagged (step 4: at most 2 correlated picks).
+    prescore:
+      shortlist_size: 25
+      weights:
+        momentum_z: "0.25"
+        vol_expansion_z: "0.20"
+        catalyst_score: "0.20"
+        liquidity_score: "0.15"
+        derivatives_signal: "0.10"
+        regime_clarity: "0.10"
+      clip_z: 3
+      earnings_points: 3
+      oi_scale_pct: 10
+      correlation:
+        threshold: "0.8"
+        lookback_days: 30
+  # ATL-168, brief §7.8: the Portfolio Manager's position management rules, computed in code by
+  # atlas_agents.pm.rules.evaluate (pure; the PM proposes, the Risk Engine validates, the Executor
+  # acts). R is measured on the proposal's original stop: 1R = |entry - original stop|.
+  #   breakeven_at_r: rule 1 fires at this many R; the stop goes to entry +/- round-trip fees,
+  #     entry x fee_rate x 2. fee_rate is the fallback taker fee when the caller has no trade-fee read.
+  #   tp1_close_pct: rule 2 closes this % at TP1 when the proposal's TP1 carries no pct.
+  #   tp1_trail_atr_mult: rule 2 trails at max(this x ATR(1H), distance to the last 1H swing).
+  #   two_r_at / two_r_trail_atr_mult: rule 3, at this many R with TP2 not hit, trail at this x ATR(1H).
+  #   default_time_stop_minutes: rule 4 when the proposal has no time_stop_minutes.
+  #   structure_max_age_minutes: rule 5 acts on a "broken" structure report no older than this.
+  #   close_before_high_impact_events: rule 6 on/off (the settings-table key of the same name
+  #     under agents.portfolio_manager overrides it). Within event_lead_minutes before an event of
+  #     importance >= event_min_importance, a position with less than event_max_profit_r profit is
+  #     reduced by event_close_pct (100 = close).
+  #   funding_*: rule 7, funding against the position costing more than funding_max_annual_pct a
+  #     year (|rate| x settlements per day x 365), open at least funding_flat_after_hours and within
+  #     +/- funding_flat_r of breakeven, gives a flag and suggest_close.
+  portfolio_manager:
+    rules:
+      breakeven_at_r: "1"
+      fee_rate: "0.0005"
+      tp1_close_pct: "50"
+      tp1_trail_atr_mult: "1.5"
+      two_r_at: "2"
+      two_r_trail_atr_mult: "1.0"
+      default_time_stop_minutes: 1440
+      structure_max_age_minutes: 120
+      close_before_high_impact_events: true
+      event_lead_minutes: 15
+      event_min_importance: 5
+      event_max_profit_r: "1"
+      event_close_pct: "50"
+      funding_max_annual_pct: "30"
+      funding_flat_after_hours: 8
+      funding_flat_r: "0.25"
+    # ATL-169, brief §7.8: the Portfolio Manager's position checks (atlas_agents.pm.manage).
+    #   every_seconds: the routine check of every open position (no model call unless a rule fires).
+    #   atr_window / atr_lookback_bars / swing_atr_mult: ATR(14) on 1H and the last confirmed 1H swing
+    #     (ZigZag at swing_atr_mult x ATR) the trailing rules use.
+    #   event_lookahead_minutes: how far ahead events are loaded for the rules and the pre-event run.
+    #   earnings_importance / earnings_hours_utc: an earnings date of a stock/ETF underlying counts as an
+    #     event of this importance at this UTC hour by Finnhub session (bmo, amc, dmh; default otherwise).
+    #   pre_event_minutes / pre_event_min_importance: one model run per position and event this long
+    #     before an event of at least this importance.
+    #   status_post_interval_minutes: an advisory-only rule (funding) runs the model at most this often
+    #     per position.
+    #   limit_warning_pct / limit_warning_interval_minutes: warn at this % of the daily/weekly loss or
+    #     open-position limit, at most once per interval per limit.
+    #   output_retries: follow-ups when the model's action block is invalid or refused.
+    check:
+      every_seconds: 300
+      atr_window: 14
+      atr_lookback_bars: 120
+      swing_atr_mult: "1.5"
+      event_lookahead_minutes: 1440
+      earnings_importance: 4
+      earnings_hours_utc: { bmo: 12, amc: 21, dmh: 16, default: 16 }
+      pre_event_minutes: 30
+      pre_event_min_importance: 4
+      status_post_interval_minutes: 60
+      limit_warning_pct: "70"
+      limit_warning_interval_minutes: 60
+      output_retries: 1
+    # ATL-170, brief §7.8 DAILY REPORT (atlas_agents.pm.daily_report), run at agents.schedule.pm_daily_report.
+    #   event_lookahead_hours / event_min_importance / max_events: "tomorrow" lists economic events of at
+    #     least this importance in the next hours (at most max_events).
+    #   closing_rule_grace_minutes: a PM close or a triggered stop/target this long after the OKX close
+    #     time still names the trade's closing rule.
+    #   note_max_chars: the model's best/worst one-liners are cut to this length.
+    #   output_retries: follow-ups when the model's notes block is missing.
+    daily_report:
+      event_lookahead_hours: 24
+      event_min_importance: 4
+      max_events: 10
+      closing_rule_grace_minutes: 10
+      note_max_chars: 200
+      output_retries: 1
+    # ATL-194, brief §7.8 POST-MORTEM (atlas_agents.pm.postmortem): one journal entry and one War Room
+    # post_mortem card per closed Atlas position.
+    #   every_seconds: how often the hook looks for closes with no entry yet.
+    #   deadline_minutes: the brief's "within 15 min of close"; data.on_time records whether it was met.
+    #   lookback_hours: closes older than this are never post-mortemed (a first run does not backfill).
+    #   fill_grace_minutes: fills this long before the open / after the close still belong to the trade.
+    #   candle_bars: MFE/MAE come from the first of these bars with candles over the holding window.
+    #   scratch_r: |realised R| below this is a scratch, not a win or a loss.
+    #   lesson_max_chars / prose_max_chars: the model's lesson and its right/wrong paragraphs are cut here.
+    #   lesson_prefixes: a lesson is "rule-style" when it starts with one of these words (case-insensitive).
+    #   lesson_attempts: model runs per entry (the first plus retries on later ticks) before the
+    #     lesson is left pending for good.
+    #   output_retries: follow-ups in one run when the answer block is missing or invalid.
+    #   setup_types / regimes / catalyst_types: the tag vocabularies the model must pick from.
+    postmortem:
+      every_seconds: 60
+      deadline_minutes: 15
+      lookback_hours: 48
+      fill_grace_minutes: 5
+      candle_bars: ["1m", "1H"]
+      scratch_r: "0.1"
+      lesson_max_chars: 300
+      prose_max_chars: 800
+      lesson_prefixes: [when, if, never, always, only, do, don't, avoid, before, after, prefer, require, wait, size, cut, keep, move, close, skip, unless]
+      lesson_attempts: 3
+      output_retries: 1
+      setup_types: [breakout, pullback_to_support, breakdown, rally_to_resistance, range_fade, squeeze_expansion, reversal_divergence, other, unknown]
+      regimes: [trend, range, high_vol, low_vol, unknown]
+      catalyst_types: [none, earnings, guidance, macro_release, central_bank, regulation, hack_exploit, listing, delisting, etf_flow, m_and_a, lawsuit, product, partnership, token_unlock, geopolitics, supply_shock, funding, other, unknown]

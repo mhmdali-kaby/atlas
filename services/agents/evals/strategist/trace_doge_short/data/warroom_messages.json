@@ -1,0 +1,116 @@
+[
+ {
+  "id": "54e84569-3149-5e1f-98a0-94f0d3ebbd09",
+  "env": "demo",
+  "thread_id": "d9a6f5d7-c182-5dd7-a1ed-56648e651857",
+  "event_id": "4513a99e-90a7-5ec0-9f09-70b7c1530864",
+  "author_type": "agent",
+  "author": "technical_analyst",
+  "kind": "research_report",
+  "content_md": "TechnicalSetup card",
+  "card": {
+   "type": "technical_setup",
+   "inst_id": "DOGE-USDT-SWAP",
+   "timeframe_bias": {
+    "1D": "down",
+    "4H": "down",
+    "1H": "range",
+    "15m": "down"
+   },
+   "setup_type": "rally_to_resistance",
+   "direction": "short",
+   "entry_zone": [
+    0.1213,
+    0.12149
+   ],
+   "trigger": "1H close back below 0.1213 inside 1H:z2",
+   "stop": 0.12265,
+   "targets": [
+    {
+     "price": 0.11988,
+     "r_multiple": 1.21,
+     "reason": "1H:z4",
+     "close_pct": null
+    },
+    {
+     "price": 0.11888,
+     "r_multiple": 2.0,
+     "reason": "1H:z5",
+     "close_pct": null
+    },
+    {
+     "price": 0.11825,
+     "r_multiple": 2.51,
+     "reason": "1H:z6",
+     "close_pct": null
+    }
+   ],
+   "expected_r": 2.51,
+   "invalidation": "1H close above 0.12265",
+   "quality_score": 0.66,
+   "est_slippage_bps": null,
+   "levels_used": [
+    {
+     "id": "1H:z2",
+     "price": 0.121395
+    },
+    {
+     "id": "1H:z1",
+     "price": 0.12178
+    },
+    {
+     "id": "1H:z0",
+     "price": 0.12241
+    },
+    {
+     "id": "1H:z4",
+     "price": 0.11988
+    },
+    {
+     "id": "1H:z5",
+     "price": 0.11888
+    },
+    {
+     "id": "1H:z6",
+     "price": 0.11825
+    }
+   ],
+   "no_setup_reason": null,
+   "data_as_of": "2026-09-06T08:48:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-06T08:48:00Z",
+  "updated_at": "2026-09-06T08:48:00Z"
+ },
+ {
+  "id": "1a9b68de-00ca-589a-95aa-088b5dbbcac8",
+  "env": "demo",
+  "thread_id": "d9a6f5d7-c182-5dd7-a1ed-56648e651857",
+  "event_id": "45d025f4-318b-52c3-9aee-0ec8dd364e78",
+  "author_type": "agent",
+  "author": "historian",
+  "kind": "research_report",
+  "content_md": "HistoryVerdict card",
+  "card": {
+   "type": "history_verdict",
+   "question": "analog check for a short on DOGE-USDT-SWAP",
+   "inst_id": "DOGE-USDT-SWAP",
+   "bar": "1H",
+   "n": 34,
+   "distribution": {
+    "24h": {
+     "median": -0.3,
+     "p10": -2.1,
+     "p90": 2.4,
+     "pct_positive": 42.0
+    }
+   },
+   "verdict": "supports",
+   "key_stat": "42% of 34 analogs positive at 24h",
+   "data_as_of": "2026-09-06T08:52:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-06T08:52:00Z",
+  "updated_at": "2026-09-06T08:52:00Z"
+ }
+]

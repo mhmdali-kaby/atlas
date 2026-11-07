@@ -1,0 +1,17 @@
+[
+ {
+  "id": "c2ae8d1a-24f6-532c-baa4-7ee071df0df4",
+  "watchlist_id": "23865c74-79f7-5a16-8aa0-021c526fa9c6",
+  "inst_id": "AVAX-USDT-SWAP",
+  "rank": 1,
+  "asset_class": "crypto",
+  "bias": "short",
+  "conviction": "0.6",
+  "thesis": "Short bias on AVAX-USDT-SWAP from structure and flow.",
+  "catalysts": [],
+  "key_levels": {},
+  "invalidation": "1H close beyond 27.381",
+  "pinned_by_owner": false,
+  "data_as_of": "2026-09-11T10:00:00Z"
+ }
+]

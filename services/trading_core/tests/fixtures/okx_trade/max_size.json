@@ -1,0 +1,12 @@
+{
+  "code": "0",
+  "msg": "",
+  "data": [
+    {
+      "ccy": "USDT",
+      "instId": "BTC-USDT-SWAP",
+      "maxBuy": "1250.5",
+      "maxSell": "1250.5"
+    }
+  ]
+}

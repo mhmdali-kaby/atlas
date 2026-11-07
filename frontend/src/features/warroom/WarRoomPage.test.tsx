@@ -1,0 +1,432 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { createMemoryRouter, RouterProvider } from 'react-router'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { buildShellRegistry } from '../../app/feature'
+import { CommandPalette } from '../command-palette/CommandPalette'
+import { HomeRedirect } from '../../app/AppShell'
+import i18n from '../../i18n'
+import type { Position, PositionsPayload } from '../portfolio/api'
+import portfolio from '../portfolio/routes'
+import type { WarroomMessage, WarroomThread } from './api'
+import warroom from './routes'
+import { AgentList, ThreadList } from './SidebarSections'
+import { PROPOSAL_ID, proposalMessage } from './fixtures/proposal'
+import { proposalMessageId, proposalParam } from './useProposalFocus'
+
+// No socket in these tests: the live side is covered by Composer.test.tsx and the e2e flow.
+vi.mock('../../lib/echo', () => ({
+  getEcho: () => ({ private: () => ({ listen: () => {}, stopListening: () => {} }) }),
+  hasConnected: () => true,
+  reconnectEcho: () => {},
+  useLiveStatus: () => 'connected',
+}))
+
+/* The ATL-38 handoff's shapes: Main, one instrument thread, one private agent thread. */
+const NOW = Date.parse('2026-10-29T08:00:00Z')
+const MAIN: WarroomThread = {
+  id: 'main-1',
+  kind: 'main',
+  key: 'main',
+  title: 'Main',
+  last_message_at: '2026-10-29T05:00:00.123456Z',
+  created_at: '2026-07-14T15:02:00.000000Z',
+}
+const BTC: WarroomThread = { ...MAIN, id: 'btc-1', kind: 'instrument', key: 'BTC-USDT-SWAP', title: 'BTC-USDT-SWAP', last_message_at: null }
+const HIST: WarroomThread = { ...MAIN, id: 'hist-1', kind: 'agent', key: 'historian', title: 'historian', last_message_at: null }
+
+const OWNER_MSG: WarroomMessage = {
+  id: 'm-1',
+  thread_id: 'main-1',
+  author_type: 'human',
+  author: 'Mhmd',
+  kind: 'text',
+  content_md: '@Historian what usually happens after CPI?',
+  card: null,
+  reply_to: null,
+  mentions: ['historian'],
+  reasoning_md: null,
+  tool_calls: null,
+  tokens_in: null,
+  tokens_out: null,
+  cost_usd: null,
+  created_at: '2026-10-29T05:00:00.123456Z',
+}
+
+type Messages = WarroomMessage[] | 'fail' | 'hang'
+
+/* The ATL-12 handoff's /api/portfolio/positions example: PortfolioDemoSeeder's two positions. */
+const BTC_POSITION: Position = {
+  id: '809d7f30',
+  inst_id: 'BTC-USDT-SWAP',
+  side: 'long',
+  pos_side: 'net',
+  size: '25',
+  leverage: '5',
+  entry: '67250.5',
+  mark: '68120.3',
+  liq_px: '54112.8',
+  margin: '3362.525',
+  settle_ccy: 'USDT',
+  upl_usd: '217.45',
+  upl_pct: '6.466866',
+  margin_mode: 'isolated',
+  opened_at: '2026-10-28T08:36:00.000000Z',
+  stop: null,
+  take_profits: null,
+  agent: null,
+  proposal_id: null,
+}
+const XAU_POSITION: Position = {
+  ...BTC_POSITION,
+  id: '85242c4a',
+  inst_id: 'XAU-USDT-SWAP',
+  side: 'short',
+  size: '400',
+  leverage: '3',
+  entry: '2741.8',
+  mark: '2728.4',
+  liq_px: '3618.9',
+  margin: '3655.733333',
+  upl_usd: '-53.6',
+  upl_pct: '-1.46619',
+  margin_mode: 'cross',
+  opened_at: '2026-10-27T14:36:00.000000Z',
+}
+
+const reply = (status: number, body?: unknown) =>
+  new Response(body === undefined ? null : JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
+
+/** `positions` defaults to the two seeded positions; pass [] / 'fail' to test the other states. */
+function fakeBackend(
+  messages: Messages[],
+  positions: PositionsPayload | 'fail' = { taken_at: '2026-10-28T17:36:00.000000Z', items: [BTC_POSITION, XAU_POSITION] },
+  env: 'demo' | 'live' = 'demo',
+) {
+  const queue = [...messages]
+  const fetch = vi.fn(async (input: RequestInfo | URL) => {
+    const url = new URL(String(input))
+    if (url.pathname === '/api/environment') {
+      return reply(200, {
+        data: { active_env: env, live_started_at: null, first_month_ends_at: null, in_first_live_month: false, switched_at: null, confirmation_text: 'TRADE LIVE', preflight: { ok: true, items: [] } },
+      })
+    }
+    if (url.pathname === '/api/warroom/threads') return reply(200, { data: [MAIN, BTC, HIST] })
+    if (url.pathname === '/api/warroom/messages') {
+      const next = queue.length > 1 ? queue.shift()! : queue[0]!
+      if (next === 'hang') return new Promise<Response>(() => {})
+      if (next === 'fail') return reply(500, { message: 'Server Error' })
+      return reply(200, { data: [...next].reverse(), meta: { next_cursor: null } })
+    }
+    if (url.pathname === '/api/instruments') {
+      const q = (url.searchParams.get('q') ?? '').toLowerCase()
+      const all = [{ inst_id: 'XAU-USDT-SWAP', inst_type: 'SWAP', asset_class: 'commodity', base_ccy: 'XAU', quote_ccy: 'USDT', settle_ccy: 'USDT', state: 'live', blocked: false }]
+      return reply(200, { data: all.filter((i) => i.inst_id.toLowerCase().includes(q)) })
+    }
+    if (url.pathname === '/api/portfolio/positions') {
+      return positions === 'fail' ? reply(500, { message: 'Server Error' }) : reply(200, { data: positions })
+    }
+    return reply(404, { message: 'Not found' })
+  })
+  vi.stubGlobal('fetch', fetch)
+  return fetch
+}
+
+const messageCalls = (fetch: ReturnType<typeof fakeBackend>) =>
+  fetch.mock.calls.filter(([input]) => new URL(String(input)).pathname === '/api/warroom/messages')
+const positionCalls = (fetch: ReturnType<typeof fakeBackend>) =>
+  fetch.mock.calls.filter(([input]) => new URL(String(input)).pathname === '/api/portfolio/positions')
+
+function renderWarRoom(path = '/warroom', extra: React.ReactNode = null) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const Sidebar = () => (
+    <nav aria-label="War Room">
+      <AgentList onNavigate={() => {}} />
+      <ThreadList onNavigate={() => {}} />
+    </nav>
+  )
+  const router = createMemoryRouter(
+    warroom.routes.map((r) => ({
+      ...r,
+      path: `/${r.path}`,
+      element: (
+        <>
+          <Sidebar />
+          <div data-slot="toolbar-actions" />
+          {r.element}
+          {extra}
+        </>
+      ),
+    })),
+    { initialEntries: [path] },
+  )
+  render(
+    <QueryClientProvider client={client}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  )
+  return router
+}
+
+beforeEach(async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true, now: NOW })
+  await i18n.changeLanguage('en')
+})
+
+afterEach(() => {
+  vi.useRealTimers()
+  vi.unstubAllGlobals()
+  localStorage.clear()
+})
+
+describe('War Room', () => {
+  it('registers the War Room area with its agents and threads sections', () => {
+    expect(warroom.area).toBe('warroom')
+    const sections = Array.isArray(warroom.sidebar) ? warroom.sidebar : [warroom.sidebar]
+    expect(sections.map((s) => s?.id)).toEqual(['replay', 'agents', 'threads'])
+    expect(warroom.routes.map((r) => r.path)).toEqual(['warroom', 'warroom/threads/:threadId', 'warroom/replay', 'warroom/replay/:date'])
+  })
+
+  it('makes "/" open the War Room, the first area, when it is registered', async () => {
+    const shell = buildShellRegistry([portfolio, warroom])
+    expect(shell.areas.map((a) => a.id)).toEqual(['warroom', 'portfolio'])
+    const router = createMemoryRouter(
+      [
+        { path: '/', element: <HomeRedirect shell={shell} /> },
+        { path: '/warroom', element: <p>war room</p> },
+      ],
+      { initialEntries: ['/'] },
+    )
+    render(<RouterProvider router={router} />)
+    await waitFor(() => expect(router.state.location.pathname).toBe('/warroom'))
+  })
+
+  it('lists the nine agents offline and the threads with Main selected', async () => {
+    fakeBackend([[OWNER_MSG]])
+    renderWarRoom()
+    const agents = screen.getByTestId('wr-agents')
+    expect(within(agents).getByText('All offline')).toBeInTheDocument()
+    const rows = within(agents).getAllByRole('button')
+    expect(rows).toHaveLength(9)
+    // ATL-225: offline, the row's accessible name starts with the visible name and role
+    // (dropped the aria-label, which omitted the role), then adds the status word via a
+    // hidden span.
+    expect(rows[0]).toHaveAccessibleName('Orchestrator Runs the process and answers you first Offline')
+    expect(rows[3]).toHaveAccessibleName('Historian Answers with statistics from history Offline')
+    expect(within(rows[3]!).getByText('Answers with statistics from history')).toBeInTheDocument()
+
+    const threads = await screen.findByTestId('wr-threads')
+    const links = within(threads).getAllByRole('link')
+    expect(links).toHaveLength(3)
+    expect(links[0]).toHaveAccessibleName(/^Main/)
+    expect(links[1]).toHaveAccessibleName('BTC-USDT-SWAP')
+    expect(links[2]).toHaveAccessibleName('Historian')
+    expect(links[0]).toHaveAttribute('aria-current', 'page')
+    expect(links[0]).toHaveAttribute('href', '/warroom')
+    expect(links[1]).toHaveAttribute('href', '/warroom/threads/btc-1')
+    // Main's last message, in Baghdad time: 05:00Z is 08:00 in Baghdad.
+    expect(within(links[0]!).getByText('08:00')).toBeInTheDocument()
+  })
+
+  it('shows the loading skeleton while the thread loads', async () => {
+    fakeBackend(['hang'])
+    renderWarRoom()
+    const skeleton = await screen.findByTestId('wr-feed-loading')
+    expect(skeleton).toHaveAttribute('aria-busy', 'true')
+    expect(skeleton).toHaveAccessibleName('Loading messages')
+  })
+
+  it('shows the empty state for a thread with no messages', async () => {
+    fakeBackend([[]])
+    renderWarRoom()
+    const empty = await screen.findByTestId('wr-feed-empty')
+    expect(within(empty).getByRole('heading', { name: 'No messages yet' })).toBeInTheDocument()
+    expect(empty).toHaveTextContent('newest at the bottom')
+    // The inspector's thread facts agree: no last message.
+    expect(within(screen.getByTestId('wr-inspector')).getByText('None')).toBeInTheDocument()
+  })
+
+  it('names the instrument in an empty instrument thread, and shows the chart empty state', async () => {
+    fakeBackend([[]])
+    renderWarRoom('/warroom/threads/btc-1')
+    const empty = await screen.findByTestId('wr-feed-empty')
+    expect(within(empty).getByRole('heading')).toHaveTextContent('Nothing about BTC-USDT-SWAP yet')
+    expect(screen.getByTestId('wr-chart-empty')).toHaveTextContent('The candle chart for BTC-USDT-SWAP appears here once Atlas records its market data.')
+    expect(within(screen.getByTestId('wr-threads')).getByRole('link', { current: 'page' })).toHaveTextContent('BTC-USDT-SWAP')
+  })
+
+  it('shows a not-found state with a way back to Main for a thread id that is not in the list', async () => {
+    const fetch = fakeBackend([[]])
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const router = renderWarRoom('/warroom/threads/00000000-0000-0000-0000-000000000000')
+    const notFound = await screen.findByTestId('wr-feed-not-found')
+    expect(screen.queryByTestId('wr-feed-loading')).not.toBeInTheDocument()
+    expect(within(notFound).getByRole('heading', { name: 'This thread isn’t here' })).toBeInTheDocument()
+    expect(messageCalls(fetch)).toHaveLength(0)
+    // The inspector agrees instead of showing loading placeholders.
+    const inspector = screen.getByTestId('wr-inspector')
+    expect(within(inspector).getByRole('heading', { name: 'This thread isn’t here' })).toBeInTheDocument()
+    expect(inspector.querySelector('[aria-busy]')).toBeNull()
+
+    await user.click(within(notFound).getByRole('link', { name: 'Go to Main' }))
+    await screen.findByTestId('wr-feed-empty')
+    expect(router.state.location.pathname).toBe('/warroom')
+  })
+
+  it('shows the error state with a retry that reloads the thread', async () => {
+    const fetch = fakeBackend(['fail', []])
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    renderWarRoom()
+    const error = await screen.findByTestId('wr-feed-error')
+    expect(error).toHaveAttribute('role', 'alert')
+    expect(within(error).getByRole('heading', { name: 'Couldn’t load messages' })).toBeInTheDocument()
+    expect(error).toHaveTextContent('./atlas up')
+    const before = messageCalls(fetch).length
+
+    await user.click(within(error).getByRole('button', { name: 'Try again' }))
+    await screen.findByTestId('wr-feed-empty')
+    expect(messageCalls(fetch).length).toBe(before + 1)
+  })
+
+  it('collapses and reopens the inspector from the toolbar toggle', async () => {
+    vi.stubGlobal('matchMedia', (q: string) => ({ matches: q.includes('min-width: 1280px'), addEventListener() {}, removeEventListener() {} }))
+    fakeBackend([[]])
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    renderWarRoom()
+    await screen.findByTestId('wr-inspector')
+    const toggle = screen.getByRole('button', { name: 'Show or hide the inspector' })
+    expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    await user.click(toggle)
+    expect(screen.queryByTestId('wr-inspector')).not.toBeInTheDocument()
+    expect(localStorage.getItem('atlas.wr.inspector')).toBe('closed')
+    await user.click(toggle)
+    expect(screen.getByTestId('wr-inspector')).toBeInTheDocument()
+  })
+})
+
+describe('Inspector positions (ATL-43)', () => {
+  it('lists the seeded positions with the same side, size, entry, mark and unrealised PnL as Portfolio → Positions', async () => {
+    fakeBackend([[]])
+    renderWarRoom()
+    const rows = await screen.findAllByTestId('wr-position-row')
+    expect(rows).toHaveLength(2)
+    expect(rows[0]).toHaveAttribute('data-inst', 'BTC-USDT-SWAP')
+    expect(rows[0]).toHaveTextContent('BTC-USDT-SWAP')
+    expect(rows[0]).toHaveTextContent('+$217.45')
+    expect(rows[0]).toHaveTextContent('Long')
+    expect(rows[0]).toHaveTextContent('5×')
+    expect(rows[0]).toHaveTextContent('25')
+    expect(rows[0]).toHaveTextContent('Entry')
+    expect(rows[0]).toHaveTextContent('67,250.5')
+    expect(rows[0]).toHaveTextContent('68,120.3')
+
+    expect(rows[1]).toHaveAttribute('data-inst', 'XAU-USDT-SWAP')
+    expect(rows[1]).toHaveTextContent('Short')
+    expect(rows[1]).toHaveTextContent('−$53.60')
+    expect(within(screen.getByTestId('wr-positions')).getByRole('link', { name: 'Positions' })).toHaveAttribute('href', '/portfolio/positions')
+  })
+
+  it('puts the selected instrument thread’s own position first, highlighted', async () => {
+    fakeBackend([[]])
+    renderWarRoom('/warroom/threads/btc-1')
+    const rows = await screen.findAllByTestId('wr-position-row')
+    expect(rows[0]).toHaveAttribute('data-inst', 'BTC-USDT-SWAP')
+    expect(rows[0]).toHaveClass('is-here')
+    expect(rows[1]).not.toHaveClass('is-here')
+  })
+
+  it('shows "No open positions" when the account has none', async () => {
+    fakeBackend([[]], { taken_at: '2026-10-28T17:36:00.000000Z', items: [] })
+    renderWarRoom()
+    expect(await screen.findByTestId('wr-positions-empty')).toHaveTextContent('No open positions')
+    expect(screen.queryByTestId('wr-position-row')).not.toBeInTheDocument()
+  })
+
+  it('in live, the empty state names the OKX live account, in English and Arabic (ATL-244)', async () => {
+    fakeBackend([[]], { taken_at: '2026-10-28T17:36:00.000000Z', items: [] }, 'live')
+    renderWarRoom()
+    const empty = await screen.findByTestId('wr-positions-empty')
+    expect(empty).toHaveTextContent('Positions on the OKX live account appear here as soon as Atlas syncs them.')
+    expect(empty).not.toHaveTextContent('demo account')
+
+    await i18n.changeLanguage('ar')
+    await waitFor(() => expect(screen.getByTestId('wr-positions-empty')).toHaveTextContent('حساب OKX الحقيقي'))
+    expect(screen.getByTestId('wr-positions-empty')).not.toHaveTextContent('التجريبي')
+  })
+
+  it('shows an error with Retry that refetches on failure', async () => {
+    const fetch = fakeBackend([[]], 'fail')
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    renderWarRoom()
+    const error = await screen.findByTestId('wr-positions-error')
+    expect(error).toHaveAttribute('role', 'alert')
+    expect(error).toHaveTextContent('Couldn’t load positions')
+    const before = positionCalls(fetch).length
+
+    await user.click(within(error).getByRole('button', { name: 'Try again' }))
+    expect(positionCalls(fetch).length).toBeGreaterThan(before)
+  })
+})
+
+describe('Opening on a proposal (ATL-180)', () => {
+  beforeEach(() => {
+    // jsdom lays nothing out; give the virtualised feed a viewport and its rows a height.
+    vi.spyOn(Element.prototype, 'clientHeight', 'get').mockReturnValue(800)
+    vi.spyOn(Element.prototype, 'clientWidth', 'get').mockReturnValue(720)
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(60)
+  })
+  afterEach(() => vi.restoreAllMocks())
+
+  it('scrolls to the proposal card the approval pill links to and focuses its message', async () => {
+    const proposal = proposalMessage({ thread_id: 'main-1', created_at: '2026-10-29T05:10:00.000000Z' })
+    const later: WarroomMessage = { ...OWNER_MSG, id: 'm-2', content_md: 'Later message', created_at: '2026-10-29T05:20:00.000000Z' }
+    fakeBackend([[OWNER_MSG, proposal, later]])
+    renderWarRoom(`/warroom?proposal=${PROPOSAL_ID}`)
+    await waitFor(() => expect(document.activeElement).toHaveAttribute('data-msg-id', proposal.id))
+    expect(document.activeElement).toHaveClass('is-flash')
+  })
+
+  it('finds the card of an earlier version when the waiting one is the owner’s edit', () => {
+    const proposal = proposalMessage()
+    expect(proposalMessageId([OWNER_MSG, proposal], new Set(['v2-edit']))).toBeNull()
+    expect(proposalMessageId([OWNER_MSG, proposal], new Set(['v2-edit', PROPOSAL_ID]))).toBe(proposal.id)
+    expect(proposalParam('?proposal=abc')).toBe('abc')
+    expect(proposalParam('?proposal=')).toBeNull()
+  })
+})
+
+describe('An instrument picked with ⌘K (ATL-250)', () => {
+  it('Enter on XAU-USDT-SWAP opens the War Room with it in the inspector, its position first; ✕ goes back to the thread', async () => {
+    vi.stubGlobal('matchMedia', (q: string) => ({ matches: q.includes('min-width: 1280px'), addEventListener() {}, removeEventListener() {} }))
+    Element.prototype.scrollIntoView = vi.fn()
+    vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
+    // The owner had closed the inspector: picking an instrument opens it.
+    localStorage.setItem('atlas.wr.inspector', 'closed')
+    const fetch = fakeBackend([[]])
+    const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
+    const router = renderWarRoom('/warroom/threads/btc-1', <CommandPalette />)
+    await waitFor(() => expect(messageCalls(fetch).length).toBeGreaterThan(0))
+    expect(screen.queryByTestId('wr-inspector')).not.toBeInTheDocument()
+
+    await user.keyboard('{Meta>}k{/Meta}')
+    await user.keyboard('xau')
+    await screen.findByTestId('palette-item-inst.XAU-USDT-SWAP')
+    await user.keyboard('{Enter}')
+
+    const picked = await screen.findByTestId('wr-inspector-picked')
+    expect(picked).toHaveTextContent('XAU-USDT-SWAP')
+    expect(router.state.location.pathname).toBe('/warroom')
+    expect(router.state.location.search).toBe('?inst=XAU-USDT-SWAP')
+    const inspector = screen.getByTestId('wr-inspector')
+    expect(within(inspector).getByText('Chosen with ⌘K')).toBeInTheDocument()
+    const rows = await within(inspector).findAllByTestId('wr-position-row')
+    expect(rows[0]).toHaveAttribute('data-inst', 'XAU-USDT-SWAP')
+    expect(rows[0]).toHaveClass('is-here')
+
+    await user.click(screen.getByRole('button', { name: 'Back to this thread' }))
+    await waitFor(() => expect(screen.queryByTestId('wr-inspector-picked')).not.toBeInTheDocument())
+    expect(router.state.location.search).toBe('')
+    expect(screen.getByTestId('wr-inspector')).toBeInTheDocument()
+  })
+})

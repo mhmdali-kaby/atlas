@@ -1,0 +1,14 @@
+[
+ {
+  "id": "48db39bc-255c-52f0-b022-220a3d56bfd7",
+  "headline": "Posts claim a large exchange is halting BTC withdrawals",
+  "first_seen": "2087-05-13T08:40:00Z",
+  "last_seen": "2087-05-13T08:40:00Z",
+  "item_count": 1,
+  "max_importance": 4,
+  "instruments": [
+   "BTC-USDT-SWAP"
+  ],
+  "created_at": "2087-05-13T08:40:00Z"
+ }
+]

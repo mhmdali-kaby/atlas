@@ -1,0 +1,443 @@
+/*
+ * Settings → General → Sign-in (ATL-247; design v22 css/twofactor.css). The code field and the
+ * dial live in ui.css (shared with the login); this file holds the group, the sheet and the
+ * recovery-code certificate. No new colours or type sizes.
+ */
+
+/* ---- the group ------------------------------------------------------------ */
+.tf-row {
+  align-items: center;
+}
+.tf-row > button {
+  flex: none;
+}
+.tf-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: var(--fill-3);
+  color: var(--label-secondary);
+}
+.tf-icon svg {
+  width: 16px;
+  height: 16px;
+}
+.tf-icon.is-on {
+  background: var(--profit-wash);
+  color: var(--profit-ink);
+}
+.tf-icon.is-warn {
+  background: var(--warning-wash);
+  color: var(--warning-ink);
+}
+.tf-icon.is-error {
+  background: var(--loss-wash);
+  color: var(--loss-ink);
+}
+.tf-label-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.tf-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 20px;
+  padding-inline: 7px 8px;
+  border-radius: var(--radius-full);
+  background: var(--profit-wash);
+  color: var(--profit-ink);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+}
+.tf-badge svg {
+  width: 12px;
+  height: 12px;
+}
+.tf-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.rc-marks {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: none;
+}
+.rc-marks i {
+  display: block;
+  width: 6px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--label-secondary);
+}
+.rc-marks i.is-used {
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--separator-strong);
+}
+.rc-marks.is-low i:not(.is-used) {
+  background: var(--warning-ink);
+}
+/* a warning that belongs to the row above it: under its words, the full width of the row */
+.tf-row-note {
+  padding-block: 0 14px;
+  padding-inline: 64px 16px;
+  margin-top: -4px;
+}
+.tf-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: var(--fs-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label);
+}
+.tf-notice > svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  margin-top: 1.5px;
+}
+.tf-notice b {
+  font-weight: 600;
+}
+.tf-notice.is-warn {
+  background: var(--warning-wash);
+}
+.tf-notice.is-warn > svg {
+  color: var(--warning-ink);
+}
+.tf-notice.is-live {
+  background: var(--live-wash);
+}
+.tf-notice.is-live > svg {
+  color: var(--live-ink);
+}
+.tf-cmd {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: var(--fill-3);
+  color: var(--label);
+  unicode-bidi: isolate;
+  white-space: nowrap;
+}
+@media (max-width: 640px) {
+  .tf-row {
+    flex-wrap: wrap;
+  }
+  .tf-row .gn-row-main {
+    flex-basis: calc(100% - 44px);
+  }
+  .tf-row > button {
+    margin-inline-start: 44px;
+  }
+  .tf-row-note {
+    padding-inline: 16px;
+  }
+}
+
+/* ---- the sheet ------------------------------------------------------------ */
+[data-sheet].tf-sheet-host {
+  width: min(560px, calc(100vw - 32px));
+}
+.tf-step {
+  font-size: var(--fs-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.tf-step-body {
+  animation: tf-step-in var(--dur-slow) var(--ease-out);
+}
+@keyframes tf-step-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+@keyframes tf-step-in-rtl {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+}
+[dir='rtl'] .tf-step-body {
+  animation-name: tf-step-in-rtl;
+}
+.tf-done {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  vertical-align: top;
+  color: var(--profit-ink);
+  font-weight: 600;
+}
+.tf-done svg {
+  width: 15px;
+  height: 15px;
+}
+.tf-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--loss-wash);
+  color: var(--label);
+  font-size: var(--fs-footnote);
+  line-height: var(--lh-footnote);
+}
+.tf-alert svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  margin-top: 1.5px;
+  color: var(--loss-ink);
+}
+
+/* scan: the QR stays dark on white in both themes, because scanners need it */
+.tf-scan {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 20px;
+  align-items: center;
+}
+.tf-qr {
+  display: block;
+  width: 168px;
+  height: 168px;
+  padding: 6px;
+  border-radius: var(--radius-card);
+  background: var(--on-solid);
+  box-shadow: 0 0 0 0.5px var(--hairline-color), var(--shadow-1);
+}
+.tf-how {
+  display: grid;
+  gap: 12px;
+}
+.tf-how li {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  font-size: var(--fs-subheadline);
+  line-height: var(--lh-subheadline);
+  color: var(--label);
+}
+.tf-how-n {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-top: -1px;
+  border-radius: 50%;
+  background: var(--accent-wash);
+  color: var(--accent-ink);
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.tf-key,
+.tf-code-row {
+  display: grid;
+  gap: 6px;
+  padding-top: 14px;
+  box-shadow: inset 0 0.5px 0 var(--separator);
+}
+.tf-code-row {
+  gap: 8px;
+}
+.tf-key-label {
+  font-size: var(--fs-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+.tf-code-label {
+  font-size: var(--fs-footnote);
+  font-weight: 600;
+  color: var(--label);
+}
+.tf-key-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  direction: ltr;
+  padding-block: 4px;
+  padding-inline: 12px 4px;
+  border-radius: var(--radius-control);
+  background: var(--fill-4);
+  box-shadow: inset 0 0 0 0.5px var(--hairline-color);
+}
+.tf-key-chip code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-subheadline);
+  letter-spacing: 0.04em;
+  color: var(--label);
+  user-select: all;
+  overflow-wrap: anywhere;
+}
+[dir='rtl'] .tf-key-chip button {
+  direction: rtl;
+}
+.tf-code-line {
+  display: flex;
+  align-items: center;
+  gap: 12px 18px;
+  flex-wrap: wrap;
+}
+.tf-code-line > .grid {
+  justify-items: start;
+}
+.otp-clock {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+
+/* codes: the certificate */
+.rc-cert {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  margin: 0;
+  padding: 18px 22px 16px;
+  border-radius: var(--radius-panel);
+  background: var(--bg-elevated);
+  box-shadow: 0 0 0 0.5px var(--hairline-color), var(--shadow-1);
+}
+.dark .rc-cert {
+  background: var(--bg-tertiary);
+}
+.rc-cert::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  z-index: -1;
+  border-radius: 11px;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--seal-ink-1) 40%, transparent);
+}
+.rc-engrave {
+  position: absolute;
+  z-index: -1;
+  top: 50%;
+  inset-inline-end: -178px;
+  translate: 0 -50%;
+  opacity: 0.34;
+  pointer-events: none;
+}
+.rc-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.rc-head-text {
+  display: grid;
+  min-width: 0;
+}
+.rc-title {
+  font-size: var(--fs-headline);
+  line-height: var(--lh-headline);
+  font-weight: 600;
+  color: var(--label);
+}
+.rc-acct {
+  font-size: var(--fs-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+.rc-codes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, max-content));
+  grid-template-rows: repeat(4, auto);
+  grid-auto-flow: column;
+  column-gap: 40px;
+  row-gap: 6px;
+  justify-content: start;
+  padding-block: 12px;
+  box-shadow:
+    inset 0 0.5px 0 var(--separator),
+    inset 0 -0.5px 0 var(--separator);
+}
+.rc-codes li {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.rc-n {
+  width: 14px;
+  text-align: end;
+  font-size: var(--fs-caption);
+  font-variant-numeric: tabular-nums;
+  color: var(--label-secondary);
+}
+.rc-codes code {
+  font-family: var(--font-mono);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  letter-spacing: 0.05em;
+  color: var(--label);
+  user-select: all;
+  unicode-bidi: isolate;
+  white-space: nowrap;
+}
+.rc-foot {
+  margin-top: 10px;
+  font-size: var(--fs-caption);
+  line-height: var(--lh-caption);
+  color: var(--label-secondary);
+}
+
+@media (max-width: 640px) {
+  .tf-scan {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    gap: 16px;
+  }
+  .tf-qr {
+    width: 196px;
+    height: 196px;
+  }
+  .tf-how {
+    justify-self: stretch;
+  }
+  .tf-code-line {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .rc-cert {
+    padding-inline: 14px;
+  }
+  .rc-codes {
+    column-gap: 18px;
+  }
+  .rc-codes li {
+    gap: 8px;
+  }
+  .rc-codes code {
+    font-size: var(--fs-subheadline);
+    letter-spacing: 0.02em;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tf-step-body,
+  [dir='rtl'] .tf-step-body {
+    animation: none;
+  }
+}

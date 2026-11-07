@@ -1,0 +1,37 @@
+[
+ {
+  "id": "007ae78a-dfed-5c38-93b5-cb02cadf0166",
+  "env": "demo",
+  "version": 1,
+  "kind": "entry",
+  "author": "strategist",
+  "inst_id": "NVDA-USDT-SWAP",
+  "side": "buy",
+  "order_type": "limit",
+  "entry_zone": [
+   "121.6",
+   "121.79"
+  ],
+  "stop": "120.42",
+  "take_profits": [
+   {
+    "price": "123.22",
+    "pct": "50"
+   },
+   {
+    "price": "124.5",
+    "pct": "50"
+   }
+  ],
+  "time_stop_minutes": 1440,
+  "size_suggestion_pct": "1.875",
+  "leverage_suggestion": 1,
+  "expected_r": "2.20",
+  "probability": "0.60",
+  "rationale_md": "v1",
+  "invalidation": "1H close beyond 120.42",
+  "evidence": [],
+  "status": "under_review",
+  "created_at": "2026-09-08T14:55:00Z"
+ }
+]

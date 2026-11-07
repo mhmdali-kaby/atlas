@@ -1,0 +1,32 @@
+{
+  "id": "67e68c59-7651-53a2-abdf-6fb3422ad865",
+  "type": "news.alert",
+  "ts": "2026-10-29T12:00:41.250000Z",
+  "env": "demo",
+  "source": "system:news",
+  "correlation_id": "news:8a7b6c5d-4e3f-4a1b-9c8d-7e6f5a4b3c2d",
+  "payload": {
+    "news_item_id": "3f9c2a1e-7b4d-4c8e-9a10-2b3c4d5e6f70",
+    "cluster_id": "8a7b6c5d-4e3f-4a1b-9c8d-7e6f5a4b3c2d",
+    "headline": "Tesla reports third-quarter earnings",
+    "source": "rss.cnbc",
+    "source_name": "CNBC Top News",
+    "category": "markets_news",
+    "url": "https://www.cnbc.com/2026/10/29/tesla-q3-earnings.html",
+    "published_at": "2026-10-29T12:00:00Z",
+    "importance": 4,
+    "event_type": "earnings",
+    "inst_ids": [
+      "TSLA-USDT"
+    ],
+    "asset_classes": [
+      "stock"
+    ],
+    "sentiment": 0.0,
+    "novelty": 1.0,
+    "reason": "held_instrument",
+    "held_inst_ids": [
+      "TSLA-USDT-SWAP"
+    ]
+  }
+}

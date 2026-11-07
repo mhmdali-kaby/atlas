@@ -1,0 +1,47 @@
+{
+  "count": 3,
+  "next": "https://cryptopanic.com/api/v1/posts/?public=true&kind=news&page=2",
+  "previous": null,
+  "results": [
+    {
+      "kind": "news",
+      "domain": "coindesk.com",
+      "source": {"title": "CoinDesk", "region": "en", "domain": "coindesk.com", "path": null},
+      "title": "Bitcoin ETFs Record $1.2B Inflows as BTC Holds Above $110K",
+      "published_at": "2026-10-29T06:41:12Z",
+      "slug": "Bitcoin-ETFs-Record-12B-Inflows-as-BTC-Holds-Above-110K",
+      "id": 21004311,
+      "url": "https://cryptopanic.com/news/21004311/Bitcoin-ETFs-Record-12B-Inflows-as-BTC-Holds-Above-110K",
+      "created_at": "2026-10-29T06:41:12Z",
+      "votes": {"negative": 0, "positive": 4, "important": 1, "liked": 2, "disliked": 0, "lol": 0, "toxic": 0, "saved": 1, "comments": 0},
+      "currencies": [{"code": "BTC", "title": "Bitcoin", "slug": "bitcoin", "url": "https://cryptopanic.com/news/bitcoin/"}]
+    },
+    {
+      "kind": "news",
+      "domain": "theblock.co",
+      "source": {"title": "The Block", "region": "en", "domain": "theblock.co", "path": null},
+      "title": "Solana validators approve fee market upgrade",
+      "published_at": "2026-10-29T05:58:40Z",
+      "slug": "Solana-validators-approve-fee-market-upgrade",
+      "id": 21004207,
+      "url": "https://cryptopanic.com/news/21004207/Solana-validators-approve-fee-market-upgrade",
+      "original_url": "https://www.theblock.co/post/380001/solana-validators-fee-market-upgrade",
+      "created_at": "2026-10-29T05:58:40Z",
+      "votes": {"negative": 0, "positive": 1, "important": 0, "liked": 0, "disliked": 0, "lol": 0, "toxic": 0, "saved": 0, "comments": 0},
+      "currencies": [{"code": "SOL", "title": "Solana", "slug": "solana", "url": "https://cryptopanic.com/news/solana/"}]
+    },
+    {
+      "kind": "news",
+      "domain": "decrypt.co",
+      "source": {"title": "Decrypt", "region": "en", "domain": "decrypt.co", "path": null},
+      "title": "Ethereum gas fees fall to 2026 low",
+      "published_at": "2026-10-29T05:12:03Z",
+      "slug": "Ethereum-gas-fees-fall-to-2026-low",
+      "id": 21004150,
+      "url": "https://cryptopanic.com/news/21004150/Ethereum-gas-fees-fall-to-2026-low",
+      "created_at": "2026-10-29T05:12:03Z",
+      "votes": {"negative": 0, "positive": 0, "important": 0, "liked": 0, "disliked": 0, "lol": 0, "toxic": 0, "saved": 0, "comments": 0},
+      "currencies": [{"code": "ETH", "title": "Ethereum", "slug": "ethereum", "url": "https://cryptopanic.com/news/ethereum/"}]
+    }
+  ]
+}

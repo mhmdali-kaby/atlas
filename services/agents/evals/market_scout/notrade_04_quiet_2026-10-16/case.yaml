@@ -1,0 +1,50 @@
+agent: market_scout
+replay_as_of: '2026-10-16T05:00:00Z'
+env: demo
+description: 'Known no-trade day: flat ranges, falling volume, no catalyst in 48h.'
+prompt: Market Scout watchlist for 2026-10-16 (notrade case)
+properties:
+  valid_watchlist: {}
+  no_invented_numbers: {}
+  rejected_listed:
+    count: 3
+  no_trade_day:
+    max_picks: 1
+    max_conviction: 0.5
+inputs:
+  replies:
+    news_intelligence:
+      kind: text
+      content_md: Briefs for the shortlist. No instrument-specific stories in 24h; the 48h calendar is the main
+        catalyst..
+      card: null
+    historian:
+      kind: text
+      content_md: 'Regime check for the top candidates: SOL-USDT-SWAP range; XAU-USDT-SWAP range; TSLA-USDT-SWAP
+        range; ETH-USDT-SWAP range; QQQ-USDT-SWAP range; XAG-USDT-SWAP range.'
+      card: null
+fake:
+  steps:
+  - tool: okx_market.get_candles
+    input:
+      inst_id: SOL-USDT-SWAP
+      bar: 1D
+      limit: 20
+  - text: "Crypto majors are not on today's shortlist. Today: SOL-USDT-SWAP neutral.\n\n```json\n{\n \"type\": \"\
+      watchlist\",\n \"backdrop\": [\n  \"Crypto majors are not on today's shortlist.\",\n  \"XAU-USDT-SWAP leads\
+      \ the non-crypto names, 7d return 0.19999999999999998%.\",\n  \"No high-impact event in the next 48h.\"\n\
+      \ ],\n \"picks\": [\n  {\n   \"inst_id\": \"SOL-USDT-SWAP\",\n   \"rank\": 1,\n   \"asset_class\": \"crypto\"\
+      ,\n   \"bias\": \"neutral\",\n   \"conviction\": 0.4,\n   \"thesis\": \"Range regime with probability 0.81;\
+      \ levels only. Regime is range and the 7d return is 0.3% with ATR(14) on 1D at 1.3%. It beats the rejected\
+      \ names on combined evidence.\",\n   \"catalysts\": [],\n   \"key_levels\": {\n    \"support\": 149.1,\n \
+      \   \"resistance\": 162.4,\n    \"invalidation\": 149.1\n   },\n   \"invalidation\": \"A daily close beyond\
+      \ the 20-day range on the wrong side of the bias.\",\n   \"data_as_of\": \"2026-10-16T04:55:00Z\"\n  }\n ],\n\
+      \ \"rejected\": [\n  {\n   \"inst_id\": \"XAU-USDT-SWAP\",\n   \"reason\": \"XAU-USDT-SWAP: range regime,\
+      \ volume z -1.1 and vol ratio 0.6; no catalyst.\"\n  },\n  {\n   \"inst_id\": \"TSLA-USDT-SWAP\",\n   \"reason\"\
+      : \"TSLA-USDT-SWAP: range regime, volume z -1.1 and vol ratio 0.6; no catalyst.\"\n  },\n  {\n   \"inst_id\"\
+      : \"ETH-USDT-SWAP\",\n   \"reason\": \"ETH-USDT-SWAP: range regime, volume z -1.1 and vol ratio 0.6; no catalyst.\"\
+      \n  }\n ],\n \"no_pick_reason\": null\n}\n```"
+  - result:
+      tokens_in: 9000
+      tokens_out: 900
+      turns: 2

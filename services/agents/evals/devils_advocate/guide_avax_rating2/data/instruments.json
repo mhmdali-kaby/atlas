@@ -1,0 +1,20 @@
+[
+ {
+  "id": "1f4b82f1-4a85-5027-b161-2d004e0dfeb0",
+  "env": "demo",
+  "inst_id": "AVAX-USDT-SWAP",
+  "inst_type": "SWAP",
+  "inst_family": "AVAX-USDT",
+  "base_ccy": "AVAX",
+  "quote_ccy": "USDT",
+  "settle_ccy": "USDT",
+  "ct_val": "1",
+  "lot_sz": "1",
+  "min_sz": "1",
+  "tick_sz": "0.001",
+  "max_lever": "20",
+  "state": "live",
+  "asset_class": "crypto",
+  "list_time": "2025-03-03T09:00:00Z"
+ }
+]

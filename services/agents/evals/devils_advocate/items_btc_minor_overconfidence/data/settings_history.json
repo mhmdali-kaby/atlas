@@ -1,0 +1,15 @@
+[
+ {
+  "settings_id": "2a18a360-f148-581f-baa2-569cd5ba6cdf",
+  "version": 1,
+  "data": {
+   "risk_profile": "balanced",
+   "min_expected_r": "1.8",
+   "max_position_pct": "5",
+   "max_leverage": 5
+  },
+  "diff": {},
+  "changed_by": null,
+  "created_at": "2026-03-29T09:00:00Z"
+ }
+]

@@ -1,0 +1,141 @@
+[
+ {
+  "id": "4c255c43-ce55-5063-bf3e-7689bcc697f5",
+  "env": "demo",
+  "thread_id": "b3ed0202-ab61-5322-b33f-0368c51048b0",
+  "event_id": "90e56313-e7ae-5950-879f-fdd5245941ea",
+  "author_type": "agent",
+  "author": "technical_analyst",
+  "kind": "research_report",
+  "content_md": "TechnicalSetup card",
+  "card": {
+   "type": "technical_setup",
+   "inst_id": "SOL-USDT-SWAP",
+   "timeframe_bias": {
+    "1D": "down",
+    "4H": "down",
+    "1H": "range",
+    "15m": "down"
+   },
+   "setup_type": "rally_to_resistance",
+   "direction": "short",
+   "entry_zone": [
+    152.27,
+    152.52
+   ],
+   "trigger": "1H close back below 152.27 inside 1H:z2",
+   "stop": 153.97,
+   "targets": [
+    {
+     "price": 150.5,
+     "r_multiple": 1.2,
+     "reason": "1H:z4",
+     "close_pct": null
+    },
+    {
+     "price": 148.93,
+     "r_multiple": 2.2,
+     "reason": "1H:z5",
+     "close_pct": null
+    }
+   ],
+   "expected_r": 2.2,
+   "invalidation": "1H close above 153.97",
+   "quality_score": 0.66,
+   "est_slippage_bps": null,
+   "levels_used": [
+    {
+     "id": "1H:z2",
+     "price": 152.395
+    },
+    {
+     "id": "1H:z1",
+     "price": 152.88
+    },
+    {
+     "id": "1H:z0",
+     "price": 153.67
+    },
+    {
+     "id": "1H:z4",
+     "price": 150.5
+    },
+    {
+     "id": "1H:z5",
+     "price": 148.93
+    }
+   ],
+   "no_setup_reason": null,
+   "data_as_of": "2026-09-03T08:48:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-03T08:48:00Z",
+  "updated_at": "2026-09-03T08:48:00Z"
+ },
+ {
+  "id": "67274c26-f3f4-59e0-8698-65e71cf3ce76",
+  "env": "demo",
+  "thread_id": "b3ed0202-ab61-5322-b33f-0368c51048b0",
+  "event_id": "0a8dbb5b-185d-5d4f-8db3-b5dca32bef80",
+  "author_type": "agent",
+  "author": "historian",
+  "kind": "research_report",
+  "content_md": "HistoryVerdict card",
+  "card": {
+   "type": "history_verdict",
+   "question": "analog check for a short on SOL-USDT-SWAP",
+   "inst_id": "SOL-USDT-SWAP",
+   "bar": "1H",
+   "n": 34,
+   "distribution": {
+    "24h": {
+     "median": -0.3,
+     "p10": -2.1,
+     "p90": 2.4,
+     "pct_positive": 44.0
+    }
+   },
+   "verdict": "supports",
+   "key_stat": "44% of 34 analogs positive at 24h",
+   "data_as_of": "2026-09-03T08:52:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-03T08:52:00Z",
+  "updated_at": "2026-09-03T08:52:00Z"
+ },
+ {
+  "id": "11789ec2-45b6-59aa-b07d-ab991a5f4c2f",
+  "env": "demo",
+  "thread_id": "b3ed0202-ab61-5322-b33f-0368c51048b0",
+  "event_id": "cbd6b956-2d70-553c-82f4-4eba42fced54",
+  "author_type": "agent",
+  "author": "derivatives_sentiment",
+  "kind": "research_report",
+  "content_md": "PositioningReport card",
+  "card": {
+   "type": "positioning_report",
+   "inst_id": "SOL-USDT-SWAP",
+   "regime": "new_shorts",
+   "crowding_score": 0.35,
+   "crowded_side": "none",
+   "squeeze_risk": {
+    "long_squeeze": 0.2,
+    "short_squeeze": 0.15
+   },
+   "funding_view": "funding neutral",
+   "basis_bps": 3.1,
+   "sentiment_score": 0.2,
+   "supports_direction": {
+    "short": "supports",
+    "long": "neutral"
+   },
+   "key_evidence": [
+    "OI-price quadrant and funding read"
+   ],
+   "data_as_of": "2026-09-03T08:50:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-03T08:50:00Z",
+  "updated_at": "2026-09-03T08:50:00Z"
+ }
+]

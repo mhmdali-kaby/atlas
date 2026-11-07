@@ -1,0 +1,12 @@
+{
+  "code": "0",
+  "msg": "",
+  "data": [
+    {
+      "clOrdId": "",
+      "instId": "BTC-USDT-SWAP",
+      "posSide": "net",
+      "tag": ""
+    }
+  ]
+}

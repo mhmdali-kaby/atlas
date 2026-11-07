@@ -1,0 +1,17 @@
+[
+ {
+  "id": "912c3677-1128-57ab-ae75-7515f7248443",
+  "watchlist_id": "7840ca00-6699-57f9-9345-ded21f02605f",
+  "inst_id": "NVDA-USDT-SWAP",
+  "rank": 1,
+  "asset_class": "stock",
+  "bias": "long",
+  "conviction": "0.6",
+  "thesis": "Long bias on NVDA-USDT-SWAP from structure and flow.",
+  "catalysts": [],
+  "key_levels": {},
+  "invalidation": "1H close beyond 120.42",
+  "pinned_by_owner": false,
+  "data_as_of": "2026-09-08T12:00:00Z"
+ }
+]

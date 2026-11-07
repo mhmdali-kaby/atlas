@@ -1,0 +1,93 @@
+[
+ {
+  "env": "demo",
+  "inst_id": "BTC-USDT-SWAP",
+  "ts": "2026-10-16T16:00:00Z",
+  "funding_rate": "0.0001",
+  "realized_rate": "0.0001"
+ },
+ {
+  "env": "demo",
+  "inst_id": "BTC-USDT-SWAP",
+  "ts": "2026-10-17T00:00:00Z",
+  "funding_rate": "0.0002",
+  "realized_rate": "0.0002"
+ },
+ {
+  "env": "demo",
+  "inst_id": "BTC-USDT-SWAP",
+  "ts": "2026-10-17T08:00:00Z",
+  "funding_rate": "0.0003",
+  "realized_rate": "0.0003"
+ },
+ {
+  "env": "demo",
+  "inst_id": "BTC-USDT-SWAP",
+  "ts": "2026-10-17T16:00:00Z",
+  "funding_rate": "0.0001",
+  "realized_rate": "0.0001"
+ },
+ {
+  "env": "demo",
+  "inst_id": "BTC-USDT-SWAP",
+  "ts": "2026-10-18T00:00:00Z",
+  "funding_rate": "0.0002",
+  "realized_rate": "0.0002"
+ },
+ {
+  "env": "demo",
+  "inst_id": "BTC-USDT-SWAP",
+  "ts": "2026-10-18T08:00:00Z",
+  "funding_rate": "0.0003",
+  "realized_rate": "0.0003"
+ },
+ {
+  "env": "demo",
+  "inst_id": "BTC-USDT-SWAP",
+  "ts": "2026-10-18T16:00:00Z",
+  "funding_rate": "0.0001",
+  "realized_rate": "0.0001"
+ },
+ {
+  "env": "demo",
+  "inst_id": "BTC-USDT-SWAP",
+  "ts": "2026-10-19T00:00:00Z",
+  "funding_rate": "0.0002",
+  "realized_rate": "0.0002"
+ },
+ {
+  "env": "demo",
+  "inst_id": "BTC-USDT-SWAP",
+  "ts": "2026-10-19T08:00:00Z",
+  "funding_rate": "0.0003",
+  "realized_rate": "0.0003"
+ },
+ {
+  "env": "demo",
+  "inst_id": "BTC-USDT-SWAP",
+  "ts": "2026-10-19T16:00:00Z",
+  "funding_rate": "0.0001",
+  "realized_rate": "0.0001"
+ },
+ {
+  "env": "demo",
+  "inst_id": "BTC-USDT-SWAP",
+  "ts": "2026-10-20T00:00:00Z",
+  "funding_rate": "0.0002",
+  "realized_rate": "0.0002"
+ },
+ {
+  "env": "demo",
+  "inst_id": "BTC-USDT-SWAP",
+  "ts": "2026-10-20T08:00:00Z",
+  "funding_rate": "0.0003",
+  "realized_rate": "0.0003"
+ },
+ {
+  "env": "demo",
+  "inst_id": "BTC-USDT-SWAP",
+  "ts": "2026-10-20T16:00:00Z",
+  "funding_rate": "0.0777",
+  "realized_rate": "0.0777"
+ }
+]

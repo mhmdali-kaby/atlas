@@ -1,0 +1,17 @@
+[
+ {
+  "id": "37c3969f-15ba-52fa-91d4-ac8fc145646f",
+  "watchlist_id": "e68188b5-d0ed-55fc-ab8a-4a866b7fe50b",
+  "inst_id": "SOL-USDT-SWAP",
+  "rank": 1,
+  "asset_class": "crypto",
+  "bias": "short",
+  "conviction": "0.6",
+  "thesis": "Short bias on SOL-USDT-SWAP from structure and flow.",
+  "catalysts": [],
+  "key_levels": {},
+  "invalidation": "1H close beyond 153.97",
+  "pinned_by_owner": false,
+  "data_as_of": "2026-09-03T06:00:00Z"
+ }
+]

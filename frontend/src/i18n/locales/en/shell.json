@@ -1,0 +1,46 @@
+{
+  "footer": {
+    "risk": "Automated trading can lose money.",
+    "env": "Demo/Live:"
+  },
+  "env": {
+    "demo": "Demo",
+    "live": "Live",
+    "demoTip": "Paper trading on the OKX demo account. No real money moves.",
+    "liveTip": "Real money on your OKX live account. Every order Atlas sends is real."
+  },
+  "nav": {
+    "label": "Sidebar",
+    "areas": "Areas"
+  },
+  "area": {
+    "warroom": "War Room",
+    "agents": "Agents",
+    "portfolio": "Portfolio",
+    "journal": "Journal",
+    "backtester": "Backtester",
+    "settings": "Settings"
+  },
+  "toolbar": "Toolbar",
+  "toggleSidebar": "Show or hide the sidebar",
+  "otherLang": "العربية",
+  "switchLangSr": ", switch language",
+  "more": "More",
+  "theme": {
+    "label": "Appearance",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark"
+  },
+  "account": "Account",
+  "accountAria": "{{initials}}, Account",
+  "signOut": "Sign out",
+  "signedOut": "Signed out",
+  "notFound": {
+    "title": "Nothing here yet",
+    "body": "This page is not part of Atlas yet. Choose a page in the sidebar."
+  },
+  "switchLangHint": "Switch language",
+  "prefSaveFail": "Couldn’t save that change",
+  "prefSaveOffline": "Atlas’s server didn’t answer, so it’s back as it was."
+}

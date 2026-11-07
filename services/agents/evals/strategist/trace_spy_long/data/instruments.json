@@ -1,0 +1,20 @@
+[
+ {
+  "id": "c6a0c9ef-18a4-5585-a1d6-5b4c5d322f96",
+  "env": "demo",
+  "inst_id": "SPY-USDT-SWAP",
+  "inst_type": "SWAP",
+  "inst_family": "SPY-USDT",
+  "base_ccy": "SPY",
+  "quote_ccy": "USDT",
+  "settle_ccy": "USDT",
+  "ct_val": "1",
+  "lot_sz": "1",
+  "min_sz": "1",
+  "tick_sz": "0.01",
+  "max_lever": "10",
+  "state": "live",
+  "asset_class": "etf",
+  "list_time": "2025-08-01T15:00:00Z"
+ }
+]

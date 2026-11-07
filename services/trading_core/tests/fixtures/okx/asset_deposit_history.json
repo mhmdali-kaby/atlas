@@ -1,0 +1,20 @@
+{
+  "code": "0",
+  "msg": "",
+  "data": [
+    {
+      "actualDepBlkConfirm": "17",
+      "amt": "1000",
+      "areaCodeFrom": "",
+      "ccy": "USDT",
+      "chain": "USDT-TRC20",
+      "depId": "88888888",
+      "from": "",
+      "fromWdId": "",
+      "state": "2",
+      "to": "TXfixtureAddressScrubbed000000000",
+      "ts": "1793000000000",
+      "txId": "fixturetxid0000000000000000000000000000000000000000000000000001"
+    }
+  ]
+}

@@ -1,0 +1,194 @@
+{
+  "nav": "Notifications",
+  "intro": "Choose what Atlas tells you about, and where. Each switch saves straight away.",
+  "version": "Version {{v}}",
+  "matrix": "What you’re told, and where",
+  "event": "Event",
+  "matrixNote": "Everything you’re told about also stays in the list behind the bell. Turn all three off and Atlas doesn’t record that event.",
+  "group": {
+    "needs": "Needs you",
+    "trades": "Trades",
+    "team": "Team and data"
+  },
+  "ev": {
+    "proposal_awaiting_approval": "Trade waiting for approval",
+    "circuit_breaker": "Circuit breaker",
+    "kill_switch": "Trading stopped",
+    "reconciliation_mismatch": "Atlas and OKX disagree",
+    "order_filled": "Order filled",
+    "stop_hit": "Stop-loss hit",
+    "target_hit": "Target hit",
+    "news_alert": "News on a position you hold",
+    "agent_degraded": "Agent not working",
+    "data_stale": "Market data stopped",
+    "daily_report": "Daily report"
+  },
+  "desc": {
+    "proposal_awaiting_approval": "When a trade passes the risk engine and needs your yes or no.",
+    "circuit_breaker": "When a loss limit, a losing streak, OKX errors or a sharp move pauses trading.",
+    "kill_switch": "When Stop trading runs: what it cancelled, kept and closed.",
+    "reconciliation_mismatch": "When Atlas’s records didn’t match OKX and were corrected.",
+    "order_filled": "When an order Atlas placed fills on OKX.",
+    "stop_hit": "When OKX triggers one of your stop-losses.",
+    "target_hit": "When OKX triggers a take-profit.",
+    "news_alert": "When News Intelligence flags an important story on something you hold.",
+    "agent_degraded": "When an agent stops working or reaches its Claude usage limit.",
+    "data_stale": "When prices stop updating and new trades pause.",
+    "daily_report": "When the Portfolio Manager posts the day’s report, at 23:30."
+  },
+  "ch": {
+    "in_app": "In Atlas",
+    "browser": "Browser",
+    "telegram": "Telegram"
+  },
+  "st": {
+    "inApp": "Always ready",
+    "allowed": "Allowed",
+    "notAllowed": "Not allowed yet",
+    "blocked": "Blocked",
+    "unsupported": "Not available",
+    "allow": "Allow…",
+    "blockedTip": "Allow notifications for localhost:3000 in your browser’s site settings, then reload Atlas.",
+    "tgNone": "Not set up",
+    "tgSetup": "Set up",
+    "tgBot": "Bot {{last4}}"
+  },
+  "sw": "{{event}}: {{channel}}",
+  "tgOffTip": "Set up Telegram below to use this.",
+  "permOffTip": "Saved. Browser alerts show once you allow them.",
+  "preview": "Preview",
+  "previewOf": "Preview: {{event}}",
+  "previewPick": "Event to preview",
+  "pv": {
+    "inApp": "A notice in the corner while Atlas is open.",
+    "browser": "A macOS notification when Atlas is in the background. Its look depends on your browser.",
+    "telegram": "A message from your own bot.",
+    "telegramApprove": "A message from your own bot. Approve and Reject work until the approval window ends.",
+    "off": "Off for this event",
+    "notSetUp": "Set up Telegram to use this",
+    "blocked": "Blocked in this browser",
+    "open": "Open",
+    "approve": "Approve",
+    "reject": "Reject",
+    "now": "now",
+    "select": "Show the preview"
+  },
+  "sample": {
+    "proposal_awaiting_approval": {
+      "title": "Trade waiting for your approval",
+      "body": "Long SOL-USDT-SWAP, $2,997.79. Approve by 14:38.",
+      "action": "Review"
+    },
+    "circuit_breaker": {
+      "title": "Trading paused by a circuit breaker",
+      "body": "Today’s losses reached your daily limit. It clears by itself.",
+      "action": "Open War Room"
+    },
+    "kill_switch": {
+      "title": "Trading stopped",
+      "body": "3 orders cancelled, 4 stop-losses kept on OKX.",
+      "action": "Open War Room"
+    },
+    "reconciliation_mismatch": {
+      "title": "Atlas and OKX didn’t match",
+      "body": "Atlas corrected its records from OKX. New trades wait until you resume.",
+      "action": "View positions"
+    },
+    "order_filled": {
+      "title": "Order filled",
+      "body": "Bought 300 contracts of AAPL-USDC-SWAP at 262.40.",
+      "action": "View order"
+    },
+    "stop_hit": {
+      "title": "Stop-loss hit on NVDA-USDT-SWAP",
+      "body": "Triggered at 181.20, filled at 181.05, 120 contracts.",
+      "action": "View position"
+    },
+    "target_hit": {
+      "title": "Target hit on ETH-USDT-SWAP",
+      "body": "Triggered at 4180.0, filled at 4181.2, 40 contracts.",
+      "action": "View position"
+    },
+    "news_alert": {
+      "title": "News on XAU-USDT-SWAP",
+      "body": "“Gold slips as Treasury yields climb before the Fed decision”",
+      "meta": "Reuters, importance 4",
+      "action": "Read alert"
+    },
+    "agent_degraded": {
+      "title": "News Intelligence reached its usage limit",
+      "body": "It resumes at 13:00. The team carries on without it.",
+      "action": "Open Agents"
+    },
+    "data_stale": {
+      "title": "Market data stopped updating",
+      "body": "New trades wait until prices are fresh again.",
+      "action": "Open Data"
+    },
+    "daily_report": {
+      "title": "Daily report is ready",
+      "body": "The Portfolio Manager’s report for 27 Oct is in the War Room.",
+      "action": "Read report"
+    }
+  },
+  "tg": {
+    "title": "Telegram",
+    "intro": "Get notifications on your phone from a bot only you control.",
+    "s1": "In Telegram, open a chat with @BotFather and send /newbot. Answer its two questions; it replies with your bot’s token.",
+    "s2": "Open your new bot and press Start, so it can write to you.",
+    "s3": "Message @userinfobot. It replies with your chat ID, a number like 987654321.",
+    "token": "Bot token",
+    "chat": "Chat ID",
+    "tokenHint": "Kept encrypted on this Mac. Atlas shows only its last 4 characters.",
+    "save": "Save bot",
+    "saving": "Saving…",
+    "e": {
+      "token": "That doesn’t look like a bot token. It’s a number and a code joined by a colon, like 123456789:AAH…",
+      "tokenEmpty": "Paste the token @BotFather gave you.",
+      "chat": "A chat ID is your own private chat with the bot, a positive number like 987654321. Group chats aren’t supported.",
+      "chatEmpty": "Enter your chat ID.",
+      "server": "Couldn’t save the bot. Atlas’s server didn’t answer, so nothing changed. Try again."
+    },
+    "bot": "Bot {{last4}}",
+    "sendsTo": "Sends to chat {{last4}}",
+    "connected": "Connected",
+    "lastSent": "Last message",
+    "lastTest": "Last test",
+    "never": "None yet",
+    "untested": "Not tested yet",
+    "test": "Send test message",
+    "testing": "Sending…",
+    "testOk": "Test sent at {{time}}. Check Telegram.",
+    "testOkToast": "Test message sent",
+    "testOkBody": "It should be in your Telegram chat now.",
+    "testFailTitle": "Telegram didn’t accept the test message",
+    "testFailBody": "Check the token, and press Start in your bot’s chat so it can write to you. Telegram said:",
+    "replace": "Replace…",
+    "remove": "Remove…",
+    "savedTitle": "Telegram is set up",
+    "savedBody": "Nothing goes there until you turn on its switches above. Waiting trades come with Approve and Reject.",
+    "useNeeds": "Send the 4 “Needs you” events to Telegram",
+    "usedNeeds": "Telegram is on for the 4 “Needs you” events",
+    "note": "Approve and Reject in Telegram act for you, like pressing them in Atlas. Keep the bot’s chat private.",
+    "rpTitle": "Replace the Telegram bot",
+    "rpText": "Enter a token and chat ID. Atlas keeps the current bot until the new one is saved.",
+    "rmTitle": "Remove the Telegram bot?",
+    "rmText": "Atlas stops sending to Telegram, and Approve and Reject in messages already sent stop working. Your Telegram switches are kept for when you set it up again.",
+    "rmDo": "Remove bot",
+    "rmToast": "Telegram bot removed",
+    "rmToastBody": "Nothing is sent to Telegram now.",
+    "rmFail": "Couldn’t remove the bot",
+    "savedToast": "Telegram bot saved",
+    "savedToastBody": "Bot {{last4}}. Send a test message to check it.",
+    "cancel": "Cancel"
+  },
+  "t": {
+    "saveFail": "Couldn’t save that switch",
+    "saveFailBody": "{{event}} is back as it was. Atlas’s server didn’t answer."
+  },
+  "err": {
+    "title": "Couldn’t load notification settings",
+    "body": "Atlas’s server didn’t answer. Check that Atlas is running with ./atlas up, then try again.",
+    "retry": "Try again"
+  }
+}

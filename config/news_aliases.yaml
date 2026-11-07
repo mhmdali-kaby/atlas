@@ -1,0 +1,167 @@
+# Curated entity-linking aliases for news (brief §7.2 step 3, decision #243, ATL-62).
+#
+# `python -m atlas_ingest.aliases sync` merges these with aliases generated from the active env's
+# `instruments` (base symbol, BASE-USDT/USDC/USD family forms) and rewrites `instrument_aliases`.
+# A curated alias whose base symbol is not listed in the active env is dropped, so it links nothing.
+#
+# How an alias string is matched (the rule lives in the alias text itself, so the DB row carries it):
+#   all lowercase / caseless script  -> case-insensitive, whole word   ("bitcoin", "الذهب")
+#   contains an uppercase letter      -> exact case or ALL CAPS, whole word ("Apple"/"APPLE", "OP")
+#                                        an uppercase ticker also matches as a $cashtag ("$op")
+#   starts with "$"                   -> only as a cashtag                ("$ONE")
+#   ends with "*"                     -> word prefix (inflected scripts)  ("биткоин*")
+#   only CJK / kana / hangul          -> substring (no word spaces)       ("比特币")
+# Arabic aliases may carry the prefixes و ف ب ل ك ; Arabic diacritics, tatweel and alef forms are
+# normalised away on both sides, so write them plain.
+
+instruments:
+  BTC: [bitcoin, bitcoins, "BTC", البيتكوين, بيتكوين, 比特币, ビットコイン, 비트코인, биткоин*]
+  ETH: [ethereum, ether, "ETH", الإيثريوم, إيثريوم, 以太坊, イーサリアム, 이더리움, эфириум*]
+  ETC: [ethereum classic, "ETC"]
+  BCH: [bitcoin cash, "BCH"]
+  SOL: [solana, "SOL", سولانا, 索拉纳]
+  XRP: ["XRP", "Ripple", ريبل]
+  DOGE: [dogecoin, "DOGE", دوجكوين]
+  ADA: [cardano, "ADA"]
+  AVAX: ["Avalanche", "AVAX"]
+  LINK: [chainlink, "LINK"]
+  DOT: [polkadot, "DOT"]
+  TON: [toncoin, "TON"]
+  SUI: ["Sui"]
+  ARB: [arbitrum, "ARB"]
+  OP: ["Optimism", "OP"]
+  APT: [aptos, "APT"]
+  NEAR: ["NEAR Protocol", "NEAR"]
+  LTC: [litecoin, "LTC"]
+  PEPE: ["PEPE"]
+  SHIB: [shiba inu, "SHIB"]
+  UNI: [uniswap, "UNI"]
+  AAVE: [aave, "AAVE"]
+  TRX: ["Tron", "TRX"]
+  BNB: ["BNB", "BNB Chain"]
+  ATOM: ["Cosmos Hub", "ATOM"]
+  FIL: [filecoin, "FIL"]
+  INJ: [injective, "INJ"]
+  TIA: [celestia, "TIA"]
+  WLD: [worldcoin, "WLD"]
+  ENA: [ethena, "ENA", 에테나]
+  ONDO: [ondo finance, "ONDO"]
+  POL: ["Polygon", "POL"]
+  HBAR: [hedera, "HBAR"]
+  ONE: ["$ONE", harmony one]
+
+  AAPL: ["Apple", "AAPL", أبل, ابل, 苹果公司, アップル]
+  AMZN: ["Amazon", "AMZN", "AWS", أمازون]
+  COIN: [coinbase, "COIN", كوين بيس]
+  CRCL: ["Circle", "Circle Internet", "CRCL"]
+  GOOGL: [alphabet inc, "Alphabet", "Google", "GOOGL", "GOOG", جوجل, غوغل]
+  HOOD: [robinhood, "HOOD"]
+  META: ["Meta", "Meta Platforms", ميتا]
+  MSFT: [microsoft, "MSFT", مايكروسوفت]
+  MSTR: ["Strategy", "MicroStrategy", "MSTR", "Saylor's Strategy"]
+  NVDA: [nvidia, "NVDA", إنفيديا, 英伟达, エヌビディア]
+  TSLA: [tesla, "TSLA", تسلا, 特斯拉, テスラ]
+  PLTR: [palantir, "PLTR"]
+  AMD: ["AMD", advanced micro devices]
+  TSM: ["TSMC", "TSM", 台积电, 台積電]
+  ORCL: ["Oracle", "ORCL"]
+  LLY: ["Eli Lilly", "Lilly", "LLY"]
+  COST: ["Costco", "COST"]
+
+  SPY: [s&p 500, "SPDR S&P 500", "SPY", "S&P500"]
+  QQQ: [nasdaq 100, nasdaq-100, "Invesco QQQ", "QQQ"]
+  US100: [nasdaq 100, nasdaq-100, "US100"]
+  IWM: [russell 2000, "IWM"]
+  TQQQ: ["TQQQ"]
+  SQQQ: ["SQQQ"]
+
+  XAU: [gold, bullion, "XAU", الذهب, ذهب, 黄金, 金价, 金価格]
+  XAG: [silver, "XAG", الفضة, 白银, 銀価格]
+  CL: [oil, crude, crude oil, "WTI", "Brent", "OPEC", "OPEC+", النفط, نفط, أوبك, 原油, нефть*]
+  NG: [natural gas, "Henry Hub", gas field, الغاز الطبيعي, 天然气]
+  XCU: [copper, "XCU", النحاس, 铜价, 銅]
+
+# Central banks, regulators and countries link to asset classes, never to an instrument.
+asset_classes:
+  - aliases: ["Fed", "FOMC", "Federal Reserve", "Powell", الاحتياطي الفيدرالي, 美联储]
+    classes: [index, etf, stock, crypto, commodity]
+  - aliases: ["ECB", "EZB", european central bank, "Bank of England", "BoE", "Bank of Japan", "BoJ", 日銀]
+    classes: [index, etf, commodity]
+  - aliases: ["PBOC", people's bank of china, 中国人民银行]
+    classes: [commodity, index]
+  - aliases: ["SEC", "CFTC", "MiCA"]
+    classes: [crypto]
+  - aliases: ["OPEC", "OPEC+", أوبك]
+    classes: [commodity]
+
+# Context rules drop a match the surrounding text shows is not the asset. `aliases` limits a rule to
+# those alias strings (normalised); without it the rule covers every alias of the target. `unless`
+# drops the link when any term occurs in the title or summary; `require_any` drops it unless one does.
+# Terms are case-insensitive and match at a word start ("ski" covers "skiers").
+context_rules:
+  - target: AAPL
+    aliases: [apple]
+    unless: [harvest, orchard, fruit, cider, growers, apple pie, big apple]
+  - target: XAU
+    aliases: [gold, ذهب, الذهب]
+    unless: [medal, olympic, gold-medal, champion, ميدالية, gold rush, golden boot, gold coast]
+  - target: AMZN
+    aliases: [amazon]
+    unless: [rainforest, deforestation, river, basin, jungle, indigenous, tribe]
+  - target: META
+    aliases: [meta]
+    unless: [meta-analysis, meta analysis, metadata]
+  - target: XRP
+    aliases: [ripple]
+    unless: [ripple effect, ripple effects, ripples]
+  - target: AVAX
+    aliases: [avalanche]
+    unless: [ski, snow, alps, mountain, climber, buried, rescue, avalanche of]
+  - target: SHIB
+    aliases: [shiba inu]
+    unless: [dog, breed, puppy, puppies, pet]
+  - target: CL
+    aliases: [oil]
+    unless: [oil painting, painting, olive oil, palm oil, cooking oil, essential oil, oil spill, motor oil]
+  - target: XAG
+    aliases: [silver]
+    unless: [silver alert, silver lining, silverware, silver medal, silver screen, silver jubilee]
+  - target: TSLA
+    aliases: [tesla]
+    unless: [tesla coil, nikola tesla]
+  - target: XCU
+    unless: [theft, thieves, stolen, cable theft, 銅メダル]
+  - target: PEPE
+    unless: [frog, cartoon, comic]
+  - target: SOL
+    aliases: [solana]
+    unless: [solana beach, seawall]
+  - target: ORCL
+    aliases: [oracle]
+    unless: [oracle manipulation, price oracle, oracle attack, oracle network, oracles]
+  - target: MSTR
+    aliases: [strategy]
+    require_any: [bitcoin, btc, saylor, mstr, shares, stock, holdings, treasury]
+  - target: CRCL
+    aliases: [circle]
+    require_any: [usdc, stablecoin, shares, stock, earnings, revenue, crcl, ipo, quarter]
+  - target: OP
+    aliases: [optimism]
+    require_any: [op, token, tokens, mainnet, superchain, unlock, network, blockchain, ethereum, layer]
+  - target: POL
+    aliases: [polygon]
+    require_any: [pol, token, network, blockchain, payments, matic, chain, crypto, stablecoin, fintech]
+  - target: TRX
+    aliases: [tron]
+    require_any: [trx, network, blockchain, usdt, token, crypto, justin sun, fees]
+  - target: COST
+    aliases: [cost]
+    require_any: [costco]
+
+# Generated ticker aliases for these base symbols are cashtag-only ($AI), because the bare word is a
+# common acronym or English word. Symbols of one or two letters are always cashtag-only unless listed
+# above in `instruments` (OP is). Curated aliases are not affected by this list.
+ticker_stoplist: [AI, ID, IP, IT, ME, US, UK, EU, CEO, CFO, ETF, SEC, FDA, IPO, GDP, CPI, PMI, ATH, DEX,
+  CEX, NFT, DAO, API, APP, GAS, ONE, NEW, NOW, TOP, BIG, HOT, KEY, MOVE, PEOPLE, SUN, ACE, BIO, CORE,
+  MEME, MAGIC, FLOW, GAME, MASK, SAND, RAY, BAND, ELF, OM, NEO, CAT, DOG, LOOKS, FUN, RARE, REAL, HIGH,
+  LOW, WIN, MAX, MEW, NOT, ANY, ALL, FREE, FIRE, GOAT, TRUMP, STAR, GOLD, FED, USD, USDT, USDC]

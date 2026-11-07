@@ -1,0 +1,4 @@
+{"economicCalendar":[
+{"actual":null,"country":"US","estimate":0.3,"event":"CPI MoM","impact":"high","prev":0.4,"time":"2026-10-30 12:30:00","unit":"%"},
+{"actual":231,"country":"US","estimate":230,"event":"Initial Jobless Claims","impact":"medium","prev":229,"time":"2026-10-30 12:30:00","unit":"K"},
+{"actual":null,"country":"EU","estimate":null,"event":"ECB Speech","impact":"low","prev":null,"time":"2026-10-31 09:00:00","unit":""}]}

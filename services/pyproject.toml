@@ -1,0 +1,67 @@
+[project]
+name = "atlas-services"
+version = "0.0.0"
+requires-python = ">=3.12,<3.13"
+description = "Atlas Python services workspace root (dev tooling only)."
+dependencies = []
+
+[dependency-groups]
+dev = [
+  "pytest>=8",
+  "pytest-asyncio>=0.24",
+  "hypothesis>=6",
+  "respx>=0.21",
+  "ruff>=0.7",
+  "mypy>=1.13",
+  "atlas-shared",
+  "atlas-trading-core",
+  "atlas-agents",
+  "atlas-ingest",
+  "atlas-quant",
+  "pandas-stubs>=2.2",
+]
+
+[tool.uv.workspace]
+members = ["shared", "trading_core", "agents", "ingest", "quant"]
+
+[tool.uv.sources]
+atlas-shared = { workspace = true }
+atlas-trading-core = { workspace = true }
+atlas-agents = { workspace = true }
+atlas-ingest = { workspace = true }
+atlas-quant = { workspace = true }
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "shared/tests", "trading_core/tests", "agents/tests", "ingest/tests", "quant/tests"]
+asyncio_mode = "auto"
+addopts = "--import-mode=importlib"
+# services/trading_core shares its name with the trading_core package; without this pytest shadows it.
+consider_namespace_packages = true
+# Package source is never collected (`pytest trading_core` would otherwise pick up connection_test.py).
+norecursedirs = [".*", "*.egg", "_darcs", "build", "CVS", "dist", "node_modules", "venv", "{arch}", "src"]
+markers = [
+  "model: needs a locally cached embedding model (ATL-64); skipped when the cache is absent",
+  "stand_in_cli: may construct ClaudeSDKClient because it points cli_path at a stand-in script (ATL-92)",
+  "okx_demo: trades on the real OKX demo account (ATL-152); skipped unless ATLAS_OKX_DEMO_IT=1",
+]
+
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "S", "ASYNC", "DTZ", "RUF"]
+ignore = ["S101"]
+
+[tool.mypy]
+strict = true
+# Bare `uv run mypy` checks every workspace package's source.
+files = ["shared/src", "trading_core/src", "agents/src", "ingest/src", "quant/src"]
+python_version = "3.12"
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+# atlas_ingest's feed parser and language detector, and atlas_quant's vectorbt, ship no type
+# information.
+module = ["feedparser", "feedparser.*", "langdetect", "langdetect.*", "vectorbt", "vectorbt.*"]
+ignore_missing_imports = true

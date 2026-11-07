@@ -1,0 +1,17 @@
+[
+ {
+  "id": "6df955e4-f6cb-52d0-af69-6c2f1bcae79c",
+  "watchlist_id": "eb62dc42-2ce4-5881-9cbf-a04e503da687",
+  "inst_id": "TSLA-USDT-SWAP",
+  "rank": 1,
+  "asset_class": "stock",
+  "bias": "short",
+  "conviction": "0.6",
+  "thesis": "Short bias on TSLA-USDT-SWAP from structure and flow.",
+  "catalysts": [],
+  "key_levels": {},
+  "invalidation": "1H close beyond 253.9",
+  "pinned_by_owner": false,
+  "data_as_of": "2026-09-12T12:00:00Z"
+ }
+]

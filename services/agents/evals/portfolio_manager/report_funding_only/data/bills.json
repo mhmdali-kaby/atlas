@@ -1,0 +1,26 @@
+[
+ {
+  "env": "demo",
+  "bill_id": "evalpm-report_funding_only-5",
+  "inst_id": "BTC-USDT-SWAP",
+  "ccy": "USDT",
+  "type": "8",
+  "bal_chg": "-1.25",
+  "pnl": null,
+  "fee": null,
+  "ts": "2087-05-13T05:01:00Z",
+  "created_at": "2087-05-13T05:01:00Z"
+ },
+ {
+  "env": "demo",
+  "bill_id": "evalpm-report_funding_only-6",
+  "inst_id": "SOL-USDT-SWAP",
+  "ccy": "USDT",
+  "type": "8",
+  "bal_chg": "0.5",
+  "pnl": null,
+  "fee": null,
+  "ts": "2087-05-13T13:01:00Z",
+  "created_at": "2087-05-13T13:01:00Z"
+ }
+]

@@ -1,0 +1,4 @@
+[
+{"watchlist_id":"eef5a0d8-180d-5c7d-9933-b6571aeaea17","inst_id":"XAG-USDT-SWAP","rank":1,"asset_class":"commodity","bias":"long","conviction":"0.5","thesis":"Owner pin.","catalysts":[],"key_levels":{},"invalidation":"Owner pin: no invalidation set yet.","pinned_by_owner":true,"removed_by_owner_at":null,"data_as_of":"2026-10-02T05:10:00Z","created_at":"2026-10-02T05:10:00Z","updated_at":"2026-10-02T05:15:00Z"},
+{"watchlist_id":"eef5a0d8-180d-5c7d-9933-b6571aeaea17","inst_id":"DOGE-USDT-SWAP","rank":2,"asset_class":"crypto","bias":"long","conviction":"0.5","thesis":"Earlier pick.","catalysts":[],"key_levels":{},"invalidation":"Owner pin: no invalidation set yet.","pinned_by_owner":false,"removed_by_owner_at":"2026-10-02T05:15:00Z","data_as_of":"2026-10-02T05:10:00Z","created_at":"2026-10-02T05:10:00Z","updated_at":"2026-10-02T05:15:00Z"}
+]

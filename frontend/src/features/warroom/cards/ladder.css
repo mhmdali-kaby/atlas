@@ -1,0 +1,110 @@
+/* The trade ladder (cards/Ladder.tsx, design v11 Phase 2 §4): one rail in R, risk left, reward
+   right. No new colours: loss and profit washes for the two runs, accent for the entry zone,
+   label ink for the price now. Tabular figures throughout. */
+.ladder { position: relative; margin: 0; padding-block: 44px 58px; direction: ltr; }
+.ladder:has(.ladder-liq) { padding-bottom: 96px; }
+.ladder.is-compact { padding-block: 30px 36px; }
+.ladder:has(.ladder-nowline) { padding-top: 62px; }
+.ladder.is-compact:has(.ladder-nowline) { padding-top: 46px; }
+/* A live ladder (ATL-188) always keeps the room its Now line can need, so the price arriving,
+   moving or going stale never changes the card's height and Approve never moves. */
+.ladder.has-now-room { padding-top: 62px; }
+.ladder.is-compact.has-now-room { padding-top: 46px; }
+.ladder-rail { position: relative; height: 6px; border-radius: 3px; background: var(--fill-3); }
+.ladder.is-compact .ladder-rail { height: 4px; border-radius: 2px; }
+
+/* the two runs: what a hit stop costs, and the reward to the last target */
+.ladder-seg { position: absolute; inset-block: 0; left: calc(var(--a) * 1%); width: calc((var(--b) - var(--a)) * 1%); }
+.ladder-seg.is-loss { background: color-mix(in srgb, var(--loss) 34%, transparent); border-radius: 3px 0 0 3px; }
+.ladder-seg.is-gain { background: color-mix(in srgb, var(--profit) 30%, transparent); border-radius: 0 3px 3px 0; }
+.dark .ladder-seg.is-loss { background: color-mix(in srgb, var(--loss) 42%, transparent); }
+.dark .ladder-seg.is-gain { background: color-mix(in srgb, var(--profit) 36%, transparent); }
+
+/* the entry zone: a band that stands proud of the rail */
+.ladder-zone {
+  position: absolute; inset-block: -6px; left: calc(var(--a) * 1%); width: calc((var(--b) - var(--a)) * 1%); min-width: 6px;
+  border-radius: 5px; background: color-mix(in srgb, var(--accent) 20%, var(--bg-tertiary));
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+.ladder.is-compact .ladder-zone { inset-block: -5px; }
+
+.ladder-tick { position: absolute; inset-block: -8px; left: calc(var(--x) * 1%); width: 2px; margin-left: -1px; border-radius: 1px; }
+.ladder-tick.is-stop { background: var(--loss); }
+.ladder-tick.is-lock { background: var(--profit-ink); }
+.ladder-tick.is-tp { background: var(--profit); }
+.ladder-tick.is-was { width: 0; margin-left: 0; border-left: 1.5px dashed var(--label-tertiary); }
+
+/* the price now: an ink dot ringed in the card's colour */
+.ladder-mark {
+  position: absolute; top: 50%; left: calc(var(--x) * 1%); width: 12px; height: 12px; margin: -6px 0 0 -6px;
+  border-radius: 50%; background: var(--label); box-shadow: 0 0 0 2.5px var(--bg-tertiary), var(--ui-shadow-1);
+}
+.ladder.is-compact .ladder-mark { width: 10px; height: 10px; margin: -5px 0 0 -5px; }
+
+/* the price at analysis time: a hollow dot, the card's own colour ringed in label-secondary */
+/* a new live price glides there; the one layout property animated in Atlas, on one absolutely
+   placed dot and its label, so nothing else reflows. Appearing and going stale are instant. */
+.ladder-mark.is-live, .ladder-label.is-now.is-live { transition: left var(--dur-slow, 300ms) var(--ease-out, ease-out); }
+@media (prefers-reduced-motion: reduce) {
+  .ladder-mark.is-live, .ladder-label.is-now.is-live { transition: none; }
+}
+.ladder-mark.is-then { background: var(--bg-tertiary); box-shadow: 0 0 0 2px var(--label-secondary); }
+
+/* labels: entry and the price now above, the stop and targets below */
+.ladder-label {
+  position: absolute; left: calc(var(--x) * 1%); transform: translateX(-50%);
+  translate: var(--nudge, 0px) 0;   /* set by Atlas.ladder.fit when a neighbour on the row is too close */
+  display: grid; justify-items: center; gap: 0; white-space: nowrap; pointer-events: none;
+  font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--label-secondary);
+}
+.ladder-label.is-above { bottom: calc(100% + 13px); }
+.ladder-label.is-below { top: calc(100% + 13px); }
+.ladder-label.is-start { transform: translateX(-6px); justify-items: start; }
+.ladder-label.is-end { transform: translateX(calc(-100% + 6px)); justify-items: end; }
+.ladder-k { font-weight: 500; }
+.ladder-v { font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 600; color: var(--label); font-variant-numeric: tabular-nums; }
+.ladder-s .num { font-variant-numeric: tabular-nums; }
+.ladder-label.is-was .ladder-v { font-weight: 500; color: var(--label-secondary); text-decoration: line-through; text-decoration-color: var(--label-tertiary); }
+.ladder-label.is-entry .ladder-k { color: var(--accent-ink); }
+/* the price beside the entry: the entry label's first line, so Entry never moves */
+.ladder-nowline { display: inline-flex; gap: 4px; align-items: baseline; margin-bottom: 3px; }
+.ladder-nowline .ladder-v { font-size: var(--fs-caption); }
+/* the compact proposal rail's only label: one line above the dot */
+.ladder-label.is-line { display: inline-flex; gap: 5px; align-items: baseline; }
+.ladder-label.is-line.is-start { transform: translateX(-6px); }
+.ladder-label.is-line.is-end { transform: translateX(calc(-100% + 6px)); }
+.ladder-r { font-variant-numeric: tabular-nums; }
+.ladder.is-now-only .ladder-label.is-above { bottom: calc(100% + 9px); }
+.ladder.is-compact .ladder-label.is-above { bottom: calc(100% + 10px); }
+.ladder.is-compact .ladder-label.is-below { top: calc(100% + 10px); }
+.ladder.is-compact .ladder-v { font-size: var(--fs-caption); line-height: var(--lh-caption); }
+
+/* liquidation beyond the rail's start: a caption under the ladder, not a mark */
+.ladder-liq {
+  position: absolute; bottom: 0; left: 0; display: inline-flex; align-items: center; gap: 4px;
+  font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--label-secondary);
+}
+.ladder-liq .icon { width: 12px; height: 12px; stroke-width: 2; }
+.ladder.is-compact:has(.ladder-liq) { padding-bottom: 66px; }
+/* Arabic captions and footnotes run 3 px taller per line (tokens), so the stack under
+   the rail (name, price, note) needs that much more room before the next line of text. */
+.ladder:lang(ar) { padding-bottom: 68px; }
+.ladder:has(.ladder-liq):lang(ar) { padding-bottom: 106px; }
+.ladder.is-compact:lang(ar) { padding-bottom: 42px; }
+.ladder.is-compact:has(.ladder-liq):lang(ar) { padding-bottom: 72px; }
+
+/* A closed trade (design v16 §8, ATL-203): the ground the price covered from its worst point to
+   its best, painted under the entry zone, and the exit as an ink diamond ringed in the card's
+   colour. A diamond, never a dot: a dot is a price now or at a time. */
+.ladder-travel {
+  position: absolute; inset-block: -3px; left: calc(var(--a) * 1%); width: calc((var(--b) - var(--a)) * 1%); min-width: 2px;
+  background: color-mix(in srgb, var(--label) 30%, transparent);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--label) 55%, transparent), inset -2px 0 0 color-mix(in srgb, var(--label) 55%, transparent);
+}
+.dark .ladder-travel { background: color-mix(in srgb, var(--label) 34%, transparent); }
+.ladder-exit {
+  position: absolute; top: 50%; left: calc(var(--x) * 1%); width: 11px; height: 11px; margin: -5.5px 0 0 -5.5px;
+  rotate: 45deg; border-radius: 1.5px; background: var(--label); box-shadow: 0 0 0 2.5px var(--bg-tertiary);
+}
+.dark .ladder-exit { box-shadow: 0 0 0 2.5px var(--bg-secondary); }
+.ladder.is-compact .ladder-exit { width: 9px; height: 9px; margin: -4.5px 0 0 -4.5px; }

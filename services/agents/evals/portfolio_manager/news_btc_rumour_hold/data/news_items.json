@@ -1,0 +1,25 @@
+[
+ {
+  "id": "96684268-f844-560e-9222-38b7062a923f",
+  "source": "evalpm.social",
+  "url": "https://news.example/news-btc-rumour-hold/0",
+  "canonical_url": "https://news.example/news-btc-rumour-hold/0",
+  "title": "Posts claim a large exchange is halting BTC withdrawals",
+  "summary": "Posts claim a large exchange is halting BTC withdrawals",
+  "published_at": "2087-05-13T08:40:00Z",
+  "fetched_at": "2087-05-13T08:41:00Z",
+  "language": "en",
+  "instruments": [
+   "BTC-USDT-SWAP"
+  ],
+  "asset_classes": [
+   "crypto"
+  ],
+  "event_type": "other",
+  "sentiment": "-0.4",
+  "importance": 4,
+  "novelty": "0.8",
+  "cluster_id": "48db39bc-255c-52f0-b022-220a3d56bfd7",
+  "created_at": "2087-05-13T08:41:00Z"
+ }
+]

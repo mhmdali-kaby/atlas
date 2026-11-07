@@ -1,0 +1,199 @@
+/* ==========================================================================
+   Agents (ATL-117; design v9 css/agents.css): the team on one page. A pane on
+   the grouped ground, like System Settings: the Claude check first (it gates
+   every agent), a totals line, then one inset row per agent. The medallion is
+   the page's only signature; usage meters are neutral accent until they near a
+   budget. Built only from tokens.css; no new colours or type sizes.
+   ========================================================================== */
+
+.shell-content:has(.ag-page) { background: var(--bg-grouped); }
+.ag-page { display: grid; gap: 18px; padding-block: 12px 40px; }
+.ag-page code {
+  font-family: var(--font-mono); font-size: 0.92em; direction: ltr; unicode-bidi: isolate;
+}
+.ag-group {
+  background: var(--bg-grouped-row); border-radius: var(--radius-card);
+  box-shadow: 0 0 0 0.5px var(--hairline-color);
+}
+.ag-pop {
+  z-index: 70; max-width: 320px; border-radius: 10px; padding: 6px 12px;
+  font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label);
+}
+
+/* ---- Page head -------------------------------------------------------- */
+.ag-head { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: 8px 24px; padding: 8px 4px 2px; }
+.ag-head-text { display: grid; gap: 4px; }
+.ag-head-text p { max-width: 62ch; text-wrap: pretty; }
+.ag-updated { font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); white-space: nowrap; }
+
+/* ---- Claude panel ----------------------------------------------------- */
+.ag-claude { padding: 16px 20px; display: grid; gap: 14px; }
+.ag-cl-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; }
+.ag-cl-icon {
+  width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center;
+  background: var(--fill-3); color: var(--label-secondary);
+}
+.ag-cl-icon svg { width: 20px; height: 20px; }
+.ag-cl-icon.is-ok { background: var(--profit-wash); color: var(--profit-ink); }
+.ag-cl-icon.is-warn { background: var(--warning-wash); color: var(--warning-ink); }
+.ag-cl-icon.is-error { background: var(--loss-wash); color: var(--loss-ink); }
+.ag-cl-text { display: grid; gap: 2px; min-width: 0; }
+.ag-cl-title { font-size: var(--text-headline); line-height: var(--lh-headline); letter-spacing: var(--tr-headline); font-weight: 600; text-wrap: pretty; }
+.ag-cl-sub { font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); max-width: 72ch; text-wrap: pretty; }
+.ag-cl-sub code { padding: 0 5px; border-radius: 5px; background: var(--fill-3); color: var(--label); }
+.ag-cl-at { white-space: nowrap; }
+
+/* the command to run: one copyable line, always LTR */
+.ag-cmd {
+  display: flex; align-items: center; gap: 8px; justify-self: start; min-width: min(360px, 100%);
+  margin-inline-start: 50px; height: 40px; padding-inline: 14px 4px; border-radius: 10px;
+  background: var(--bg-secondary); box-shadow: inset 0 0 0 0.5px var(--hairline-color);
+}
+:root.dark .ag-cmd { background: var(--bg); }
+.ag-cmd code { flex: 1; font-size: var(--text-subheadline); color: var(--label); text-align: left; }
+.ag-cl-more { margin-inline-start: 50px; font-size: var(--text-footnote); line-height: var(--lh-footnote); }
+.ag-cl-foot {
+  display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 20px;
+  margin-inline-start: 50px; padding-top: 12px; border-top: 0.5px solid var(--separator);
+  font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary);
+}
+.ag-checks { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 0; padding: 0; list-style: none; color: var(--label); }
+.ag-checks li { display: inline-flex; align-items: center; gap: 6px; }
+.ag-checks svg { width: 15px; height: 15px; flex: none; }
+.ag-checks .is-pass svg { color: var(--profit-ink); }
+.ag-checks .is-fail { color: var(--loss-ink); font-weight: 600; }
+.ag-checks .is-skip { color: var(--label-secondary); }
+.ag-checks .is-skip svg { color: var(--label-tertiary); }
+.ag-checks code { padding: 0 4px; border-radius: 4px; background: var(--fill-3); }
+
+/* ---- Totals ----------------------------------------------------------- */
+.ag-totals { padding-inline: 4px; font-size: var(--text-subheadline); line-height: var(--lh-subheadline); color: var(--label-secondary); text-wrap: pretty; }
+.ag-totals .fig { color: var(--label); font-weight: 600; }
+.ag-notional, .ag-cost [data-tip] { border-radius: 4px; cursor: help; text-decoration: underline dotted var(--label-tertiary); text-underline-offset: 3px; }
+.ag-notional:focus-visible, .ag-cost [data-tip]:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* ---- The team: one row per agent -------------------------------------- */
+.ag-team { container-type: inline-size; }
+/* The five minimums plus gaps and padding (730 + 4 × 15.5 + 40 = 832) fit the
+   narrowest container that gets this layout (861px), so no column is ever cut.
+   Today's 184px is the widest unbreakable meter line (Arabic); the rest wrap. */
+.ag-row {
+  --cols: minmax(150px, 1fr) minmax(150px, 1.2fr) minmax(184px, 1fr) minmax(118px, 0.72fr) minmax(128px, 0.8fr);
+  position: relative; display: grid; grid-template-columns: var(--cols); column-gap: clamp(14px, 1.8cqi, 20px); align-items: start;
+  padding: 12px 20px 13px; border-radius: var(--radius-card); outline: none;
+}
+.ag-row + .ag-row::before { content: ""; position: absolute; top: 0; inset-inline: 68px 0; border-top: 0.5px solid var(--separator); }
+.ag-row-head + .ag-row::before { inset-inline-start: 0; }
+.ag-row:focus-visible { box-shadow: var(--focus-ring); }
+.ag-row.is-flash { animation: ag-flash 1.6s var(--ease-out); }
+@keyframes ag-flash { 0%, 30% { background: var(--flash); } 100% { background: transparent; } }
+.ag-row-head {
+  align-items: end; padding-block: 11px 9px;
+  font-size: var(--text-caption); line-height: var(--lh-caption); font-weight: 600; color: var(--label-secondary);
+}
+.ag-c { min-width: 0; }
+
+/* agent */
+.ag-c-agent { display: flex; align-items: center; gap: 12px; }
+.ag-who { display: grid; gap: 1px; min-width: 0; }
+.ag-who b { font-size: var(--text-callout); line-height: var(--lh-callout); letter-spacing: var(--tr-callout); font-weight: 600; }
+.ag-who span { font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); text-wrap: pretty; }
+.ag-row.is-off .ag-who b { color: var(--label-secondary); }
+
+/* status: a dot and a word, then the task */
+.ag-c-status { padding-top: 1px; border-radius: 8px; }
+.ag-c-status.is-flash { animation: ag-flash 1.6s var(--ease-out); margin: -4px -6px; padding: 5px 6px 4px; }
+.ag-state { display: flex; align-items: center; flex-wrap: wrap; gap: 2px 8px; font-size: var(--text-subheadline); line-height: var(--lh-subheadline); }
+.ag-state b { font-weight: 600; }
+.ag-state.is-warn b { color: var(--warning-ink); }
+.ag-state.is-off b { color: var(--label-secondary); }
+.ag-since { font-size: var(--text-footnote); color: var(--label-secondary); }
+.ag-since time, .ag-run-when time { border-radius: 4px; }
+.ag-since time:focus-visible, .ag-run-when time:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.ag-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--status-idle); }
+.ag-dot[data-status='thinking'] { background: var(--status-thinking); }
+.ag-dot[data-status='waiting'] { background: var(--status-waiting); }
+.ag-dot[data-status='degraded'] { background: var(--status-degraded); }
+.ag-dot[data-status='paused'] { background: var(--status-paused); }
+.ag-dot[data-status='offline'] { background: transparent; box-shadow: inset 0 0 0 1.5px var(--status-offline); }
+.ag-task { margin-top: 3px; font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; text-wrap: pretty; }
+.ag-link { display: inline-flex; align-items: center; gap: 4px; margin-top: 3px; font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--accent-ink); border-radius: 4px; }
+.ag-link svg { width: 13px; height: 13px; }
+.ag-link:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* today: two meters against the daily budget, then the notional cost */
+.ag-meters { display: grid; gap: 7px; }
+.ag-meter-t { display: flex; align-items: baseline; gap: 6px; font-size: var(--text-caption); line-height: var(--lh-caption); color: var(--label-secondary); }
+.ag-meter-k { min-width: 3.4em; }
+.ag-meter-v { color: var(--label); white-space: nowrap; }
+.ag-meter-v .fig { font-weight: 600; }
+.ag-pct { margin-inline-start: auto; font-weight: 600; color: var(--warning-ink); }
+.ag-bar { display: block; height: 4px; margin-top: 4px; border-radius: 2px; background: var(--fill-2); overflow: hidden; }
+/* A block in a block: its width grows from the inline start, so in Arabic it fills from the right. */
+.ag-bar i { display: block; height: 100%; border-radius: 2px; background: var(--accent); }
+.ag-meter.is-warn .ag-bar i { background: var(--warning); }
+.ag-cost { margin-top: 7px; font-size: var(--text-caption); line-height: var(--lh-caption); color: var(--label-secondary); }
+.ag-muted { font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); padding-top: 2px; }
+
+/* model and prompt */
+.ag-model { display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 6px; font-size: var(--text-subheadline); line-height: var(--lh-subheadline); }
+.ag-model b { font-weight: 600; }
+.ag-model-name { font-size: var(--text-footnote); color: var(--label-secondary); }
+.ag-prompt { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; margin-top: 4px; font-size: var(--text-caption); line-height: var(--lh-caption); color: var(--label-secondary); }
+.ag-prompt .fig { color: var(--label); font-weight: 600; }
+.ag-prompt-k { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ag-prompt code { padding: 1px 5px; border-radius: 5px; background: var(--fill-3); color: var(--label-secondary); font-size: 11.5px; letter-spacing: 0.01em; cursor: default; }
+.ag-prompt code:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* last run: an icon and a word, then when and why */
+.ag-run { display: flex; align-items: center; gap: 6px; font-size: var(--text-subheadline); line-height: var(--lh-subheadline); }
+.ag-run b { font-weight: 600; }
+.ag-run svg { width: 16px; height: 16px; flex: none; }
+.ag-run.is-ok svg { color: var(--profit-ink); }
+.ag-run.is-error, .ag-run.is-error svg { color: var(--loss-ink); }
+.ag-run.is-degraded, .ag-run.is-rate_limited, .ag-run.is-over_budget { color: var(--warning-ink); }
+.ag-run.is-none { color: var(--label-secondary); }
+.ag-run.is-none svg { color: var(--label-tertiary); }
+.ag-run-when { margin-top: 2px; font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.ag-trig { white-space: nowrap; }   /* "12:12," then "intraday re-run" on the next line, never "re-" / "run" */
+
+/* an agent that is off */
+.ag-row.is-off .ag-c-model, .ag-row.is-off .ag-c-run { opacity: 0.55; }
+
+/* skeleton rows keep the table's shape */
+.ag-row.is-skel .ag-c-status, .ag-row.is-skel .ag-c-today, .ag-row.is-skel .ag-c-model, .ag-row.is-skel .ag-c-run { display: grid; justify-items: start; }
+
+/* ---- Narrow: each agent becomes a block -------------------------------- */
+@container (max-width: 860px) {
+  .ag-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); row-gap: 12px; padding-block: 14px 16px; }
+  .ag-row-head { display: none; }
+  .ag-row-head + .ag-row::before { display: none; }
+  .ag-c-agent { grid-column: 1 / -1; }
+  .ag-c-status, .ag-c-today { grid-column: 1 / -1; margin-inline-start: 48px; }
+  .ag-c-model { margin-inline-start: 48px; }
+  .ag-c-status.is-flash { margin-inline: 42px -6px; }
+  .ag-prompt-k { position: static; width: auto; height: auto; overflow: visible; clip-path: none; }
+  .ag-row + .ag-row::before { inset-inline-start: 20px; }
+}
+@container (max-width: 520px) {
+  .ag-row { grid-template-columns: minmax(0, 1fr); padding-inline: 16px; }
+  .ag-c-model, .ag-c-run { grid-column: 1 / -1; margin-inline-start: 48px; }
+  .ag-row + .ag-row::before { inset-inline-start: 16px; }
+}
+@media (max-width: 640px) {
+  .ag-claude { padding: 14px 16px; }
+  .ag-cl-head { grid-template-columns: auto minmax(0, 1fr); }
+  .ag-cl-head > button { grid-column: 2; justify-self: start; }
+  .ag-cmd, .ag-cl-more, .ag-cl-foot { margin-inline-start: 0; }
+  .ag-cmd { min-width: 0; width: 100%; }
+}
+
+/* ---- Sidebar ---------------------------------------------------------- */
+.ag-side-row .agent-task b { font-weight: 600; color: var(--label); }
+.ag-side-sep { color: var(--label-secondary); }
+.ag-side-skel { display: flex; align-items: center; gap: 10px; height: 44px; padding-inline: 10px; }
+.ag-side-none { padding: 2px 10px; font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ag-row.is-flash, .ag-c-status.is-flash { animation: none; }
+}

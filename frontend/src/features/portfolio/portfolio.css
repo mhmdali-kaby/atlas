@@ -1,0 +1,411 @@
+/* Portfolio Overview (design: css/portfolio.css): the equity tint, the ledger strip (skeletons: src/ui/Skeleton). */
+
+/* A changed equity figure flashes green or red, then settles to the label colour. */
+.pf-tint-profit { animation: pf-tint-profit 1200ms var(--ease-out); }
+.pf-tint-loss { animation: pf-tint-loss 1200ms var(--ease-out); }
+@keyframes pf-tint-profit { 0%, 30% { color: var(--profit-ink); } 100% { color: var(--label); } }
+@keyframes pf-tint-loss { 0%, 30% { color: var(--loss-ink); } 100% { color: var(--label); } }
+
+.equity-chart:focus-within { box-shadow: var(--focus-ring); }
+.equity-chart .recharts-surface:focus { outline: none; }
+
+/* Six figures, one statement. Six across from a 1440 window, three by two below, two below 760. */
+.pf-ledger {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  background: var(--bg-secondary);
+  border-radius: var(--radius-panel);
+  box-shadow: inset 0 0 0 0.5px var(--hairline-color);
+}
+.pf-ledger-item {
+  position: relative;
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  padding: 16px 18px 18px;
+  color: var(--label);
+  text-decoration: none;
+  border-radius: var(--radius-panel);
+}
+a.pf-ledger-item:hover { background: var(--fill-4); }
+a.pf-ledger-item:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.pf-ledger-item:nth-child(2n)::before {
+  content: "";
+  position: absolute;
+  inset-block: 16px;
+  inset-inline-start: 0;
+  border-inline-start: 0.5px solid var(--separator);
+}
+.pf-ledger-item:nth-child(n + 3) { border-top: 0.5px solid var(--separator); border-radius: 0; }
+
+@media (min-width: 761px) {
+  .pf-ledger { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .pf-ledger-item::before { display: none; }
+  .pf-ledger-item:not(:nth-child(3n + 1))::before {
+    display: block;
+    content: "";
+    position: absolute;
+    inset-block: 16px;
+    inset-inline-start: 0;
+    border-inline-start: 0.5px solid var(--separator);
+  }
+  .pf-ledger-item:nth-child(n + 3) { border-top: 0; border-radius: var(--radius-panel); }
+  .pf-ledger-item:nth-child(n + 4) { border-top: 0.5px solid var(--separator); border-radius: 0; }
+}
+@media (min-width: 1440px) {
+  .pf-ledger { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .pf-ledger-item:not(:first-child)::before { display: block; }
+  .pf-ledger-item:nth-child(n + 4) { border-top: 0; border-radius: var(--radius-panel); }
+}
+
+/* ---- Panels and tables (Positions, Holdings, Cash flows; design: components.css .table) ---- */
+.pf-panel {
+  --panel-bg: var(--bg);
+  background: var(--panel-bg);
+  border-radius: var(--radius-panel);
+  box-shadow: 0 0 0 0.5px var(--hairline-color), var(--shadow-2);
+}
+.dark .pf-panel { --panel-bg: var(--bg-secondary); }
+.pf-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: var(--text-subheadline);
+  line-height: var(--lh-subheadline);
+}
+/* The header sticks to the top of the scrolling page (main.shell-content) as one solid band. */
+.pf-table th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 10px;
+  text-align: start;
+  white-space: nowrap;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  font-weight: 500;
+  color: var(--label-secondary);
+  background: var(--panel-bg);
+  border-bottom: 0.5px solid var(--separator);
+}
+.pf-table td {
+  padding: 12px 10px;
+  border-bottom: 0.5px solid var(--separator);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.pf-table tbody tr:last-child td { border-bottom: 0; }
+.pf-table tbody tr { transition: background-color var(--dur-fast); }
+.pf-table tbody tr:hover { background: var(--fill-4); }
+.pf-table .is-num { text-align: end; font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+/* Positions has ten columns: 16px between columns keeps it inside a 1280 window. */
+.pf-positions td, .pf-positions th { padding-inline: 8px; }
+.pf-table th:first-child, .pf-table td:first-child { padding-inline-start: 20px; }
+.pf-table th:last-child, .pf-table td:last-child { padding-inline-end: 20px; }
+.pf-table th:first-child { border-start-start-radius: var(--radius-panel); }
+.pf-table th:last-child { border-start-end-radius: var(--radius-panel); }
+.pf-table tbody tr:last-child td:first-child { border-end-start-radius: var(--radius-panel); }
+.pf-table tbody tr:last-child td:last-child { border-end-end-radius: var(--radius-panel); }
+.pf-cell-sub {
+  display: block;
+  margin-top: 1px;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+.pf-table td.is-num [data-sign] { justify-content: flex-end; }
+.pf-inst { font-weight: 600; font-size: var(--text-subheadline); unicode-bidi: isolate; }
+.pf-inst-rest { color: var(--label-secondary); font-weight: 500; }
+.pf-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding-inline: 8px;
+  border-radius: var(--radius-full);
+  font-size: var(--text-footnote);
+  line-height: 1;
+  font-weight: 600;
+  white-space: nowrap;
+  background: var(--fill-3);
+  color: var(--label);
+}
+.pf-badge svg { width: 13px; height: 13px; color: var(--label-secondary); }
+
+/*
+ * Narrow windows: the table scrolls sideways inside its panel; the first column stays pinned.
+ * ATL-187 round 3: round 2 moved the threshold from 1279px to 1280px, which only avoided the
+ * 1280px test viewport — Positions' eleventh column, Close (ATL-151), still overflowed <main>
+ * between 1281px (~19px) and 1299px (down to ~10px); it only fits unassisted from ~1300px.
+ * The threshold now covers that whole gap with margin rather than tracking the table's exact
+ * content width, which shifts with locale, numeric formatting and font metrics. Kept as a media
+ * query rather than made unconditional: an unconditional `overflow-x: auto` makes the default
+ * `overflow-y: visible` compute to `auto` too (a CSS overflow-x/overflow-y interaction), turning
+ * .pf-panel into its own vertical scroll container and detaching the sticky header from <main>'s
+ * own scroll (portfolio-positions.spec.ts "the header stays visible while the table scrolls").
+ */
+@media (max-width: 1359px) {
+  .pf-panel { overflow-x: auto; overscroll-behavior-x: contain; }
+  .pf-table th:first-child, .pf-table td:first-child {
+    position: sticky;
+    inset-inline-start: 0;
+    z-index: 1;
+    background: var(--panel-bg);
+    padding-inline-end: 16px;
+    box-shadow: inset calc(var(--pin-edge, 1) * -0.5px) 0 0 var(--separator);
+  }
+  [dir='rtl'] .pf-table { --pin-edge: -1; }
+  .pf-table th:first-child { z-index: 3; }
+}
+
+/* Holdings and Cash flows (design: .share, .mono-tile, .flow-type, .tx, .pager, .page-head-note). */
+.pf-head-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--text-footnote);
+  line-height: var(--lh-footnote);
+  color: var(--label-secondary);
+}
+.pf-head-note svg { width: 14px; height: 14px; }
+.pf-ccy { display: flex; align-items: center; gap: 12px; }
+.pf-mono {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: var(--bg-secondary);
+  box-shadow: inset 0 0 0 0.5px var(--hairline-color);
+  font-family: var(--font-num);
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--label);
+}
+.pf-badge-quiet { background: transparent; box-shadow: inset 0 0 0 1px var(--separator); color: var(--label-secondary); }
+.pf-badge-warning { background: var(--warning-wash); color: var(--warning-ink); }
+.pf-badge-warning svg { color: var(--warning-ink); }
+.pf-badge-loss { background: var(--loss-wash); color: var(--loss-ink); }
+.pf-badge-loss svg { color: var(--loss-ink); }
+.pf-share { display: flex; align-items: center; gap: 10px; }
+.pf-share-track { width: 96px; height: 6px; border-radius: 3px; background: var(--fill-3); overflow: hidden; }
+.pf-share-fill { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
+.pf-share-pct { font-size: var(--text-footnote); color: var(--label-secondary); min-width: 52px; font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.pf-flow-type { display: inline-flex; align-items: center; gap: 6px; }
+.pf-flow-type svg { width: 16px; height: 16px; color: var(--label-secondary); }
+.pf-tx { color: var(--label-secondary); font-size: var(--text-footnote); border-radius: 4px; font-family: var(--font-num); unicode-bidi: isolate; }
+.pf-pager {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 20px;
+  border-top: 0.5px solid var(--separator);
+}
+.pf-pager-btns { display: flex; gap: 8px; }
+@media (max-width: 1279px) {
+  .pf-share-track { width: 64px; }
+}
+
+/* ---- History (ATL-173; design: css/history.css) ---- */
+.ph-filters { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.ph-menu {
+  display: inline-flex; align-items: center; gap: 4px; height: 28px; padding-inline: 10px 8px;
+  border-radius: 8px; background: var(--fill-3); color: var(--label);
+  font-size: var(--text-footnote); line-height: var(--lh-footnote); font-weight: 500; white-space: nowrap;
+}
+.ph-menu:hover:not(:disabled) { background: var(--fill-2); }
+.ph-menu svg { width: 14px; height: 14px; color: var(--label-secondary); }
+.ph-menu.is-set { background: var(--accent-wash); color: var(--accent-ink); }
+.ph-menu.is-set svg { color: var(--accent-ink); }
+.ph-menu:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.ph-menu:disabled { opacity: 0.45; }
+.ph-search {
+  position: relative; display: inline-flex; align-items: center; gap: 6px; height: 28px; width: 210px;
+  padding-inline: 8px; border-radius: 8px; background: var(--fill-3); color: var(--label-secondary);
+  transition: box-shadow var(--dur-fast) var(--ease-out);
+}
+.ph-search svg { width: 14px; height: 14px; flex-shrink: 0; }
+.ph-search:focus-within { box-shadow: var(--focus-ring); background: var(--field-bg, var(--bg)); }
+.ph-search-input { flex: 1; min-width: 0; height: 100%; border: 0; background: transparent; outline: none; font: inherit; font-size: var(--text-footnote); color: var(--label); text-align: start; }
+.ph-search-input::placeholder { color: var(--label-secondary); }
+.ph-chips { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.ph-chip {
+  display: inline-flex; align-items: center; gap: 2px; height: 26px; padding-inline: 10px 3px; border-radius: var(--radius-full);
+  background: var(--accent-wash); color: var(--accent-ink); font-size: var(--text-footnote); line-height: var(--lh-footnote); font-weight: 500;
+}
+.ph-chip-x { width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; color: var(--accent-ink); }
+.ph-chip-x svg { width: 12px; height: 12px; stroke-width: 2.25; }
+.ph-chip-x:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.ph-chip-x:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+/* ---- Positions/Orders `?inst_id=` filter chip (design v18 §5.6, ATL-220) ---- */
+.pf-inst-filter { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+.pf-inst-chip {
+  display: inline-flex; align-items: center; gap: 6px; height: 30px; padding-inline: 10px 4px; border-radius: var(--radius-full);
+  background: var(--accent-wash); color: var(--accent-ink); font-size: var(--text-footnote); line-height: var(--lh-footnote); font-weight: 600;
+}
+.pf-inst-chip-icon { width: 14px; height: 14px; flex-shrink: 0; }
+.pf-inst-chip-x { width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; color: var(--accent-ink); }
+.pf-inst-chip-x svg { width: 13px; height: 13px; stroke-width: 2.25; }
+.pf-inst-chip-x:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.pf-inst-chip-x:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.pf-inst-count { font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.pf-row-flash { animation: pf-row-flash 1.6s var(--ease-out); }
+@keyframes pf-row-flash { 0%, 30% { background: var(--flash); } 100% { background: transparent; } }
+@media (prefers-reduced-motion: reduce) {
+  .pf-row-flash { animation: none; }
+}
+
+/* The table scrolls inside its own box, so the header sticks to the box and only the visible window is in the DOM. */
+.ph-panel { overflow: hidden; }
+.ph-scroll {
+  max-height: max(380px, calc(100vh - 372px)); overflow: auto; overscroll-behavior: contain;
+  border-radius: var(--radius-panel);
+}
+.ph-scroll:focus-visible { outline: none; box-shadow: inset var(--focus-ring); }
+.ph-table td { height: 44px; padding-block: 0; }
+.ph-table td, .ph-table th { padding-inline: 8px; }
+.ph-table th:first-child, .ph-table td:first-child { padding-inline-start: 20px; }
+.ph-table th:last-child, .ph-table td:last-child { padding-inline-end: 20px; }
+.ph-table tr.ph-pad td { padding: 0; border: 0; height: auto; }
+.ph-table tr.ph-pad:hover { background: none; }
+.ph-r { color: var(--label); }
+.ph-more { padding: 10px 20px; font-size: var(--text-footnote); color: var(--label-secondary); }
+.ph-foot { margin-top: 10px; padding-inline: 4px; font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.ph-range-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.ph-date {
+  height: 32px; padding-inline: 10px; border-radius: 8px; background: var(--fill-3); color: var(--label);
+  font: inherit; font-size: var(--text-subheadline); font-variant-numeric: tabular-nums; border: 0;
+}
+.ph-date:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.ph-date[aria-invalid="true"] { box-shadow: 0 0 0 1px var(--loss); }
+
+/* ---- Performance (ATL-175; design: css/history.css "pp-") ---- */
+.pp-page { display: grid; gap: 16px; padding-bottom: 8px; }
+.pp-tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.pp-tile { display: grid; align-content: start; gap: 4px; padding: 16px 18px 18px; min-width: 0; }
+.pp-tile:not(:nth-child(4n + 1)) { border-inline-start: 0.5px solid var(--separator); }
+.pp-tile:nth-child(n + 5) { border-top: 0.5px solid var(--separator); }
+.pp-tile.is-wide { grid-column: span 2; }
+.pp-tile-label { font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 500; color: var(--label-secondary); }
+.pp-tile-value {
+  font-family: var(--font-num); font-size: var(--fs-title-3); line-height: var(--lh-title-3); font-weight: 600;
+  letter-spacing: -0.01em; min-height: var(--lh-title-3); min-width: 0;
+}
+.pp-tile-value [data-sign-icon] { width: 16px; height: 16px; }
+.pp-big { font-variant-numeric: proportional-nums; }
+.pp-tile-sub { font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); text-wrap: pretty; overflow-wrap: anywhere; }
+/* Average win / loss: each figure stays whole; the pair wraps (the loss under the win) rather than spilling out of the tile. */
+.pp-pair {
+  display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0 6px; max-width: 100%;
+  font-size: var(--fs-headline); line-height: var(--lh-title-3);
+}
+.pp-pair-item { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; min-width: 0; }
+.pp-pair [data-sign-icon] { width: 14px; height: 14px; }
+.pp-slash { color: var(--label-tertiary); font-weight: 400; }
+.pp-none { font-family: var(--font-sans); font-size: var(--fs-callout); line-height: var(--lh-callout); font-weight: 500; color: var(--label-secondary); }
+
+.pp-charts {
+  display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  grid-template-areas: "inst cls" "inst agent"; gap: 16px; align-items: start;
+}
+.pp-chart-inst { grid-area: inst; }
+.pp-chart-cls { grid-area: cls; }
+.pp-chart-agent { grid-area: agent; }
+.pp-chart, .pp-heat { position: relative; margin: 0; padding: 16px 20px 18px; min-width: 0; }
+.pp-chart-head { display: grid; gap: 2px; }
+.pp-chart-title { font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); font-weight: 600; }
+.pp-chart-sub { font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.pp-chart-empty { margin-top: 12px; font-size: var(--fs-footnote); color: var(--label-secondary); }
+.pp-bar-val { display: flex; align-items: center; height: 20px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 500; }
+
+.pp-tip { position: absolute; z-index: 5; pointer-events: none; transform: translate(-50%, calc(-100% - 8px)); }
+
+.pp-heat-scroll { margin-top: 14px; overflow-x: auto; padding-bottom: 2px; }
+.pp-heat-grid { display: grid; gap: 3px; min-width: 640px; }
+.pp-heat-row { display: grid; grid-template-columns: 88px repeat(24, minmax(0, 1fr)); column-gap: 2px; align-items: center; }
+.pp-heat-row > .pp-heat-day { margin-inline-end: 8px; }
+/* Arabic: the weekday sits at the right, while the hours keep running left to right. */
+.pp-heat-row.is-rtl { grid-template-columns: repeat(24, minmax(0, 1fr)) 88px; }
+.pp-heat-row.is-rtl > .pp-heat-day { grid-column: 25; grid-row: 1; margin-inline: 0; margin-left: 8px; }
+.pp-heat-day {
+  position: sticky; left: 0; z-index: 2; align-self: stretch; display: flex; align-items: center;
+  background: var(--panel-bg, var(--bg)); font-size: var(--fs-footnote); line-height: var(--lh-footnote);
+  color: var(--label-secondary); white-space: nowrap;
+}
+.pp-heat-row.is-rtl > .pp-heat-day { left: auto; right: 0; }
+.pp-day-short { display: none; }
+.pp-heat-hours { margin-top: 3px; }
+.pp-hour { font-family: var(--font-num); font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--chart-axis); font-variant-numeric: tabular-nums; }
+.pp-cell { display: block; height: 26px; border-radius: 4px; outline: none; }
+.pp-cell.is-empty { background: transparent; box-shadow: inset 0 0 0 1px var(--fill-3); }
+.pp-cell.is-zero { background: var(--fill-1); }
+.pp-cell.is-pos.s1 { background: color-mix(in srgb, var(--profit) 24%, var(--panel-bg, var(--bg))); }
+.pp-cell.is-pos.s2 { background: color-mix(in srgb, var(--profit) 46%, var(--panel-bg, var(--bg))); }
+.pp-cell.is-pos.s3 { background: color-mix(in srgb, var(--profit) 70%, var(--panel-bg, var(--bg))); }
+.pp-cell.is-pos.s4 { background: var(--profit); }
+.pp-cell.is-neg.s1 { background: color-mix(in srgb, var(--loss) 22%, var(--panel-bg, var(--bg))); }
+.pp-cell.is-neg.s2 { background: color-mix(in srgb, var(--loss) 44%, var(--panel-bg, var(--bg))); }
+.pp-cell.is-neg.s3 { background: color-mix(in srgb, var(--loss) 68%, var(--panel-bg, var(--bg))); }
+.pp-cell.is-neg.s4 { background: var(--loss); }
+.pp-heat-row > .pp-cell:hover { box-shadow: inset 0 0 0 1.5px var(--label); }
+.pp-heat-row > .pp-cell:focus-visible { box-shadow: 0 0 0 2px var(--panel-bg, var(--bg)), 0 0 0 4px var(--accent); position: relative; z-index: 1; }
+
+.pp-legend { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; margin-top: 14px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.pp-legend-scale { display: inline-flex; align-items: flex-start; gap: 10px; }
+.pp-legend-scale .pp-legend-end { line-height: 12px; }
+.pp-ramp-wrap { display: inline-grid; gap: 3px; }
+.pp-ramp { display: inline-grid; grid-template-columns: repeat(9, 22px); gap: 2px; }
+.pp-ramp .pp-cell, .pp-legend-none .pp-cell { height: 12px; border-radius: 3px; }
+.pp-ticks { display: flex; justify-content: space-between; gap: 8px; font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--label-secondary); }
+.pp-legend-none { display: inline-flex; align-items: center; gap: 6px; margin-inline-start: 12px; }
+.pp-legend-none .pp-cell { width: 22px; }
+
+@media (max-width: 1100px) {
+  .pp-charts { grid-template-columns: minmax(0, 1fr); grid-template-areas: "inst" "cls" "agent"; }
+}
+@media (max-width: 900px) {
+  .pp-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pp-tile:not(:nth-child(4n + 1)) { border-inline-start: 0; }
+  .pp-tile:nth-child(2), .pp-tile:nth-child(4), .pp-tile:nth-child(7) { border-inline-start: 0.5px solid var(--separator); }
+  .pp-tile:nth-child(n + 3) { border-top: 0.5px solid var(--separator); }
+}
+@media (max-width: 760px) {
+  .pp-heat-row { grid-template-columns: 40px repeat(24, minmax(0, 1fr)); }
+  .pp-heat-row.is-rtl { grid-template-columns: repeat(24, minmax(0, 1fr)) 40px; }
+  .pp-day-long { display: none; }
+  .pp-day-short { display: inline; }
+}
+/* Bars: the names are a column at the reading start (mirrors); the plot beside them stays left to right. */
+.pp-bars { --nw: 170px; display: grid; grid-template-columns: var(--nw) minmax(0, 1fr); column-gap: 12px; margin-top: 12px; }
+.pp-chart-inst .pp-bars { --nw: 156px; }
+.pp-bar-names { display: grid; grid-auto-rows: 30px; margin: 0; padding: 0; list-style: none; }
+.pp-bar-names .pp-bar-name {
+  display: flex; align-items: center; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
+  font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label);
+}
+.pp-bar-names .pf-inst { font-size: var(--fs-footnote); }
+.pp-bars-plot { position: relative; min-width: 0; height: 100%; }
+@media (max-width: 760px) {
+  .pp-bars { --nw: 110px; }
+  .pp-chart-inst .pp-bars { --nw: 110px; }
+}
+
+/* ==========================================================================
+   Overview benchmark (ATL-177, design: Overview benchmark). The comparison is a
+   quiet dashed line in the secondary label colour, so the equity line stays the
+   only accent-coloured thing on the chart.
+   ========================================================================== */
+.pf-legend-line { display: inline-block; width: 16px; height: 0; flex: none; }
+.pf-legend-line.is-equity { border-top: 2px solid var(--chart-line); border-radius: 1px; }
+.pf-legend-line.is-bench { border-top: 1.5px dashed var(--label-secondary); }
+.pf-legend-tip { border-radius: 6px; cursor: help; }
+.pf-legend-tip:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.pf-bench-line path { stroke-linejoin: round; stroke-linecap: round; }
+@media (prefers-reduced-motion: no-preference) {
+  .pf-bench-line { animation: pf-bench-in 400ms var(--ease-out, ease-out); }
+}
+@keyframes pf-bench-in { from { opacity: 0; } to { opacity: 1; } }

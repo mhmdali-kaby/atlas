@@ -1,0 +1,22 @@
+[
+ {
+  "id": "7070ce52-003b-55bf-8dee-894707e2543c",
+  "env": "demo",
+  "thread_id": "35c2f188-9510-564d-885a-29839a339b7e",
+  "event_id": "b091396d-68f8-574e-bf37-d539aaf60895",
+  "author_type": "agent",
+  "author": "strategist",
+  "kind": "proposal",
+  "content_md": "**BUY SPY-USDT-SWAP** v1",
+  "card": {
+   "type": "proposal",
+   "proposal_id": "ab8753e1-9c17-5a28-b084-bcdb6350a252",
+   "inst_id": "SPY-USDT-SWAP",
+   "version": 1
+  },
+  "reply_to": null,
+  "mentions": [],
+  "created_at": "2026-04-13T08:58:00Z",
+  "updated_at": "2026-04-13T08:58:00Z"
+ }
+]

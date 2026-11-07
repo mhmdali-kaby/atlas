@@ -1,0 +1,141 @@
+[
+ {
+  "id": "ba0a2a87-f2ab-53a1-9169-6b04f9d5a5aa",
+  "env": "demo",
+  "thread_id": "8521c7ad-6af6-5f42-b60e-9e418ad4f3bd",
+  "event_id": "1dc98021-fda3-57ea-8040-91d9aa7cf64a",
+  "author_type": "agent",
+  "author": "technical_analyst",
+  "kind": "research_report",
+  "content_md": "TechnicalSetup card",
+  "card": {
+   "type": "technical_setup",
+   "inst_id": "ETH-USDT-SWAP",
+   "timeframe_bias": {
+    "1D": "up",
+    "4H": "up",
+    "1H": "range",
+    "15m": "up"
+   },
+   "setup_type": "pullback_to_support",
+   "direction": "long",
+   "entry_zone": [
+    2478.01,
+    2481.98
+   ],
+   "trigger": "1H close back above 2481.98 inside 1H:z2",
+   "stop": 2454.2,
+   "targets": [
+    {
+     "price": 2510.94,
+     "r_multiple": 1.2,
+     "reason": "1H:z4",
+     "close_pct": null
+    },
+    {
+     "price": 2536.74,
+     "r_multiple": 2.2,
+     "reason": "1H:z5",
+     "close_pct": null
+    }
+   ],
+   "expected_r": 2.2,
+   "invalidation": "1H close below 2454.2",
+   "quality_score": 0.66,
+   "est_slippage_bps": null,
+   "levels_used": [
+    {
+     "id": "1H:z2",
+     "price": 2479.995
+    },
+    {
+     "id": "1H:z1",
+     "price": 2472.05
+    },
+    {
+     "id": "1H:z0",
+     "price": 2459.16
+    },
+    {
+     "id": "1H:z4",
+     "price": 2510.94
+    },
+    {
+     "id": "1H:z5",
+     "price": 2536.74
+    }
+   ],
+   "no_setup_reason": null,
+   "data_as_of": "2026-09-14T12:48:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-14T12:48:00Z",
+  "updated_at": "2026-09-14T12:48:00Z"
+ },
+ {
+  "id": "21fc83fe-acf6-5264-a89a-cd3524361e9f",
+  "env": "demo",
+  "thread_id": "8521c7ad-6af6-5f42-b60e-9e418ad4f3bd",
+  "event_id": "43044fac-fd8b-51cc-a26e-8666e3c76b0d",
+  "author_type": "agent",
+  "author": "historian",
+  "kind": "research_report",
+  "content_md": "HistoryVerdict card",
+  "card": {
+   "type": "history_verdict",
+   "question": "analog check for a long on ETH-USDT-SWAP",
+   "inst_id": "ETH-USDT-SWAP",
+   "bar": "1H",
+   "n": 34,
+   "distribution": {
+    "24h": {
+     "median": -0.3,
+     "p10": -2.1,
+     "p90": 2.4,
+     "pct_positive": 44.0
+    }
+   },
+   "verdict": "does_not_support",
+   "key_stat": "44% of 34 analogs positive at 24h",
+   "data_as_of": "2026-09-14T12:52:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-14T12:52:00Z",
+  "updated_at": "2026-09-14T12:52:00Z"
+ },
+ {
+  "id": "7c423dbc-36a7-525e-9538-3c046861f111",
+  "env": "demo",
+  "thread_id": "8521c7ad-6af6-5f42-b60e-9e418ad4f3bd",
+  "event_id": "ef121ce9-97c6-5f51-852e-68ee6e9af6bb",
+  "author_type": "agent",
+  "author": "derivatives_sentiment",
+  "kind": "research_report",
+  "content_md": "PositioningReport card",
+  "card": {
+   "type": "positioning_report",
+   "inst_id": "ETH-USDT-SWAP",
+   "regime": "new_longs",
+   "crowding_score": 0.82,
+   "crowded_side": "long",
+   "squeeze_risk": {
+    "long_squeeze": 0.64,
+    "short_squeeze": 0.15
+   },
+   "funding_view": "funding stretched against the trade",
+   "basis_bps": 3.1,
+   "sentiment_score": 0.2,
+   "supports_direction": {
+    "long": "opposes",
+    "short": "neutral"
+   },
+   "key_evidence": [
+    "OI-price quadrant and funding read"
+   ],
+   "data_as_of": "2026-09-14T12:50:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-14T12:50:00Z",
+  "updated_at": "2026-09-14T12:50:00Z"
+ }
+]

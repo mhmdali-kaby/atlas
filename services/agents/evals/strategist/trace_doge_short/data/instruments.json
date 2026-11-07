@@ -1,0 +1,20 @@
+[
+ {
+  "id": "bbce45ac-810f-53ae-b136-1e529e47c225",
+  "env": "demo",
+  "inst_id": "DOGE-USDT-SWAP",
+  "inst_type": "SWAP",
+  "inst_family": "DOGE-USDT",
+  "base_ccy": "DOGE",
+  "quote_ccy": "USDT",
+  "settle_ccy": "USDT",
+  "ct_val": "1",
+  "lot_sz": "1",
+  "min_sz": "1",
+  "tick_sz": "0.00001",
+  "max_lever": "50",
+  "state": "live",
+  "asset_class": "crypto",
+  "list_time": "2025-08-02T09:00:00Z"
+ }
+]

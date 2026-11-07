@@ -1,0 +1,240 @@
+# ATL-63: ordered event-type rules for news headlines (brief §7.2 step 4, decision #243).
+#
+# Read by atlas_ingest.classify.event_type. Every pattern is a Python regex, matched
+# case-insensitively. Rules are tried in this order against the TITLE first; the first rule with
+# a matching pattern wins. Only when no rule matches the title are the rules tried again against
+# the summary. Nothing matches → `other`.
+#
+# Order matters: specific types sit above the general ones that would swallow them
+# (hack before lawsuit, lawsuit before regulation, regulation before ETF_flow and listing,
+# delisting before listing, guidance before earnings, macro_release before earnings, listing
+# before product). Labelling rules follow docs/handoff/ATL-58-headline-fixture.md: scheduled data →
+# macro_release; OPEC+ decisions and unscheduled disruptions → supply_shock; wars, strikes, tariffs,
+# shutdowns → geopolitics; central-bank gold buying → central_bank; price moves, records, treasury
+# purchases and deliveries → other.
+#
+# Non-English patterns are written without \b: CJK characters count as word characters, so a word
+# boundary never falls between them and an embedded Latin token such as "GDP".
+#
+# Measure a change with:  cd services && uv run --package atlas-ingest python -m atlas_ingest.evaluation report --confusion
+
+rules:
+  - type: other            # deliveries beat forecasts, but they are not earnings
+    patterns:
+      - '\bdeliver(ies|s)\b'
+
+  - type: hack_exploit
+    patterns:
+      - '\bhack(s|ed|er|ers)?\b'
+      - '\bexploit(s|ed)?\b'
+      - '\bdrained\b'
+      - '\bbreach(es|ed)?\b'
+      - '\bstolen\b'
+      - '\bsiphon(s|ed)?\b'
+      - '\bflash[- ]loan attack'
+      - '\boracle manipulation\b'
+      - '\brug ?pull\b'
+      - 'اختراق'
+
+  - type: token_unlock
+    patterns:
+      - '\bunlock(s|ed|ing)?\b'
+      - '\bvesting\b'
+      - '\bcliff release\b'
+
+  - type: delisting
+    patterns:
+      - '\bdelist(s|ed|ing)?\b'
+      - '\bwill end \w+ trading\b'
+      - '\bend(s)? trading (of|in)\b'
+      - '\b(remove|removes|drop|drops|to drop)\b.{0,30}\b(pairs|coins|tokens)\b'
+      - '\bpairs\b.{0,15}\bremoved\b'
+      - '上市廃止|下架|상장폐지'
+
+  - type: central_bank
+    patterns:
+      - '\bFed\b'
+      - '\bFederal Reserve\b'
+      - '\bFOMC\b'
+      - '\bPowell\b'
+      - '\bcentral bank\b'
+      - '\bECB\b'
+      - '\bBank of (England|Japan|Canada|Korea)\b'
+      - '\b(BoE|BoJ|PBoC|SNB|RBA)\b'
+      - '\b(holds|keeps|leaves) (key )?rates\b'
+      - '\brates? (steady|unchanged)\b'
+      - '人民银行|央行|日銀|日本銀行|EZB|Leitzins|Merkez Bankası|الاحتياطي الفيدرالي|البنك المركزي'
+
+  - type: lawsuit
+    patterns:
+      - '\b(sue|sues|sued|suing)\b'
+      - '\blawsuits?\b'
+      - '\bsuit\b'
+      - '\bclass action\b'
+      - '\bcourt\b'
+      - '\bjudge\b'
+      - '\bantitrust (case|trial|suit)\b'
+      - '\b(settles|settled)\b'
+      - '\bcreditors?\b'
+      - '\bestate\b'
+      - '\bindict(ed|ment)\b'
+
+  - type: regulation
+    patterns:
+      - '\bSEC\b'
+      - '\bCFTC\b'
+      - '\bFDA\b'
+      - '\bregulators?\b'
+      - '\bregulatory\b'
+      - '\bregulation\b'
+      - '\bMiCA\b'
+      - '\blicen[cs]es?\b'
+      - '\bprobe\b'
+      - '\bBasel\b'
+      - '\bEU orders\b'
+      - '\bto allow\b'
+      - '\bban(s|ned)?\b'
+      - '\bwatchdog\b'
+      - 'Aufsicht|Regeln|金融庁|金融商品取引法|证监会|監管|监管|Минфин|легализ|потолок|enquête|تنظيمي|vergi'
+
+  - type: ETF_flow
+    patterns:
+      - '\bETFs?\b'
+      - '\bETPs?\b'
+      - '\bexchange-traded\b'
+      - '\b(inflows?|outflows?)\b'
+      - '\bfunds (see|post|draw|add|log)\b'
+      - '\b(SPY|QQQ|IWM|TQQQ|SQQQ)\b'
+
+  - type: guidance
+    patterns:
+      - '\bguidance\b'
+      - '\bguides \w+ (sales|revenue)\b'
+      - '\bforecasts [\w-]+( [\w-]+)? revenue\b'
+      - '\boutlook\b'
+      - '\bsees capex\b'
+      - '\brevenue targets?\b'
+      - '\bwarns\b'
+
+  - type: macro_release
+    patterns:
+      - '\bCPI\b'
+      - '\bPCE\b'
+      - '\bPMI\b'
+      - 'GDP'
+      - '\bpayrolls\b'
+      - '\bjobs\b'
+      - '\bjob growth\b'
+      - '\bjobless claims\b'
+      - '\bunemployment\b'
+      - '\bretail sales\b'
+      - '\bconsumer prices\b'
+      - '\b(core|euro zone) inflation\b'
+      - '\binflation (eases|holds|rate|cools|accelerates)\b'
+      - '\beconomy (grows|shrinks|contracts)\b'
+      - '\bcrude (inventories|stocks|draw)\b'
+      - '\bEIA\b'
+      - '\bstorage (build|draw)\b'
+      - '\binjection\b'
+      - '国内生产总值|消費者物価|Inflationsrate'
+
+  - type: earnings
+    patterns:
+      - '\bbeats\b'
+      - '\bbeating\b'
+      - '\bbeat (on|estimates|expectations)\b'
+      - '\b(earnings|third-quarter|second-quarter|first-quarter|fourth-quarter|quarterly) beat\b'
+      - '\btops? (estimates|expectations|revenue expectations)\b'
+      - '\bmiss(es)? on\b'
+      - '\bfalls? short\b'
+      - '\bearnings\b'
+      - '\bresults\b'
+      - '\bquarterly (profit|sales|revenue|loss)\b'
+      - '\b(first|second|third|fourth)-quarter (profit|revenue|sales|loss)\b'
+      - '\b(profit|revenue|sales) (jumps|beats|falls|rises|growth|triples|doubles|tops|top)\b'
+      - '\bcomparable sales\b'
+      - '\bannual forecast\b'
+      - '\bposts strong\b'
+      - '純利益|净利润|Gewinn|الإيرادات|الأرباح'
+
+  - type: M&A
+    patterns:
+      - '\bacquir(e|es|ed|ing)\b'
+      - '\bacquisition\b'
+      - '\bmerger\b'
+      - '\btakeover\b'
+      - '\b(agrees|agreed|talks|plans?) to buy\b'
+      - '\bto buy \w+ \w+ (in|for)\b'
+      - '\bcompletes purchase\b'
+
+  - type: listing
+    patterns:
+      - '\b(to|will) list\b'
+      - '\blists\b'
+      - '\badds? .{0,30}\b(perpetual|futures|roadmap|trading)\b'
+      - '\broadmap addition\b'
+      - '\blaunch(es)? .{0,30}\b(perpetual|margin trading)\b'
+      - '\bdebut(s)? on\b'
+      - '상장'
+
+  - type: partnership
+    patterns:
+      - '\bpartner(s|ship|ships|ed|ing)?\b'
+      - '\bteams? (up )?with\b'
+      - '\bchosen by\b'
+      - '\bpilot\b'
+      - '\bsigns? .{0,30}\bdeal\b'
+      - '\bwins? .{0,30}\bcontract\b'
+      - '\bsettlement\b'
+      - '\badds .{0,20}\bbanks?\b'
+      - '\bcollaborat(e|es|ion)\b'
+
+  - type: supply_shock
+    patterns:
+      - '\bOPEC\+?'
+      - '\boutput (increases|cuts?|hikes?)\b'
+      - '\bsupply hikes\b'
+      - '\bmine (shutdown|halt|closure)\b'
+      - '\bshuts .{0,30}\bmine\b'
+      - '\bshortage\b'
+      - '\brun short\b'
+      - '\bsqueeze\b'
+      - '\blease rates\b'
+      - '\bcold snap\b'
+      - '\bfreeze\b'
+      - 'أوبك'
+
+  - type: geopolitics
+    patterns:
+      - '\bshut(s)? ?down\b'
+      - '\bshutdown\b'
+      - '\btariffs?\b'
+      - '\btrade (deal|truce|war|tensions)\b'
+      - '\bsanctions?\b'
+      - '\bwar\b'
+      - '\bceasefire\b'
+      - '\b(drone|missile|air) ?strikes?\b'
+      - '\bdrones? (hit|hits|attack|attacks|struck)\b'
+      - '\bmissiles?\b'
+      - '\btanker\b'
+      - '\bHormuz\b'
+      - '\bMiddle East tensions\b'
+      - '\bexport (curbs|controls|ban)\b'
+      - '\boutage\b'
+      - '\binvasion\b'
+      - 'aranceles|هرمز|ناقلة'
+
+  - type: product
+    patterns:
+      - '\blaunch(es|ed)?\b'
+      - '\bunveils?\b'
+      - '\bupgrade\b'
+      - '\bhard fork\b'
+      - '\bgoes live\b'
+      - '\bships\b'
+      - '\brolls? out\b'
+      - '\bactivates\b'
+      - '\bbegins .{0,20}\bservice\b'
+      - '\badds native\b'
+      - '\bmainnet\b'
+      - '\bSDK\b'

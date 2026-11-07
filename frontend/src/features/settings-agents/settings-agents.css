@@ -1,0 +1,134 @@
+/*
+ * Settings → Agents (design v9 css/settings-agents.css, built on components.css .group/.row).
+ * Shares .st-page/.st-pane/.st-group with Connections and the stepper, field error, Activity and
+ * save bar with Risk & Autonomy. No new colours.
+ */
+.sa-page { gap: 22px; }
+.sa-page .sa-section { display: grid; scroll-margin-top: 76px; }
+.sa-group-title { padding: 0 16px 8px; font-size: var(--text-footnote); line-height: var(--lh-footnote); font-weight: 600; color: var(--label-secondary); }
+.sa-group-note { padding: 8px 16px 0; font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+
+/* ---- rows (components.css .row) ---------------------------------------- */
+.sa-row { position: relative; display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 10px 16px; }
+.sa-row + .sa-row::before { content: ""; position: absolute; top: 0; inset-inline: 16px 0; border-top: 0.5px solid var(--separator); }
+.sa-row-main { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.sa-row-label { font-size: var(--text-callout); line-height: var(--lh-callout); letter-spacing: var(--tr-callout); }
+.sa-row-sub { font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+
+/* ---- summary: how many agents work, what they may spend, the roster ---- */
+.sa-summary { display: grid; gap: 14px; padding: 16px 16px 12px; }
+.sa-sum-text { display: grid; gap: 2px; padding-inline: 2px; }
+.sa-sum-title { font-size: var(--text-headline); line-height: var(--lh-headline); letter-spacing: var(--tr-headline); font-weight: 600; }
+.sa-sum-sub { font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); text-wrap: pretty; }
+.sa-roster { display: grid; grid-template-columns: repeat(auto-fit, minmax(68px, 1fr)); gap: 0; margin: 0 -8px; padding: 0; list-style: none; }
+.sa-jump {
+  width: 100%; display: grid; justify-items: center; align-content: start; gap: 5px;
+  padding: 8px 2px 6px; border-radius: 10px; color: var(--label);
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+.sa-jump:hover { background: var(--fill-4); }
+.sa-jump:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.sa-jump-name {
+  font-size: var(--text-caption); line-height: var(--lh-caption); font-weight: 500; text-align: center;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; max-width: 100%;
+}
+.sa-jump.is-off .sa-jump-name { color: var(--label-secondary); }
+.sa-jump-off { margin-top: -4px; font-size: var(--text-caption); line-height: var(--lh-caption); color: var(--label-tertiary); }
+
+/* ---- one group per agent ----------------------------------------------- */
+.sa-head { gap: 12px; min-height: 58px; padding-block: 11px; }
+.sa-name { font-size: var(--text-callout); line-height: var(--lh-callout); letter-spacing: var(--tr-callout); font-weight: 600; }
+.sa-head .sa-row-sub { text-wrap: pretty; }
+.sa-agent.is-off .sa-row:not(.sa-head) { opacity: 0.55; transition: opacity var(--dur-fast) var(--ease-out); }
+.sa-agent.is-off .sa-row:not(.sa-head):focus-within,
+.sa-agent.is-off .sa-row:not(.sa-head):hover { opacity: 1; }
+.sa-offnote { display: flex; align-items: center; gap: 6px; }
+.sa-offnote svg { width: 14px; height: 14px; flex: none; }
+.sa-agent.is-flash .st-group { animation: sa-flash 1.6s var(--ease-out); }
+@keyframes sa-flash {
+  0%, 35% { box-shadow: 0 0 0 0.5px var(--hairline-color), 0 0 0 4px var(--flash); }
+  100% { box-shadow: 0 0 0 0.5px var(--hairline-color), 0 0 0 4px transparent; }
+}
+
+/* a changed row carries a short accent bar at its inline start until it is saved */
+.sa-page .sa-row.is-changed::after {
+  content: ""; position: absolute; inset-inline-start: 5px; top: 50%; width: 3px; height: 20px; margin-top: -10px;
+  border-radius: 2px; background: var(--accent);
+}
+.sa-page .sa-row.sa-list.is-changed::after { top: 22px; margin-top: 0; }
+
+.sa-model { gap: 16px; }
+.sa-alias { font-variant-numeric: tabular-nums; }
+
+.sa-num { align-items: flex-start; }
+.sa-num .sa-row-main { padding-top: 5px; }
+.sa-stepper.is-tokens .st-stepper-input { width: 132px; }
+.sa-stepper.is-turns .st-stepper-input { width: 96px; }
+.sa-stepper.is-error .st-stepper-input { border-color: var(--loss); }
+.sa-used { display: inline-flex; align-items: flex-start; gap: 5px; }
+.sa-used svg { width: 13px; height: 13px; flex: none; margin-top: 2.5px; }
+.sa-used.is-warn { color: var(--warning-ink); }
+
+/* ---- web access: two site lists as token fields ------------------------ */
+.sa-web-intro { gap: 12px; }
+.sa-web-medals { display: inline-flex; flex: none; }
+.sa-web-medals .medal + .medal { margin-inline-start: -6px; }
+.sa-list { align-items: flex-start; padding-block: 12px 14px; }
+.sa-list-main { flex: 1; min-width: 0; display: grid; gap: 8px; }
+.sa-list-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.sa-list-count { font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); white-space: nowrap; }
+.sa-tokens {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+  min-height: 40px; padding: 5px; padding-inline-start: 6px;
+  border-radius: 10px; border: 1px solid var(--field-border); background: var(--field-bg);
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+.sa-tokens:hover { border-color: var(--field-border-hover); }
+.sa-tokens:has(.sa-token-input:focus) { border-color: var(--accent); box-shadow: var(--focus-ring); }
+.sa-tokens.is-error { border-color: var(--loss); }
+.sa-chips { display: contents; list-style: none; }
+.sa-chip {
+  display: inline-flex; align-items: center; gap: 2px; height: 28px; max-width: 100%;
+  padding-inline: 10px 3px; border-radius: var(--radius-full);
+  background: var(--fill-3); color: var(--label);
+  font-size: var(--text-footnote); line-height: var(--lh-footnote); font-weight: 500;
+}
+.sa-chip-host { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sa-chip.is-new { background: var(--accent-wash); }
+.sa-chip.is-invalid { background: var(--loss-wash); color: var(--loss-ink); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--loss) 55%, transparent); }
+.sa-chip-bad { width: 13px; height: 13px; flex: none; margin-inline-end: 4px; }
+.sa-chip-x {
+  width: 22px; height: 22px; flex: none; border-radius: 50%; display: grid; place-items: center;
+  color: var(--label-secondary); transition: background-color var(--dur-fast) var(--ease-out);
+}
+.sa-chip-x:hover { background: var(--fill-2); color: var(--label); }
+.sa-chip.is-invalid .sa-chip-x { color: var(--loss-ink); }
+.sa-chip-x svg { width: 12px; height: 12px; }
+.sa-chip-x:focus-visible { outline: none; background: var(--fill-2); }
+.sa-chip:has(.sa-chip-x:focus-visible) { box-shadow: var(--focus-ring); }
+.sa-chip.is-invalid:has(.sa-chip-x:focus-visible) { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--loss) 55%, transparent), var(--focus-ring); }
+.sa-token-input {
+  flex: 1 1 180px; min-width: 120px; height: 28px; padding: 0 4px;
+  border: 0; background: transparent; outline: none; box-shadow: none;
+  font: inherit; font-size: var(--text-subheadline); color: var(--label);
+}
+.sa-token-input::placeholder { color: var(--label-tertiary); }
+.sa-add { flex: none; margin-inline-start: auto; }
+.sa-list .st-field-error { margin-top: -2px; }
+
+/* ---- the save bar keeps Risk's capsule; a field to fix turns its dot red ---- */
+.sa-bar.is-blocked .st-save-dot { background: var(--loss); }
+.sa-merged { margin-bottom: -6px; }
+
+/* ---- narrow windows and phones: labels over controls ------------------- */
+@media (max-width: 760px) {
+  .sa-model { flex-wrap: wrap; row-gap: 10px; }
+  .sa-model .sa-row-main { flex-basis: 100%; }
+  .sa-model [role='radiogroup'] { width: 100%; grid-auto-columns: 1fr; }
+  .sa-num { flex-wrap: wrap; }
+  .sa-num .st-stepper { margin-inline-start: auto; }
+  .sa-roster { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sa-agent.is-flash .st-group { animation: none; }
+}

@@ -1,0 +1,60 @@
+agent: market_scout
+replay_as_of: '2026-09-15T05:00:00Z'
+env: demo
+description: AVAX-USDT-SWAP tops momentum with no second evidence type; the quality bar rejects it.
+prompt: Market Scout watchlist for 2026-09-15 (single case)
+properties:
+  valid_watchlist: {}
+  no_invented_numbers: {}
+  rejected_listed:
+    count: 3
+  not_picked:
+    inst_ids:
+    - AVAX-USDT-SWAP
+inputs:
+  replies:
+    news_intelligence:
+      kind: text
+      content_md: 'Briefs for the shortlist. XAU-USDT-SWAP: 3 stories in 24h, top importance 4; ETH-USDT-SWAP: 3
+        stories in 24h, top importance 4.'
+      card: null
+    historian:
+      kind: text
+      content_md: 'Regime check for the top candidates: AVAX-USDT-SWAP unknown; XAU-USDT-SWAP trend; ETH-USDT-SWAP
+        trend; QQQ-USDT-SWAP trend; CL-USDT-SWAP trend; XRP-USDT-SWAP trend.'
+      card: null
+fake:
+  steps:
+  - tool: okx_market.get_candles
+    input:
+      inst_id: XAU-USDT-SWAP
+      bar: 1D
+      limit: 20
+  - tool: okx_market.get_candles
+    input:
+      inst_id: ETH-USDT-SWAP
+      bar: 1D
+      limit: 20
+  - text: "Crypto majors are not on today's shortlist. Today: XAU-USDT-SWAP long, ETH-USDT-SWAP long.\n\n```json\n\
+      {\n \"type\": \"watchlist\",\n \"backdrop\": [\n  \"Crypto majors are not on today's shortlist.\",\n  \"XAU-USDT-SWAP\
+      \ leads the non-crypto names, 7d return 3.1%.\",\n  \"No high-impact event in the next 48h.\"\n ],\n \"picks\"\
+      : [\n  {\n   \"inst_id\": \"XAU-USDT-SWAP\",\n   \"rank\": 1,\n   \"asset_class\": \"commodity\",\n   \"bias\"\
+      : \"long\",\n   \"conviction\": 0.64,\n   \"thesis\": \"3 stories in 24h plus volume z 1.3. Regime is trend\
+      \ and the 7d return is 3.1% with ATR(14) on 1D at 2.4%. It beats the rejected names on combined evidence.\"\
+      ,\n   \"catalysts\": [],\n   \"key_levels\": {\n    \"support\": 2201.52,\n    \"resistance\": 2436.1,\n \
+      \   \"invalidation\": 2201.52\n   },\n   \"invalidation\": \"A daily close beyond the 20-day range on the\
+      \ wrong side of the bias.\",\n   \"data_as_of\": \"2026-09-15T04:55:00Z\"\n  },\n  {\n   \"inst_id\": \"ETH-USDT-SWAP\"\
+      ,\n   \"rank\": 2,\n   \"asset_class\": \"crypto\",\n   \"bias\": \"long\",\n   \"conviction\": 0.57,\n  \
+      \ \"thesis\": \"3 stories in 24h plus volume z 1.3. Regime is trend and the 7d return is 3.1% with ATR(14)\
+      \ on 1D at 2.4%. It beats the rejected names on combined evidence.\",\n   \"catalysts\": [],\n   \"key_levels\"\
+      : {\n    \"support\": 2411.56,\n    \"resistance\": 2598.47,\n    \"invalidation\": 2411.56\n   },\n   \"\
+      invalidation\": \"A daily close beyond the 20-day range on the wrong side of the bias.\",\n   \"data_as_of\"\
+      : \"2026-09-15T04:55:00Z\"\n  }\n ],\n \"rejected\": [\n  {\n   \"inst_id\": \"AVAX-USDT-SWAP\",\n   \"reason\"\
+      : \"AVAX-USDT-SWAP: only price momentum (7d return 7.9%); no news, catalyst, positioning or regime evidence.\"\
+      \n  },\n  {\n   \"inst_id\": \"QQQ-USDT-SWAP\",\n   \"reason\": \"QQQ-USDT-SWAP: no catalyst and volume z\
+      \ 0.3.\"\n  },\n  {\n   \"inst_id\": \"CL-USDT-SWAP\",\n   \"reason\": \"CL-USDT-SWAP: no catalyst and volume\
+      \ z 0.3.\"\n  }\n ],\n \"no_pick_reason\": null\n}\n```"
+  - result:
+      tokens_in: 9000
+      tokens_out: 900
+      turns: 3

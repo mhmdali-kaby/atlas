@@ -1,0 +1,16 @@
+[
+ {
+  "id": "7e5180b5-8089-51a3-894b-64ffbf09b28a",
+  "source": "forexfactory",
+  "external_id": "ff-evalpm-noadd_eth_long_loser_event_reduce-0",
+  "country": "US",
+  "name": "CPI m/m",
+  "importance": 5,
+  "scheduled_at": "2087-05-13T09:08:00Z",
+  "actual": null,
+  "forecast": null,
+  "previous": null,
+  "surprise": null,
+  "created_at": "2087-05-11T09:00:00Z"
+ }
+]

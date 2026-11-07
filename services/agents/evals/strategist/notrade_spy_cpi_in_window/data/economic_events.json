@@ -1,0 +1,11 @@
+[
+ {
+  "id": "4ab99f71-616a-5034-8a2b-103a2fdabfd1",
+  "source": "forexfactory",
+  "external_id": "eval-notrade_spy_cpi_in_window",
+  "country": "US",
+  "name": "US CPI",
+  "importance": 5,
+  "scheduled_at": "2026-09-16T11:30:00Z"
+ }
+]

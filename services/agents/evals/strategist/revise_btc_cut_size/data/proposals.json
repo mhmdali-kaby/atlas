@@ -1,0 +1,37 @@
+[
+ {
+  "id": "93e8e9f7-7284-56e1-9d5c-272ef203e2c7",
+  "env": "demo",
+  "version": 1,
+  "kind": "entry",
+  "author": "strategist",
+  "inst_id": "BTC-USDT-SWAP",
+  "side": "buy",
+  "order_type": "limit",
+  "entry_zone": [
+   "64198.6",
+   "64301.4"
+  ],
+  "stop": "63581.8",
+  "take_profits": [
+   {
+    "price": "65051.8",
+    "pct": "50"
+   },
+   {
+    "price": "65720",
+    "pct": "50"
+   }
+  ],
+  "time_stop_minutes": 1440,
+  "size_suggestion_pct": "1.875",
+  "leverage_suggestion": 1,
+  "expected_r": "2.20",
+  "probability": "0.56",
+  "rationale_md": "v1",
+  "invalidation": "1H close beyond 63581.8",
+  "evidence": [],
+  "status": "under_review",
+  "created_at": "2026-09-07T08:55:00Z"
+ }
+]

@@ -1,0 +1,4 @@
+[
+{"key":"eval_crypto_news","provider":"rss","kind":"rss","category":"crypto_news","name":"Eval crypto_news","url":null,"enabled":true,"poll_seconds":300,"requires_key":false,"reputable":true,"official":false,"api_key":null,"consecutive_failures":0,"disabled_until":null,"last_success_at":"2026-10-04T05:57:00Z","last_item_at":"2026-10-04T05:52:00Z","last_error":null},
+{"key":"eval_markets_news","provider":"rss","kind":"rss","category":"markets_news","name":"Eval markets_news","url":null,"enabled":true,"poll_seconds":300,"requires_key":false,"reputable":true,"official":false,"api_key":null,"consecutive_failures":0,"disabled_until":null,"last_success_at":"2026-10-04T05:57:00Z","last_item_at":"2026-10-04T05:52:00Z","last_error":null}
+]

@@ -1,0 +1,16 @@
+[
+ {
+  "env": "demo",
+  "inst_id": "SOL-USDT-SWAP",
+  "inst_type": "SWAP",
+  "base_ccy": "SOL",
+  "quote_ccy": "USDT",
+  "settle_ccy": "USDT",
+  "lot_sz": "1",
+  "min_sz": "1",
+  "tick_sz": "0.001",
+  "state": "live",
+  "asset_class": "crypto",
+  "created_at": "2087-02-12T09:00:00Z"
+ }
+]

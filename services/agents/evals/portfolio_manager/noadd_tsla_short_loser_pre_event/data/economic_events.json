@@ -1,0 +1,16 @@
+[
+ {
+  "id": "d0de52df-1da2-5f6d-8a4c-c9b1d021f815",
+  "source": "forexfactory",
+  "external_id": "ff-evalpm-noadd_tsla_short_loser_pre_event-0",
+  "country": "US",
+  "name": "Initial Jobless Claims",
+  "importance": 4,
+  "scheduled_at": "2087-05-13T09:25:00Z",
+  "actual": null,
+  "forecast": null,
+  "previous": null,
+  "surprise": null,
+  "created_at": "2087-05-11T09:00:00Z"
+ }
+]

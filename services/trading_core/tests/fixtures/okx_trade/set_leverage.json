@@ -1,0 +1,12 @@
+{
+  "code": "0",
+  "msg": "",
+  "data": [
+    {
+      "lever": "3",
+      "mgnMode": "isolated",
+      "instId": "BTC-USDT-SWAP",
+      "posSide": "net"
+    }
+  ]
+}

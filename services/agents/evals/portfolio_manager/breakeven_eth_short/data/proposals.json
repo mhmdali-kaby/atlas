@@ -1,0 +1,27 @@
+[
+ {
+  "id": "b198b8cb-1abe-5769-a773-27ee26f9d01b",
+  "env": "demo",
+  "kind": "entry",
+  "author": "strategist",
+  "inst_id": "ETH-USDT-SWAP",
+  "side": "sell",
+  "order_type": "limit",
+  "entry": "3000",
+  "stop": "3050",
+  "take_profits": [
+   {
+    "price": "2850",
+    "pct": "50"
+   },
+   {
+    "price": "2800",
+    "pct": "50"
+   }
+  ],
+  "time_stop_minutes": 1440,
+  "status": "filled",
+  "created_at": "2087-05-13T05:50:00Z",
+  "updated_at": "2087-05-13T06:00:00Z"
+ }
+]

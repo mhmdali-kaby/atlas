@@ -1,0 +1,120 @@
+[
+ {
+  "id": "d3ff25c4-0e99-559a-a725-42e8e297ecd1",
+  "env": "demo",
+  "thread_id": "e1943426-6005-55a6-a201-9c2217c9c633",
+  "event_id": "e2915455-a426-54f6-8d32-a7e9ee5d2aa4",
+  "author_type": "agent",
+  "author": "technical_analyst",
+  "kind": "research_report",
+  "content_md": "TechnicalSetup card",
+  "card": {
+   "type": "technical_setup",
+   "inst_id": "NVDA-USDT-SWAP",
+   "timeframe_bias": {
+    "1D": "up",
+    "4H": "up",
+    "1H": "range",
+    "15m": "up"
+   },
+   "setup_type": "pullback_to_support",
+   "direction": "long",
+   "entry_zone": [
+    121.6,
+    121.79
+   ],
+   "trigger": "1H close back above 121.79 inside 1H:z2",
+   "stop": 120.42,
+   "targets": [
+    {
+     "price": 123.22,
+     "r_multiple": 1.2,
+     "reason": "1H:z4",
+     "close_pct": null
+    },
+    {
+     "price": 124.5,
+     "r_multiple": 2.2,
+     "reason": "1H:z5",
+     "close_pct": null
+    }
+   ],
+   "expected_r": 2.2,
+   "invalidation": "1H close below 120.42",
+   "quality_score": 0.66,
+   "est_slippage_bps": null,
+   "levels_used": [
+    {
+     "id": "1H:z2",
+     "price": 121.695
+    },
+    {
+     "id": "1H:z1",
+     "price": 121.3
+    },
+    {
+     "id": "1H:z0",
+     "price": 120.67
+    },
+    {
+     "id": "1H:z4",
+     "price": 123.22
+    },
+    {
+     "id": "1H:z5",
+     "price": 124.5
+    }
+   ],
+   "no_setup_reason": null,
+   "data_as_of": "2026-09-08T14:48:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-08T14:48:00Z",
+  "updated_at": "2026-09-08T14:48:00Z"
+ },
+ {
+  "id": "e6047ecb-a6ff-5a1f-b24c-ed1f297da107",
+  "env": "demo",
+  "thread_id": "e1943426-6005-55a6-a201-9c2217c9c633",
+  "event_id": "34265522-330a-5da0-9cc4-d5f9714ca679",
+  "author_type": "agent",
+  "author": "historian",
+  "kind": "research_report",
+  "content_md": "HistoryVerdict card",
+  "card": {
+   "type": "history_verdict",
+   "question": "analog check for a long on NVDA-USDT-SWAP",
+   "inst_id": "NVDA-USDT-SWAP",
+   "bar": "1H",
+   "n": 34,
+   "distribution": {
+    "24h": {
+     "median": 0.3,
+     "p10": -2.1,
+     "p90": 2.4,
+     "pct_positive": 56.0
+    }
+   },
+   "verdict": "supports",
+   "key_stat": "56% of 34 analogs positive at 24h",
+   "data_as_of": "2026-09-08T14:52:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-08T14:52:00Z",
+  "updated_at": "2026-09-08T14:52:00Z"
+ },
+ {
+  "id": "4872dcef-bd3c-5f3d-9cd5-57050ccb1cd7",
+  "env": "demo",
+  "thread_id": "e1943426-6005-55a6-a201-9c2217c9c633",
+  "event_id": "f9946188-9e9c-500f-bb79-62ec6b164353",
+  "author_type": "agent",
+  "author": "devils_advocate",
+  "kind": "text",
+  "content_md": "Strongest objection: stop quality. The 1H:z0 level at 120.67 invalidates sooner.",
+  "card": null,
+  "mentions": [],
+  "created_at": "2026-09-08T14:58:00Z",
+  "updated_at": "2026-09-08T14:58:00Z"
+ }
+]

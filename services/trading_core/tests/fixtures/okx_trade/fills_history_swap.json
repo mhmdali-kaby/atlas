@@ -1,0 +1,60 @@
+{
+  "code": "0",
+  "msg": "",
+  "data": [
+    {
+      "instType": "SWAP",
+      "instId": "ETH-USDT-SWAP",
+      "tradeId": "1900000002",
+      "ordId": "2900000000000000002",
+      "clOrdId": "",
+      "billId": "3900000000000000002",
+      "tag": "",
+      "side": "sell",
+      "posSide": "net",
+      "fillPx": "3350.12",
+      "fillSz": "2",
+      "fillPnl": "0.9724",
+      "fee": "-0.67",
+      "feeCcy": "USDT",
+      "execType": "T",
+      "ts": "1793110000000"
+    },
+    {
+      "instType": "SWAP",
+      "instId": "ETH-USDT-SWAP",
+      "tradeId": "1900000001",
+      "ordId": "2900000000000000001",
+      "clOrdId": "atlethentry00000000000000000001",
+      "billId": "3900000000000000001",
+      "tag": "",
+      "side": "buy",
+      "posSide": "net",
+      "fillPx": "3301.5",
+      "fillSz": "2",
+      "fillPnl": "0",
+      "fee": "-0.66",
+      "feeCcy": "USDT",
+      "execType": "M",
+      "ts": "1793100000000"
+    },
+    {
+      "instType": "SWAP",
+      "instId": "BTC-USDT-SWAP",
+      "tradeId": "744876980",
+      "ordId": "312269865356374016",
+      "clOrdId": "",
+      "billId": "680800019749904384",
+      "tag": "",
+      "side": "buy",
+      "posSide": "net",
+      "fillPx": "68000.5",
+      "fillSz": "0.05",
+      "fillPnl": "0",
+      "fee": "-0.0017",
+      "feeCcy": "USDT",
+      "execType": "M",
+      "ts": "1793090000000"
+    }
+  ]
+}

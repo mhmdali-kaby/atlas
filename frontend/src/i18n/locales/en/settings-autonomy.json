@@ -1,0 +1,52 @@
+{
+  "nav": "Autonomy",
+  "intro": "How much Atlas may do on OKX without asking you first.",
+  "version": "Version {{v}}",
+  "now": "Right now",
+  "levelN": "Level {{n}}",
+  "levels": "Level",
+  "levelsNote": "Raising the level asks you to confirm first. Lowering it takes effect at once.",
+  "always": "At every level",
+  "a1": "Every trade passes the risk engine’s nine checks first.",
+  "a2": "Every order carries a stop-loss on OKX’s own servers.",
+  "a3": "Stop trading, on every page, halts it all at once.",
+  "a4": "You’re told when an order fills, a stop is hit or trading pauses.",
+  "a4link": "Notifications",
+  "largestNote": "{{largest}} is the most your next trade can use today, set by {{link}}.",
+  "moneyLink": "Money limits",
+  "waits": "When a trade waits for you",
+  "window": "Approval window",
+  "windowV": "{{n}} minutes",
+  "timeout": "If you don’t answer in time",
+  "timeoutV": "Atlas rejects the trade",
+  "waitsNote": "A waiting trade shows in the toolbar on every page, with the time left.",
+  "history": "Changes",
+  "historyNote": "Each change is a new settings version, sent to the risk engine straight away.",
+  "historyEmpty": "Autonomy hasn’t changed since setup.",
+  "current": "Current",
+  "h": {
+    "level": "Autonomy set to {{name}}",
+    "levelAsk": "Autonomy set to {{name}}, ask above {{amount}}",
+    "ask": "Ask-above amount {{from}} → {{to}}"
+  },
+  "t": {
+    "on": "Level {{n}} is on",
+    "on3": "Trades up to {{amount}} go to OKX without asking. Saved as version {{v}}.",
+    "on4": "Every approved trade goes to OKX without asking. Saved as version {{v}}.",
+    "level": "Autonomy is now level {{n}}",
+    "low1": "Nothing goes to OKX. Saved as version {{v}}.",
+    "low2": "Every trade waits for your approval. Saved as version {{v}}.",
+    "low3": "Trades above {{amount}} wait for you again. Saved as version {{v}}.",
+    "amount": "Ask-above amount saved",
+    "amountBody": "Atlas asks you about trades above {{amount}}. Saved as version {{v}}.",
+    "fail": "Couldn’t save autonomy",
+    "failBody": "It’s still level {{n}}. Atlas’s server didn’t answer."
+  },
+  "err": {
+    "title": "Couldn’t load autonomy",
+    "body": "Atlas’s server didn’t answer. Check that Atlas is running with ./atlas up, then try again.",
+    "retry": "Try again"
+  },
+  "firstMonth": "Available from {{date}}, after your first live month.",
+  "firstMonthNote": "Your first live month runs until {{date}}. Until then Atlas stays at level 2 or below."
+}

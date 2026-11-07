@@ -1,0 +1,14 @@
+{
+  "code": "0",
+  "msg": "",
+  "data": [
+    {
+      "totalPage": "90",
+      "details": [
+        {"annType": "announcements-new-listings", "pTime": "1793253600000", "title": "OKX to list perpetual futures for PLUME", "url": "https://www.okx.com/help/okx-to-list-perpetual-futures-for-plume"},
+        {"annType": "announcements-delistings", "pTime": "1793246400000", "title": "OKX to delist spot trading pairs on 5 November 2026", "url": "https://www.okx.com/help/okx-to-delist-spot-trading-pairs-on-5-november-2026"},
+        {"annType": "announcements-system-maintenance", "pTime": "1793239200000", "title": "System maintenance on 1 November 2026", "url": "https://www.okx.com/help/system-maintenance-on-1-november-2026"}
+      ]
+    }
+  ]
+}

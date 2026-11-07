@@ -1,0 +1,409 @@
+/*
+ * App shell layout (design css/shell.css): floating glass sidebar, unified toolbar,
+ * permanent risk footer. Logical properties only; colours only through tokens.
+ */
+
+.shell-wash {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(520px 420px at 0% 0%, var(--wash-1), transparent 70%),
+    radial-gradient(420px 520px at 8% 85%, var(--wash-2), transparent 70%),
+    var(--bg);
+}
+[dir='rtl'] .shell-wash {
+  background:
+    radial-gradient(520px 420px at 100% 0%, var(--wash-1), transparent 70%),
+    radial-gradient(420px 520px at 92% 85%, var(--wash-2), transparent 70%),
+    var(--bg);
+}
+
+.shell-app {
+  position: fixed;
+  inset-block: 0 var(--footer-height);
+  inset-inline: 0;
+  display: grid;
+  grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+}
+.shell-app[data-sidebar='hidden'] {
+  grid-template-columns: 0 minmax(0, 1fr);
+}
+
+.shell-sidebar {
+  margin: 8px;
+  margin-inline-end: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-sidebar), var(--glass-edge), 0 0 0 0.5px var(--hairline-color);
+  transition:
+    opacity var(--dur-base) var(--ease-out),
+    transform var(--dur-slow) var(--ease-standard);
+}
+.shell-app[data-sidebar='hidden'] .shell-sidebar {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+  transform: translateX(-12px);
+}
+[dir='rtl'] .shell-app[data-sidebar='hidden'] .shell-sidebar {
+  transform: translateX(12px);
+}
+
+/* Area switcher (design v4 shell.css): a vertical segmented control. Its raised thumb says
+   which area you are in; the grey row fill in the list below says which page. */
+.shell-area-switch {
+  margin: 0 10px 6px;
+  padding: 3px;
+  display: grid;
+  gap: 1px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: var(--fill-4);
+  box-shadow: inset 0 0 0 0.5px var(--hairline-color);
+}
+.shell-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 32px;
+  padding-inline: 9px;
+  border-radius: 9px;
+  color: var(--label);
+  text-decoration: none;
+  font-size: var(--fs-subheadline);
+  letter-spacing: var(--tr-subheadline);
+  font-weight: 500;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+.shell-area-icon {
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  color: var(--label-secondary);
+}
+.shell-area:hover {
+  background: var(--fill-4);
+  text-decoration: none;
+}
+.shell-area[aria-current='true'] {
+  background: var(--area-thumb);
+  font-weight: 600;
+  box-shadow: var(--area-thumb-shadow), 0 0 0 0.5px var(--hairline-color);
+}
+.shell-area[aria-current='true'] .shell-area-icon {
+  color: var(--accent);
+}
+.shell-area:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.shell-main {
+  /* Always the content column: at narrow widths the sidebar is fixed (out of the grid),
+     so without this the main column would auto-place into the 0-wide first track. */
+  grid-column: 2;
+  grid-row: 1;
+  position: relative;
+  display: grid;
+  grid-template-rows: var(--toolbar-height) minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+
+/* The toolbar is a size container (ATL-224, design v19 shell.css). It picks its full or compact
+   form from its own width, so a window with the sidebar (and the War Room inspector) open switches
+   at the same point as a phone. */
+.shell-toolbar {
+  position: relative;
+  z-index: 20;
+  min-width: 0;
+  container: toolbar / inline-size;
+  transition:
+    background-color var(--dur-base),
+    box-shadow var(--dur-base);
+}
+.shell-toolbar-row {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-inline: 12px 16px;
+}
+/* Only the heading gives way. Every control keeps its drawn size, so none can be drawn over its neighbour. */
+.shell-toolbar-row > *,
+.shell-tb-page > * {
+  flex-shrink: 0;
+}
+.shell-toolbar-row > .shell-toolbar-heading {
+  flex-shrink: 1;
+}
+.shell-toolbar-heading {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  margin-inline-start: 4px;
+}
+.shell-toolbar-spacer {
+  flex: 1;
+}
+/* The environment under the title: the compact toolbar's form of the Demo badge. */
+.shell-toolbar-env {
+  display: none;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  width: max-content;
+  max-width: 100%;
+  font-size: var(--text-caption);
+  line-height: 14px;
+  font-weight: 600;
+  letter-spacing: var(--tr-caption);
+  color: var(--demo-ink);
+  border-radius: 4px;
+}
+.shell-toolbar-env .dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--demo);
+}
+.shell-toolbar-env > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shell-toolbar-env.is-live {
+  color: var(--live-ink);
+}
+.shell-toolbar-env.is-live .dot {
+  background: var(--live);
+}
+.shell-toolbar-env:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* ---- Compact toolbar (ATL-224): below 1000 px of toolbar --------------------------------------
+   The leading end says where you are: the page, and the environment under it. The trailing end
+   holds what may need you now: the approval pill, Stop, the bell. Every other control (page
+   actions, language, appearance, account) moves into More (⋯), in that order. 1000 px = the
+   widest full toolbar (Arabic, War Room, a trade waiting) plus room for a title; recompute it
+   when a toolbar control is added. */
+.shell-tb-more {
+  display: none;
+}
+@container toolbar (width < 1000px) {
+  .shell-toolbar-row {
+    gap: 6px;
+    padding-inline: 8px;
+  }
+  .shell-toolbar-row > .shell-toolbar-heading {
+    flex: 1 1 auto;
+    margin-inline: 2px 4px;
+  }
+  .shell-toolbar-heading > h1 {
+    line-height: 20px;
+  }
+  .shell-toolbar-env {
+    display: flex;
+  }
+  .shell-toolbar-spacer,
+  .shell-toolbar .shell-env-badge,
+  .shell-toolbar .shell-tb-prefs,
+  .shell-toolbar .shell-tb-page {
+    display: none;
+  }
+  .shell-toolbar .shell-tb-more {
+    display: inline-flex;
+  }
+}
+:root:lang(ar) .shell-toolbar-env {
+  line-height: 17px;
+}
+@container toolbar (width < 1000px) {
+  :root:lang(ar) .shell-toolbar-heading > h1 {
+    line-height: 24px;
+  }
+}
+
+/* The More menu: this page's actions, then language and appearance, then the account. */
+.shell-menu-more {
+  min-width: 272px;
+  max-height: calc(100dvh - var(--toolbar-height) - var(--footer-height) - 16px);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.shell-menu-more [role^='menuitem'] > span:not(.more-icon) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shell-menu-more .more-icon {
+  display: inline-flex;
+  color: var(--label-secondary);
+}
+.shell-menu-more [data-highlighted] .more-icon {
+  color: var(--on-solid);
+}
+.shell-menu-more .more-icon svg {
+  width: 16px;
+  height: 16px;
+}
+@media (max-width: 640px), (pointer: coarse) {
+  .shell-popover [role^='menuitem'] {
+    min-height: 44px; /* touch: every item a full 44 px row */
+  }
+}
+.shell-toolbar[data-scrolled='true'] {
+  background-color: var(--material-bar);
+  -webkit-backdrop-filter: var(--material-filter);
+  backdrop-filter: var(--material-filter);
+  box-shadow: 0 0.5px 0 var(--separator);
+}
+
+.shell-content {
+  overflow: auto;
+  overscroll-behavior: contain;
+  scroll-padding-top: 16px;
+}
+.shell-content:focus,
+.shell-content:focus-visible {
+  box-shadow: none;
+  outline: none;
+}
+/* One frame for every page: the full width beside the sidebar, inset by the gutter.
+   Never add a max width or centre a page; long text keeps its own measure (ch). */
+.shell-page {
+  padding: 4px var(--page-gutter) 56px;
+  animation: shell-page-in var(--dur-slow) var(--ease-out);
+}
+@keyframes shell-page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.shell-popover {
+  transform-origin: var(--radix-dropdown-menu-content-transform-origin);
+  animation: shell-pop-in var(--dur-base) var(--ease-settle);
+}
+@keyframes shell-pop-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.shell-footer {
+  position: fixed;
+  inset-block: auto 0;
+  inset-inline: 0;
+  z-index: 30;
+  height: var(--footer-height);
+  box-shadow: 0 -0.5px 0 var(--separator);
+}
+
+/* Live (ATL-240): the env word in a small solid capsule, the same orange as the toolbar badge. */
+.shell-footer-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 16px;
+  padding-inline: 6px;
+  border-radius: var(--radius-full, 999px);
+  background: var(--live);
+  color: var(--live-on);
+  font-weight: 700;
+  vertical-align: middle;
+}
+.shell-footer-live::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--live-on);
+}
+/* The LIVE tag inside sheets (the real-order sheet, Stop trading). */
+.shell-live-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding-inline: 8px;
+  border-radius: var(--radius-full, 999px);
+  background: var(--live);
+  color: var(--live-on);
+  font-size: var(--text-footnote);
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+  margin-inline-start: 6px;
+}
+.shell-live-tag::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--live-on);
+}
+/* The live wire: a 3 px orange edge along the top of the window, on every page. */
+:root.is-live body::before {
+  content: '';
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline: 0;
+  height: 3px;
+  z-index: 100;
+  background: var(--live);
+  pointer-events: none;
+}
+
+/* Narrow windows: the sidebar floats over the content and starts closed. */
+@media (max-width: 760px) {
+  .shell-app,
+  .shell-app[data-sidebar='hidden'] {
+    grid-template-columns: 0 minmax(0, 1fr);
+  }
+  .shell-app .shell-sidebar {
+    position: fixed;
+    z-index: 40;
+    inset-block: 0 var(--footer-height);
+    inset-inline-start: 0;
+    width: 260px;
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+    transform: translateX(-16px);
+  }
+  [dir='rtl'] .shell-app .shell-sidebar {
+    transform: translateX(16px);
+  }
+  .shell-app[data-narrow-open='true'] .shell-sidebar {
+    opacity: 1;
+    pointer-events: auto;
+    visibility: visible;
+    transform: none;
+  }
+  .shell-footer {
+    font-size: 11px;
+    padding-inline: 8px;
+  }
+}

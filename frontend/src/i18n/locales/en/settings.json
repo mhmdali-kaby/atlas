@@ -1,0 +1,180 @@
+{
+  "nav": {
+    "connections": "Connections",
+    "risk": "Risk"
+  },
+  "conn": {
+    "intro": "Atlas reads your OKX account with these keys. They’re encrypted on this Mac and never shown again.",
+    "okxDemo": "OKX demo",
+    "sealLabel": "Seal of the OKX demo account ending {{last4}}",
+    "connected": "Connected. Verified {{ago}}.",
+    "justNow": "just now",
+    "untested": "Keys saved. They haven’t been tested yet.",
+    "testingLine": "Testing with OKX…",
+    "failedLine": "The last test failed.",
+    "failedLineAgo": "The last test failed. Last verified {{ago}}.",
+    "cantTest": "Atlas couldn’t run the test. Last verified {{ago}}.",
+    "cantTestNever": "Atlas couldn’t run the test.",
+    "test": "Test again",
+    "testing": "Testing…",
+    "replace": "Replace keys",
+    "remove": "Remove…",
+    "footnote": "Atlas never withdraws or moves money, and refuses live keys that can withdraw.",
+    "accountTitle": "Account",
+    "accountNote": "OKX reports these details each time Atlas tests the connection.",
+    "verifiedTip": "{{city}} time ({{zone}})",
+    "never": "Never",
+    "okToast": "Connection works",
+    "okToastBody": "OKX answered at {{time}}.",
+    "failedToast": "Test failed",
+    "none": {
+      "title": "Not connected",
+      "body": "Connect the OKX demo account so Atlas can read its balances, positions and history."
+    },
+    "connect": "Connect OKX demo",
+    "loadError": {
+      "title": "Couldn’t load your connections",
+      "body": "Atlas’s server didn’t answer. Check that Atlas is running with ./atlas up, then try again.",
+      "retry": "Try again"
+    },
+    "demoTitle": "Demo account",
+    "trading": "Trading now"
+  },
+  "lv": {
+    "title": "Live account",
+    "noneTitle": "No live account connected",
+    "noneBody": "Add a key from your OKX live account with Read and Trade only. Adding it doesn’t switch Atlas to live; that happens in Settings → Environment, after the pre-flight.",
+    "connect": "Connect OKX live",
+    "verified": "Verified {{ago}}. Withdrawals are off.",
+    "testingLine": "Testing with OKX live…",
+    "notVerified": "Not verified. This key can withdraw funds.",
+    "failedLine": "Not verified. The last test failed.",
+    "cantTest": "Not verified. Atlas couldn’t run the test.",
+    "untested": "Not verified. The key hasn’t been tested yet.",
+    "withdraw": {
+      "title": "This key can withdraw funds",
+      "body": "Create a key with Read + Trade only, then replace it here. Atlas never moves money, and it won’t trade live with a key that could."
+    },
+    "envTitle": "Switch Atlas to live in Settings → Environment",
+    "envSub": "Adding this key didn’t switch anything. The pre-flight there decides when you can.",
+    "envLiveTitle": "Atlas is trading on this account",
+    "envLiveSub": "Switch back to demo in Settings → Environment.",
+    "footnote": "Atlas refuses a live key that can withdraw, and never moves money.",
+    "sealLabel": "Seal of the OKX live account ending {{last4}}",
+    "ck": {
+      "title": "Connect the OKX live account",
+      "text": "Create the key on your OKX live account with Read and Trade only. Atlas refuses a key that can withdraw."
+    },
+    "rk": {
+      "title": "Replace the OKX live keys",
+      "text": "Paste a new key from the OKX live account, with Read and Trade only. Atlas tests it before it replaces the current one."
+    },
+    "okToast": "Live connection works",
+    "okToastBody": "OKX live answered at {{time}}. Withdrawals are off.",
+    "refusedToast": "Live key refused",
+    "refusedToastBody": "It can withdraw funds. Create one with Read + Trade only.",
+    "failedToast": "Live test failed",
+    "savedToast": "Live key saved and verified",
+    "savedToastBody": "API key •••• {{last4}}. Environment’s first check passes now.",
+    "rm": {
+      "title": "Remove the OKX live connection?",
+      "text": "Atlas deletes the live keys from this Mac, and Environment’s first check fails until you add a key again. Your OKX account and its funds are not touched.",
+      "blocked": "Atlas is trading on this account. Switch to demo in Settings → Environment before you remove it.",
+      "toast": "Live connection removed",
+      "toastBody": "The live keys were deleted from this Mac."
+    },
+    "openEnv": "Open Environment"
+  },
+  "rk": {
+    "title": "Replace the OKX demo keys",
+    "text": "Paste a new key from the OKX demo account. Atlas saves it and tests it straight away.",
+    "save": "Save and test",
+    "toast": "Keys replaced",
+    "toastBody": "API key •••• {{last4}} works."
+  },
+  "ck": {
+    "title": "Connect the OKX demo account",
+    "text": "Paste the key you created in OKX demo trading. Atlas saves it and tests it straight away.",
+    "toast": "Connected to OKX demo"
+  },
+  "rm": {
+    "title": "Remove the OKX demo connection?",
+    "text": "Atlas stops syncing this account, and the Portfolio pages stop updating. The keys are deleted from this Mac. Your OKX account and its funds are not touched.",
+    "confirm": "Type “{{label}}” to confirm",
+    "do": "Remove connection",
+    "removing": "Removing…",
+    "toast": "Connection removed",
+    "toastBody": "The keys were deleted from this Mac.",
+    "failed": "Atlas couldn’t remove the connection. Try again."
+  },
+  "cancel": "Cancel",
+  "risk": {
+    "intro": "The limits the risk engine applies to every trade.",
+    "version": "Version {{v}}",
+    "limits": "Limits",
+    "limitsNote": "Percentages are of total equity. The risk engine applies these limits to every trade, and no agent can change them.",
+    "presetWas": "{{profile}}: {{value}}",
+    "about": "About {{label}}",
+    "decrease": "Decrease {{label}}",
+    "increase": "Increase {{label}}",
+    "activity": "Activity",
+    "activityNote": "Every save is a new version, sent to the risk engine and the agents straight away.",
+    "activityEmpty": "No saved versions yet.",
+    "current": "Current",
+    "elsewhere": "Saved in another window",
+    "unsaved": "Unsaved changes",
+    "revert": "Revert",
+    "save": "Save changes",
+    "saving": "Saving…",
+    "saved": "Saved as version {{v}}",
+    "savedBody": "The risk engine uses the new limits from its next check.",
+    "saveError": {
+      "title": "Couldn’t save your settings",
+      "body": "Atlas’s server didn’t answer. Check that Atlas is running, then try again."
+    },
+    "invalid": "Fix the highlighted limits, then save again.",
+    "conflict": {
+      "title": "Settings changed elsewhere — reloaded",
+      "body": "Version {{v}} was saved in another window while this page was open. These are its values."
+    },
+    "error": {
+      "title": "Couldn’t load your settings",
+      "body": "Atlas’s server didn’t answer. Check that Atlas is running with ./atlas up, then try again.",
+      "retry": "Try again"
+    },
+    "err": {
+      "empty": "Enter a value for {{label}}.",
+      "range": "{{label}} must be more than {{min}} and at most {{max}}.",
+      "between": "{{label}} must be between {{min}} and {{max}}.",
+      "other": "Atlas’s server didn’t accept this value for {{label}}."
+    },
+    "h": {
+      "created": "Settings created",
+      "onboarded": "Setup finished",
+      "other": "Other settings changed",
+      "set": "{{field}} set to {{to}}",
+      "change": "{{field}} {{from}} → {{to}}"
+    },
+    "help": {
+      "lossPerTrade": "The most one trade can lose if its stop is hit, as a share of equity.",
+      "positionSize": "The largest single position, as a share of equity.",
+      "dailyLoss": "Trading pauses for the day when losses reach this share of equity.",
+      "weeklyLoss": "Trading pauses for the week when losses reach this share of equity.",
+      "leverage": "No position uses more leverage than this, whatever OKX allows.",
+      "openPositions": "New trades wait while this many positions are open.",
+      "instrumentShare": "The most equity that can sit in one instrument across positions.",
+      "correlated": "The most equity in instruments that move together (30-day correlation above 0.8).",
+      "minR": "A trade must aim to win at least this many times what it risks.",
+      "lossStreak": "Trading pauses after this many losing trades in a row."
+    },
+    "autonomyRow": "Autonomy",
+    "autonomyValue": "Level {{n}}, {{name}}"
+  },
+  "scope": {
+    "label": "Settings for",
+    "demo": "Demo",
+    "live": "Live",
+    "editLive": "You’re editing the live settings. They apply once Atlas switches to live in Settings → Environment.",
+    "editDemo": "You’re editing the demo settings. Atlas is trading on live."
+  }
+}

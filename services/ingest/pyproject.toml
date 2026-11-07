@@ -1,0 +1,31 @@
+[project]
+name = "atlas-ingest"
+version = "0.0.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "atlas-shared",
+  "httpx>=0.27",
+  "feedparser>=6",
+  "pydantic>=2.9",
+  "pyyaml>=6",
+  "sqlalchemy>=2",
+  "trafilatura>=2",
+  "langdetect>=1.0.9",
+  "sentence-transformers>=5.1",
+  "rapidfuzz>=3",
+]
+
+[project.entry-points."atlas_ingest.evaluation"]
+linker = "atlas_ingest.evaluation.linking_stage:link_headline"
+classifier = "atlas_ingest.classify:classify_headline"
+clusterer = "atlas_ingest.clustering:cluster_rows"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/atlas_ingest"]
+
+[tool.uv.sources]
+atlas-shared = { workspace = true }

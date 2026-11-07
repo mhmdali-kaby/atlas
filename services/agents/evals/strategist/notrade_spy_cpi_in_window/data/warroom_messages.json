@@ -1,0 +1,143 @@
+[
+ {
+  "id": "64c27b35-664b-5858-a73d-05a350ad0101",
+  "env": "demo",
+  "thread_id": "ff481e89-df46-5ca8-a46b-3626771fadd0",
+  "event_id": "63fd18ce-2dfb-5b45-b361-5d7cce084b91",
+  "author_type": "agent",
+  "author": "technical_analyst",
+  "kind": "research_report",
+  "content_md": "TechnicalSetup card",
+  "card": {
+   "type": "technical_setup",
+   "inst_id": "SPY-USDT-SWAP",
+   "timeframe_bias": {
+    "1D": "up",
+    "4H": "up",
+    "1H": "range",
+    "15m": "up"
+   },
+   "setup_type": "pullback_to_support",
+   "direction": "long",
+   "entry_zone": [
+    570.94,
+    571.85
+   ],
+   "trigger": "1H close back above 571.85 inside 1H:z2",
+   "stop": 565.45,
+   "targets": [
+    {
+     "price": 578.52,
+     "r_multiple": 1.2,
+     "reason": "1H:z4",
+     "close_pct": null
+    },
+    {
+     "price": 584.47,
+     "r_multiple": 2.2,
+     "reason": "1H:z5",
+     "close_pct": null
+    }
+   ],
+   "expected_r": 2.2,
+   "invalidation": "1H close below 565.45",
+   "quality_score": 0.66,
+   "est_slippage_bps": null,
+   "levels_used": [
+    {
+     "id": "1H:z2",
+     "price": 571.395
+    },
+    {
+     "id": "1H:z1",
+     "price": 569.56
+    },
+    {
+     "id": "1H:z0",
+     "price": 566.59
+    },
+    {
+     "id": "1H:z4",
+     "price": 578.52
+    },
+    {
+     "id": "1H:z5",
+     "price": 584.47
+    }
+   ],
+   "no_setup_reason": null,
+   "data_as_of": "2026-09-16T10:48:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-16T10:48:00Z",
+  "updated_at": "2026-09-16T10:48:00Z"
+ },
+ {
+  "id": "f49ded37-a920-52d0-9e33-2055e52c2619",
+  "env": "demo",
+  "thread_id": "ff481e89-df46-5ca8-a46b-3626771fadd0",
+  "event_id": "235313c0-f8d1-57aa-9d48-0b4a3adcc83b",
+  "author_type": "agent",
+  "author": "historian",
+  "kind": "research_report",
+  "content_md": "HistoryVerdict card",
+  "card": {
+   "type": "history_verdict",
+   "question": "analog check for a long on SPY-USDT-SWAP",
+   "inst_id": "SPY-USDT-SWAP",
+   "bar": "1H",
+   "n": 34,
+   "distribution": {
+    "24h": {
+     "median": 0.3,
+     "p10": -2.1,
+     "p90": 2.4,
+     "pct_positive": 53.0
+    }
+   },
+   "verdict": "supports",
+   "key_stat": "53% of 34 analogs positive at 24h",
+   "data_as_of": "2026-09-16T10:52:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-16T10:52:00Z",
+  "updated_at": "2026-09-16T10:52:00Z"
+ },
+ {
+  "id": "72b68fbf-7e30-54b8-9183-4ba40ff137a7",
+  "env": "demo",
+  "thread_id": "ff481e89-df46-5ca8-a46b-3626771fadd0",
+  "event_id": "4bf00a20-694d-506c-bf14-33a9437905a5",
+  "author_type": "agent",
+  "author": "news_intelligence",
+  "kind": "research_report",
+  "content_md": "NewsBrief card",
+  "card": {
+   "type": "news_brief",
+   "inst_ids": [
+    "SPY-USDT-SWAP"
+   ],
+   "clusters": [],
+   "upcoming_events": [
+    {
+     "time": "2026-09-16T11:15:00Z",
+     "name": "US CPI",
+     "importance": 5,
+     "forecast": null,
+     "previous": null,
+     "sensitive_instruments": [
+      "SPY-USDT-SWAP"
+     ]
+    }
+   ],
+   "net_sentiment_24h": 0.1,
+   "net_sentiment_72h": 0.1,
+   "priced_in": "partly",
+   "what_to_watch": "the next scheduled release",
+   "data_as_of": "2026-09-16T10:45:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-16T10:45:00Z",
+  "updated_at": "2026-09-16T10:45:00Z"
+ }
+]

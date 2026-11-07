@@ -1,0 +1,17 @@
+[
+ {
+  "id": "6b38a2d2-4c3f-5ff8-8bef-f73cd181211e",
+  "watchlist_id": "b314be2e-81cd-56a2-9d48-a03bda402935",
+  "inst_id": "XAU-USDT-SWAP",
+  "rank": 1,
+  "asset_class": "commodity",
+  "bias": "long",
+  "conviction": "0.75",
+  "thesis": "Long bias on XAU-USDT-SWAP from structure and flow.",
+  "catalysts": [],
+  "key_levels": {},
+  "invalidation": "1H close beyond 2627.38",
+  "pinned_by_owner": false,
+  "data_as_of": "2026-09-02T06:00:00Z"
+ }
+]

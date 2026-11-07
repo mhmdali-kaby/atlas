@@ -1,0 +1,102 @@
+/*
+ * Settings → Schedule (ATL-230; design v21 css/settings-schedule.css). Grouped inset lists of
+ * Baghdad times, each with the owner-zone moment beside it when the zones differ. Built from the
+ * Settings system (pane header, groups, the stepper, the save bar): no new colours or type sizes.
+ */
+.sch-page { gap: 22px; }
+.sch-group-title { padding: 0 16px 8px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 600; color: var(--label-secondary); }
+.sch-group-note { padding: 8px 16px 0; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+
+/* ---- The team's day ------------------------------------------------------ */
+.sch-hero { display: grid; gap: 14px; padding: 18px 20px 14px; }
+.sch-hero-foot { display: grid; gap: 6px; padding-top: 12px; border-top: 0.5px solid var(--separator); }
+.sch-cap { font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); color: var(--label); }
+.sch-preview { font-family: var(--font-num); font-variant-numeric: tabular-nums; font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); color: var(--label-secondary); }
+.sch-zone { display: flex; align-items: flex-start; gap: 6px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.sch-zone svg, .sch-hint svg { width: 14px; height: 14px; margin-top: 2px; flex-shrink: 0; color: var(--accent-ink); }
+
+/* ---- Rows ---------------------------------------------------------------- */
+.sch-group { container: schgroup / inline-size; }
+.sch-row { position: relative; display: flex; align-items: center; gap: 14px; min-height: 44px; padding: 12px 16px; }
+.sch-row + .sch-row::before,
+.sch-q-times > .sch-row::before { content: ''; position: absolute; top: 0; inset-inline: 16px 0; border-top: 0.5px solid var(--separator); }
+.sch-row.sch-job + .sch-row::before, .sch-row + .sch-row.sch-job::before { inset-inline-start: 60px; }
+.sch-q-times > .sch-row::before { inset-inline-start: 56px; }
+.sch-row > .medal { flex-shrink: 0; align-self: center; }
+.sch-main { display: grid; gap: 2px; min-width: 0; flex: 1 1 auto; }
+.sch-label { color: var(--label); }
+.sch-sub { color: var(--label-secondary); }
+.sch-err { margin-top: 6px; }
+.sch-ctl { display: flex; align-items: flex-start; gap: 8px; flex-shrink: 0; }
+.sch-moon { width: 28px; height: 28px; flex-shrink: 0; display: grid; place-items: center; border-radius: 7px; background: var(--fill-3); color: var(--label-secondary); }
+.sch-moon svg { width: 16px; height: 16px; }
+
+/* the time field: the stepper's field look, a 24-hour clock in figures */
+.sch-tf { display: grid; justify-items: end; gap: 4px; }
+.sch-time {
+  width: 88px; height: 32px; padding-inline: 8px; text-align: center;
+  border-radius: 8px; border: 1px solid var(--field-border); background: var(--field-bg); color: var(--label);
+  font-family: var(--font-num); font-size: var(--fs-callout); font-variant-numeric: tabular-nums; letter-spacing: 0.02em;
+}
+.sch-time::placeholder { color: var(--label-tertiary); }
+.sch-time:hover { border-color: var(--field-border-hover); }
+.sch-time:focus { border-color: var(--accent); box-shadow: var(--ui-focus-ring); outline: none; }
+.sch-tf.is-error .sch-time { border-color: var(--loss); }
+.sch-tf.is-error .sch-time:focus { box-shadow: 0 0 0 3px color-mix(in srgb, var(--loss) 30%, transparent); }
+.sch-alt { font-size: var(--fs-caption); line-height: var(--lh-caption); color: var(--label-secondary); white-space: nowrap; text-align: end; }
+
+/* the weekly review's day: a pop-up beside its time */
+.sch-day { position: relative; display: inline-flex; align-items: center; }
+.sch-day select {
+  appearance: none; -webkit-appearance: none; height: 32px; padding-inline: 10px 30px; max-width: 160px;
+  border-radius: 8px; border: 1px solid var(--field-border); background: var(--field-bg); color: var(--label);
+  font: inherit; font-size: var(--fs-subheadline);
+}
+.sch-day select:hover { border-color: var(--field-border-hover); }
+.sch-day select:focus-visible { border-color: var(--accent); box-shadow: var(--ui-focus-ring); outline: none; }
+.sch-day-caret { position: absolute; inset-inline-end: 9px; width: 13px; height: 13px; color: var(--label-secondary); pointer-events: none; }
+
+.sch-stepper .st-stepper-input { width: 104px; padding-inline-end: 40px; }
+/* Arabic reads "30 دقيقة" right to left: the word goes on the number's left. The field stays LTR. */
+:root:lang(ar) .sch-stepper .st-stepper-input { width: 120px; padding-inline: 58px 10px; }
+:root:lang(ar) .sch-stepper .st-stepper-unit { inset-inline-end: auto; inset-inline-start: 10px; }
+.sch-hint { display: flex; align-items: flex-start; gap: 6px; margin-top: 6px; color: var(--label-secondary); }
+
+/* ---- Quiet hours ---------------------------------------------------------- */
+.sch-q-times { display: grid; }
+.sch-qnotes { list-style: none; margin: 0 16px 14px; padding: 10px 12px; display: grid; gap: 6px; border-radius: 10px; background: var(--fill-4); box-shadow: inset 0 0 0 0.5px var(--hairline-color); }
+.sch-qnotes li { display: flex; align-items: flex-start; gap: 8px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label); }
+.sch-qnotes svg { width: 14px; height: 14px; margin-top: 2px; flex-shrink: 0; color: var(--label-secondary); }
+
+/* ---- Weekends: two radio rows ---------------------------------------------- */
+.sch-wk-label { padding: 12px 16px 4px; letter-spacing: var(--tr-callout); color: var(--label); }
+.sch-wk { position: relative; display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; cursor: default; }
+.sch-wk + .sch-wk::before { content: ''; position: absolute; top: 0; inset-inline: 48px 0; border-top: 0.5px solid var(--separator); }
+.sch-wk:hover { background: var(--fill-4); }
+.sch-wk:focus-visible { outline: none; box-shadow: inset 0 0 0 2px var(--accent); }
+.sch-radio { width: 20px; height: 20px; margin-top: 1px; border-radius: 50%; flex-shrink: 0; display: grid; place-items: center; box-shadow: inset 0 0 0 1.5px var(--separator-strong); }
+.sch-wk[aria-checked='true'] .sch-radio { background: var(--accent); box-shadow: none; }
+.sch-wk[aria-checked='true'] .sch-radio::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--on-solid); }
+.sch-wk .sch-sub { max-width: 72ch; }
+.sch-wk ~ .sch-err { padding: 0 16px 12px; }
+
+/* ---- Conflict (409) ---------------------------------------------------------- */
+.sch-mine { margin-top: 8px; padding-inline-start: 18px; display: grid; gap: 2px; color: var(--label); }
+.sch-mine > span { display: list-item; list-style: disc; }
+
+/* ---- Narrow groups: controls drop under their words ------------------------- */
+@container schgroup (width < 560px) {
+  .sch-row { flex-wrap: wrap; row-gap: 10px; }
+  .sch-row .sch-main { flex: 1 1 calc(100% - 48px); }
+  .sch-row:not(.sch-job) .sch-main { flex-basis: 100%; }
+  .sch-job .sch-ctl { margin-inline-start: 44px; }
+  .sch-ctl { flex-wrap: wrap; }
+  .sch-tf { justify-items: start; }
+  .sch-alt { text-align: start; }
+  /* a switch row keeps its switch beside its title; only the words wrap */
+  .sch-row.has-icon { flex-wrap: nowrap; align-items: flex-start; }
+  .sch-row.has-icon .sch-main { flex: 1 1 auto; }
+}
+@media (max-width: 640px) {
+  .sch-hero { padding: 16px; }
+}

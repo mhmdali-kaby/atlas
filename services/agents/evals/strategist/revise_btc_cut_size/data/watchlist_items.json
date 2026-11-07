@@ -1,0 +1,17 @@
+[
+ {
+  "id": "d4974b3a-fd82-53f7-bdbf-fa644083bb51",
+  "watchlist_id": "507b4b3c-7f30-5600-a430-5400b512d889",
+  "inst_id": "BTC-USDT-SWAP",
+  "rank": 1,
+  "asset_class": "crypto",
+  "bias": "long",
+  "conviction": "0.6",
+  "thesis": "Long bias on BTC-USDT-SWAP from structure and flow.",
+  "catalysts": [],
+  "key_levels": {},
+  "invalidation": "1H close beyond 63581.8",
+  "pinned_by_owner": false,
+  "data_as_of": "2026-09-07T06:00:00Z"
+ }
+]

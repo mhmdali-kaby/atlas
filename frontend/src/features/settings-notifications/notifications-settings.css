@@ -1,0 +1,778 @@
+/*
+ * Settings → Notifications (ATL-218, design v18 css/settings-notifications.css): the event ×
+ * channel matrix with each channel's state in its column head, the three-channel preview, the
+ * Telegram bot. Container queries on the page: the preview sits beside the matrix from 1020px,
+ * and each event carries its three labelled switches below 620px.
+ */
+.ns-page {
+  container-type: inline-size;
+}
+.ns-section {
+  display: grid;
+  gap: 8px;
+}
+.ns-group-title {
+  padding-inline: 16px;
+  font-size: var(--fs-footnote);
+  font-weight: 600;
+  color: var(--label-secondary);
+}
+.ns-group-note {
+  padding-inline: 16px;
+  font-size: var(--fs-footnote);
+  line-height: var(--text-footnote--line-height);
+  color: var(--label-secondary);
+}
+.ns-layout {
+  display: grid;
+  gap: 20px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+.ns-col {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+@container (min-width: 1020px) {
+  .ns-layout {
+    grid-template-columns: minmax(0, 1fr) 344px;
+    gap: 24px;
+  }
+  .ns-pv-col {
+    position: sticky;
+    top: 12px;
+  }
+}
+
+/* the small switch (36 × 22, knob 18) used only in the matrix */
+.ns-toggle {
+  width: 36px;
+  height: 22px;
+}
+.ns-toggle > span {
+  width: 18px;
+  height: 18px;
+}
+.ns-toggle > span[data-state='checked'] {
+  translate: 16px 0;
+}
+[dir='rtl'] .ns-toggle > span {
+  translate: -2px 0;
+}
+[dir='rtl'] .ns-toggle > span[data-state='checked'] {
+  translate: -16px 0;
+}
+.ns-toggle[aria-busy='true'] {
+  opacity: 0.72;
+}
+
+/* ---- Matrix ------------------------------------------------------------ */
+.ns-matrix {
+  border-radius: var(--radius-card);
+  background: var(--bg-grouped-row);
+  box-shadow: 0 0 0 0.5px var(--hairline-color);
+}
+.ns-head,
+.ns-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) repeat(3, 116px);
+  align-items: center;
+  column-gap: 4px;
+}
+.ns-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: 12px 16px 10px;
+  align-items: start;
+  background: var(--bg-grouped-row);
+  border-radius: var(--radius-card) var(--radius-card) 0 0;
+  box-shadow: 0 0.5px 0 var(--separator);
+}
+.ns-ev-head {
+  align-self: end;
+  padding-bottom: 2px;
+  font-size: var(--fs-footnote);
+  font-weight: 600;
+  color: var(--label-secondary);
+}
+.ns-ch {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+  text-align: center;
+}
+.ns-ch-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-footnote);
+  font-weight: 600;
+  color: var(--label);
+}
+.ns-ch-name svg {
+  width: 15px;
+  height: 15px;
+  color: var(--label-secondary);
+}
+.ns-ch-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-caption);
+  line-height: 16px;
+  color: var(--label-secondary);
+  white-space: nowrap;
+}
+.ns-ch-state svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+.ns-ch-state.is-ok svg {
+  color: var(--profit-ink);
+}
+.ns-ch-state.is-warn {
+  color: var(--warning-ink);
+}
+.ns-ch-state[tabindex] {
+  cursor: help;
+  border-radius: 6px;
+}
+.ns-ch-state[tabindex]:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.ns-xs {
+  height: 22px;
+  min-height: 22px;
+  padding-inline: 8px;
+  border-radius: 6px;
+  font-size: var(--fs-caption);
+  font-weight: 600;
+}
+
+.ns-grp {
+  padding: 16px 16px 6px;
+  font-size: var(--fs-footnote);
+  font-weight: 600;
+  color: var(--label-secondary);
+}
+.ns-row {
+  position: relative;
+  padding: 10px 16px;
+  transition: background-color var(--dur-fast);
+}
+.ns-row + .ns-row::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  inset-inline: 60px 0;
+  border-top: 0.5px solid var(--separator);
+}
+.ns-row:last-child {
+  border-radius: 0 0 var(--radius-card) var(--radius-card);
+}
+.ns-row:hover {
+  background: color-mix(in srgb, var(--fill-4) 50%, transparent);
+}
+/* The previewed row: an accent bar at the inline start. A fill-4 wash (the prototype's) drops the
+   secondary text under 4.5:1 in dark mode. */
+.ns-row.is-selected::after {
+  content: '';
+  position: absolute;
+  inset-block: 8px;
+  inset-inline-start: 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--accent);
+}
+[dir='rtl'] .ns-row.is-selected::after {
+  border-radius: 3px 0 0 3px;
+}
+.ns-ev {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) 28px;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+.ns-ev-text {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.ns-ev-name {
+  font-size: var(--fs-subheadline);
+  line-height: var(--lh-subheadline);
+  font-weight: 500;
+  color: var(--label);
+}
+.ns-ev-desc {
+  font-size: var(--fs-footnote);
+  line-height: var(--text-footnote--line-height);
+  color: var(--label-secondary);
+}
+.ns-pv-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  color: var(--label-tertiary);
+  opacity: 0;
+  transition: opacity var(--dur-fast);
+}
+.ns-pv-btn svg {
+  width: 16px;
+  height: 16px;
+}
+.ns-pv-btn:hover {
+  background: var(--fill-3);
+  color: var(--label);
+}
+.ns-pv-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.ns-row:hover .ns-pv-btn,
+.ns-pv-btn:focus-visible,
+.ns-pv-btn[aria-pressed='true'] {
+  opacity: 1;
+}
+.ns-pv-btn[aria-pressed='true'] {
+  color: var(--accent-ink);
+}
+@media (hover: none) {
+  .ns-pv-btn {
+    opacity: 1;
+  }
+}
+.ns-cell {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+.ns-sw {
+  display: inline-flex;
+  border-radius: 999px;
+}
+.ns-sw[tabindex]:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.ns-cell-label {
+  display: none;
+}
+
+/* the event tile (design css/notifications.css .nt-tile) */
+.ns-tile {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  background: var(--fill-3);
+  color: var(--label-secondary);
+}
+.ns-tile svg {
+  width: 17px;
+  height: 17px;
+}
+.ns-tile.is-accent {
+  background: var(--accent-wash);
+  color: var(--accent-ink);
+}
+.ns-tile.is-critical {
+  background: var(--loss-wash);
+  color: var(--loss-ink);
+}
+.ns-tile.is-warning {
+  background: var(--warning-wash);
+  color: var(--warning-ink);
+}
+.ns-tile.is-profit {
+  background: var(--profit-wash);
+  color: var(--profit-ink);
+}
+
+/* ---- Preview ----------------------------------------------------------- */
+.ns-preview {
+  display: grid;
+  gap: 16px;
+  padding: 16px;
+  border-radius: var(--radius-panel);
+  background: var(--bg-grouped-row);
+  box-shadow: 0 0 0 0.5px var(--hairline-color);
+}
+.ns-pv-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ns-pv-title {
+  font-size: var(--fs-headline);
+  line-height: var(--lh-headline);
+  font-weight: 600;
+}
+.ns-pv-pick {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-width: 0;
+}
+.ns-pv-pick select {
+  appearance: none;
+  max-width: 210px;
+  height: 28px;
+  padding-inline: 10px 28px;
+  border-radius: 7px;
+  border: 0;
+  background: var(--fill-3);
+  color: var(--label);
+  font: inherit;
+  font-size: var(--fs-footnote);
+  font-weight: 500;
+  text-overflow: ellipsis;
+}
+.ns-pv-pick select:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+.ns-pv-caret {
+  position: absolute;
+  inset-inline-end: 8px;
+  width: 13px;
+  height: 13px;
+  color: var(--label-secondary);
+  pointer-events: none;
+}
+.ns-pv-card {
+  display: grid;
+  gap: 8px;
+}
+.ns-pv-k {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-footnote);
+  font-weight: 600;
+}
+.ns-pv-k > svg {
+  width: 15px;
+  height: 15px;
+  color: var(--label-secondary);
+}
+.ns-pv-off {
+  margin-inline-start: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fs-caption);
+  font-weight: 500;
+  color: var(--label-secondary);
+}
+.ns-pv-off svg {
+  width: 12px;
+  height: 12px;
+}
+.ns-pv-stage {
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--bg-grouped);
+  box-shadow: inset 0 0 0 0.5px var(--hairline-color);
+}
+.ns-pv-stage {
+  position: relative;
+}
+/* An off channel's stage is dimmed by a veil in the stage's own colour, not by fading the text
+   itself, so the picture underneath keeps its real contrast. */
+.ns-pv-card.is-off .ns-pv-stage > * {
+  filter: grayscale(1);
+}
+.ns-pv-card.is-off .ns-pv-stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--bg-grouped) 55%, transparent);
+}
+.ns-pv-desc {
+  font-size: var(--fs-caption);
+  line-height: 16px;
+  color: var(--label-secondary);
+}
+
+/* the toast, drawn still */
+.ns-toast {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 10px;
+  padding: 12px;
+  border-radius: var(--radius-card);
+  background: var(--material-popover);
+  box-shadow:
+    var(--shadow-1),
+    0 0 0 0.5px var(--hairline-color);
+}
+.ns-toast.is-critical {
+  box-shadow:
+    var(--shadow-1),
+    0 0 0 1px var(--loss);
+}
+.ns-toast-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.ns-toast-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--fs-subheadline);
+  font-weight: 600;
+}
+.ns-toast-head time,
+.ns-mac-top time {
+  flex-shrink: 0;
+  font-size: var(--fs-caption);
+  font-weight: 400;
+  color: var(--label-secondary);
+}
+.ns-toast-body {
+  font-size: var(--fs-footnote);
+  line-height: var(--text-footnote--line-height);
+  color: var(--label-secondary);
+}
+.ns-toast-meta {
+  font-size: var(--fs-caption);
+  color: var(--label-secondary);
+}
+.ns-toast-action {
+  justify-self: start;
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding-inline: 10px;
+  border-radius: 8px;
+  background: var(--fill-2);
+  font-size: var(--fs-footnote);
+  font-weight: 500;
+}
+
+/* a macOS banner, drawn plainly: the real one is the browser's and the system's */
+.ns-mac {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 11px 12px;
+  border-radius: 16px;
+  background: var(--material-popover);
+  -webkit-backdrop-filter: var(--material-filter);
+  backdrop-filter: var(--material-filter);
+  box-shadow:
+    var(--shadow-1),
+    0 0 0 0.5px var(--hairline-color);
+}
+.ns-mac-text {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.ns-mac-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: var(--fs-footnote);
+  line-height: 17px;
+}
+.ns-mac-top b {
+  min-width: 0;
+  font-weight: 600;
+}
+.ns-mac-body {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: var(--fs-footnote);
+  line-height: 17px;
+  color: var(--label);
+}
+.ns-mac-src {
+  font-size: var(--fs-caption);
+  line-height: 16px;
+  color: var(--label-secondary);
+}
+
+/* a Telegram message: plain text, then the inline buttons on a waiting trade */
+.ns-tgchat {
+  display: grid;
+  gap: 4px;
+  justify-items: start;
+}
+.ns-tg-bubble {
+  position: relative;
+  max-width: 100%;
+  padding: 8px 10px 18px;
+  border-radius: 14px 14px 14px 4px;
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-1);
+}
+[dir='rtl'] .ns-tg-bubble {
+  border-radius: 14px 14px 4px 14px;
+}
+.ns-tg-text {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: var(--fs-footnote);
+  line-height: 18px;
+  color: var(--label);
+}
+.ns-tg-bubble time {
+  position: absolute;
+  inset-inline-end: 10px;
+  bottom: 4px;
+  font-size: 11px;
+  color: var(--label-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.ns-tg-keys {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  width: 100%;
+}
+.ns-tg-keys span {
+  display: grid;
+  place-items: center;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-1);
+  font-size: var(--fs-footnote);
+  font-weight: 600;
+  color: var(--accent-ink);
+}
+
+/* ---- Telegram bot ------------------------------------------------------ */
+.ns-tg-setup {
+  display: grid;
+  gap: 18px;
+  padding: 20px;
+}
+.ns-tg-intro {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: var(--fs-subheadline);
+  line-height: var(--lh-subheadline);
+}
+.ns-tg-mark {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  background: var(--fill-3);
+  color: var(--label-secondary);
+}
+.ns-tg-mark svg {
+  width: 18px;
+  height: 18px;
+}
+.ns-tg-mark.is-on {
+  background: var(--accent-wash);
+  color: var(--accent-ink);
+}
+.ns-steps {
+  display: grid;
+  gap: 10px;
+  max-width: 72ch;
+}
+.ns-steps li {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  gap: 10px;
+  font-size: var(--fs-subheadline);
+  line-height: var(--lh-subheadline);
+}
+.ns-step-n {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--fill-3);
+  font-size: var(--fs-footnote);
+  font-weight: 600;
+}
+.ns-tg-form {
+  display: grid;
+  gap: 14px;
+  padding-top: 16px;
+  border-top: 0.5px solid var(--separator);
+}
+.ns-tg-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+.ns-tg-top {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 20px;
+}
+.ns-tg-id {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.ns-tg-bot {
+  font-size: var(--fs-headline);
+  line-height: var(--lh-headline);
+  font-weight: 600;
+}
+.ns-tg-to {
+  font-size: var(--fs-footnote);
+  color: var(--label-secondary);
+}
+.ns-badge-ok {
+  margin-inline-start: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding-inline: 8px;
+  border-radius: 999px;
+  background: var(--profit-wash);
+  color: var(--profit-ink);
+  font-size: var(--fs-footnote);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.ns-badge-ok svg {
+  width: 13px;
+  height: 13px;
+}
+.ns-tg-rows {
+  border-top: 0.5px solid var(--separator);
+}
+.ns-tg-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 44px;
+  padding-inline: 20px;
+  font-size: var(--fs-subheadline);
+}
+.ns-tg-row + .ns-tg-row {
+  border-top: 0.5px solid var(--separator);
+}
+.ns-tg-row dd {
+  color: var(--label-secondary);
+}
+.ns-tg-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 20px 12px;
+  font-size: var(--fs-footnote);
+  color: var(--profit-ink);
+}
+.ns-tg-status svg {
+  width: 14px;
+  height: 14px;
+}
+.ns-tg-notice {
+  margin: 4px 20px 14px;
+}
+.ns-tg-err {
+  margin-top: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--fill-4);
+  font-family: var(--font-mono);
+  font-size: var(--fs-caption);
+  line-height: 16px;
+  color: var(--label);
+  overflow-wrap: anywhere;
+}
+.ns-used {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fs-footnote);
+  font-weight: 600;
+  color: var(--profit-ink);
+}
+.ns-used svg {
+  width: 14px;
+  height: 14px;
+}
+.ns-spacer {
+  flex: 1;
+}
+
+/* ---- Phone: each event carries its three switches, labelled ------------- */
+@container (max-width: 620px) {
+  .ns-head {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 2px;
+    padding: 8px 16px;
+    position: static;
+  }
+  .ns-ev-head {
+    display: none;
+  }
+  .ns-ch {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    justify-items: start;
+    align-items: center;
+    column-gap: 8px;
+    padding: 6px 0;
+    text-align: start;
+  }
+  .ns-ch + .ns-ch {
+    border-top: 0.5px solid var(--separator);
+  }
+  .ns-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    row-gap: 10px;
+  }
+  .ns-ev {
+    grid-column: 1 / -1;
+  }
+  .ns-cell-label {
+    display: block;
+    font-size: var(--fs-caption);
+    line-height: 16px;
+    color: var(--label-secondary);
+  }
+  .ns-row + .ns-row::before {
+    inset-inline-start: 16px;
+  }
+  .ns-tg-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ns-tg-setup {
+    padding: 16px;
+  }
+  .ns-pv-pick select {
+    max-width: 170px;
+  }
+  .ns-spacer {
+    display: none;
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "code": "0",
+  "msg": "",
+  "data": [
+    {
+      "instId": "BTC-USDT-SWAP",
+      "instType": "SWAP",
+      "oi": "2876543.21",
+      "oiCcy": "28765.4321",
+      "oiUsd": "3289012345.67",
+      "ts": "1793207700331"
+    },
+    {
+      "instId": "ETH-USDT-SWAP",
+      "instType": "SWAP",
+      "oi": "18765432.1",
+      "oiCcy": "1876543.21",
+      "oiUsd": "7654321098.7",
+      "ts": "1793207700331"
+    }
+  ]
+}

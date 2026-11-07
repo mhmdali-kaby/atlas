@@ -1,0 +1,120 @@
+[
+ {
+  "id": "3c34c0dd-d2b2-5161-af00-3d0873689b9b",
+  "env": "demo",
+  "thread_id": "0636fb95-a71f-5f76-9e0e-bb777b8652e9",
+  "event_id": "29cf38b7-5236-57ec-9c88-51e8af23f7a0",
+  "author_type": "agent",
+  "author": "technical_analyst",
+  "kind": "research_report",
+  "content_md": "TechnicalSetup card",
+  "card": {
+   "type": "technical_setup",
+   "inst_id": "BTC-USDT-SWAP",
+   "timeframe_bias": {
+    "1D": "up",
+    "4H": "up",
+    "1H": "range",
+    "15m": "up"
+   },
+   "setup_type": "pullback_to_support",
+   "direction": "long",
+   "entry_zone": [
+    64198.6,
+    64301.4
+   ],
+   "trigger": "1H close back above 64301.4 inside 1H:z2",
+   "stop": 63581.8,
+   "targets": [
+    {
+     "price": 65051.8,
+     "r_multiple": 1.2,
+     "reason": "1H:z4",
+     "close_pct": null
+    },
+    {
+     "price": 65720.0,
+     "r_multiple": 2.2,
+     "reason": "1H:z5",
+     "close_pct": null
+    }
+   ],
+   "expected_r": 2.2,
+   "invalidation": "1H close below 63581.8",
+   "quality_score": 0.66,
+   "est_slippage_bps": null,
+   "levels_used": [
+    {
+     "id": "1H:z2",
+     "price": 64250.0
+    },
+    {
+     "id": "1H:z1",
+     "price": 64044.4
+    },
+    {
+     "id": "1H:z0",
+     "price": 63710.3
+    },
+    {
+     "id": "1H:z4",
+     "price": 65051.8
+    },
+    {
+     "id": "1H:z5",
+     "price": 65720.0
+    }
+   ],
+   "no_setup_reason": null,
+   "data_as_of": "2026-09-07T08:48:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-07T08:48:00Z",
+  "updated_at": "2026-09-07T08:48:00Z"
+ },
+ {
+  "id": "29c66981-f7ed-5f6d-9c78-0256ce376fbe",
+  "env": "demo",
+  "thread_id": "0636fb95-a71f-5f76-9e0e-bb777b8652e9",
+  "event_id": "e35200df-7499-55ac-bb00-99af67349309",
+  "author_type": "agent",
+  "author": "historian",
+  "kind": "research_report",
+  "content_md": "HistoryVerdict card",
+  "card": {
+   "type": "history_verdict",
+   "question": "analog check for a long on BTC-USDT-SWAP",
+   "inst_id": "BTC-USDT-SWAP",
+   "bar": "1H",
+   "n": 34,
+   "distribution": {
+    "24h": {
+     "median": 0.3,
+     "p10": -2.1,
+     "p90": 2.4,
+     "pct_positive": 52.0
+    }
+   },
+   "verdict": "supports",
+   "key_stat": "52% of 34 analogs positive at 24h",
+   "data_as_of": "2026-09-07T08:52:00+00:00"
+  },
+  "mentions": [],
+  "created_at": "2026-09-07T08:52:00Z",
+  "updated_at": "2026-09-07T08:52:00Z"
+ },
+ {
+  "id": "14d74edd-623f-5dfb-9fd6-6a2d5d6c566f",
+  "env": "demo",
+  "thread_id": "0636fb95-a71f-5f76-9e0e-bb777b8652e9",
+  "event_id": "5dba1123-c2ef-5e28-85c6-a50f755f534d",
+  "author_type": "agent",
+  "author": "devils_advocate",
+  "kind": "text",
+  "content_md": "Strongest objection: event risk. A high-impact release falls inside the window; cut the size.",
+  "card": null,
+  "mentions": [],
+  "created_at": "2026-09-07T08:58:00Z",
+  "updated_at": "2026-09-07T08:58:00Z"
+ }
+]

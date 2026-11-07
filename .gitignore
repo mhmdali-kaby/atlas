@@ -44,3 +44,13 @@ node_modules/
 /*/vendor/
 Pods/
 .gradle/
+
+# Python
+.venv/
+__pycache__/
+
+# CCQ's code graph. Not yours to keep.
+.graphifyignore
+
+# ./atlas runtime state (pids, logs)
+.atlas/

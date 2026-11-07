@@ -1,0 +1,175 @@
+import { ChartCandlestick, Lock, Search, UsersRound, X } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import type { TradingEnv } from '../../app/shell/tradingEnv'
+import { Skeleton } from '../../ui'
+import { useLang, useNow } from '../portfolio/hooks'
+import { agentBySlug, agentStatus } from './agents'
+import type { WarroomThread } from './api'
+import { InspectorPositions } from './InspectorPositions'
+import { Medallion } from './Medallion'
+import { InstrumentId } from './text'
+import { around } from './tokens'
+import { dayOrTime, formatDate } from './time'
+
+/*
+ * The inspector (design v4 War Room §7, ATL-39 part): the selected thread's head, the price chart's
+ * empty state in instrument threads, the agent's facts in a private thread, and the thread facts.
+ * Open positions (ATL-43) slot in above the thread facts.
+ */
+export function Inspector({
+  env,
+  thread,
+  threadName,
+  lastMessageAt,
+  loading,
+  picked = null,
+  onClearPick,
+}: {
+  env: TradingEnv
+  thread: WarroomThread | undefined
+  threadName: string
+  /** The newest loaded message's time, so the facts agree with the feed; null when empty. */
+  lastMessageAt: string | null
+  loading: boolean
+  /** An instrument chosen with ⌘K (ATL-250, `?inst=`): shown over the thread's own context until cleared. */
+  picked?: string | null
+  onClearPick?: () => void
+}) {
+  const { t } = useTranslation('warroom')
+  const lang = useLang()
+  const now = useNow(60_000)
+  const none = (
+    <>
+      <span aria-hidden="true">—</span>
+      <span className="sr-only">{t('none')}</span>
+    </>
+  )
+
+  let head = null
+  let body = null
+  const chartEmpty = (instId: string) => {
+    const [before, after] = around(t('chartEmpty.bodyBefore') + ' \u0000 ' + t('chartEmpty.bodyAfter'))
+    return (
+      <section className="insp-sec" aria-labelledby="wr-insp-chart">
+        <h3 className="insp-title" id="wr-insp-chart">
+          <span>{t('chart')}</span>
+        </h3>
+        <div className="insp-empty" data-testid="wr-chart-empty">
+          <ChartCandlestick aria-hidden="true" strokeWidth={1.5} />
+          <p className="insp-empty-title">{t('chartEmpty.title')}</p>
+          <p>
+            {before}
+            <InstrumentId id={instId} />
+            {after}
+          </p>
+        </div>
+      </section>
+    )
+  }
+  if (picked) {
+    head = (
+      <>
+        <div className="insp-pick">
+          <h2 className="text-title-3 insp-name" data-testid="wr-inspector-picked">
+            <InstrumentId id={picked} />
+          </h2>
+          <button type="button" className="insp-clear" aria-label={t('inspClear')} title={t('inspClear')} onClick={onClearPick} data-testid="wr-inspector-clear">
+            <X aria-hidden="true" strokeWidth={1.75} />
+          </button>
+        </div>
+        <p className="insp-kind">
+          <Search aria-hidden="true" strokeWidth={1.5} />
+          <span>{t('inspPicked')}</span>
+        </p>
+      </>
+    )
+    body = chartEmpty(picked)
+  } else if (thread?.kind === 'instrument') {
+    head = (
+      <>
+        <h2 className="text-title-3 insp-name">
+          <InstrumentId id={thread.key} />
+        </h2>
+        <p className="insp-kind">
+          <ChartCandlestick aria-hidden="true" strokeWidth={1.5} />
+          <span>{t('instSub')}</span>
+        </p>
+      </>
+    )
+    body = chartEmpty(thread.key)
+  } else if (thread?.kind === 'agent' && agentBySlug(thread.key)) {
+    const agent = agentBySlug(thread.key)!
+    const status = agentStatus(agent.slug)
+    head = (
+      <div className="insp-agent">
+        <Medallion slug={agent.slug} size={44} status={status} />
+        <div>
+          <h2 className="text-title-3">{threadName}</h2>
+          <p className="insp-kind">
+            <Lock aria-hidden="true" strokeWidth={1.5} />
+            <span>{t('agentSub')}</span>
+          </p>
+        </div>
+      </div>
+    )
+    body = (
+      <section className="insp-sec">
+        <dl className="insp-facts">
+          <dt>{t('agent.status')}</dt>
+          <dd>{t(`status.${status}`)}</dd>
+          <dt>{t('agent.handle')}</dt>
+          <dd>
+            <bdi dir="ltr">@{agent.handle}</bdi>
+          </dd>
+        </dl>
+        <p className="insp-role">{t(`agents.${agent.slug}.role`)}</p>
+      </section>
+    )
+  } else if (!thread && !loading) {
+    // The URL's thread is not in the list; the feed says so, and there are no facts to show.
+    return (
+      <aside className="inspector" id="wr-inspector" aria-label={t('inspector')} data-testid="wr-inspector">
+        <header className="insp-head">
+          <h2 className="text-title-3 insp-name">{t('notFound.title')}</h2>
+        </header>
+      </aside>
+    )
+  } else {
+    head = (
+      <>
+        <h2 className="text-title-3 insp-name">{thread ? threadName : <Skeleton style={{ width: 90, height: 18 }} />}</h2>
+        <p className="insp-kind">
+          <UsersRound aria-hidden="true" strokeWidth={1.5} />
+          <span>{t('mainSub')}</span>
+        </p>
+      </>
+    )
+  }
+
+  return (
+    <aside className="inspector" id="wr-inspector" aria-label={t('inspector')} data-testid="wr-inspector">
+      <header className="insp-head">{head}</header>
+      {body}
+      <InspectorPositions env={env} thread={thread} focus={picked} />
+      <section className="insp-sec" aria-labelledby="wr-insp-facts">
+        <h3 className="insp-title" id="wr-insp-facts">
+          <span>{t('facts')}</span>
+        </h3>
+        <dl className="insp-facts" aria-busy={loading || undefined}>
+          <dt>{t('started')}</dt>
+          <dd>{loading || !thread ? <Skeleton style={{ width: 76, height: 11 }} /> : formatDate(thread.created_at, lang, true)}</dd>
+          <dt>{t('lastMessage')}</dt>
+          <dd>
+            {loading ? (
+              <Skeleton style={{ width: 40, height: 11 }} />
+            ) : lastMessageAt ? (
+              <span className="num">{dayOrTime(lastMessageAt, lang, now, t('yesterday'))}</span>
+            ) : (
+              none
+            )}
+          </dd>
+        </dl>
+      </section>
+    </aside>
+  )
+}

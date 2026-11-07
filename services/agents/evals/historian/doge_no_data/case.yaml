@@ -1,0 +1,34 @@
+# Example case (ATL-92): an instrument with no candles in the replayed day. The right answer is an
+# honest "no data", n = 0 and does_not_support, never a made-up statistic.
+agent: historian
+replay_as_of: "2026-10-20T08:00:00Z"
+description: no-data answer for an instrument absent from the snapshot
+prompt: "@Historian how volatile has DOGE-USDT-SWAP been on 1H over the last 3 days?"
+properties:
+  valid_schema: { model: HistoryVerdict }
+  no_invented_numbers: {}
+  verdict_in: { values: [does_not_support] }
+  no_trade: {}
+  mentions_n: { equals: 0 }
+fake:
+  steps:
+    - tool: history.compute_stats
+      input: { inst_id: DOGE-USDT-SWAP, bar: 1H, lookback: 72 }
+    - text: >-
+        No data: there are no closed 1H candles for DOGE-USDT-SWAP in demo by 2026-10-20T08:00Z,
+        so n = 0 and history does not support any volatility claim.
+    - tool: warroom.post_message
+      input:
+        kind: research_report
+        content_md: "No 1H history for DOGE-USDT-SWAP (n = 0)."
+        card:
+          question: 1H volatility of DOGE-USDT-SWAP over the last 72 bars
+          inst_id: DOGE-USDT-SWAP
+          bar: 1H
+          period: null
+          n: 0
+          verdict: does_not_support
+          key_stat: "no closed 1H candles (n = 0)"
+          data_quality_notes: ["no candles for DOGE-USDT-SWAP in the window"]
+          data_as_of: "2026-10-20T08:00:00Z"
+    - result: { tokens_in: 1500, tokens_out: 160, turns: 3 }

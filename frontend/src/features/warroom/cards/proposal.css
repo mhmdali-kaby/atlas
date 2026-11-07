@@ -1,0 +1,256 @@
+/* =========================================================================
+   War Room proposal card (ATL-164): the owner's approval moment.
+   Built from the Historian and watchlist card system. No new colours or type
+   sizes. The deadline band is the only tinted, moving thing; the ladder
+   (css/ladder.css) carries the trade's shape; the stake carries the money.
+   ========================================================================= */
+.pr-card {
+  --pr-bg: var(--bg-tertiary);
+  margin-top: 8px; max-width: 680px; padding: 12px 16px 14px; display: grid; gap: 12px;
+  border-radius: var(--radius-card); background: var(--pr-bg);
+  box-shadow: 0 0 0 0.5px var(--hairline-color), var(--shadow-1);
+  container-type: inline-size; grid-template-columns: minmax(0, 1fr);
+}
+.dark .pr-card { --pr-bg: var(--bg-secondary); }
+/* a card that is waiting on you carries a quiet accent ring */
+.pr-card.is-awaiting_owner { box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 42%, transparent), var(--shadow-2); }
+.pr-card.is-compact { gap: 8px; padding-block: 10px 12px; }
+
+.pr-head { flex-wrap: wrap; row-gap: 4px; }
+.pr-head .hv-kind { white-space: nowrap; }
+.pr-status {
+  margin-inline-start: auto; display: inline-flex; align-items: center; gap: 5px; height: 24px; padding-inline: 7px 10px;
+  border-radius: var(--radius-full); background: var(--fill-3); color: var(--label);
+  font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 600; white-space: nowrap;
+}
+.pr-status .icon { width: 14px; height: 14px; flex: none; stroke-width: 2; color: var(--label-secondary); }
+.pr-status.is-awaiting_owner { background: var(--accent-wash); color: var(--accent-ink); }
+.pr-status.is-awaiting_owner .icon { color: var(--accent-ink); }
+.pr-status.is-expired { background: var(--warning-wash); color: var(--warning-ink); }
+.pr-status.is-expired .icon { color: var(--warning-ink); }
+.pr-status.is-filled .icon { color: var(--profit-ink); }
+.pr-status.is-rejected .icon { color: var(--loss-ink); }
+
+/* what the trade is: direction and instrument, the card's headline */
+.pr-title { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; font-size: var(--fs-title-3); line-height: var(--lh-title-3); letter-spacing: var(--tr-title-3); font-weight: 600; }
+.pr-title .inst-tok { font-weight: 600; }
+.pr-title.is-small { font-size: var(--fs-headline); line-height: var(--lh-headline); letter-spacing: var(--tr-headline); }
+.pr-dir {
+  display: inline-flex; align-items: center; gap: 4px; height: 26px; padding-inline: 7px 10px; border-radius: var(--radius-full);
+  background: var(--fill-3); color: var(--label);
+  font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); letter-spacing: var(--tr-subheadline); font-weight: 600;
+}
+.pr-dir .icon { width: 16px; height: 16px; stroke-width: 2; }
+.pr-title.is-small .pr-dir { height: 24px; font-size: var(--fs-footnote); }
+.pr-edited { display: flex; align-items: center; gap: 6px; margin-top: -4px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.pr-edited .icon { width: 13px; height: 13px; flex: none; }
+
+/* ---- the deadline band: the only tinted, moving thing on the card -------- */
+.pr-band {
+  position: relative; overflow: hidden;
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; column-gap: 10px;
+  min-height: 44px; padding-block: 8px 10px; padding-inline: 12px 14px; border-radius: 10px;
+  background: color-mix(in srgb, var(--accent) 9%, var(--pr-bg));
+  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--accent) 24%, transparent);
+}
+.dark .pr-band { background: color-mix(in srgb, var(--accent) 17%, var(--pr-bg)); box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--accent) 36%, transparent); }
+.pr-band-ic { display: grid; color: var(--accent); }
+.pr-band-ic .icon { width: 18px; height: 18px; }
+.pr-band-t { font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); font-weight: 500; color: var(--label); }
+.pr-left { font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); font-weight: 600; font-variant-numeric: tabular-nums; color: var(--accent-ink); white-space: nowrap; }
+.pr-left .fig { display: inline-block; min-width: 2.6em; text-align: end; }
+.pr-band.is-last { background: color-mix(in srgb, var(--warning) 11%, var(--pr-bg)); box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--warning) 34%, transparent); }
+.pr-band.is-last .pr-left, .pr-band.is-last .pr-band-ic { color: var(--warning-ink); }
+.pr-drain {
+  position: absolute; inset-inline: 0; bottom: 0; height: 2px;
+  background: var(--accent); transform-origin: left; transform: scaleX(var(--from));
+  animation-name: pr-drain; animation-timing-function: linear; animation-fill-mode: forwards;
+}
+[dir="rtl"] .pr-drain { transform-origin: right; }
+.pr-band.is-last .pr-drain { background: var(--warning); }
+@keyframes pr-drain { from { transform: scaleX(var(--from)); } to { transform: scaleX(0); } }
+.pr-band.is-closing { animation: pr-band-out var(--dur-base) var(--ease-settle) forwards; }
+@keyframes pr-band-out { to { opacity: 0; transform: translateY(-4px) scale(0.98); } }
+
+/* ---- what happened: one line, icon + words ------------------------------ */
+.pr-outcome { display: flex; align-items: flex-start; gap: 8px; font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); color: var(--label); text-wrap: pretty; }
+.pr-outcome .icon { width: 17px; height: 17px; flex: none; margin-top: 1.5px; color: var(--accent); }
+.pr-outcome.is-done .icon { color: var(--profit-ink); }
+.pr-outcome.is-warn .icon { color: var(--warning-ink); }
+.pr-outcome q { quotes: "“" "”"; color: var(--label); }
+[dir="rtl"] .pr-outcome q { quotes: "«" "»"; }
+.pr-notice {
+  margin: 0; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: start;
+  padding: 10px 12px; border-radius: 10px; background: var(--accent-wash); color: var(--label);
+}
+.pr-notice > .icon { width: 17px; height: 17px; margin-top: 1px; color: var(--accent-ink); }
+.pr-notice-title { font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); font-weight: 600; }
+.pr-notice-body { font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); text-wrap: pretty; }
+
+.pr-ladder { margin-inline: 2px; }
+/* narrow cards: the rail as a picture, every value as a row beneath it */
+.pr-ladder-compact .ladder.is-compact { padding-block: 12px 14px; }
+.pr-ladder-compact .ladder.is-compact.has-now-room { padding-top: 34px; }
+.pr-ladder-compact .ladder-label:not(.is-now), .pr-ladder-compact .ladder-liq { display: none; }
+.pr-ladder-compact .ladder-label.is-now { font-size: var(--fs-footnote); line-height: var(--lh-footnote); }
+.pr-ladder-compact .ladder-label.is-now .ladder-v { font-size: var(--fs-footnote); line-height: var(--lh-footnote); }
+.pr-ladder-compact { display: none; }
+.pr-ed-ladder .pr-ladder-compact { display: none; }
+.pr-tps { display: grid; gap: 3px; margin: 0 0 2px; padding: 0; list-style: none; }
+.pr-tps li.is-stop .pr-tps-k { color: var(--loss-ink); }
+.pr-tps li.is-tp .pr-tps-k { color: var(--profit-ink); }
+.pr-tps li.is-entry .pr-tps-k { color: var(--accent-ink); }
+.pr-tps li { display: grid; grid-template-columns: 4.5rem auto minmax(0, 1fr); column-gap: 10px; align-items: baseline; font-size: var(--fs-footnote); line-height: var(--lh-footnote); }
+.pr-tps-k { color: var(--label-secondary); }
+.pr-tps li > .fig { font-weight: 600; color: var(--label); font-variant-numeric: tabular-nums; }
+.pr-tps-s { color: var(--label-secondary); }
+
+/* ---- the stake: the money, the card's only large figures ---------------- */
+.pr-stake { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding-top: 12px; border-top: 0.5px solid var(--separator); }
+.pr-stake-item { display: grid; gap: 1px; align-content: start; min-width: 0; }
+.pr-stake-k { font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.pr-stake-v { font-size: var(--fs-title-3); line-height: var(--lh-title-3); letter-spacing: var(--tr-title-3); font-weight: 600; color: var(--label); font-variant-numeric: tabular-nums; }
+.pr-stake-s { font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); text-wrap: pretty; }
+.pr-stake-item.is-risk .pr-stake-k::before {
+  content: ""; display: inline-block; width: 8px; height: 8px; margin-inline-end: 6px; border-radius: 2px;
+  background: color-mix(in srgb, var(--loss) 34%, transparent); box-shadow: inset 0 0 0 1px var(--loss);
+}
+
+/* ---- facts, reasons, the objection, the evidence ------------------------ */
+.pr-facts { display: grid; gap: 6px; margin: 0; }
+.pr-fact { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); column-gap: 12px; align-items: baseline; }
+.pr-fact dt { font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 600; color: var(--label-secondary); }
+.pr-fact dd { margin: 0; display: block; font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); color: var(--label); text-wrap: pretty; }
+.pr-fact-note { display: block; margin-top: 1px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+
+.pr-reasons { display: grid; gap: 8px; padding-top: 12px; border-top: 0.5px solid var(--separator); }
+.pr-why { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); column-gap: 12px; align-items: baseline; }
+.pr-k { font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 600; color: var(--label-secondary); }
+.pr-why p { font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); max-width: 62ch; text-wrap: pretty; }
+.pr-da { display: grid; gap: 4px; padding: 10px 12px; border-radius: 10px; background: var(--fill-4); box-shadow: inset 0 0 0 0.5px var(--hairline-color); }
+.pr-da-head { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.pr-da-head b { color: var(--label); font-weight: 600; }
+.pr-da-r { color: var(--label); font-weight: 600; }
+.pr-pips { display: inline-flex; gap: 2px; }
+.pr-pips i { width: 10px; height: 6px; border-radius: 2px; background: var(--fill-2); }
+.pr-pips i.is-on { background: var(--label-secondary); }
+.pr-da p { font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); text-wrap: pretty; }
+.pr-link { display: inline-flex; align-items: center; gap: 1px; color: var(--accent-ink); font-weight: 500; white-space: nowrap; border-radius: 4px; }
+.pr-link .icon { width: 13px; height: 13px; stroke-width: 2; }
+.pr-link:hover { text-decoration: underline; text-underline-offset: 2px; }
+.pr-link:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+.pr-evidence { display: grid; grid-template-columns: 5.5rem minmax(0, 1fr); column-gap: 12px; align-items: center; }
+.pr-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.pr-chip {
+  display: inline-flex; align-items: center; gap: 5px; height: 26px; padding-inline: 8px 10px; border-radius: var(--radius-full);
+  background: var(--fill-3); color: var(--label); font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 500; white-space: nowrap;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+.pr-chip .icon { width: 14px; height: 14px; flex: none; color: var(--label-secondary); }
+a.pr-chip:hover { background: var(--fill-2); }
+.pr-chip:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.pr-chip.is-static { cursor: default; background: transparent; box-shadow: inset 0 0 0 1px var(--separator); }
+
+/* ---- the decision ------------------------------------------------------- */
+.pr-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding-top: 12px; border-top: 0.5px solid var(--separator); }
+.pr-actions .btn .icon { width: 15px; height: 15px; }
+.pr-actions .btn .spinner { width: 14px; height: 14px; }
+.pr-actions-gap { flex: 1; }
+.pr-approve { min-width: 104px; }
+
+/* ---- compact cards: a replaced version, a stop change -------------------- */
+.pr-compact-line { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 4px 6px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); text-wrap: pretty; }
+.pr-compact-line > .icon { width: 14px; height: 14px; flex: none; margin-top: 2px; color: var(--profit-ink); }
+.pr-compact-line > span { flex: 1; min-width: 0; }
+.pr-compact-line.is-strong { font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); color: var(--label); }
+.pr-card.is-replaced .pr-title, .pr-card.is-replaced .hv-kind { color: var(--label-secondary); }
+
+/* ---- narrow: one column for the stake and the label rows ---------------- */
+@container (max-width: 520px) {
+  .pr-ladder .pr-ladder-full { display: none; }
+  .pr-ladder .pr-ladder-compact { display: block; }
+  .pr-title { font-size: var(--fs-headline); line-height: var(--lh-headline); letter-spacing: var(--tr-headline); }
+  .pr-fact, .pr-why, .pr-evidence { grid-template-columns: minmax(0, 1fr); row-gap: 2px; }
+  .pr-evidence { row-gap: 6px; }
+  .pr-stake { gap: 10px; }
+  .pr-stake-v { font-size: var(--fs-headline); line-height: var(--lh-headline); }
+  .pr-actions-gap { display: none; }
+  .pr-approve { flex: 1 1 100%; }
+}
+
+/* =========================================================================
+   Sheets: reject (a required reason) and edit (stops only tighten)
+   ========================================================================= */
+.pr-textarea { height: auto; min-height: 92px; padding-block: 10px; resize: vertical; line-height: var(--lh-callout); font-family: inherit; }
+.pr-quick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: -4px; }
+.pr-quick-k { flex-basis: 100%; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.pr-qchip {
+  display: inline-flex; align-items: center; height: 30px; padding-inline: 12px; border-radius: var(--radius-full);
+  background: var(--fill-3); color: var(--label); font-size: var(--fs-footnote); line-height: var(--lh-footnote); font-weight: 500;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+.pr-qchip:hover { background: var(--fill-2); }
+.pr-qchip:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+.pr-qchip:disabled { opacity: 0.5; }
+
+[data-sheet].pr-edit-sheet { width: min(640px, calc(100vw - 32px)); }
+.pr-ed-preview { display: grid; gap: 0; padding: 10px 14px 6px; border-radius: 12px; background: var(--fill-4); box-shadow: inset 0 0 0 0.5px var(--hairline-color); transition: opacity var(--dur-fast) var(--ease-out); }
+.pr-ed-preview.is-stale { opacity: 0.45; }
+.pr-ed-preview .ladder { padding-block: 54px 66px; }
+.pr-ed-preview .ladder:lang(ar) { padding-bottom: 76px; }
+.pr-sheet [hidden] { display: none !important; }
+.pr-ed-exp { margin-top: 0; padding-bottom: 4px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); min-height: 18px; }
+.pr-ed-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.pr-ed-tps { display: grid; gap: 8px; margin: 0; padding: 0; border: 0; min-width: 0; }
+.pr-ed-tps legend { padding: 0; margin-bottom: 6px; }
+.pr-tp { display: grid; grid-template-columns: minmax(0, 1fr) 7.5rem; gap: 10px; align-items: start; }
+.pr-ef .field-label { font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.pr-ef .input { height: 36px; font-variant-numeric: tabular-nums; }
+.pr-ef:has(.pr-unit) .input { padding-inline-end: 54px; }
+.pr-unit { position: absolute; inset-inline-end: 12px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); pointer-events: none; }
+.pr-ef.is-share:has(.pr-unit) .input { padding-inline-end: 30px; }
+.pr-ed-sum { display: flex; align-items: center; gap: 6px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.pr-ed-sum .icon { width: 14px; height: 14px; flex: none; color: var(--profit-ink); }
+.pr-ed-sum.is-error { color: var(--loss-ink); }
+.pr-ed-sum.is-error .icon { color: var(--loss-ink); }
+[data-sheet].pr-edit-sheet > div:last-child { align-items: center; }
+.pr-ed-hint { margin-inline-end: auto; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+@media (max-width: 560px) {
+  .pr-ed-ladder .pr-ladder-full { display: none; }
+  .pr-ed-ladder .pr-ladder-compact { display: block; }
+  .pr-ed-grid { grid-template-columns: minmax(0, 1fr); }
+  .pr-tp { grid-template-columns: minmax(0, 1fr) 6.5rem; }
+  [data-sheet].pr-edit-sheet > div:last-child { flex-wrap: wrap; }
+  .pr-ed-hint { flex-basis: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pr-band.is-closing { animation: none; }
+  .pr-chip, .pr-qchip, .pr-ed-preview { transition: none; }
+}
+
+/* the Edit sheet's fields (TextField's box, with a unit inside and the error under it) */
+.pr-input-wrap { position: relative; display: flex; align-items: center; }
+.pr-ef { display: grid; gap: 6px; min-width: 0; }
+.pr-ef .field-hint { font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); text-wrap: pretty; }
+.pr-err { display: flex; align-items: flex-start; gap: 6px; font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--loss-ink); }
+.pr-err svg { width: 14px; height: 14px; flex: none; margin-top: 2px; }
+.pr-why > div > :first-child { margin-top: 0; }
+.pr-why .md, .pr-why p { font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); }
+.pr-da-head .medal { flex: none; }
+
+/* The proposal card's note in Replay, where its actions would be. */
+.pr-readonly { display: flex; align-items: center; gap: 6px; font-size: var(--text-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.pr-readonly .icon { width: 14px; height: 14px; flex: none; }
+
+/* ---- the real-order sheet (ATL-240, design v21 proposal.css .lvo) ---------------------------- */
+.pr-live-sheet { --pr-bg: var(--bg-tertiary); }
+.lvo { margin: 0; padding: 4px 16px; display: grid; border-radius: 12px; background: var(--fill-4); }
+.lvo-row { display: grid; grid-template-columns: minmax(96px, auto) minmax(0, 1fr); gap: 4px 16px; align-items: baseline; padding: 10px 0; }
+.lvo-row + .lvo-row { border-top: 0.5px solid var(--separator); }
+.lvo dt { font-size: var(--fs-subheadline); line-height: var(--lh-subheadline); color: var(--label-secondary); }
+.lvo dd { margin: 0; display: grid; justify-items: end; gap: 2px; text-align: end; min-width: 0; }
+.lvo-v { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; font-size: var(--fs-callout); line-height: var(--lh-callout); font-weight: 600; color: var(--label); font-variant-numeric: tabular-nums; }
+.lvo-v .pr-dir { height: 24px; font-size: var(--fs-footnote); }
+.lvo-s { font-size: var(--fs-footnote); line-height: var(--lh-footnote); color: var(--label-secondary); }
+.pr-live-sheet .pr-band { margin: 0; }

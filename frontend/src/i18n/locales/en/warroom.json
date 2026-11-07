@@ -1,0 +1,990 @@
+{
+  "sidebar": {
+    "agents": "Agents",
+    "threads": "Threads",
+    "allOffline": "All offline",
+    "threadsError": "Couldn’t load threads",
+    "loadingThreads": "Loading threads"
+  },
+  "agents": {
+    "orchestrator": {
+      "name": "Orchestrator",
+      "role": "Runs the process and answers you first"
+    },
+    "market_scout": {
+      "name": "Market Scout",
+      "role": "Picks what the team watches each day"
+    },
+    "news_intelligence": {
+      "name": "News Intelligence",
+      "role": "Reads the news and the event calendar"
+    },
+    "historian": {
+      "name": "Historian",
+      "role": "Answers with statistics from history"
+    },
+    "technical_analyst": {
+      "name": "Technical Analyst",
+      "role": "Turns charts into levels and plans"
+    },
+    "derivatives_sentiment": {
+      "name": "Derivatives & Sentiment",
+      "short": "Derivatives",
+      "role": "Reads funding, open interest and crowding"
+    },
+    "strategist": {
+      "name": "Strategist",
+      "role": "Writes the trade proposals"
+    },
+    "devils_advocate": {
+      "name": "Devil’s Advocate",
+      "role": "Finds the strongest reasons not to trade"
+    },
+    "portfolio_manager": {
+      "name": "Portfolio Manager",
+      "role": "Manages positions after entry"
+    }
+  },
+  "status": {
+    "offline": "Offline",
+    "idle": "Idle",
+    "thinking": "Thinking",
+    "waiting": "Waiting",
+    "degraded": "Degraded",
+    "paused": "Paused"
+  },
+  "tag": {
+    "CONFIRMED": "CONFIRMED",
+    "REPORTED": "REPORTED",
+    "RUMOUR": "RUMOUR"
+  },
+  "main": "Main",
+  "mainSub": "Everyone: you and 9 agents",
+  "instSub": "Instrument thread",
+  "agentSub": "Private thread",
+  "today": "Today",
+  "yesterday": "Yesterday",
+  "feed": "Messages in {{thread}}",
+  "you": "You",
+  "atlas": "Atlas",
+  "messageLabel": "{{name}}, {{time}}",
+  "jumpTo": "Jump to the original message",
+  "actions": {
+    "reply": "Reply",
+    "copy": "Copy text",
+    "copied": "Copied"
+  },
+  "loading": "Loading messages",
+  "loadingOlder": "Loading earlier messages",
+  "olderError": "Couldn’t load earlier messages.",
+  "tryAgain": "Try again",
+  "origin": {
+    "title": "This is the start of {{thread}}",
+    "body": "Created {{date}}. Atlas keeps every message here, with its time."
+  },
+  "empty": {
+    "title": "No messages yet",
+    "body": "Messages from you, the agents and Atlas appear here, newest at the bottom. Write the first one below.",
+    "instTitle": "Nothing about {{inst}} yet",
+    "instBody": "Agents open a thread for each instrument they watch. Write below to start this one."
+  },
+  "notFound": {
+    "title": "This thread isn’t here",
+    "body": "The link may be old, from the other environment, or mistyped. Main has everything the team is saying now.",
+    "action": "Go to Main"
+  },
+  "error": {
+    "title": "Couldn’t load messages",
+    "bodyBefore": "Atlas’s server didn’t answer. Check that Atlas is running with",
+    "bodyAfter": ", then try again."
+  },
+  "inspector": "Inspector",
+  "toggleInspector": "Show or hide the inspector",
+  "chart": "Price chart",
+  "chartEmpty": {
+    "title": "No price history yet",
+    "bodyBefore": "The candle chart for",
+    "bodyAfter": "appears here once Atlas records its market data."
+  },
+  "facts": "Thread",
+  "started": "Started",
+  "lastMessage": "Last message",
+  "none": "None",
+  "agent": {
+    "status": "Status",
+    "handle": "Mention as",
+    "role": "Role"
+  },
+  "kind": {
+    "watchlist": "Watchlist",
+    "research_report": "Research report",
+    "news_alert": "News alert",
+    "proposal": "Proposal",
+    "vote_summary": "Vote summary",
+    "risk_check": "Risk check",
+    "order": "Order",
+    "fill": "Fill",
+    "position_update": "Position update",
+    "post_mortem": "Post-mortem",
+    "system_alert": "System alert",
+    "regime_table": "Regime table"
+  },
+  "composer": {
+    "label": "Message",
+    "placeholder": "Message the team",
+    "placeholderInstrument": "Message about {{inst}}",
+    "placeholderAgent": "Message {{name}} privately",
+    "mention": "Mention an agent",
+    "send": "Send",
+    "hint": "<k>Return</k> to send, <k>Shift</k>-<k>Return</k> for a new line",
+    "count": "{{n}} / {{max}}",
+    "over": "{{n}} over the {{max}} limit",
+    "cantSend": "You can write here once the thread loads.",
+    "pickerLabel": "Mention",
+    "pickerSub": "{{status}}, {{role}}",
+    "pickerNone": "No agent called “{{q}}”"
+  },
+  "replyChip": {
+    "title": "Replying to {{name}}",
+    "cancel": "Cancel reply"
+  },
+  "send": {
+    "sending": "Sending…",
+    "notSent": "Not sent",
+    "delete": "Delete"
+  },
+  "live": {
+    "down": "Live updates paused. Reconnecting…",
+    "reconnect": "Reconnect now",
+    "back": "Live again.",
+    "backMissed_one": "Live again. {{count}} missed message caught up.",
+    "backMissed_other": "Live again. {{count}} missed messages caught up."
+  },
+  "newMessages_one": "{{count}} new message",
+  "newMessages_other": "{{count}} new messages",
+  "latest": "Scroll to the latest message",
+  "liveAnnounce": "{{name}}: {{text}}",
+  "land": {
+    "findingMessage": "Finding the message…",
+    "findingProposal": "Finding the proposal…",
+    "notFound": {
+      "message": "Couldn’t find that message",
+      "proposal": "Couldn’t find that proposal",
+      "body": "It isn’t in this environment’s War Room. Showing the latest messages."
+    }
+  },
+  "positions": {
+    "title": "Open positions",
+    "view": "Positions",
+    "empty": {
+      "title": "No open positions",
+      "body": {
+        "demo": "Positions on the OKX demo account appear here as soon as Atlas syncs them.",
+        "live": "Positions on the OKX live account appear here as soon as Atlas syncs them."
+      }
+    },
+    "error": {
+      "title": "Couldn’t load positions",
+      "body": "Atlas’s server didn’t answer. Try again in a moment."
+    },
+    "side": {
+      "long": "Long",
+      "short": "Short"
+    },
+    "terms": "{{side}} <lever>{{lever}}×</lever>, <n>{{contracts}}</n> contracts",
+    "entry": "Entry",
+    "mark": "Mark"
+  },
+  "news": {
+    "imp": "Importance <n>{{n}}</n>",
+    "impOf": "Importance {{n}} of 5",
+    "by": "Published by {{source}} at {{time}}",
+    "read": "Read on {{host}}",
+    "sentiment": "Sentiment",
+    "positive": "positive",
+    "negative": "negative",
+    "neutral": "neutral",
+    "instruments": "Linked instruments",
+    "type": {
+      "earnings": "Earnings",
+      "guidance": "Guidance",
+      "macro_release": "Macro release",
+      "central_bank": "Central bank",
+      "regulation": "Regulation",
+      "hack_exploit": "Hack or exploit",
+      "listing": "Listing",
+      "delisting": "Delisting",
+      "ETF_flow": "ETF flows",
+      "M&A": "Merger or acquisition",
+      "lawsuit": "Lawsuit",
+      "product": "Product",
+      "partnership": "Partnership",
+      "token_unlock": "Token unlock",
+      "geopolitics": "Geopolitics",
+      "supply_shock": "Supply shock",
+      "other": "Other"
+    }
+  },
+  "hv": {
+    "asOf": "Data as of {{time}}",
+    "verdictSr": "History’s verdict:",
+    "v": {
+      "supports": "Supports",
+      "weakly_supports": "Weakly supports",
+      "does_not_support": "Doesn’t support",
+      "contradicts": "Contradicts"
+    },
+    "corr": {
+      "capped": "Capped from {{from}}: {{cases}}",
+      "cappedTip": "Atlas caps a verdict at Weakly supports when fewer than 20 cases back it.",
+      "changed": "Changed from {{from}}: {{cases}}",
+      "changedTip": "Atlas needs at least 20 cases for a strong verdict either way, so it changed this one.",
+      "changedOtherTip": "Atlas changed this verdict because the evidence didn’t meet its rules.",
+      "gapped": "Lowered from {{from}}: the backtest data has a gap",
+      "gappedTip": "Atlas doesn’t accept a backtest claim on data with an unrepaired gap."
+    },
+    "cases_one": "{{count}} case",
+    "cases_other": "{{count}} cases",
+    "noCases": "No matching cases",
+    "noCasesTip": "History has no situation like this one in the period searched.",
+    "weak": "Weak evidence",
+    "weakTip": "Fewer than 20 cases: a hint, not a pattern.",
+    "bar": {
+      "1m": "1-minute bars",
+      "5m": "5-minute bars",
+      "15m": "15-minute bars",
+      "1H": "Hourly bars",
+      "4H": "4-hour bars",
+      "1D": "Daily bars"
+    },
+    "period": "{{from}} to {{to}}",
+    "sample": "Sample",
+    "table": "What followed, by horizon, against the base rate",
+    "col": {
+      "horizon": "Horizon",
+      "median": "Median",
+      "mid80": "Middle 80%",
+      "mid80Tip": "10th to 90th percentile: 8 in 10 cases ended inside this range.",
+      "rose": "Rose",
+      "roseTip": "Share of cases where the price was higher at the end of the horizon."
+    },
+    "row": {
+      "cases": "These cases",
+      "base": "Base rate",
+      "baseTip": "Any {{h}} in the same period, for comparison."
+    },
+    "noBase": "No base rate",
+    "range": "{{a}} to {{b}}",
+    "h_one": "{{count}} hour",
+    "h_other": "{{count}} hours",
+    "stripTip": "These cases: median {{a}}. Base rate: median {{b}}.",
+    "regime": "Regime",
+    "stop": "Stop",
+    "stopLine": "{{stop}} ATR from entry. The median 4-hour range is {{range}} ATR.",
+    "stopState": {
+      "inside_noise": "Inside normal noise",
+      "ok": "Clear of normal noise"
+    },
+    "overfit": "Probably overfit. The rule did much worse on data it wasn’t tuned on.",
+    "notes": "Data notes",
+    "unv": "Not found in any tool output",
+    "unvLong": "Atlas didn’t find this number in any tool output from this answer.",
+    "unvNote_one": "{{count}} number in this answer isn’t in the tools’ data. It’s marked.",
+    "unvNote_other": "{{count}} numbers in this answer aren’t in the tools’ data. They’re marked.",
+    "more": "Scroll for more columns"
+  },
+  "rg": {
+    "label": {
+      "trend_up": "Trending up",
+      "trend_down": "Trending down",
+      "range": "Ranging",
+      "high_vol": "High volatility",
+      "low_vol": "Low volatility",
+      "no_data": "No data",
+      "insufficient_data": "Too little data"
+    },
+    "likely": "{{p}} likely",
+    "rule": "Rule-based",
+    "ruleTip": "Labelled by rule (ADX and the volatility percentile), so there is no probability.",
+    "for": "for {{d}}",
+    "days_one": "{{count}} day",
+    "days_other": "{{count}} days",
+    "hours_one": "{{count}} hour",
+    "hours_other": "{{count}} hours",
+    "underHour": "under an hour",
+    "changed": "Changed in the last 24 hours"
+  },
+  "rt": {
+    "title": "Market regimes",
+    "sub_one": "{{count}} instrument, by 24-hour volume",
+    "sub_other": "{{count}} instruments, by 24-hour volume",
+    "filter": "Show regime",
+    "all": "All",
+    "col": {
+      "rank": "Volume rank",
+      "inst": "Instrument",
+      "regime": "Regime",
+      "prob": "Probability",
+      "days": "In regime"
+    },
+    "showAll": "Show all {{n}}",
+    "showFewer": "Show fewer",
+    "caption": "Regime of each instrument. Select a column header to sort."
+  },
+  "reason": {
+    "show": "Show reasoning",
+    "hide": "Hide reasoning",
+    "calls_one": "{{count}} tool call",
+    "calls_other": "{{count}} tool calls",
+    "none": "No written reasoning for this answer.",
+    "input": "Input",
+    "output": "Output",
+    "asOf": "data as of {{time}}",
+    "lines_one": "Show all {{count}} line",
+    "lines_other": "Show all {{count}} lines",
+    "less": "Show less",
+    "cutIn": "Atlas cut this input at 2,000 characters.",
+    "cutOut": "Atlas cut this output at 2,000 characters.",
+    "cutText": "Atlas showed the first 4,000 characters of this step. The full reasoning comes with the answer.",
+    "res": {
+      "few": "Too few: {{n}}",
+      "none": "No data",
+      "ok": "Done",
+      "err": "Failed",
+      "run": "Running"
+    },
+    "cost": "{{tin}} tokens in, {{tout}} out, about {{cost}} at API prices",
+    "costTip": "Agents run on your Claude plan. This is what the same tokens would cost on the API."
+  },
+  "run": {
+    "thinking": "Thinking",
+    "writing": "Writing",
+    "calling": "Calling {{tool}}",
+    "live": "Show live reasoning",
+    "hideLive": "Hide live reasoning",
+    "soFar": "Show reasoning so far",
+    "hideSoFar": "Hide reasoning so far",
+    "joined": "Atlas joined this run at step {{n}}; earlier steps aren’t shown.",
+    "elapsedSr": "Working for {{t}}",
+    "busy": "{{name}}, working",
+    "st": {
+      "rate_limited": "Stopped: usage limit",
+      "error": "Stopped: error",
+      "degraded": "Stopped: failed checks"
+    },
+    "why": {
+      "rate_limited": "Your Claude plan’s usage limit was reached, so this answer stopped. {{name}} waits for the limit to reset; the rest of the team carries on.",
+      "error": "This run failed before {{name}} could answer, so nothing was posted.",
+      "degraded": "{{name}}’s answer failed Atlas’s checks twice, so nothing was posted. {{name}} is now marked degraded."
+    },
+    "askAgain": "Ask again",
+    "ann": {
+      "start": "{{name}} started working.",
+      "tool": "{{name}} is calling {{tool}}.",
+      "writing": "{{name}} is writing an answer.",
+      "stopped": "{{name}} stopped. {{why}}"
+    }
+  },
+  "wl": {
+    "updated": "Updated",
+    "replaced": "Replaced at {{time}} by an updated list.",
+    "showUpdate": "Show the update",
+    "titleUpdated": "Updated at {{time}}",
+    "titleEmpty": "No watchlist today",
+    "funnel": "{{picks}} from a shortlist of {{short}}.",
+    "picks_one": "{{count}} pick",
+    "picks_other": "{{count}} picks",
+    "inst_one": "{{count}} instrument",
+    "inst_other": "{{count}} instruments",
+    "min_one": "{{count}} minute",
+    "min_other": "{{count}} minutes",
+    "window": "You can change this list until {{time}}.",
+    "left": "{{t}} left",
+    "pinBtn": "Pin instrument",
+    "closed": "Editing closed at {{time}}.",
+    "closedLive": "Editing closed for today’s watchlist.",
+    "oneMinuteLive": "One minute left to change today’s watchlist.",
+    "edits": {
+      "pinned": "You pinned {{list}}.",
+      "removed": "You removed {{list}}.",
+      "both": "You removed {{removed}} and pinned {{pinned}}.",
+      "carried": "Your pin on {{list}} carried over."
+    },
+    "conflictTitle": "Editing has closed",
+    "conflict": {
+      "remove": "The edit window had already closed, so {{inst}} is still on the list.",
+      "restore": "The edit window had already closed, so {{inst}} stays off the list.",
+      "pin": "The edit window had already closed, so {{inst}} wasn’t pinned."
+    },
+    "replacedTitle": "This list was replaced",
+    "replacedConflict": {
+      "remove": "An updated list replaced this one, so {{inst}} is still on it. Make changes on the current list.",
+      "restore": "An updated list replaced this one, so {{inst}} stays off it. Make changes on the current list.",
+      "pin": "An updated list replaced this one, so {{inst}} wasn’t pinned. Make changes on the current list."
+    },
+    "partial": "Partial evidence. {{why}}, so every conviction is capped at {{cap}}.",
+    "partialBare": "Partial evidence, so every conviction is capped at {{cap}}.",
+    "partialWhy": {
+      "timed_out": "{{agent}} didn’t reply in time",
+      "not_asked": "{{agent}} wasn’t asked",
+      "stale": "The market data was {{min}} old"
+    },
+    "degraded": "No {{cls}} news is coming in, so {{cls}} convictions are capped at {{cap}}.",
+    "degradedSince": "No {{cls}} news has come in since {{time}}, so {{cls}} convictions are capped at {{cap}}.",
+    "dcls": {
+      "crypto": "crypto",
+      "stock": "stock",
+      "etf": "ETF",
+      "index": "index",
+      "commodity": "commodity",
+      "other": "other"
+    },
+    "trigger": {
+      "news_alert": "After an importance-{{imp}} alert at {{time}}",
+      "vol_spike": "After a {{sigma}} hourly move in {{inst}} at {{time}}"
+    },
+    "changes": {
+      "added": "New since {{time}}: {{list}}.",
+      "dropped": "Dropped since {{time}}: {{list}}."
+    },
+    "backdrop": "Market backdrop",
+    "usHoursAt": "US market hours {{range}}",
+    "usShort": "US hours",
+    "usHoursTip": "New York’s regular session in {{city}} time. It moves an hour when US clocks change.",
+    "now": "Now",
+    "later": "+{{n}} later",
+    "laterTip": "After 08:00 tomorrow: {{list}}",
+    "alertMark": "Alert",
+    "rail": {
+      "label": "The day from 08:00 to 08:00 tomorrow. {{cats}} {{us}}",
+      "cats": "Catalysts: {{list}}.",
+      "none": "No scheduled catalysts.",
+      "cat": "{{name}} at {{time}} for {{bases}}",
+      "us": "US market hours {{open}} to {{close}}.",
+      "tip": "{{time}}, {{name}}. Importance {{imp}} of 5. For {{insts}}."
+    },
+    "bias": {
+      "long": "Long",
+      "short": "Short",
+      "neutral": "Neutral"
+    },
+    "biasSr": "Bias",
+    "convSr": "Conviction {{v}} of 1",
+    "convCapTip": {
+      "partial_evidence": "Capped at {{cap}} because the evidence was partial. Market Scout’s estimate was {{before}}.",
+      "news_class_down": "Capped at {{cap}} because no {{cls}} news has come in since {{time}}. Market Scout’s estimate was {{before}}.",
+      "news_class_down_open": "Capped at {{cap}} because no {{cls}} news is coming in. Market Scout’s estimate was {{before}}."
+    },
+    "cls": {
+      "crypto": "Crypto",
+      "stock": "Stock",
+      "etf": "ETF",
+      "index": "Index",
+      "commodity": "Commodity",
+      "other": "Other"
+    },
+    "spotOf": "{{cls}} spot",
+    "new": "New",
+    "support": "Support",
+    "resistance": "Resistance",
+    "invalidation": "Invalidation",
+    "pinnedBy": "Pinned by you",
+    "pinnedNote": "The team includes it from the next analysis cycle.",
+    "removedBy": "Removed by you at {{time}}",
+    "undo": "Undo",
+    "undoAria": "Put {{inst}} back on today’s watchlist",
+    "remove": "Remove",
+    "removeAria": "Remove {{inst}} from today’s watchlist",
+    "pin": "Pin",
+    "pinAria": "Pin {{inst}} to today’s watchlist",
+    "notPicked": "Not picked",
+    "more_one": "Show {{count}} more",
+    "more_other": "Show {{count}} more",
+    "fewer": "Show fewer",
+    "empty": {
+      "empty_shortlist": "No instrument passed today’s filters for 24-hour volume, spread and listing age, so there was nothing to shortlist.",
+      "no_picks": "Market Scout reviewed a shortlist of {{short}} and found nothing worth the team’s attention today.",
+      "next": "Market Scout looks again if an importance-5 alert or a 3σ move arrives before 23:00."
+    },
+    "search": "Search instruments",
+    "popLabel": "Pin an instrument to today’s watchlist",
+    "groupNotPicked": "Not picked today",
+    "groupResults": "Instruments",
+    "typeToSearch": "Type a ticker to search the live instruments.",
+    "searching": "Searching…",
+    "noMatch": "No live instrument matches “{{q}}”.",
+    "onList": "On the list",
+    "blocked": "Blocked in Settings",
+    "pinningInst": "Pinning {{inst}}…",
+    "hint": "{{ret}} to pin, {{esc}} to close",
+    "keyReturn": "Return",
+    "keyEsc": "Esc",
+    "err": {
+      "notLive": "{{inst}} isn’t trading right now.",
+      "blocked": "{{inst}} is blocked in Settings.",
+      "unknown": "{{inst}} isn’t an instrument in this account’s universe.",
+      "server": "Couldn’t pin {{inst}}. Atlas’s server didn’t answer. Try again."
+    },
+    "toast": {
+      "pinned": "Pinned {{inst}}",
+      "pinnedBody": "The team includes it from the next analysis cycle.",
+      "removed": "Removed {{inst}}",
+      "removedBody": "Undo is in the list until {{time}}.",
+      "restored": "{{inst}} is back on the list",
+      "removeFail": "Couldn’t remove {{inst}}",
+      "restoreFail": "Couldn’t put {{inst}} back",
+      "pinFail": "Couldn’t pin {{inst}}",
+      "failBody": "Atlas’s server didn’t answer, so nothing changed. Try again."
+    }
+  },
+  "news_brief": {
+    "form": {
+      "morning_brief": "Morning brief",
+      "instrument_brief": "News brief",
+      "alert_analysis": "Alert analysis"
+    },
+    "top": "Top stories",
+    "topSub": "Since yesterday’s brief",
+    "cal": "Next {{n}} hours",
+    "calSub": "{{city}} time",
+    "flow": "Most news flow",
+    "flowSub": "Last {{n}} hours",
+    "stories": "Stories",
+    "storiesSub": "Last {{n}} hours",
+    "upcoming": "Upcoming catalysts",
+    "watch": "What to watch",
+    "showAll": "Show all {{n}}",
+    "showFewer": "Show fewer",
+    "moreSrc_one": "and {{count}} more source",
+    "moreSrc_other": "and {{count}} more sources",
+    "fewerSrc": "Fewer sources",
+    "pub": "{{time}} ({{utc}})",
+    "timeTip": "{{local}} in {{city}}, {{utc}} UTC",
+    "readOn": "Read on {{host}} (opens in a new tab)",
+    "sinceSr": "since first seen",
+    "moveTip": "{{inst}} has moved {{v}} since this story was first seen at {{time}}.",
+    "moveNone": "No candles for {{inst}} since this story was first seen.",
+    "tip": {
+      "confirmed": "Confirmed: {{sources}}.",
+      "one": "Reported by one reputable outlet, {{sources}}. A second would confirm it.",
+      "rumour": "Unverified: no reputable or official source has carried this yet."
+    },
+    "by": "by {{sources}}",
+    "col": {
+      "time": "Time",
+      "event": "Event",
+      "imp": "Importance",
+      "forecast": "Forecast",
+      "previous": "Previous",
+      "affected": "Most affected",
+      "inst": "Instrument",
+      "count": "Stories",
+      "senti": "Net sentiment"
+    },
+    "day": {
+      "today": "Today, {{date}}",
+      "tomorrow": "Tomorrow, {{date}}"
+    },
+    "passed": "Already happened",
+    "sent": "Net sentiment, {{n}} hours",
+    "priced": {
+      "label": "Priced in",
+      "yes": "Yes",
+      "partly": "Partly",
+      "no": "Not yet",
+      "yesTip": "The price has already moved about as far as news like this usually moves it.",
+      "partlyTip": "Part of the likely move is already in the price.",
+      "noTip": "The price hasn’t reacted to this news yet."
+    },
+    "since": "Since first seen",
+    "status": "Status",
+    "sources": "Sources",
+    "none": "None",
+    "empty": {
+      "stories": "No new stories in the last {{n}} hours.",
+      "top": "No new stories since yesterday’s brief.",
+      "events": "Nothing scheduled in the next {{n}} hours."
+    },
+    "deg": {
+      "title": "No {{classes}} news is coming in",
+      "titleSince": "No {{classes}} news since {{time}}",
+      "body": "Every {{classes}} news source is down, so this brief may miss stories. Market Scout caps {{classes}} conviction at {{cap}} until a source works again.",
+      "bodySince": "Every {{classes}} news source has been down since then, so this brief may miss later stories. Market Scout caps {{classes}} conviction at {{cap}} until a source works again.",
+      "action": "Open Data sources"
+    },
+    "class": {
+      "crypto": "crypto",
+      "stock": "stock",
+      "etf": "ETF",
+      "index": "index",
+      "commodity": "commodity"
+    },
+    "count_one": "{{count}} story",
+    "count_other": "{{count}} stories"
+  },
+  "ta": {
+    "kind": "Technical setup",
+    "inspect": "Show {{inst}} in the Inspector",
+    "title": {
+      "long": "Long {{setup}}",
+      "short": "Short {{setup}}"
+    },
+    "setup": {
+      "breakout": "breakout",
+      "pullback_to_support": "pullback to support",
+      "breakdown": "breakdown",
+      "rally_to_resistance": "rally to resistance",
+      "range_fade": "range fade",
+      "squeeze_expansion": "squeeze expansion",
+      "reversal_divergence": "divergence reversal"
+    },
+    "noSetup": "No setup",
+    "bias": "Bias by timeframe",
+    "tf": {
+      "up": "Up",
+      "down": "Down",
+      "range": "Range"
+    },
+    "tfAria": "{{tf}}: {{bias}}",
+    "entry": "Entry zone",
+    "stop": "Stop",
+    "trigger": "Trigger",
+    "targets": "Targets",
+    "expR": "Expected R",
+    "quality": "Quality",
+    "qualityAria": "Quality {{v}} out of 1",
+    "slip": "Slippage",
+    "slipV": "{{bps}} at the Risk Engine’s max size",
+    "thin": "Too thin for full size: {{bps}} estimated slippage at the Risk Engine’s max size",
+    "inval": "Invalidation",
+    "levels": "Levels used",
+    "asOf": "Data as of {{time}} ({{utc}})",
+    "dual": "{{local}} {{city}}, {{utc}} UTC"
+  },
+  "ld": {
+    "stop": "Stop",
+    "entry": "Entry",
+    "tp": "TP{{n}}",
+    "now": "Now",
+    "split": "{{pct}} at {{r}}",
+    "at": "at {{r}}",
+    "breakeven": "Breakeven",
+    "locked": "{{r}} locked",
+    "aria": "{{side}} plan. Stop {{stop}}, entry {{entry}}, {{targets}}.",
+    "liq": "Liquidation",
+    "ariaLiq": " Estimated liquidation {{liq}}.",
+    "ariaNow": " Price now {{now}}, {{r}}.",
+    "asOf": "At {{time}}",
+    "ariaAt": " Price at {{time}}: {{price}}, {{r}}.",
+    "long": "Long",
+    "short": "Short",
+    "tgt": "target {{n}} {{price}} at {{r}}",
+    "closed": "Closed",
+    "ariaTravel": " The price went from {{worst}} at worst to {{best}} at best, and the trade closed at {{exit}}."
+  },
+  "slash": {
+    "pickerLabel": "Commands",
+    "cmd": {
+      "pause": "Pause trading. New orders stop; open positions keep their stops.",
+      "resume": "Resume trading, after a confirmation.",
+      "kill": "Open the Stop trading sheet.",
+      "killFlatten": "Open the Stop trading sheet with close all positions selected.",
+      "cycleNow": "Start an analysis cycle now.",
+      "why": "Ask the Orchestrator why a proposal or order happened.",
+      "research": "Ask the Technical Analyst and News Intelligence about an instrument.",
+      "brief": "Ask the Orchestrator for a summary of where we are.",
+      "pin": "Pin an instrument to today's watchlist.",
+      "block": "Block an instrument until the end of today, Baghdad time."
+    },
+    "help": {
+      "unknown": "<c>{{cmd}}</c> is not a command. Nothing was sent. These are the commands:",
+      "usage": "Type it as <c>{{usage}}</c>. Nothing was sent. These are the commands:"
+    },
+    "msg": {
+      "research": "@Technical @News Research {{inst}}: the technical setup and the news brief.",
+      "brief": "@Orchestrator Brief me: where are we now?"
+    },
+    "done": {
+      "pause": "Trading paused. Open positions keep their stops.",
+      "notPaused": "Trading is already running.",
+      "cycle": "Cycle requested. The Orchestrator will announce it.",
+      "pin": "{{inst}} is pinned to today's watchlist.",
+      "block": "{{inst}} is blocked until {{time}} {{city}} today.",
+      "alreadyBlocked": "{{inst}} is already on the blocklist with no end time. Change it in Settings → Markets."
+    },
+    "err": {
+      "network": "Atlas could not be reached. Nothing changed.",
+      "coreDown": "The trading service is not running. Nothing changed.",
+      "tooSoon": "Too many requests. Try again in a minute.",
+      "cycleTooSoon": "A cycle was requested less than a minute ago. Try again in a minute.",
+      "failed": "That did not work (error {{status}}). Nothing changed.",
+      "status": "Atlas could not read the trading status. Try again in a moment.",
+      "noWatchlist": "There is no watchlist for today yet, so nothing can be pinned.",
+      "windowClosed": "Today's watchlist edit window has closed, so nothing was pinned.",
+      "blockInvalid": "{{inst}} could not be blocked. Check the instrument ID.",
+      "pin": {
+        "blocked": "{{inst}} is on the blocklist, so it cannot be pinned.",
+        "notLive": "{{inst}} is not trading right now, so it cannot be pinned.",
+        "unknown": "{{inst}} is not an instrument in this account's universe."
+      }
+    }
+  },
+  "pm": {
+    "kindPu": "Position update",
+    "kindDaily": "Daily report",
+    "long": "Long",
+    "short": "Short",
+    "inTrade": "{{d}} in trade",
+    "fundingPaid": "Funding {{v}}",
+    "fundingNone": "No funding yet",
+    "dist": "Stop {{s}} away, TP1 {{tp}} away",
+    "distStop": "Stop {{s}} away",
+    "rule": "Rule: {{rule}}",
+    "rules": {
+      "breakeven": "breakeven",
+      "tp1_partial": "partial at TP1",
+      "tp1_trail": "trailing stop after TP1",
+      "two_r_trail": "trailing stop at +2R",
+      "time_stop": "time stop",
+      "invalidation": "invalidation",
+      "event_reduce": "event rule",
+      "funding_cost": "funding rule",
+      "close": "close",
+      "partial_close": "partial close",
+      "stop_loss": "stop",
+      "take_profit": "target",
+      "liquidation": "liquidation",
+      "adl": "auto-deleverage",
+      "manual": "manual"
+    },
+    "act": {
+      "amend_stop": "Move the stop to {{stop}}",
+      "amend_targets": "Move the targets",
+      "partial_close": "Close {{pct}} of the position",
+      "close": "Close the position"
+    },
+    "proposal": "Proposal {{id}}",
+    "openProposal": "Open proposal {{id}}",
+    "notSubmitted": "Not submitted",
+    "thesisIntact": "No rule fired.",
+    "pnlAria": "Unrealised {{usd}}, {{r}}",
+    "dayOf": "Day ending {{date}}",
+    "equity": "Equity",
+    "equityChangeAria": "Equity changed {{usd}}, {{pct}}",
+    "realised": "Realised",
+    "unrealised": "Unrealised",
+    "fees": "Fees",
+    "funding": "Funding",
+    "closed": "Trades closed",
+    "noTrades": "No trades closed today.",
+    "th": {
+      "inst": "Instrument",
+      "side": "Side",
+      "r": "R",
+      "usd": "USD",
+      "held": "Held",
+      "by": "Closed by"
+    },
+    "best": "Best",
+    "worst": "Worst",
+    "limits": "Limits used",
+    "l": {
+      "daily_loss": "Daily loss",
+      "open_positions": "Open positions",
+      "exposure_peak": "Exposure peak"
+    },
+    "of": "{{used}} of {{limit}}",
+    "exposureV": "{{usd}} ({{pct}} of equity)",
+    "noBreach": "No limit was breached.",
+    "breachTitle_one": "A limit was breached",
+    "breachTitle_other": "{{count}} limits were breached",
+    "breach": {
+      "max_daily_loss_pct": "Daily loss reached {{used}} against a {{cap}} limit.",
+      "max_weekly_loss_pct": "Weekly loss reached {{used}} against a {{cap}} limit.",
+      "max_open_positions": "Open positions reached {{used}} of {{cap}}.",
+      "other": "{{limit}} reached {{used}} against {{cap}}."
+    },
+    "breachAt": "At {{time}}.",
+    "tomorrow": "Tomorrow",
+    "carried": "Carried positions",
+    "noCarried": "No positions carried.",
+    "events": "Events to watch",
+    "noEvents": "No major events.",
+    "importance": "Importance {{n}} of 5"
+  },
+  "pos": {
+    "kind": "Positioning",
+    "regime": {
+      "new_longs": "New longs",
+      "short_covering": "Short covering",
+      "new_shorts": "New shorts",
+      "long_liquidation": "Long liquidation",
+      "flat": "Flat"
+    },
+    "meaning": {
+      "new_longs": "Price up with open interest up: fresh longs are opening.",
+      "short_covering": "Price up with open interest down: shorts are closing, not fresh buying. Rallies built on covering often fade.",
+      "new_shorts": "Price down with open interest up: fresh shorts are opening.",
+      "long_liquidation": "Price down with open interest down: longs are closing or being liquidated.",
+      "flat": "Neither price nor open interest moved enough to read a direction."
+    },
+    "q": {
+      "pu": "Price up",
+      "pd": "Price down",
+      "ou": "OI up",
+      "od": "OI down",
+      "now": "Now"
+    },
+    "quadAria": "Open interest against price: {{regime}}, now.",
+    "stance": "Positioning",
+    "st": {
+      "long": {
+        "supports": "Supports a long",
+        "neutral": "Neutral to a long",
+        "opposes": "Opposes a long"
+      },
+      "short": {
+        "supports": "Supports a short",
+        "neutral": "Neutral to a short",
+        "opposes": "Opposes a short"
+      }
+    },
+    "crowd": "Crowding",
+    "crowdV": {
+      "long": "{{pct}}, longs crowded",
+      "short": "{{pct}}, shorts crowded",
+      "none": "{{pct}}, neither side crowded"
+    },
+    "squeeze": "Squeeze risk",
+    "sqLong": "Long squeeze",
+    "sqShort": "Short squeeze",
+    "funding": "Funding",
+    "basis": "Basis",
+    "premium": "Premium to the underlying",
+    "senti": "Sentiment",
+    "evidence": "Key evidence",
+    "unrelTitle": "Unreliable data",
+    "unrelDefault": "Atlas does not read positioning from this data: neutral for both long and short."
+  },
+  "rp": {
+    "title": "Replay",
+    "open": "Replay",
+    "openTip": "Replay a past day",
+    "banner": "Replay, {{date}}",
+    "bannerSub": "Read-only. This is the War Room as it was; nothing here can act.",
+    "live": "Back to live",
+    "pick": "Choose a day",
+    "prevDay": "Previous day",
+    "nextDay": "Next day",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "todayOff": "Today is still live. Replay shows finished days.",
+    "msgs_one": "{{n}} message",
+    "msgs_other": "{{n}} messages",
+    "feed": "War Room on {{date}}",
+    "readonly": "Replay is read-only. Messages, approvals and edits happen in the live War Room.",
+    "empty": {
+      "title": "Nothing was said on {{date}}",
+      "body": "No agent or person wrote in the War Room that day. Choose another day."
+    },
+    "err": {
+      "title": "This day didn’t load",
+      "bodyBefore": "Atlas couldn’t reach its own server. Check that Atlas is running with",
+      "bodyAfter": ", then try again."
+    },
+    "cardNote": "As posted. Actions are off in Replay.",
+    "insp": "The day",
+    "moments": "Moments",
+    "momentsNone": "Nothing was proposed, ordered or filled that day, and no alert was raised.",
+    "momentsWait": "The day’s moments appear when it loads.",
+    "first": "First message",
+    "last": "Last message",
+    "mk": {
+      "watchlist": "Watchlist",
+      "proposal": "Proposal",
+      "order": "Order",
+      "fill": "Fill",
+      "system_alert": "System alert",
+      "post_mortem": "Post-mortem"
+    },
+    "days": "Recent days",
+    "timeline": "Replay time, {{city}}",
+    "timeAria": "{{time}} {{city}}, {{shown}} of {{total}} messages shown",
+    "play": "Play",
+    "pause": "Pause",
+    "speed": "Speed",
+    "keys": "Space plays or pauses. Arrow keys step from message to message.",
+    "shown": "{{shown}} of {{total}} messages so far",
+    "mkTip": "{{time}} {{what}}",
+    "before": "Nothing yet. The first message of the day came at {{time}}.",
+    "inspToggle": "Show or hide the day’s moments"
+  },
+  "pmo": {
+    "kind": "Post-mortem",
+    "ref": "Proposal {{id}}",
+    "lessonUpdate": "Lesson added",
+    "long": "Long",
+    "short": "Short",
+    "out": {
+      "win": "Won",
+      "loss": "Lost",
+      "scratch": "Scratch"
+    },
+    "held": "Held {{d}}",
+    "exp": "Expected",
+    "act": "What happened",
+    "compare": "Expected against what happened",
+    "result": "Result",
+    "tp1": "TP1 before the stop",
+    "time": "Time",
+    "expR": "{{r}} expected",
+    "prob": "{{p}} likely",
+    "yes": "Yes",
+    "no": "No",
+    "within": "Within {{d}}",
+    "noTimeStop": "No time stop",
+    "heldFor": "Held {{d}}",
+    "cap": "Best {{best}}, worst {{worst}}. It closed at {{exit}}, keeping {{kept}} of its best move.",
+    "capLoss": "Best {{best}}, worst {{worst}}. It closed at {{exit}}.",
+    "lesson": "Lesson",
+    "pending": "The lesson is still being written, and Atlas keeps trying until it is done. The figures are final.",
+    "tags": "Tags",
+    "open": "Open in the Journal",
+    "aria": "Post-mortem: {{inst}} {{side}}, {{outcome}}, {{r}}"
+  },
+  "wk": {
+    "kind": "Weekly review",
+    "span": "{{from}} to {{to}}",
+    "by": "By",
+    "bySetup": "Setup",
+    "byClass": "Market",
+    "byAgent": "Agent",
+    "col": {
+      "group": "Group",
+      "trades": "Trades",
+      "won": "Won",
+      "r": "Total R",
+      "usd": "P&L"
+    },
+    "total": "All trades",
+    "unknown": "Unknown",
+    "paperLost": "The {{ideas}} the team skipped would have lost {{r}} on paper, so skipping them was right.",
+    "paperMade": "The {{ideas}} the team skipped would have made {{r}} on paper; skipping them cost that much.",
+    "paperFlat": "The {{ideas}} the team skipped would have broken even on paper.",
+    "ideas_one": "{{count}} idea",
+    "ideas_other": "{{count}} ideas",
+    "change": "Suggested change",
+    "changeNote": "Agents can’t change settings. If you agree, change it yourself.",
+    "open": "Open {{where}}",
+    "where": {
+      "risk": "Settings → Risk profile",
+      "markets": "Settings → Markets",
+      "money": "Settings → Money limits"
+    },
+    "none": "No closed trades this week",
+    "noneBody": "Nothing closed between {{from}} and {{to}}, so there is nothing to review. Atlas wrote this without asking the Historian.",
+    "noVerdict": "The Historian couldn’t write this week’s verdict, so there is no suggested change. The figures are Atlas’s own."
+  },
+  "inspPicked": "Chosen with ⌘K",
+  "inspClear": "Back to this thread"
+}

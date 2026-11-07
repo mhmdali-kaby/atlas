@@ -1,0 +1,244 @@
+[
+{
+"id": "cef99c26-b8cf-5a2a-99c1-6e8ff84a3062",
+"headline": "Spot bitcoin ETFs log their largest weekly inflow of the quarter",
+"first_seen": "2026-10-21T06:10:00Z",
+"last_seen": "2026-10-21T06:35:00Z",
+"item_count": 2,
+"max_importance": 4,
+"instruments": [
+"BTC-USDT-SWAP"
+],
+"created_at": "2026-10-21T06:10:00Z"
+},
+{
+"id": "c6e157e2-d71a-56a1-af80-d4e747332991",
+"headline": "Economists expect US inflation to cool slightly in Tuesday's CPI",
+"first_seen": "2026-10-21T01:00:00Z",
+"last_seen": "2026-10-21T01:40:00Z",
+"item_count": 2,
+"max_importance": 4,
+"instruments": [
+"XAU-USDT-SWAP",
+"BTC-USDT-SWAP"
+],
+"created_at": "2026-10-21T01:00:00Z"
+},
+{
+"id": "ac069d16-5a73-5f3b-8cca-039fb3f7265c",
+"headline": "Ethereum core developers set a mainnet date for the next upgrade",
+"first_seen": "2026-10-21T09:00:00Z",
+"last_seen": "2026-10-21T09:00:00Z",
+"item_count": 1,
+"max_importance": 3,
+"instruments": [
+"ETH-USDT-SWAP"
+],
+"created_at": "2026-10-21T09:00:00Z"
+},
+{
+"id": "dd2ef22b-0473-5019-900c-c06a329741cc",
+"headline": "Unverified posts claim a Solana DeFi protocol was drained",
+"first_seen": "2026-10-22T03:20:00Z",
+"last_seen": "2026-10-22T04:10:00Z",
+"item_count": 2,
+"max_importance": 4,
+"instruments": [
+"SOL-USDT-SWAP"
+],
+"created_at": "2026-10-22T03:20:00Z"
+},
+{
+"id": "82cbf0a9-306c-5cc6-b4f3-47b05b431f17",
+"headline": "OKX to list new XRP margin pairs",
+"first_seen": "2026-10-22T08:00:00Z",
+"last_seen": "2026-10-22T08:00:00Z",
+"item_count": 1,
+"max_importance": 3,
+"instruments": [
+"XRP-USDT-SWAP"
+],
+"created_at": "2026-10-22T08:00:00Z"
+},
+{
+"id": "27a1e7e7-5aaa-5ca4-a39a-4b02e98aef63",
+"headline": "Tesla deliveries beat analyst estimates",
+"first_seen": "2026-10-22T12:05:00Z",
+"last_seen": "2026-10-22T12:20:00Z",
+"item_count": 2,
+"max_importance": 4,
+"instruments": [
+"TSLA-USDT-SWAP"
+],
+"created_at": "2026-10-22T12:05:00Z"
+},
+{
+"id": "4b306474-9714-59ae-b443-ea998a6301aa",
+"headline": "Talk of new chip export curbs weighs on Nvidia",
+"first_seen": "2026-10-23T02:40:00Z",
+"last_seen": "2026-10-23T03:10:00Z",
+"item_count": 2,
+"max_importance": 3,
+"instruments": [
+"NVDA-USDT-SWAP"
+],
+"created_at": "2026-10-23T02:40:00Z"
+},
+{
+"id": "271201fb-6497-5c43-ba60-77ea05662d8b",
+"headline": "Fed official signals rates may stay higher for longer",
+"first_seen": "2026-10-23T10:15:00Z",
+"last_seen": "2026-10-23T10:15:00Z",
+"item_count": 1,
+"max_importance": 3,
+"instruments": [
+"XAU-USDT-SWAP"
+],
+"created_at": "2026-10-23T10:15:00Z"
+},
+{
+"id": "df3611bb-e9e9-5980-ae7a-3f19416b9307",
+"headline": "Posts claim Ripple and the SEC reached a final settlement",
+"first_seen": "2026-10-24T05:30:00Z",
+"last_seen": "2026-10-24T05:30:00Z",
+"item_count": 1,
+"max_importance": 4,
+"instruments": [
+"XRP-USDT-SWAP"
+],
+"created_at": "2026-10-24T05:30:00Z"
+},
+{
+"id": "f105c3d6-6b25-56a9-994e-1899efe2567c",
+"headline": "Social posts say a carmaker will accept dogecoin for parts",
+"first_seen": "2026-10-24T14:00:00Z",
+"last_seen": "2026-10-24T14:35:00Z",
+"item_count": 2,
+"max_importance": 3,
+"instruments": [
+"DOGE-USDT-SWAP"
+],
+"created_at": "2026-10-24T14:00:00Z"
+},
+{
+"id": "36051eb9-85cf-5f7a-b885-62b0d0a3f051",
+"headline": "Bitcoin miners send more coins to exchanges",
+"first_seen": "2026-10-25T04:00:00Z",
+"last_seen": "2026-10-25T04:00:00Z",
+"item_count": 1,
+"max_importance": 3,
+"instruments": [
+"BTC-USDT-SWAP"
+],
+"created_at": "2026-10-25T04:00:00Z"
+},
+{
+"id": "841a5b8b-18f1-508f-a8ea-2c5ec78dd988",
+"headline": "SEC approves staking in spot ether ETFs",
+"first_seen": "2026-10-25T13:00:00Z",
+"last_seen": "2026-10-25T13:20:00Z",
+"item_count": 3,
+"max_importance": 5,
+"instruments": [
+"ETH-USDT-SWAP"
+],
+"created_at": "2026-10-25T13:00:00Z"
+},
+{
+"id": "34774c5d-03f4-5576-a686-7be2238718a0",
+"headline": "Mid-size crypto exchange halts withdrawals after hot wallet breach",
+"first_seen": "2026-10-26T03:00:00Z",
+"last_seen": "2026-10-26T03:00:00Z",
+"item_count": 1,
+"max_importance": 5,
+"instruments": [
+"BTC-USDT-SWAP",
+"ETH-USDT-SWAP"
+],
+"created_at": "2026-10-26T03:00:00Z"
+},
+{
+"id": "074ffc13-adf0-5f67-a533-3a5cffb16905",
+"headline": "Gold climbs as border clashes lift safe-haven demand",
+"first_seen": "2026-10-26T09:00:00Z",
+"last_seen": "2026-10-26T09:00:00Z",
+"item_count": 1,
+"max_importance": 5,
+"instruments": [
+"XAU-USDT-SWAP"
+],
+"created_at": "2026-10-26T09:00:00Z"
+},
+{
+"id": "a1c74d34-2107-5063-abe3-9098f7d3495e",
+"headline": "Nvidia beats on revenue and raises guidance",
+"first_seen": "2026-10-26T21:00:00Z",
+"last_seen": "2026-10-26T21:05:00Z",
+"item_count": 2,
+"max_importance": 5,
+"instruments": [
+"NVDA-USDT-SWAP"
+],
+"created_at": "2026-10-26T21:00:00Z"
+},
+{
+"id": "d688355e-e6bb-56a1-84d3-83c5c3bfd203",
+"headline": "Posts claim a spot Solana ETF approval is imminent",
+"first_seen": "2026-10-27T02:00:00Z",
+"last_seen": "2026-10-27T02:00:00Z",
+"item_count": 1,
+"max_importance": 5,
+"instruments": [
+"SOL-USDT-SWAP"
+],
+"created_at": "2026-10-27T02:00:00Z"
+},
+{
+"id": "9ee8e206-9c54-50f5-a85c-0c842cae39e3",
+"headline": "Bitcoin options traders add upside calls",
+"first_seen": "2026-10-23T07:00:00Z",
+"last_seen": "2026-10-23T07:00:00Z",
+"item_count": 1,
+"max_importance": 3,
+"instruments": [
+"BTC-USDT-SWAP"
+],
+"created_at": "2026-10-23T07:00:00Z"
+},
+{
+"id": "488b90a3-8ce3-525d-a530-a123fe4bfea6",
+"headline": "Gold steadies ahead of Fed decision",
+"first_seen": "2026-10-24T08:00:00Z",
+"last_seen": "2026-10-24T08:00:00Z",
+"item_count": 1,
+"max_importance": 3,
+"instruments": [
+"XAU-USDT-SWAP"
+],
+"created_at": "2026-10-24T08:00:00Z"
+},
+{
+"id": "dbb1dfd9-d55c-51f6-8835-35278a006a4d",
+"headline": "Ether whales accumulate ahead of staking decision",
+"first_seen": "2026-10-25T06:00:00Z",
+"last_seen": "2026-10-25T06:00:00Z",
+"item_count": 1,
+"max_importance": 3,
+"instruments": [
+"ETH-USDT-SWAP"
+],
+"created_at": "2026-10-25T06:00:00Z"
+},
+{
+"id": "5a2a59ad-c768-5635-ac17-9043c7f327cd",
+"headline": "Tesla robotaxi expansion talk lifts shares",
+"first_seen": "2026-10-25T15:00:00Z",
+"last_seen": "2026-10-25T15:00:00Z",
+"item_count": 1,
+"max_importance": 3,
+"instruments": [
+"TSLA-USDT-SWAP"
+],
+"created_at": "2026-10-25T15:00:00Z"
+}
+]

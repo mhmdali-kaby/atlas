@@ -1,0 +1,22 @@
+[
+{
+"symbol": "TSLA",
+"date": "2026-10-28",
+"time": "amc",
+"eps_est": "0.58",
+"eps_act": null,
+"rev_est": "25370000000",
+"rev_act": null,
+"created_at": "2026-10-19T00:00:00Z"
+},
+{
+"symbol": "NVDA",
+"date": "2026-10-26",
+"time": "amc",
+"eps_est": "0.81",
+"eps_act": null,
+"rev_est": "37900000000",
+"rev_act": null,
+"created_at": "2026-10-19T00:00:00Z"
+}
+]

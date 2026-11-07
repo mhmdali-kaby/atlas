@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ATL-65: a documented-shape CNBC "Top News" RSS 2.0 feed (search.cnbc.com combinedcms view.xml),
+     not a recording: two Tesla items written so their rule importance is 4 (earnings) and 3
+     (product) with novelty 1.0. -->
+<rss xmlns:metadata="http://search.cnbc.com/rs/search/combinedcms/view.xml" version="2.0">
+  <channel>
+    <title>Top News &amp; Analysis</title>
+    <link>https://www.cnbc.com/id/100003114/device/rss/rss.html</link>
+    <description>CNBC is the world leader in business news and real-time financial market coverage.</description>
+    <language>en-us</language>
+    <lastBuildDate>Thu, 29 Oct 2026 12:01:00 GMT</lastBuildDate>
+    <item>
+      <link>https://www.cnbc.com/2026/10/29/tesla-q3-earnings.html</link>
+      <guid isPermaLink="false">108210001</guid>
+      <metadata:type>cnbcnewsstory</metadata:type>
+      <metadata:id>108210001</metadata:id>
+      <metadata:sponsored>false</metadata:sponsored>
+      <title>Tesla reports third-quarter earnings</title>
+      <description>The electric vehicle maker published its results after the bell on Thursday.</description>
+      <pubDate>Thu, 29 Oct 2026 12:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <link>https://www.cnbc.com/2026/10/29/tesla-model-y-trim.html</link>
+      <guid isPermaLink="false">108210002</guid>
+      <metadata:type>cnbcnewsstory</metadata:type>
+      <metadata:id>108210002</metadata:id>
+      <metadata:sponsored>false</metadata:sponsored>
+      <title>Tesla launches new Model Y trim</title>
+      <description>The trim goes on sale in the United States next month.</description>
+      <pubDate>Thu, 29 Oct 2026 09:00:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>
