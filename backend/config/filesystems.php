@@ -33,7 +33,11 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // Atlas never serves files from this disk over HTTP (brief §18: no public exposure of
+            // local storage); 'serve' => true registers the framework's GET/HEAD /storage/{path}
+            // route, which security round 20 (ATL-262) found open. false removes the route
+            // entirely, so a request to it 404s rather than being refused by the app.
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],
