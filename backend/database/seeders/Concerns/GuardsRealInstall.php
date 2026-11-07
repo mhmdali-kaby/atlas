@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Database\Seeders\Concerns;
 
 use App\Models\Connection;
+use Database\Seeders\E2eSeeder;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -15,8 +16,11 @@ use RuntimeException;
  * Besides refusing APP_ENV=production, a demo seeder must not overwrite an owner's real install
  * that happens to sit on a non-production APP_ENV (local, staging): a verified exchange
  * connection, or any equity history, means OKX has actually been synced, so this is not an empty
- * demo database. E2eSeeder already guards this the other way, by DB name; these seeders have no
- * fixed database name to check, so they check for real data instead.
+ * demo database. E2eSeeder already guards this the other way, by DB name: a database named
+ * `atlas_e2e_*` can only ever be the throwaway Playwright database (E2eSeeder itself refuses any
+ * other name), so these seeders trust that name the same way E2eSeeder does and skip the
+ * real-install check there — otherwise E2eSeeder's own chain (Warroom, then Portfolio, which
+ * writes equity_curve, then Backfill) would trip over its own earlier writes.
  *
  * Set ATLAS_DEMO_SEED=1 to seed anyway — the operator's explicit statement that this install is a
  * demo box, not the owner's (security round 20, ATL-262).
@@ -30,6 +34,11 @@ trait GuardsRealInstall
         }
 
         if (config('services.demo_seed.enabled') === true) {
+            return;
+        }
+
+        $database = (string) config('database.connections.'.config('database.default').'.database');
+        if (str_starts_with($database, E2eSeeder::DATABASE_PREFIX)) {
             return;
         }
 
