@@ -1,8 +1,17 @@
 import { mkdirSync } from 'node:fs'
 import path from 'node:path'
 import type { Page } from '@playwright/test'
+import arOnboarding from '../../src/i18n/locales/ar/onboarding.json' with { type: 'json' }
+import enOnboarding from '../../src/i18n/locales/en/onboarding.json' with { type: 'json' }
+import { STEPS } from '../../src/features/onboarding/paths'
 import { EVIDENCE_DIR } from '../support/stack'
 import { expect, test } from './appearance'
+
+/** The phone stepper's line for /onboarding?step=risk, built from the same strings the page uses. */
+const RISK_N = STEPS.indexOf('risk') + 1
+const stepOf = (tpl: string) => tpl.replace('<f>{{n}}</f>', String(RISK_N)).replace('<f>{{total}}</f>', String(STEPS.length))
+const STEP_OF = { en: stepOf(enOnboarding.stepOf), ar: stepOf(arOnboarding.stepOf) }
+const RISK = { en: enOnboarding.steps.risk, ar: arOnboarding.steps.risk }
 
 /**
  * ATL-192 (design v13/v14, Phase 0 §6): every page fills the window beside the sidebar, inset by
@@ -192,24 +201,39 @@ for (const lang of LANGS) {
       expect(Math.abs(1440 - hi - 32)).toBeLessThanOrEqual(1)
       await page.screenshot({ path: path.join(SHOTS, `onboarding-${lang}-1440.png`) })
 
+      // Between a phone and 1100 px the stepper shows only the current step's label, and that one
+      // label never runs into another step's circle.
+      await page.setViewportSize({ width: 768, height: 900 })
+      const steps = page.locator('.ob-steps-ol > li')
+      await expect(steps).toHaveCount(STEPS.length)
+      const label = steps.locator('[aria-current="step"] > span:nth-child(2)')
+      await expect(label).toBeVisible()
+      const lb = (await label.boundingBox())!
+      for (let i = 0; i < STEPS.length; i += 1) {
+        const c = (await steps.nth(i).locator('span[aria-hidden="true"]').first().boundingBox())!
+        // distance between the label and the circle along the row (negative = overlap); the
+        // label's own circle sits 8px from it, every other circle at least as far (design: ≥ 8px)
+        const apart = Math.max(c.x - (lb.x + lb.width), lb.x - (c.x + c.width))
+        expect(apart, `768: step label vs circle ${i + 1}`).toBeGreaterThanOrEqual(7.5)
+      }
+
+      // A phone shows "Step 5 of 8", the step's name and an eight-part bar instead of the circles
+      // (design .ob-steps-sm, patch 35), with the form stacked under the title.
+      const phone = page.locator('.ob-steps-sm')
       for (const width of [390, 375, 360]) {
         await page.setViewportSize({ width, height: 844 })
-        await page.waitForTimeout(300)
+        await expect(page.locator('.ob-steps-ol')).toBeHidden()
+        await expect(phone).toBeVisible()
+        await expect(phone.locator('.ob-sm-bar > i')).toHaveCount(STEPS.length)
+        await expect(phone.locator('.ob-sm-bar > i.is-current')).toHaveCount(1)
+        await expect(phone.locator('.ob-sm-count')).toHaveText(STEP_OF[lang])
+        await expect(phone.locator('.ob-sm-name')).toHaveText(RISK[lang])
         const hh = (await head.boundingBox())!
         const ff = (await main.boundingBox())!
         expect(ff.y, `${width}: form below the title`).toBeGreaterThanOrEqual(hh.y + hh.height)
-        // The one visible step label never runs into another step's circle.
-        const steps = page.locator('nav ol > li')
-        const n = await steps.count()
-        const label = steps.locator('[aria-current="step"] > span:nth-child(2)')
-        const lb = (await label.boundingBox())!
-        for (let i = 0; i < n; i += 1) {
-          const c = (await steps.nth(i).locator('span[aria-hidden="true"]').first().boundingBox())!
-          // distance between the label and the circle along the row (negative = overlap); the
-          // label's own circle sits 8px from it, every other circle at least as far (design: ≥ 8px)
-          const apart = Math.max(c.x - (lb.x + lb.width), lb.x - (c.x + c.width))
-          expect(apart, `${width}: step label vs circle ${i + 1}`).toBeGreaterThanOrEqual(7.5)
-        }
+        const line = (await phone.locator('.ob-sm-line').boundingBox())!
+        expect(line.x, `${width}: step line inside the window`).toBeGreaterThanOrEqual(0)
+        expect(line.x + line.width, `${width}: step line inside the window`).toBeLessThanOrEqual(width)
         const scroll = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)
         expect(scroll, `${width}: document scrolls sideways`).toBeLessThanOrEqual(0)
         if (width === 390) await page.screenshot({ path: path.join(SHOTS, `onboarding-${lang}-390.png`) })
