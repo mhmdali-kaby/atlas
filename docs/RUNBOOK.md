@@ -27,6 +27,23 @@ patch; it only documents what exists today.
   space, session/debug security, the Reverb secret, and the backup check. Any `✗` line fails the
   command (exit 1); `⚠` is a warning and still exits 0.
 
+## Demo data (local development and demos)
+
+To fill a demo install with realistic content, run these seeders from `backend/` on a migrated
+database. Each one refuses to run with `APP_ENV=production`, writes env `demo` only, and replaces
+only its own rows, so it can be re-run:
+
+- `php artisan db:seed --class=PortfolioDemoSeeder`: 30 days of equity, positions, bills.
+- `php artisan db:seed --class=WarroomDemoSeeder`: 500 War Room messages on the day before US CPI.
+- `php artisan db:seed --class=BackfillDemoSeeder`: Settings → Data backfill progress.
+- `php artisan db:seed --class=ResearchDemoSeeder` (ATL-260): about 20 news items in English and
+  Arabic with multi-source stories, CPI/FOMC/NVDA on the calendar for the next 48 h, 6
+  post-mortems in the Journal (2 in Arabic), 14 days of scores for every agent and today's agent
+  runs. Run `NewsSourcesSeeder` (part of `db:seed`) first so the source names resolve.
+
+`E2eSeeder` (the Playwright flows) does not call ResearchDemoSeeder: today's agent runs would change
+the War Room sidebar in the appearance screenshots.
+
 ## Playwright e2e (frontend, ATL-187)
 
 `cd frontend && npx playwright test` runs its own Laravel, trading_core and two Vite servers —
