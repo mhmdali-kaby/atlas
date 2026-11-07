@@ -68,6 +68,7 @@ return [
         'data_stale' => 'توقف بيانات السوق',
         'reconciliation_mismatch' => 'اختلاف أطلس وOKX',
         'backup_failed' => 'فشل النسخ الاحتياطي لقاعدة البيانات',
+        'auth_two_factor_failures' => 'تكرار رموز التحقق الثنائي الخاطئة',
     ],
 
     'notification_channel' => [

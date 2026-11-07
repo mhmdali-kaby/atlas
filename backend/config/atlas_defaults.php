@@ -491,6 +491,8 @@ return [
         'attempts_per_minute' => 5,
         'challenge_minutes' => 5,
         'challenge_attempts_per_minute' => 5,
+        'challenge_failures_per_window' => 10,
+        'challenge_failure_window_minutes' => 15,
         'qr_size_px' => 192,
     ],
     'doctor' => [
@@ -862,6 +864,7 @@ return [
             'data_stale',
             'reconciliation_mismatch',
             'backup_failed',
+            'auth_two_factor_failures',
         ],
         'channels' => [
             'in_app',

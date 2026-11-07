@@ -148,6 +148,9 @@
     },
     "backup_failed": {
       "title": "Database backup failed"
+    },
+    "auth_two_factor_failures": {
+      "title": "Repeated wrong two-factor codes"
     }
   },
   "count": {

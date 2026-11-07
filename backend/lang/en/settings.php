@@ -78,6 +78,7 @@ return [
         'data_stale' => 'market data stopped',
         'reconciliation_mismatch' => 'Atlas and OKX disagreeing',
         'backup_failed' => 'database backup failing',
+        'auth_two_factor_failures' => 'repeated wrong two-factor codes',
     ],
 
     'notification_channel' => [

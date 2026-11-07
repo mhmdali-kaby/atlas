@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\AuditLog;
+use App\Models\Notification;
 use App\Models\User;
 use App\Support\TwoFactor\TwoFactor;
 use Illuminate\Cookie\CookieValuePrefix;
@@ -200,6 +201,80 @@ it('throttles the sixth challenge attempt within a minute with 429', function ()
     $this->postJson('/api/auth/two-factor-challenge', ['code' => (new Google2FA)->getCurrentOtp($secret)])
         ->assertStatus(429);
     $this->getJson('/api/auth/me')->assertUnauthorized();
+});
+
+it('pulls the pending challenge after the 5th wrong code in a session, so the owner must sign in again', function (): void {
+    // ATL-261: the per-minute cap used to be the only thing standing between a stolen session
+    // and endless retries once the owner's own 5/minute budget cooled down.
+    [$secret] = enableChallengeTwoFactor($this->owner);
+    passwordStep($this);
+    $wrong = wrongChallengeCode($secret);
+
+    foreach (range(1, 5) as $_) {
+        $this->postJson('/api/auth/two-factor-challenge', ['code' => $wrong])->assertStatus(422);
+    }
+    $this->getJson('/api/auth/status')->assertJsonPath('two_factor_pending', false);
+
+    // The per-minute cap has cleared, but the challenge itself is gone: even the correct code
+    // now needs a fresh password step, not just a wait.
+    $this->travel(61)->seconds();
+    $this->postJson('/api/auth/two-factor-challenge', ['code' => (new Google2FA)->getCurrentOtp($secret)])
+        ->assertStatus(422)
+        ->assertJsonPath('error', 'challenge_expired');
+    $this->getJson('/api/auth/me')->assertUnauthorized();
+
+    passwordStep($this);
+    $this->postJson('/api/auth/two-factor-challenge', ['code' => (new Google2FA)->getCurrentOtp($secret)])
+        ->assertOk()
+        ->assertJsonPath('data.id', $this->owner->id);
+});
+
+it('throttles by the pending user rather than the session: 4 logins with 7 wrong codes each give only 5 responses of 422', function (): void {
+    // ATL-261 (security round 20 finding): throttleChallenge() keyed its 5/min limiter on the
+    // session id, which login() regenerates, so 4 fresh password logins bought 20+ wrong-code
+    // tries against a designed 5. They must now share one budget.
+    [$secret] = enableChallengeTwoFactor($this->owner);
+    $wrong = wrongChallengeCode($secret);
+
+    $statuses = [];
+    foreach (range(1, 4) as $_) {
+        passwordStep($this);
+        foreach (range(1, 7) as $__) {
+            $statuses[] = $this->postJson('/api/auth/two-factor-challenge', ['code' => $wrong])->getStatusCode();
+        }
+    }
+
+    expect(array_count_values($statuses))->toBe([422 => 5, 429 => 23]);
+    $this->getJson('/api/auth/me')->assertUnauthorized();
+});
+
+it('refuses every challenge for a user after 10 wrong codes in 15 minutes, even a correct one, and raises a notification once', function (): void {
+    [$secret] = enableChallengeTwoFactor($this->owner);
+    $wrong = wrongChallengeCode($secret);
+
+    // Two logins of 5 verified wrong codes each (the per-minute cap allows exactly 5 before that
+    // session's own challenge is pulled), 61s apart so the per-minute cap clears between them but
+    // the 15-minute failure cap keeps counting.
+    foreach (range(1, 2) as $_) {
+        passwordStep($this);
+        foreach (range(1, 5) as $__) {
+            $this->postJson('/api/auth/two-factor-challenge', ['code' => $wrong])->assertStatus(422);
+        }
+        $this->travel(61)->seconds();
+    }
+
+    $notification = Notification::query()->where('event', 'auth_two_factor_failures')->sole();
+    expect($notification->severity)->toBe('warning')
+        ->and($notification->params['user_id'] ?? null)->toBe($this->owner->id);
+
+    // The per-minute cap cleared a moment ago; the 15-minute failure cap has not, so even a
+    // correct code against a brand new pending challenge is refused.
+    passwordStep($this);
+    $this->postJson('/api/auth/two-factor-challenge', ['code' => (new Google2FA)->getCurrentOtp($secret)])
+        ->assertStatus(429);
+    $this->getJson('/api/auth/me')->assertUnauthorized();
+
+    expect(Notification::query()->where('event', 'auth_two_factor_failures')->count())->toBe(1);
 });
 
 it('exposes Retry-After through CORS so the SPA can read the real wait time off a cross-origin 429', function (): void {

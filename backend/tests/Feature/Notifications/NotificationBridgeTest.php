@@ -118,6 +118,11 @@ function notifCases(): array
         'backup_failed' => ['atlas.system', notifEnvelope('system.backup_failed', 'service:backend.backup', [
             'backup_id' => (string) Str::uuid(), 'started_at' => '2026-11-02T00:00:00Z',
         ]), 'backup_failed', '/settings/backup', 'warning'],
+        // ATL-261: AuthController hands the Notifier this envelope when the per-user 2FA failure
+        // cap trips.
+        'auth_two_factor_failures' => ['atlas.system', notifEnvelope('system.auth_two_factor_failures', 'service:backend.auth', [
+            'user_id' => (string) Str::uuid(),
+        ]), 'auth_two_factor_failures', '/settings/general', 'warning'],
     ];
 }
 
@@ -138,7 +143,7 @@ beforeEach(function (): void {
 
 it('covers every brief §17 event, one case each', function (): void {
     expect(array_keys(notifCases()))->toEqualCanonicalizing(SettingsSchema::notificationEvents())
-        ->and(SettingsSchema::notificationEvents())->toHaveCount(12);
+        ->and(SettingsSchema::notificationEvents())->toHaveCount(13);
 });
 
 it('stores exactly one notification with the right event and link, and a replay stores none', function (string $case): void {
