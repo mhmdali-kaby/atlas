@@ -494,8 +494,14 @@ two_factor:
   attempts_per_minute: 5
   # ATL-246: minutes a correct password waits for its code at sign-in before the owner must start again.
   challenge_minutes: 5
-  # ATL-246: sign-in code / recovery-code attempts per minute, per session + client IP.
+  # ATL-261: sign-in code / recovery-code attempts per minute, keyed on the pending user id (or the
+  # client IP when there is none) rather than the session id, so a fresh password login cannot
+  # reset the count.
   challenge_attempts_per_minute: 5
+  # ATL-261: wrong sign-in codes (not every attempt) allowed per user within the window below before
+  # every pending challenge for that user, even a correct code, is refused until the window clears.
+  challenge_failures_per_window: 10
+  challenge_failure_window_minutes: 15
   qr_size_px: 192
 
 # ATL-13, brief §18: `php artisan atlas:doctor` thresholds.
@@ -766,6 +772,9 @@ notifications:
     - reconciliation_mismatch
     # ATL-231: `php artisan atlas:backup` failed (decision #255 (3)).
     - backup_failed
+    # ATL-261: the per-user sign-in-code failure cap (two_factor.challenge_failures_per_window)
+    # tripped.
+    - auth_two_factor_failures
   channels: [in_app, browser, telegram]
   channel_defaults:
     in_app: true

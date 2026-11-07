@@ -25,6 +25,7 @@ use Illuminate\Support\Str;
  * | daily_report                | atlas.warroom   | warroom.message from the PM with card.type daily_report           |
  * | news_alert                  | atlas.warroom   | news.alert on a held instrument (reason held_instrument)          |
  * | backup_failed               | atlas.system    | system.backup_failed (BackupRunner, ATL-231)                      |
+ * | auth_two_factor_failures    | atlas.system    | system.auth_two_factor_failures (AuthController, ATL-261)         |
  *
  * params are an allow-list of scalar fields per event, cut to notifications.param_max_length:
  * nothing else in a payload (a connection key, secret, UID, an error text) can reach a row.
@@ -35,6 +36,9 @@ final class NotificationMapper
 
     /** ATL-231: the envelope BackupRunner hands the Notifier when a backup fails. */
     public const BACKUP_FAILED_EVENT = 'system.backup_failed';
+
+    /** ATL-261: the envelope AuthController hands the Notifier when the per-user 2FA failure cap trips. */
+    public const AUTH_TWO_FACTOR_FAILURES_EVENT = 'system.auth_two_factor_failures';
 
     /**
      * @param  array{id: string, type: string, ts: string, env: string, source: string, correlation_id: string|null, payload: array<string, mixed>}  $envelope
@@ -53,6 +57,7 @@ final class NotificationMapper
             $stream === 'atlas.system' && $envelope['type'] === 'system.kill' => $this->kill($p),
             $stream === 'atlas.system' && $envelope['type'] === 'system.agent_state' => $this->agentState($p),
             $stream === 'atlas.system' && $envelope['type'] === self::BACKUP_FAILED_EVENT => $this->backupFailed($p),
+            $stream === 'atlas.system' && $envelope['type'] === self::AUTH_TWO_FACTOR_FAILURES_EVENT => $this->twoFactorFailures($p),
             $stream === 'atlas.warroom' && $envelope['type'] === BridgeEventHandler::MESSAGE_EVENT => $this->dailyReport($message),
             $stream === 'atlas.warroom' && $envelope['type'] === BridgeEventHandler::NEWS_ALERT_EVENT => $this->newsAlert($message),
             default => null,
@@ -296,6 +301,24 @@ final class NotificationMapper
             'backup_id' => $id,
             'started_at' => self::str($p['started_at'] ?? null),
         ], '/settings/backup');
+    }
+
+    /**
+     * ATL-261: only the owner's own user id; never the code, the IP or how many were tried.
+     *
+     * @param  array<string, mixed>  $p
+     * @return array{event: string, severity: 'info'|'warning'|'critical', params: array<string, bool|int|float|string|list<string>|null>, link: string|null}|null
+     */
+    private function twoFactorFailures(array $p): ?array
+    {
+        $id = self::uuid($p['user_id'] ?? null);
+        if ($id === null) {
+            return null;
+        }
+
+        return self::draft('auth_two_factor_failures', 'warning', [
+            'user_id' => $id,
+        ], '/settings/general');
     }
 
     /**
