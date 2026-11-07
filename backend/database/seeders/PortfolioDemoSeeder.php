@@ -7,10 +7,10 @@ namespace Database\Seeders;
 use Brick\Math\BigDecimal;
 use Brick\Math\RoundingMode;
 use Carbon\CarbonImmutable;
+use Database\Seeders\Concerns\GuardsRealInstall;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use RuntimeException;
 
 /**
  * Realistic demo-account Portfolio data for tests, local development and Storybook fixtures:
@@ -22,6 +22,8 @@ use RuntimeException;
  */
 class PortfolioDemoSeeder extends Seeder
 {
+    use GuardsRealInstall;
+
     public const ENV = 'demo';
 
     public const BASELINE_USD = '5000000';
@@ -34,9 +36,7 @@ class PortfolioDemoSeeder extends Seeder
 
     public function run(): void
     {
-        if (app()->environment('production')) {
-            throw new RuntimeException('PortfolioDemoSeeder refuses to run when APP_ENV=production.');
-        }
+        $this->guardAgainstRealInstall('PortfolioDemoSeeder');
 
         $now = CarbonImmutable::now()->utc()->startOfMinute();
 

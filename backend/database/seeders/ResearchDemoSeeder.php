@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use Carbon\CarbonImmutable;
+use Database\Seeders\Concerns\GuardsRealInstall;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Ramsey\Uuid\Uuid;
-use RuntimeException;
 
 /**
  * Realistic research content for a demo install (ATL-260): the News feed, the economic and earnings
@@ -26,6 +26,8 @@ use RuntimeException;
  */
 class ResearchDemoSeeder extends Seeder
 {
+    use GuardsRealInstall;
+
     public const ENV = 'demo';
 
     public const SCORE_DAYS = 14;
@@ -244,9 +246,7 @@ class ResearchDemoSeeder extends Seeder
 
     public function run(): void
     {
-        if (app()->environment('production')) {
-            throw new RuntimeException('ResearchDemoSeeder refuses to run when APP_ENV=production.');
-        }
+        $this->guardAgainstRealInstall('ResearchDemoSeeder');
 
         $now = CarbonImmutable::now()->utc()->startOfMinute();
 

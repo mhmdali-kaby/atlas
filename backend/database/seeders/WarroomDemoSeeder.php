@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use App\Models\WarroomThread;
+use Database\Seeders\Concerns\GuardsRealInstall;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use RuntimeException;
 
 /**
  * Fixture War Room for the Playwright flows and demos (ATL-39, rewritten by ATL-254): 500 messages
@@ -26,6 +26,8 @@ use RuntimeException;
  */
 class WarroomDemoSeeder extends Seeder
 {
+    use GuardsRealInstall;
+
     public const COUNT = 500;
 
     public const LAST_AT = '2026-10-28T02:00:00Z';
@@ -162,9 +164,7 @@ class WarroomDemoSeeder extends Seeder
 
     public function run(): void
     {
-        if (app()->environment('production')) {
-            throw new RuntimeException('WarroomDemoSeeder refuses to run when APP_ENV=production.');
-        }
+        $this->guardAgainstRealInstall('WarroomDemoSeeder');
 
         $this->call(WarroomThreadSeeder::class);
         /** @var WarroomThread $main */
