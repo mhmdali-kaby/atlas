@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Database\Seeders;
 
 use Carbon\CarbonImmutable;
+use Database\Seeders\Concerns\GuardsRealInstall;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use RuntimeException;
 
 /**
  * Settings → Data fixture (ATL-49): eight demo instruments across five asset classes with backfill
@@ -20,6 +20,8 @@ use RuntimeException;
  */
 class BackfillDemoSeeder extends Seeder
 {
+    use GuardsRealInstall;
+
     public const ENV = 'demo';
 
     /** inst_id => [asset_class, inst_type, listed (ISO date)] */
@@ -69,9 +71,7 @@ class BackfillDemoSeeder extends Seeder
 
     public function run(): void
     {
-        if (app()->environment('production')) {
-            throw new RuntimeException('BackfillDemoSeeder refuses to run when APP_ENV=production.');
-        }
+        $this->guardAgainstRealInstall('BackfillDemoSeeder');
 
         $now = CarbonImmutable::now()->utc()->startOfMinute();
         $created = $now->subHour();

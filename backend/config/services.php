@@ -67,4 +67,12 @@ return [
         ],
     ],
 
+    // ATL-262 (security round 20): PortfolioDemoSeeder, WarroomDemoSeeder, BackfillDemoSeeder and
+    // ResearchDemoSeeder refuse to overwrite a database that already looks like a real install (a
+    // verified connection, or any equity history) unless the operator sets ATLAS_DEMO_SEED=1,
+    // their explicit statement that this install is a demo box, not the owner's.
+    'demo_seed' => [
+        'enabled' => env('ATLAS_DEMO_SEED') === '1',
+    ],
+
 ];

@@ -31,7 +31,18 @@ patch; it only documents what exists today.
 
 To fill a demo install with realistic content, run these seeders from `backend/` on a migrated
 database. Each one refuses to run with `APP_ENV=production`, writes env `demo` only, and replaces
-only its own rows, so it can be re-run:
+only its own rows. Each also refuses when the database already looks like a real install — a
+verified exchange connection, or any row in `equity_curve` — the same way `E2eSeeder` already
+refuses by database name (ATL-262, security round 20). `PortfolioDemoSeeder` itself writes
+`equity_curve`, so once you have run any one of these the database now "looks real" to the
+others: export `ATLAS_DEMO_SEED=1` — your explicit statement that this install is a demo box, not
+the owner's — once, before the first seeder, and keep it exported for every seeder after that and
+for every re-run:
+
+```
+export ATLAS_DEMO_SEED=1
+php artisan db:seed --class=PortfolioDemoSeeder
+```
 
 - `php artisan db:seed --class=PortfolioDemoSeeder`: 30 days of equity, positions, bills.
 - `php artisan db:seed --class=WarroomDemoSeeder`: 500 War Room messages on the day before US CPI.
