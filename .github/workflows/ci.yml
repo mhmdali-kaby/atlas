@@ -1,0 +1,162 @@
+name: CI
+
+# Lint and test every app on each push and pull request.
+# The real-CLI agent evals (python -m atlas_agents.evals run) are deliberately not run here (decision #245).
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # One fixed test DB/prefix on CI instead of the per-checkout hash (decision #252 override vars).
+  DB_TEST_DATABASE: atlas_test
+  REDIS_TEST_PREFIX: "test_ci:"
+
+jobs:
+  backend:
+    name: backend (Pint, PHPStan, Pest)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: timescale/timescaledb-ha:pg16
+        env:
+          POSTGRES_USER: atlas
+          POSTGRES_PASSWORD: atlas
+          POSTGRES_DB: atlas_test
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U atlas -d atlas_test"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6380:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: pdo_pgsql, pgsql, mbstring, bcmath, intl, dom, xml, posix
+          coverage: none
+          tools: composer:v2
+      - uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-
+      - run: composer install --no-interaction --no-progress --prefer-dist
+      - run: composer run lint
+      - run: php artisan test
+
+  frontend:
+    name: frontend (typecheck, lint, Vitest, build)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npx vitest --run
+      - run: npm run build
+
+  services:
+    name: services (ruff, mypy, pytest)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    services:
+      postgres:
+        image: timescale/timescaledb-ha:pg16
+        env:
+          POSTGRES_USER: atlas
+          POSTGRES_PASSWORD: atlas
+          POSTGRES_DB: atlas_test
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U atlas -d atlas_test"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports: ["6380:6379"]
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      # Laravel owns the schema, so the Python DB tests need it migrated first (decision #252).
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.4"
+          extensions: pdo_pgsql, pgsql, mbstring, bcmath, intl, dom, xml, posix
+          coverage: none
+          tools: composer:v2
+      - uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ hashFiles('backend/composer.lock') }}
+          restore-keys: composer-
+      - name: Migrate the test database
+        working-directory: backend
+        env:
+          APP_ENV: testing
+          APP_KEY: base64:WwCE6bTqNK3PDgpt9h+VesIRQ/CK9MlnPMpHt0IpkV4=
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: "5433"
+          DB_DATABASE: atlas_test
+          DB_USERNAME: atlas
+          DB_PASSWORD: atlas
+          REDIS_CLIENT: predis
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: "6380"
+          CACHE_STORE: array
+          SESSION_DRIVER: array
+          QUEUE_CONNECTION: sync
+        run: |
+          composer install --no-interaction --no-progress --prefer-dist
+          php artisan migrate --force
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: services/uv.lock
+      - name: Install
+        working-directory: services
+        run: uv sync --python 3.12 --frozen
+      - name: Lint
+        working-directory: services
+        run: |
+          uv run ruff check .
+          uv run mypy shared/src trading_core/src agents/src ingest/src quant/src
+      - name: Test
+        working-directory: services
+        env:
+          DB_HOST: 127.0.0.1
+          DB_PORT: "5433"
+          DB_USERNAME: atlas
+          DB_PASSWORD: atlas
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: "6380"
+        run: uv run pytest -q
