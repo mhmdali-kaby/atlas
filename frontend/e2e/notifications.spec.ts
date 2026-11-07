@@ -11,12 +11,16 @@ const OWNER = { id: '01a18376-1d35-70c2-ad01-6d1d2cd870ad', name: 'Mohammed Ali'
 const SHOTS = '../../evidence/ATL-217'
 const HEALTH = {
   env: 'demo',
-  as_of: new Date().toISOString(),
+  as_of: '2026-10-28T09:00:00Z',
   trading: { paused: false, reason: null, paused_at: null, accepting_new_orders: true },
   breakers: [],
 }
 
-const ago = (ms: number) => new Date(Date.now() - ms).toISOString()
+// The list groups rows into Today / Yesterday / Earlier on the Baghdad day, so a row 27 h old is
+// "Yesterday" only before 21:00 Baghdad. The page clock is pinned to midday Baghdad (ATL-259) and
+// every timestamp is relative to it, so the grouping does not depend on when the suite runs.
+const NOW = new Date('2026-10-28T09:00:00Z')
+const ago = (ms: number) => new Date(NOW.getTime() - ms).toISOString()
 const MIN = 60_000
 
 function fixtures() {
@@ -123,6 +127,7 @@ async function axe(page: Page, ...include: string[]) {
 }
 
 async function boot(page: Page, lang: 'en' | 'ar', theme: 'light' | 'dark') {
+  await page.clock.setFixedTime(NOW)
   await page.addInitScript(
     ([l, th]) => {
       localStorage.setItem('atlas.lang', l)

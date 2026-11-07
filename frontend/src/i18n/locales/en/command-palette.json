@@ -2,7 +2,7 @@
   "label": "Command palette",
   "placeholder": "Search pages, actions and instruments",
   "open": "Search or jump to…",
-  "openKeys": "Search or jump to… ({{keys}})",
+  "openKeys": "Search or jump to… {{keys}}",
   "results": "Results",
   "g": {
     "actions": "Actions",

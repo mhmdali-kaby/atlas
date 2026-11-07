@@ -22,6 +22,20 @@ import arMoney from '../../src/i18n/locales/ar/settings-money.json' with { type:
 import enMoney from '../../src/i18n/locales/en/settings-money.json' with { type: 'json' }
 import arShell from '../../src/i18n/locales/ar/shell.json' with { type: 'json' }
 import enShell from '../../src/i18n/locales/en/shell.json' with { type: 'json' }
+import arScorecards from '../../src/i18n/locales/ar/scorecards.json' with { type: 'json' }
+import enScorecards from '../../src/i18n/locales/en/scorecards.json' with { type: 'json' }
+import arGeneral from '../../src/i18n/locales/ar/settings-general.json' with { type: 'json' }
+import enGeneral from '../../src/i18n/locales/en/settings-general.json' with { type: 'json' }
+import arAutonomy from '../../src/i18n/locales/ar/settings-autonomy.json' with { type: 'json' }
+import enAutonomy from '../../src/i18n/locales/en/settings-autonomy.json' with { type: 'json' }
+import arBackup from '../../src/i18n/locales/ar/settings-backup.json' with { type: 'json' }
+import enBackup from '../../src/i18n/locales/en/settings-backup.json' with { type: 'json' }
+import arNotifications from '../../src/i18n/locales/ar/settings-notifications.json' with { type: 'json' }
+import enNotifications from '../../src/i18n/locales/en/settings-notifications.json' with { type: 'json' }
+import arSchedule from '../../src/i18n/locales/ar/settings-schedule.json' with { type: 'json' }
+import enSchedule from '../../src/i18n/locales/en/settings-schedule.json' with { type: 'json' }
+import arEnvironment from '../../src/i18n/locales/ar/settings-environment.json' with { type: 'json' }
+import enEnvironment from '../../src/i18n/locales/en/settings-environment.json' with { type: 'json' }
 import { EVIDENCE_DIR } from '../support/stack'
 import { expect, test } from './appearance'
 
@@ -31,8 +45,8 @@ import { expect, test } from './appearance'
  */
 const SHOTS = path.join(EVIDENCE_DIR, 'ATL-41')
 const T = {
-  en: { shell: enShell, portfolio: enPortfolio, portfolioOrders: enPortfolioOrders, portfolioHistory: enPortfolioHistory, portfolioPerformance: enPortfolioPerformance, settings: enSettings, money: enMoney, markets: enMarkets, agents: enAgents, data: enData, sources: enSources },
-  ar: { shell: arShell, portfolio: arPortfolio, portfolioOrders: arPortfolioOrders, portfolioHistory: arPortfolioHistory, portfolioPerformance: arPortfolioPerformance, settings: arSettings, money: arMoney, markets: arMarkets, agents: arAgents, data: arData, sources: arSources },
+  en: { shell: enShell, portfolio: enPortfolio, portfolioOrders: enPortfolioOrders, portfolioHistory: enPortfolioHistory, portfolioPerformance: enPortfolioPerformance, settings: enSettings, money: enMoney, markets: enMarkets, agents: enAgents, data: enData, sources: enSources, scorecards: enScorecards, general: enGeneral, autonomy: enAutonomy, backup: enBackup, notifications: enNotifications, schedule: enSchedule, environment: enEnvironment },
+  ar: { shell: arShell, portfolio: arPortfolio, portfolioOrders: arPortfolioOrders, portfolioHistory: arPortfolioHistory, portfolioPerformance: arPortfolioPerformance, settings: arSettings, money: arMoney, markets: arMarkets, agents: arAgents, data: arData, sources: arSources, scorecards: arScorecards, general: arGeneral, autonomy: arAutonomy, backup: arBackup, notifications: arNotifications, schedule: arSchedule, environment: arEnvironment },
 }
 
 test.use({ viewport: { width: 1440, height: 900 } })
@@ -58,6 +72,7 @@ test('on /portfolio the switcher selects Portfolio and lists only its pages; Set
     t.portfolio.nav.cashflows,
     t.portfolioHistory.nav,
     t.portfolioPerformance.nav,
+    t.scorecards.nav,
   ])
   await expect(sidebar.getByRole('link', { name: t.settings.nav.risk })).toHaveCount(0)
 
@@ -68,22 +83,28 @@ test('on /portfolio the switcher selects Portfolio and lists only its pages; Set
   const area = switcher.getByRole('link', { name: t.shell.area.portfolio })
   const [icon, label] = [(await area.locator('svg').boundingBox())!, (await area.locator('span').boundingBox())!]
   expect(lang === 'ar' ? icon.x > label.x : icon.x < label.x).toBe(true)
-  await page.waitForTimeout(400)
-  await page.screenshot({ path: `${SHOTS}/${info.project.name}-portfolio.png` })
+  await page.screenshot({ path: `${SHOTS}/${info.project.name}-portfolio.png`, animations: 'disabled' })
 
   await page.evaluate(() => ((window as unknown as { atlasNoReload: boolean }).atlasNoReload = true))
   await switcher.getByRole('link', { name: t.shell.area.settings }).click()
-  await expect(page).toHaveURL(/\/settings\/connections$/)
+  // Settings opens on its first page, General (patch 35, ATL-238).
+  await expect(page).toHaveURL(/\/settings\/general$/)
   await expect(switcher.getByRole('link', { name: t.shell.area.settings })).toHaveAttribute('aria-current', 'true')
   const settingsList = sidebar.getByRole('navigation', { name: t.shell.area.settings })
   await expect(settingsList.getByRole('link')).toHaveText([
+    t.general.nav,
     t.settings.nav.connections,
     t.settings.nav.risk,
     t.money.nav,
     t.markets.nav,
+    t.autonomy.nav,
     t.agents.nav,
     t.data.nav.data,
     t.sources.nav,
+    t.backup.nav,
+    t.notifications.nav,
+    t.schedule.nav,
+    t.environment.nav,
   ])
   await expect(sidebar.getByRole('link', { name: t.portfolio.nav.overview })).toHaveCount(0)
   expect(await page.evaluate(() => (window as unknown as { atlasNoReload?: boolean }).atlasNoReload)).toBe(true)
@@ -99,23 +120,30 @@ test('the switcher works by keyboard alone with a visible focus ring', async ({ 
   const settings = switcher.getByRole('link', { name: t.shell.area.settings })
   const inSwitcher = () => page.evaluate(() => !!document.activeElement?.closest('[data-testid="area-switch"]'))
 
-  // Tab until focus lands in the switcher: one stop, on the current area.
-  for (let i = 0; i < 15 && !(await inSwitcher()); i++) await page.keyboard.press('Tab')
+  // Tab until focus lands in the switcher: one stop, on the current area. The page's own stops
+  // come first in Tab order, then the sidebar's search capsule (ATL-249), then the switcher.
+  for (let i = 0; i < 40 && !(await inSwitcher()); i++) await page.keyboard.press('Tab')
   await expect(portfolio).toBeFocused()
   const ring = await portfolio.evaluate((el) => getComputedStyle(el).boxShadow)
   expect(ring, 'focus ring').toMatch(/3px/)
   await page.screenshot({ path: `${SHOTS}/${info.project.name}-focus.png`, clip: { x: lang === 'ar' ? 1440 - 280 : 0, y: 0, width: 280, height: 260 } })
 
+  // Portfolio, Journal, Backtester, Settings: Settings is the last area, so End reaches it and
+  // ArrowDown wraps from it to the first (War Room).
   await page.keyboard.press('ArrowDown')
+  await expect(switcher.getByRole('link', { name: t.shell.area.journal })).toBeFocused()
+  await page.keyboard.press('End')
   await expect(settings).toBeFocused()
   await page.keyboard.press('Enter')
-  await expect(page).toHaveURL(/\/settings\/connections$/)
+  await expect(page).toHaveURL(/\/settings\/general$/)
   await expect(settings).toHaveAttribute('aria-current', 'true')
 
   // Back by Space: Settings is now the switcher's Tab stop.
   await page.keyboard.press('Shift+Tab')
-  for (let i = 0; i < 15 && !(await inSwitcher()); i++) await page.keyboard.press('Tab')
+  for (let i = 0; i < 40 && !(await inSwitcher()); i++) await page.keyboard.press('Tab')
   await expect(settings).toBeFocused()
+  await page.keyboard.press('ArrowUp')
+  await page.keyboard.press('ArrowUp')
   await page.keyboard.press('ArrowUp')
   await expect(portfolio).toBeFocused()
   await page.keyboard.press('Space')
