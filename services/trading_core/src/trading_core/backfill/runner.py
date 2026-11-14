@@ -14,8 +14,8 @@ that page) and ``rows_written``, so a process killed at any point resumes exactl
 committed page and never re-fetches a page newer than the cursor. The job row is only updated while
 its status is still ``running``; a pause therefore stops a worker before its next write (that page is
 rolled back and fetched again on resume). A job is ``done`` when OKX returns no older data (or the
-walk reaches ``target_from``); any error after the client's own retries marks only that job
-``failed`` with ``last_error``.
+walk reaches ``target_from``, or OKX answers an ``open_interest_end_codes`` code); any error after
+the client's own retries marks only that job ``failed`` with ``last_error``.
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ from trading_core.backfill.plan import (
     ensure_jobs,
     runner_cfg,
 )
-from trading_core.okx import OkxClient
+from trading_core.okx import OkxClient, OkxError
 
 logger = logging.getLogger("trading_core.backfill")
 
@@ -137,6 +137,7 @@ class BackfillRunner:
         self._now = now or (lambda: datetime.now(UTC))
         self._order: list[str] = list(cfg["dataset_order"])
         self._oi_period = str(cfg["open_interest_period"])
+        self._oi_end_codes = frozenset(str(c) for c in cfg["open_interest_end_codes"])
         self._err_max = int(cfg["last_error_max_chars"])
         self._page = {
             "candles": int(DEFAULTS["okx_rest"]["page_limits"]["market/history-candles"]),
@@ -266,7 +267,12 @@ class BackfillRunner:
         cursor = job.cursor_ts
         while True:
             end = None if cursor is None else _ms(cursor) - 1
-            page = await okx.get_open_interest_volume(job.inst_id, period=self._oi_period, end=end)
+            try:
+                page = await okx.get_open_interest_volume(job.inst_id, period=self._oi_period, end=end)
+            except OkxError as exc:
+                if exc.code in self._oi_end_codes:
+                    return  # no series for this currency, or nothing older than OKX keeps
+                raise
             page = [p for p in page if p.ts >= job.target_from and (cursor is None or p.ts < cursor)]
             if not page:
                 return

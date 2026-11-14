@@ -359,6 +359,41 @@ async def test_funding_and_open_interest_walk_back_until_okx_has_nothing_older(
         assert (row.status, row.rows_written) == ("done", n)
 
 
+@respx.mock(base_url=BASE, assert_all_called=False)
+async def test_open_interest_ends_done_when_okx_has_no_series_or_no_older_range(
+    respx_mock: respx.MockRouter, clean: Engine
+) -> None:
+    """OKX answers 51012 for a currency with no rubik series (new listings) and 50030 once ``end``
+    is older than the window it keeps. Both mean "nothing (older) to fetch", not a failure."""
+    day = 24 * HOUR_MS
+    newest = int(NOW.timestamp() * 1000)
+    kept = [newest - i * day for i in range(5)]
+
+    def oi_page(request: httpx.Request) -> httpx.Response:
+        params = dict(request.url.params)
+        if params["ccy"] == "GRAM":
+            return httpx.Response(200, json={"code": "51012", "msg": "Token does not exist", "data": []})
+        end = params.get("end")
+        if end is not None and int(end) < kept[-1]:
+            return httpx.Response(200, json={"code": "50030", "msg": "Illegal time range", "data": []})
+        rows = [t for t in kept if end is None or t <= int(end)]
+        return httpx.Response(
+            200, json={"code": "0", "msg": "", "data": [[str(t), "1000.5", "20"] for t in rows]}
+        )
+
+    respx_mock.get("/api/v5/rubik/stat/contracts/open-interest-volume").mock(side_effect=oi_page)
+    far = datetime(2009, 1, 1, tzinfo=UTC)
+    missing = add_job(clean, "GRAM", "open_interest", far)
+    windowed = add_job(clean, "SLX", "open_interest", far)
+
+    result = await BackfillRunner(ENV, clean, client_factory=factory()).run()
+
+    assert result.failed == 0 and result.done == 2
+    assert (job_row(clean, missing).status, job_row(clean, missing).rows_written) == ("done", 0)
+    row = job_row(clean, windowed)
+    assert (row.status, row.rows_written, row.last_error) == ("done", 5, None)
+
+
 # ---- pause -------------------------------------------------------------------------------------
 
 

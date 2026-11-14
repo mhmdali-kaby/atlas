@@ -380,6 +380,10 @@ backfill_runner:
   dataset_order: ["candles:1D", "candles:1H", "candles:4H", funding, open_interest, "candles:15m", "candles:5m", "candles:1m"]
   # Open interest history is OKX rubik's per-currency series (crypto only); 1D goes back furthest.
   open_interest_period: 1D
+  # OKX codes on rubik open-interest-volume that mean "nothing (older) to fetch", so the job ends done:
+  # 51012 "Token does not exist" (no rubik series for that currency, e.g. a new listing) and
+  # 50030 "Illegal time range" (`end` is older than the window OKX keeps).
+  open_interest_end_codes: ["51012", "50030"]
   full_history_floor: "2009-01-01T00:00:00Z"
   # Postgres accepts at most 65535 bind parameters per statement; batches are also capped at batch_rows.
   max_bind_params: 65535

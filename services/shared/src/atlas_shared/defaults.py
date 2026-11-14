@@ -375,6 +375,10 @@ DEFAULTS: Final[dict[str, Any]] = {
             "candles:1m",
         ],
         "open_interest_period": "1D",
+        "open_interest_end_codes": [
+            "51012",
+            "50030",
+        ],
         "full_history_floor": "2009-01-01T00:00:00Z",
         "max_bind_params": 65535,
         "batch_rows": 2000,
