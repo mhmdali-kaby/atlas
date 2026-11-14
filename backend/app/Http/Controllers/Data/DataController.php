@@ -52,7 +52,8 @@ class DataController extends Controller
         $error = null;
         $result = null;
         try {
-            $response = TradingCore::fromConfig()->post($path, $payload);
+            $timeout = config('atlas_defaults.data_api.http_timeout_seconds');
+            $response = TradingCore::fromConfig(is_int($timeout) ? $timeout : null)->post($path, $payload);
             $body = $response->json();
             if (! $response->successful()) {
                 [$status, $error] = [502, 'trading_core_error'];
