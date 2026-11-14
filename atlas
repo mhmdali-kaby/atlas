@@ -14,7 +14,7 @@ mkdir -p "$RUN" "$LOGS"
 
 # name|working dir|command. Order is start order.
 PROCS=(
-  "api|backend|php artisan serve --host=127.0.0.1 --port=8000"
+  "api|backend|php artisan serve --host=127.0.0.1 --port=18420"
   "reverb|backend|php artisan reverb:start --host=127.0.0.1 --port=8080"
   "bridge|backend|php artisan atlas:bridge"
   "horizon|backend|php artisan horizon"
@@ -172,7 +172,7 @@ cmd_status() {
     if alive "$name"; then printf '  %-13s running (pid %s)\n' "$name" "$(cat "$RUN/$name.pid")"
     else printf '  %-13s stopped\n' "$name"; fi
   done
-  for pt in 5433:postgres 6380:redis 8000:api 8080:reverb 8100:trading_core 3000:frontend; do
+  for pt in 5433:postgres 6380:redis 18420:api 8080:reverb 8100:trading_core 3000:frontend; do
     port_open "${pt%%:*}" && s=open || s=closed
     printf '  :%-5s %-13s %s\n' "${pt%%:*}" "${pt#*:}" "$s"
   done
