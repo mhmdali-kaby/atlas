@@ -712,6 +712,9 @@ backtests_api:
   queue: backtests
 
 data_api:
+  # Wait for trading_core's /internal/backfill/start|pause. Re-queueing every failed job took
+  # ~16 s while the backfill was writing; the 10 s default timed out after it had started.
+  http_timeout_seconds: 30
   resync_per_minute: 1
   pause_per_minute: 5
   repaired_issue_days: 7

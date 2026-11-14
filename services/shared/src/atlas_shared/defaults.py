@@ -824,6 +824,7 @@ DEFAULTS: Final[dict[str, Any]] = {
         "queue": "backtests",
     },
     "data_api": {
+        "http_timeout_seconds": 30,
         "resync_per_minute": 1,
         "pause_per_minute": 5,
         "repaired_issue_days": 7,

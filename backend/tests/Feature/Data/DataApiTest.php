@@ -233,6 +233,24 @@ it('returns 502 when trading_core is unreachable', function (): void {
         ->assertJsonPath('message', __('data.trading_core_unavailable'));
 });
 
+it('waits data_api.http_timeout_seconds for trading_core on resync and pause, not the 10 s default', function (): void {
+    // Re-queueing every failed job can take ~16 s while the backfill is writing. With the
+    // default 10 s wait the request timed out after trading_core had already started it, and
+    // the owner saw "Couldn't reach the trading service. Nothing started."
+    $timeouts = [];
+    Http::fake(function (Request $request, array $options) use (&$timeouts) {
+        $timeouts[] = $options['timeout'] ?? null;
+
+        return Http::response(['ok' => true]);
+    });
+
+    $this->postJson('/api/data/resync')->assertStatus(202);
+    $this->postJson('/api/data/pause')->assertStatus(202);
+
+    expect($timeouts)->toBe([30, 30])
+        ->and(config('atlas_defaults.data_api.http_timeout_seconds'))->toBe(30);
+});
+
 it('rate-limits a second resync inside the window', function (): void {
     Http::fake([ATL48_CORE.'/*' => Http::response(['ok' => true])]);
 
