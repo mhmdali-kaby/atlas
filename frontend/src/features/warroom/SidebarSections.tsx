@@ -6,7 +6,8 @@ import { formatFixed } from '../../lib/format'
 import type { SidebarSectionProps } from '../../app/feature'
 import { Skeleton } from '../../ui'
 import { useLang, useNow } from '../portfolio/hooks'
-import { AGENTS, agentStatus } from './agents'
+import { AGENTS } from './agents'
+import { useAgentStatus } from './agentLiveStatus'
 import type { WarroomThread } from './api'
 import { Medallion } from './Medallion'
 import { lastReplayDay, RECENT_DAYS, replayDayName, replayPath, shiftDay, useReplayDays } from './replay'
@@ -26,6 +27,7 @@ import './warroom.css'
  */
 export function AgentList(_props: SidebarSectionProps) {
   const { t } = useTranslation('warroom')
+  const agentStatus = useAgentStatus()
   const allOffline = AGENTS.every((a) => agentStatus(a.slug) === 'offline')
   return (
     <div className="side-section" role="group" aria-labelledby="wr-head-agents" data-testid="wr-agents">
@@ -37,8 +39,8 @@ export function AgentList(_props: SidebarSectionProps) {
         const status = agentStatus(agent.slug)
         const name = t(`agents.${agent.slug}.name`)
         const statusWord = t(`status.${status}`)
-        // The row's second line shows the role while offline (agentStatus is always "offline"
-        // until the agent runtime ships) and the live status word otherwise. ATL-225: the
+        // The row's second line shows the role while offline (not running, disabled,
+        // or the roster not loaded yet) and the live status word otherwise. ATL-225: the
         // accessible name must start with that same visible text (axe
         // label-content-name-mismatch flagged aria-label "<name>, Offline", which dropped the
         // role shown on screen), so there is no separate aria-label; a hidden span adds the

@@ -5,7 +5,8 @@ import { Trans, useTranslation } from 'react-i18next'
 import { formatFixed } from '../../lib/format'
 import type { TradingEnv } from '../../app/shell/tradingEnv'
 import { useLang } from '../portfolio/hooks'
-import { agentStatus, filterAgents, type AgentDef } from './agents'
+import { filterAgents, type AgentDef } from './agents'
+import { useAgentStatus } from './agentLiveStatus'
 import type { WarroomMessage, WarroomThread } from './api'
 import { KillSheet } from '../kill-switch/KillSwitch'
 import { ResumeSheet } from '../kill-switch/TradingBanner'
@@ -126,6 +127,7 @@ export function Composer({ env, thread, threadName, disabled, replyTo, onCancelR
   const lang = useLang()
   const qc = useQueryClient()
   const ids = useId()
+  const agentStatus = useAgentStatus()
   const draftKey = thread ? `${env}:${thread.id}` : ''
   const [value, setValue] = useState(() => drafts.get(draftKey) ?? '')
   const [picker, setPicker] = useState<Picker | null>(null)

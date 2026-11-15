@@ -1,9 +1,16 @@
 import { render, screen } from '@testing-library/react'
 import { act } from 'react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import i18n from '../../i18n'
-import { AGENTS } from './agents'
+import { AGENTS, type AgentStatus } from './agents'
+import { statusFromRow } from './agentLiveStatus'
 import { AgentList } from './SidebarSections'
+
+const live = vi.hoisted(() => ({ statuses: {} as Record<string, AgentStatus> }))
+vi.mock('./agentLiveStatus', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./agentLiveStatus')>()),
+  useAgentStatus: () => (slug: string) => live.statuses[slug] ?? 'offline',
+}))
 
 /**
  * ATL-225: an AgentList row's accessible name used to be aria-label "<name>, Offline", which
@@ -12,7 +19,36 @@ import { AgentList } from './SidebarSections'
  * span adds the status word on top.
  */
 afterEach(async () => {
+  live.statuses = {}
   await act(() => i18n.changeLanguage('en'))
+})
+
+describe('AgentList live status', () => {
+  it('shows a running agent by its state and drops "All offline"', () => {
+    live.statuses = { historian: 'thinking', news_intelligence: 'idle' }
+    render(<AgentList onNavigate={() => {}} />)
+    expect(screen.queryByText('All offline')).not.toBeInTheDocument()
+    const historian = screen.getAllByRole('button').find((b) => b.dataset.slug === 'historian')!
+    expect(historian).toHaveAttribute('data-status', 'thinking')
+    expect(historian).toHaveTextContent('Thinking')
+  })
+
+  it('says "All offline" when no agent reports a state', () => {
+    render(<AgentList onNavigate={() => {}} />)
+    expect(screen.getByText('All offline')).toBeInTheDocument()
+  })
+})
+
+describe('statusFromRow', () => {
+  it('maps the Agents API state to the War Room status', () => {
+    expect(statusFromRow(undefined)).toBe('offline')
+    expect(statusFromRow({ enabled: false, state: 'idle' })).toBe('offline')
+    expect(statusFromRow({ enabled: true, state: 'disabled' })).toBe('offline')
+    expect(statusFromRow({ enabled: true, state: 'thinking' })).toBe('thinking')
+    expect(statusFromRow({ enabled: true, state: 'idle' })).toBe('idle')
+    expect(statusFromRow({ enabled: true, state: 'rate_limited' })).toBe('waiting')
+    expect(statusFromRow({ enabled: true, state: 'something_new' })).toBe('offline')
+  })
 })
 
 describe('AgentList', () => {

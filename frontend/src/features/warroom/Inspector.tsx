@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next'
 import type { TradingEnv } from '../../app/shell/tradingEnv'
 import { Skeleton } from '../../ui'
 import { useLang, useNow } from '../portfolio/hooks'
-import { agentBySlug, agentStatus } from './agents'
+import { agentBySlug } from './agents'
+import { useAgentStatus } from './agentLiveStatus'
 import type { WarroomThread } from './api'
 import { InspectorPositions } from './InspectorPositions'
 import { Medallion } from './Medallion'
@@ -38,6 +39,7 @@ export function Inspector({
   const { t } = useTranslation('warroom')
   const lang = useLang()
   const now = useNow(60_000)
+  const agentStatus = useAgentStatus()
   const none = (
     <>
       <span aria-hidden="true">—</span>

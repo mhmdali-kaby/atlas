@@ -46,11 +46,6 @@ export function agentByHandle(handle: string): AgentDef | undefined {
   )
 }
 
-/** Until the agent runtime (a later patch), every agent is offline. */
-export function agentStatus(_slug: string): AgentStatus {
-  return 'offline'
-}
-
 /** Agents whose handle starts with the query, or whose name contains it (case-insensitive). */
 export function filterAgents(query: string, nameOf: (a: AgentDef) => string): AgentDef[] {
   const q = query.toLowerCase()
