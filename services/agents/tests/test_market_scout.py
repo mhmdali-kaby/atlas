@@ -803,6 +803,49 @@ def test_prepare_takes_degraded_classes_from_news_intelligence(
     assert {r.inst_id for r in prepared.shortlist.rows} == set(INSTS)
 
 
+def test_prepare_filters_the_universe_and_builds_features_at_one_instant(
+    engine: Engine, now: datetime, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Live, ctx.now() reads the wall clock on every call, so the universe and the feature table must
+    share one pinned instant; otherwise build_feature_table refuses ("universe was filtered at a
+    different as_of") and the scheduled watchlist never runs."""
+    ticks = (now + timedelta(milliseconds=i) for i in range(1000))
+    seen: list[datetime] = []
+
+    class Built(Exception):
+        pass
+
+    def universe(ctx: ToolContext) -> str:
+        seen.append(ctx.now())
+        return "universe"
+
+    def features(ctx: ToolContext, _universe: object) -> None:
+        seen.append(ctx.now())
+        raise Built
+
+    monkeypatch.setattr(
+        news_intelligence,
+        "news_coverage",
+        lambda ctx: news_intelligence.NewsCoverage(degraded_asset_classes=[], degraded_since={}),
+    )
+    monkeypatch.setattr(market_scout, "_reusable_table", lambda session, ctx: None)
+    monkeypatch.setattr(market_scout, "build_universe", universe)
+    monkeypatch.setattr(market_scout, "build_feature_table", features)
+    ctx = ToolContext(
+        env=ENV,
+        session_factory=lambda: Session(engine),
+        agent=SLUG,
+        correlation_id="test",
+        clock=lambda: next(ticks),
+        publish=lambda stream, envelope: None,
+    )
+
+    with pytest.raises(Built):
+        market_scout.prepare(ctx, (now + timedelta(hours=3)).date())
+
+    assert len(seen) == 2 and seen[0] == seen[1]
+
+
 # == ATL-109: intraday re-runs ========================================================================
 
 NOON = timedelta(hours=4)  # _now() is 08:00 Baghdad; +4h = 12:00 Baghdad

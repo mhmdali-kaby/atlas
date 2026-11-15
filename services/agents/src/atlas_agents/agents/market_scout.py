@@ -32,7 +32,7 @@ import logging
 import time
 import uuid
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
 from typing import Any, Final
 
@@ -255,7 +255,11 @@ def prepare(ctx: ToolContext, day: date) -> Prepared:
         reused = _reusable_table(session, ctx)
     coverage = news_intelligence.news_coverage(ctx)
     if reused is None:
-        table = build_feature_table(ctx, build_universe(ctx))
+        # One instant for both steps: live, ctx.now() reads the wall clock on every call, and
+        # build_feature_table refuses a universe filtered at a different as_of.
+        at = ctx.now()
+        pinned = replace(ctx, clock=lambda: at)
+        table = build_feature_table(pinned, build_universe(pinned))
         with ctx.session_factory() as session:
             report = save_feature_table(session, ctx, table)
             report_id = str(report.id)

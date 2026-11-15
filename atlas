@@ -22,6 +22,8 @@ PROCS=(
   "scheduler|backend|php artisan schedule:work"
   "trading_core|services|uv run --package atlas-trading-core python -m trading_core"
   "ingest|services|uv run --package atlas-ingest python -m atlas_ingest"
+  # The agents supervisor (decision #245): runs on this Mac through the owner's `claude` CLI login.
+  "agents|services|uv run --package atlas-agents python -m atlas_agents"
   "frontend|frontend|npm run dev"
 )
 
