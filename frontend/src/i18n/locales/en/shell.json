@@ -9,6 +9,12 @@
     "demoTip": "Paper trading on the OKX demo account. No real money moves.",
     "liveTip": "Real money on your OKX live account. Every order Atlas sends is real."
   },
+  "okxAccount": {
+    "demo": "Open OKX demo account",
+    "live": "Open OKX live account",
+    "demoHint": "Opens okx.com in a new tab. The switch at the top of OKX should say Demo trading.",
+    "liveHint": "Opens okx.com in a new tab. If OKX shows Demo trading, switch it to Live trading."
+  },
   "nav": {
     "label": "Sidebar",
     "areas": "Areas"

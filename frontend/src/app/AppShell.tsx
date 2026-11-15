@@ -14,6 +14,7 @@ import { TradingBanner } from '../features/kill-switch/TradingBanner'
 import { activeArea, activeNavEntry, areaHome, type AreaId, type ShellRegistry } from './feature'
 import { shellRegistry as registeredShell } from './registry'
 import { EnvBadge } from './shell/EnvBadge'
+import { OkxAccountLink } from './shell/OkxAccountLink'
 import { AccountMenu, LanguageButton, MoreMenu, ThemeMenu, ToolbarGroup } from './shell/Prefs'
 import { toolbarIconButton } from './shell/toolbarClasses'
 import { RiskFooter } from './shell/RiskFooter'
@@ -114,6 +115,7 @@ export function AppShell({ shell = registeredShell }: { shell?: ShellRegistry })
               <div data-slot="toolbar-actions" className="shell-tb-page contents" />
               <EnvBadge />
               <ToolbarGroup>
+                <OkxAccountLink />
                 <NotificationBell />
                 <MoreMenu pageTitle={title} user={user ?? undefined} onSignOut={signOut} />
               </ToolbarGroup>
