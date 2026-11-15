@@ -18,6 +18,7 @@ that pass either explicitly.
 
 from __future__ import annotations
 
+import asyncio
 import dataclasses
 import logging
 import os
@@ -44,6 +45,8 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
 from atlas_agents import budget, events
+from atlas_agents.claude_limit import ClaudeLimit
+from atlas_agents.claude_limit import config as limit_config
 from atlas_agents.registry import AgentSpec, budget_warning_fraction
 from atlas_agents.states import State, set_state
 
@@ -153,6 +156,7 @@ class _Exchange:
     messages: list[Message] = field(default_factory=list)
     results: list[ResultMessage] = field(default_factory=list)
     rate_limited: bool = False
+    timed_out: bool = False
     resets_at: datetime | None = None
     error: str | None = None
 
@@ -210,6 +214,8 @@ class AgentSession:
         clock: Clock | None = None,
         observer_factory: ObserverFactory | None = None,
         system_prompt: Callable[[], str] | None = None,
+        limit: ClaudeLimit | None = None,
+        run_timeout_seconds: float | None = None,
     ) -> None:
         base = options or ClaudeAgentOptions()
         passed = [key for key in FORBIDDEN_ENV if key in base.env]
@@ -220,6 +226,11 @@ class AgentSession:
         self.spec = spec
         self.env = env
         self.prompt_version = prompt_version
+        # The plan's usage limit is shared by every agent of the supervisor (atlas_agents.claude_limit).
+        self.limit = limit if limit is not None else ClaudeLimit()
+        self.run_timeout_seconds = float(
+            limit_config()["run_timeout_seconds"] if run_timeout_seconds is None else run_timeout_seconds
+        )
         # Rendered at every connect, so a new session picks up current settings and scores (ATL-90).
         self._system_prompt = system_prompt
         self._engine = engine
@@ -497,10 +508,16 @@ class AgentSession:
                     f"{usage.turns}/{self.spec.daily_turns} turns)"
                 )
                 resets_at = None
-            elif self._rate_limited_until is not None and now < self._rate_limited_until:
+            elif self.limit.refuses(now) or (
+                self._rate_limited_until is not None and now < self._rate_limited_until
+            ):
                 status, state = "rate_limited", "rate_limited"
-                resets_at = self._rate_limited_until
-                error = f"rate_limited: Claude usage limit, resets at {resets_at.isoformat()}"
+                resets_at = self.limit.resets_at or self._rate_limited_until
+                error = "rate_limited: Claude usage limit" + (
+                    f", resets at {resets_at.isoformat()}"
+                    if resets_at
+                    else "; Atlas checks again every few minutes"
+                )
             else:
                 return None
 
@@ -538,7 +555,19 @@ class AgentSession:
     async def _exchange(
         self, prompt: str, model: str, observer: RunObserver | None, out: _Exchange
     ) -> _Exchange:
-        """Send one query and add what it produced to ``out``."""
+        """Send one query and add what it produced to ``out``. A rejected usage limit ends the read at
+        once (the CLI keeps the stream open after it), and no answer for run_timeout_seconds ends it as a
+        timeout, so a run never stays "thinking" forever."""
+        try:
+            async with asyncio.timeout(self.run_timeout_seconds):
+                await self._read(prompt, model, observer, out)
+        except TimeoutError:
+            out.timed_out = True
+            out.error = f"timeout: no answer from Claude in {self.run_timeout_seconds:g} s"
+            await self.close()
+        return out
+
+    async def _read(self, prompt: str, model: str, observer: RunObserver | None, out: _Exchange) -> None:
         try:
             client = await self._ensure_client()
             if model != self._model:
@@ -557,6 +586,8 @@ class AgentSession:
                     if info.status == "rejected":
                         out.rate_limited = True
                         out.resets_at = _from_unix(info.resets_at) or out.resets_at
+                        await self.close()  # stop waiting: nothing more comes until the limit resets
+                        return
                 elif isinstance(message, AssistantMessage) and message.error == "rate_limit":
                     out.rate_limited = True
                 elif isinstance(message, ResultMessage):
@@ -576,7 +607,6 @@ class AgentSession:
             if RATE_LIMIT_TEXT.search(str(exc)):
                 out.rate_limited = True
             await self.close()
-        return out
 
     def _usage(self, exchange: _Exchange) -> tuple[int, int, int, Decimal]:
         """tokens_in, tokens_out, turns and the notional cost of this run."""
@@ -619,17 +649,21 @@ class AgentSession:
         if exchange.rate_limited:
             status, state = "rate_limited", "rate_limited"
             self._rate_limited_until = exchange.resets_at
+            self.limit.trip(ended, exchange.resets_at)
             error = exchange.error or "rate_limited: Claude usage limit reached"
             if exchange.resets_at:
                 error = f"{error} (resets at {exchange.resets_at.isoformat()})"
         elif exchange.error is not None:
             status, state, error = "error", "degraded", exchange.error
+            if exchange.timed_out:
+                self.limit.mark_suspect()  # the supervisor probes at once: a silent CLI is often the limit
         elif review is not None and review.failure is not None:
             # Invalid output after the follow-up (brief §6.3): the agent is marked degraded.
             status, state, error = "degraded", "degraded", review.failure
         else:
             status, state, error = "ok", "idle", None
             self._rate_limited_until = None
+            self.limit.answered()
         error = _clip(error) if error else None
         text = _assistant_text(exchange.messages)
 

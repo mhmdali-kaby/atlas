@@ -21,7 +21,9 @@
     "news_alert": "News on a position you hold",
     "agent_degraded": "Agent not working",
     "data_stale": "Market data stopped",
-    "daily_report": "Daily report"
+    "daily_report": "Daily report",
+    "claude_limit_reached": "Claude usage limit",
+    "claude_limit_cleared": "Claude back"
   },
   "desc": {
     "proposal_awaiting_approval": "When a trade passes the risk engine and needs your yes or no.",
@@ -32,9 +34,11 @@
     "stop_hit": "When OKX triggers one of your stop-losses.",
     "target_hit": "When OKX triggers a take-profit.",
     "news_alert": "When News Intelligence flags an important story on something you hold.",
-    "agent_degraded": "When an agent stops working or reaches its Claude usage limit.",
+    "agent_degraded": "When an agent stops working.",
     "data_stale": "When prices stop updating and new trades pause.",
-    "daily_report": "When the Portfolio Manager posts the day’s report, at 23:30."
+    "daily_report": "When the Portfolio Manager posts the day’s report, at 23:30.",
+    "claude_limit_reached": "When your Claude plan hits its usage limit and the agents pause.",
+    "claude_limit_cleared": "When Claude answers again and the agents resume."
   },
   "ch": {
     "in_app": "In Atlas",
@@ -116,8 +120,8 @@
       "action": "Read alert"
     },
     "agent_degraded": {
-      "title": "News Intelligence reached its usage limit",
-      "body": "It resumes at 13:00. The team carries on without it.",
+      "title": "News Intelligence isn’t working properly",
+      "body": "The team carries on without it. Agents shows why.",
       "action": "Open Agents"
     },
     "data_stale": {
@@ -129,6 +133,16 @@
       "title": "Daily report is ready",
       "body": "The Portfolio Manager’s report for 27 Oct is in the War Room.",
       "action": "Read report"
+    },
+    "claude_limit_reached": {
+      "title": "Claude usage limit reached",
+      "body": "The agents are paused until the limit resets around 02:00. Atlas checks every 10 minutes.",
+      "action": "Open Agents"
+    },
+    "claude_limit_cleared": {
+      "title": "Claude is answering again",
+      "body": "The agents have resumed their work.",
+      "action": "Open Agents"
     }
   },
   "tg": {

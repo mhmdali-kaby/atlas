@@ -23,6 +23,8 @@ export type NotificationEvent =
   | 'agent_degraded'
   | 'daily_report'
   | 'news_alert'
+  | 'claude_limit_reached'
+  | 'claude_limit_cleared'
 
 export type Severity = 'info' | 'warning' | 'critical'
 

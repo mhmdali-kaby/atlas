@@ -1,19 +1,5 @@
 import type { TFunction } from 'i18next'
-import {
-  Bell,
-  Bot,
-  CheckCheck,
-  FileText,
-  Hand,
-  Newspaper,
-  OctagonAlert,
-  OctagonX,
-  Scale,
-  ShieldX,
-  Target,
-  WifiOff,
-  type LucideIcon,
-} from 'lucide-react'
+import { Bell, Bot, CheckCheck, CirclePlay, FileText, Hand, Hourglass, Newspaper, OctagonAlert, OctagonX, Scale, ShieldX, Target, WifiOff, type LucideIcon } from 'lucide-react'
 import { formatDate, formatTime } from '../warroom/time'
 import { formatDecimal, formatMoney, type Lang } from '../../lib/format'
 import type { NotificationRow } from './api'
@@ -39,6 +25,8 @@ const EXTRA: Record<EventId, { icon: LucideIcon; action: string }> = {
   agent_degraded: { icon: Bot, action: 'agents' },
   data_stale: { icon: WifiOff, action: 'data' },
   daily_report: { icon: FileText, action: 'report' },
+  claude_limit_reached: { icon: Hourglass, action: 'agents' },
+  claude_limit_cleared: { icon: CirclePlay, action: 'agents' },
 }
 
 const BREAKERS = ['daily_loss', 'weekly_loss', 'consecutive_losses', 'okx_errors', 'volatility_halt', 'agent_budget']
@@ -138,6 +126,18 @@ export function viewOf(n: NotificationRow, t: TFunction<'notifications'>, lang: 
       body = limited && str(p.resets_at) ? t('b.agentLimit', { time: time(p.resets_at) }) : t('b.agentDegraded')
       break
     }
+    case 'claude_limit_reached': {
+      title = t('t.claudeLimit')
+      const minutes = iso(String(int(p.probe_minutes) || 10))
+      body = str(p.resets_at)
+        ? t('b.claudeLimitAt', { minutes, time: time(p.resets_at) })
+        : t('b.claudeLimit', { minutes })
+      break
+    }
+    case 'claude_limit_cleared':
+      title = t('t.claudeBack')
+      body = t('b.claudeBack')
+      break
     case 'daily_report':
       title = t('t.daily')
       body = t('b.daily', { day: str(p.day) ? iso(formatDate(`${str(p.day)}T12:00:00Z`, lang)) : '—' })

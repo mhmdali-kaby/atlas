@@ -79,6 +79,8 @@ return [
         'reconciliation_mismatch' => 'Atlas and OKX disagreeing',
         'backup_failed' => 'database backup failing',
         'auth_two_factor_failures' => 'repeated wrong two-factor codes',
+        'claude_limit_reached' => 'Claude usage limit reached',
+        'claude_limit_cleared' => 'Claude answering again',
     ],
 
     'notification_channel' => [

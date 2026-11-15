@@ -69,6 +69,8 @@ return [
         'reconciliation_mismatch' => 'اختلاف أطلس وOKX',
         'backup_failed' => 'فشل النسخ الاحتياطي لقاعدة البيانات',
         'auth_two_factor_failures' => 'تكرار رموز التحقق الثنائي الخاطئة',
+        'claude_limit_reached' => 'بلوغ حد استخدام Claude',
+        'claude_limit_cleared' => 'عودة Claude للعمل',
     ],
 
     'notification_channel' => [

@@ -26,6 +26,8 @@ const LINKS: Record<EventId, string> = {
   agent_degraded: '/agents',
   data_stale: '/settings/data',
   daily_report: '/warroom?message=m1',
+  claude_limit_reached: '/agents',
+  claude_limit_cleared: '/agents',
 }
 const CH_ICON = { in_app: AppWindow, browser: MonitorDot, telegram: Send }
 

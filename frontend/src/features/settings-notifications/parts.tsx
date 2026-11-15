@@ -1,17 +1,4 @@
-import {
-  Bot,
-  CheckCheck,
-  FileText,
-  Hand,
-  Newspaper,
-  OctagonAlert,
-  OctagonX,
-  Scale,
-  ShieldX,
-  Target,
-  WifiOff,
-  type LucideIcon,
-} from 'lucide-react'
+import { Bot, CheckCheck, FileText, Hand, Newspaper, OctagonAlert, OctagonX, Scale, ShieldX, Target, WifiOff, type LucideIcon, Hourglass, CirclePlay } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cx } from '../../ui/cx'
 import type { EventId, Tone } from '../notifications/events'
@@ -29,6 +16,8 @@ export const EVENT_ICON: Record<EventId, LucideIcon> = {
   agent_degraded: Bot,
   data_stale: WifiOff,
   daily_report: FileText,
+  claude_limit_reached: Hourglass,
+  claude_limit_cleared: CirclePlay,
 }
 
 export function EventTile({ event, tone }: { event: EventId; tone: Tone }) {

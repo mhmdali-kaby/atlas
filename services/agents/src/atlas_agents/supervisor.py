@@ -46,13 +46,14 @@ from zoneinfo import ZoneInfo
 
 import redis
 from atlas_shared import active_env, bus
-from atlas_shared.db import AgentRun
+from atlas_shared.db import AgentRun, AgentState
 from atlas_shared.defaults import DEFAULTS
 from atlas_shared.events import EventEnvelope
-from sqlalchemy import Engine, select
+from claude_agent_sdk import ClaudeAgentOptions
+from sqlalchemy import Engine, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
-from atlas_agents import access, events, mentions, prompts, streaming
+from atlas_agents import access, claude_limit, events, mentions, prompts, streaming
 from atlas_agents.agent_settings import AgentSettings
 from atlas_agents.registry import (
     REGISTRY,
@@ -63,7 +64,14 @@ from atlas_agents.registry import (
     discover_hooks,
     parse_schedule,
 )
-from atlas_agents.session import AgentSession, ClientFactory, RunResult, Trigger, default_client_factory
+from atlas_agents.session import (
+    AgentSession,
+    ClientFactory,
+    RunResult,
+    Trigger,
+    cli_env,
+    default_client_factory,
+)
 from atlas_agents.settings_applier import SettingsApplier
 from atlas_agents.tools import ToolContext
 from atlas_agents.tools.framework import RunScope
@@ -172,6 +180,9 @@ class Supervisor:
         # Sessions of an env switched away from, closed once their in-flight run ends (ATL-237).
         self._retiring: set[asyncio.Task[None]] = set()
         self._switch_lock = asyncio.Lock()
+        # The owner's Claude plan limit, shared by every session (atlas_agents.claude_limit).
+        self.claude_limit = claude_limit.ClaudeLimit()
+        self._client_factory = client_factory
 
         def build(spec: AgentSpec) -> AgentSession:
             # Built for the env current when the session is made (self.env): after a switch every
@@ -198,6 +209,7 @@ class Supervisor:
                 prompt_version=prompt[1] if prompt else None,
                 system_prompt=prompts.renderer(ctx, prompt[0]) if prompt else None,
                 clock=self._clock,
+                limit=self.claude_limit,
             )
 
         self._build: SessionBuilder = session_builder or build
@@ -547,6 +559,58 @@ class Supervisor:
                     results.append(result)
         return results
 
+    async def check_claude_limit(self, now: datetime | None = None) -> None:
+        """Announce a newly hit plan limit once, and probe Claude when one is due: every
+        agents.claude_limit.probe_minutes while limited, at once after a run timed out. A probe that
+        answers clears the limit, sets rate-limited agents back to idle and announces the resume."""
+        gate = self.claude_limit
+        at = now or self._clock()
+        if gate.limited and gate.recovered:  # a run already got an answer after the reset time
+            gate.clear()
+            await asyncio.to_thread(self._resume_rate_limited, at)
+            self._announce_limit("cleared", at)
+            return
+        if gate.limited and not gate.announced:
+            self._announce_limit("reached", at)
+        if not gate.probe_due(at):
+            return
+        result = await claude_limit.probe(self._client_factory, self._probe_options())
+        if result.limited:
+            first = not gate.limited
+            gate.after_failed_probe(at, result.resets_at)
+            if first:
+                self._announce_limit("reached", at)
+            log.info(
+                "agents: Claude still at its usage limit (%s); next check %s",
+                result.error,
+                gate.next_probe_at,
+            )
+            return
+        was_limited = gate.limited
+        gate.clear()
+        if was_limited:
+            await asyncio.to_thread(self._resume_rate_limited, at)
+            self._announce_limit("cleared", at)
+            log.info("agents: Claude answers again; agents resumed")
+
+    def _announce_limit(self, state: str, at: datetime) -> None:
+        claude_limit.announce(
+            self._publish, env=self.env, state=state, gate=self.claude_limit, at=at, zone=owner_zone()
+        )
+        self.claude_limit.announced = state == "reached"
+
+    def _probe_options(self) -> ClaudeAgentOptions:
+        model = str(DEFAULTS["agents"]["models"]["routine"])
+        return ClaudeAgentOptions(model=model, env=cli_env())
+
+    def _resume_rate_limited(self, at: datetime) -> None:
+        with self._engine.begin() as conn:
+            conn.execute(
+                update(AgentState)
+                .where(AgentState.env == self.env, AgentState.state == "rate_limited")
+                .values(state="idle", last_error=None, state_since=at, updated_at=at)
+            )
+
     async def _fire_if_due(self, slug: str, hook: ScheduleHook, at: datetime) -> ScheduleFire | None:
         if hook.every_seconds is None:
             defaults = self.schedule_defaults
@@ -565,12 +629,15 @@ class Supervisor:
     async def serve(self, client: redis.Redis, *, stop: asyncio.Event) -> None:
         """The process loop: the mention consumer plus a schedule tick every tick_seconds."""
         interval = float(schedule_config()["tick_seconds"])
+        # Runs a stopped process left "running" would otherwise show as thinking forever.
+        await asyncio.to_thread(claude_limit.recover_interrupted_runs, self._engine)
 
         async def schedule() -> None:
             while not stop.is_set():
                 try:
                     # A missed system.env_changed (Redis down when Laravel published) is caught here.
                     await self.follow_stored_env()
+                    await self.check_claude_limit()
                     await self.tick()
                 except Exception:
                     log.exception("agents: schedule tick failed")

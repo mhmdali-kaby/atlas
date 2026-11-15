@@ -1,5 +1,5 @@
 /*
- * The 11 brief §17 notification events (ATL-214): one id, group and tone each. This is the single
+ * The brief §17 notification events plus the Claude usage limit pair (ATL-214): one id, group and tone each. This is the single
  * catalogue: Settings → Notifications (ATL-218) groups its switches by it, and the toolbar list,
  * toasts and browser banners (ATL-217) add an icon and an action per id on top of it.
  */
@@ -12,6 +12,7 @@ export const EVENTS = [
   { id: 'circuit_breaker', group: 'needs', tone: 'critical' },
   { id: 'kill_switch', group: 'needs', tone: 'critical' },
   { id: 'reconciliation_mismatch', group: 'needs', tone: 'critical' },
+  { id: 'claude_limit_reached', group: 'needs', tone: 'warning' },
   { id: 'order_filled', group: 'trades', tone: 'neutral' },
   { id: 'stop_hit', group: 'trades', tone: 'warning' },
   { id: 'target_hit', group: 'trades', tone: 'profit' },
@@ -19,6 +20,7 @@ export const EVENTS = [
   { id: 'agent_degraded', group: 'team', tone: 'warning' },
   { id: 'data_stale', group: 'team', tone: 'warning' },
   { id: 'daily_report', group: 'team', tone: 'neutral' },
+  { id: 'claude_limit_cleared', group: 'team', tone: 'profit' },
 ] as const satisfies readonly { id: string; group: Group; tone: string }[]
 
 export type EventId = (typeof EVENTS)[number]['id']

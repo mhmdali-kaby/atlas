@@ -22,6 +22,8 @@ return [
         'daily_report' => 'Daily report for :day is ready in the War Room.',
         'news_alert' => "News on a held instrument (importance :importance)\n:inst_ids — :headline (:source_name)",
         'backup_failed' => "Database backup failed\nOpen Settings → Backup in Atlas to see why.",
+        'claude_limit_reached' => "Claude usage limit reached\nThe agents are paused. Atlas checks every :probe_minutes minutes and resumes them when the limit resets. Stops on OKX are not affected.",
+        'claude_limit_cleared' => "Claude is answering again\nThe agents have resumed.",
     ],
     'open' => 'Open: :url',
     'yes' => 'yes',

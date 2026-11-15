@@ -13,8 +13,9 @@ ResultMessage, like the real client. The builders below produce the common steps
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator, Sequence
-from typing import Any
+from typing import Any, Final
 
 from claude_agent_sdk import (
     AssistantMessage,
@@ -32,6 +33,10 @@ from claude_agent_sdk.types import Message, StreamEvent
 
 Step = Message | BaseException
 ScriptedRun = Sequence[Step]
+
+
+HANG: Final = object()
+"""A script step that never yields: the CLI kept the stream open and sent nothing more."""
 
 
 class ScriptExhaustedError(AssertionError):
@@ -75,6 +80,8 @@ class FakeClaudeClient:
     async def receive_response(self) -> AsyncIterator[Message]:
         run, self._current = self._current or (), None
         for step in run:
+            if step is HANG:
+                await asyncio.Event().wait()
             if isinstance(step, BaseException):
                 raise step
             yield step

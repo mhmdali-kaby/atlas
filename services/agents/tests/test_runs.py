@@ -245,15 +245,24 @@ async def test_sdk_result_error_429_is_a_rate_limit_and_reconnects_next_time(
     spec: AgentSpec, engine: Engine, recorder: Recorder
 ) -> None:
     error = ResultError("API Error", data={"api_error_status": 429, "is_error": True})
-    client = fake.FakeClaudeClient([[fake.assistant_text("..."), error], [fake.result(tokens_in=1, turns=1)]])
+    client = fake.FakeClaudeClient(
+        [
+            [fake.assistant_text("..."), error],
+            [fake.result(tokens_in=1, turns=1)],
+            [fake.result(tokens_in=1, turns=1)],
+        ]
+    )
     supervisor = _supervisor(spec, engine, client, recorder)
 
     first = await supervisor.run(spec.slug, "go")
+    # No reset time: the whole team waits for the limit probe instead of retrying (claude_limit).
+    refused = await supervisor.run(spec.slug, "again")
+    supervisor.claude_limit.suspect = True  # probe now rather than in probe_minutes
+    await supervisor.check_claude_limit()
     second = await supervisor.run(spec.slug, "again")
 
-    assert first.status == "rate_limited"
-    assert second.status == "ok"
-    assert (client.connects, client.disconnects) == (2, 1)
+    assert (first.status, refused.status, second.status) == ("rate_limited", "rate_limited", "ok")
+    assert client.queries[0] == "go" and client.queries[-1] == "again"
 
 
 async def test_other_errors_are_recorded_and_degrade_the_agent(

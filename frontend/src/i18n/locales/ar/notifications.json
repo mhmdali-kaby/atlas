@@ -60,7 +60,9 @@
     "agentDegraded": "{{agent}} لا يعمل كما يجب",
     "daily": "التقرير اليومي جاهز",
     "news": "خبر عن {{inst}}",
-    "newsMore": "خبر عن {{inst}} و{{n}} غيرها"
+    "newsMore": "خبر عن {{inst}} و{{n}} غيرها",
+    "claudeLimit": "بلغ Claude حد الاستخدام",
+    "claudeBack": "عاد Claude للعمل"
   },
   "b": {
     "proposal": {
@@ -92,7 +94,10 @@
     "killFailed": "{{failed}}. راجع الأوامر.",
     "agentLimit": "يعود الساعة {{time}}، ويكمل الفريق دونه.",
     "agentDegraded": "يكمل الفريق دونه. السبب في صفحة الوكلاء.",
-    "daily": "تقرير مدير المحفظة ليوم {{day}} في غرفة العمليات."
+    "daily": "تقرير مدير المحفظة ليوم {{day}} في غرفة العمليات.",
+    "claudeLimit": "الوكلاء متوقفون. يتحقق أطلس كل {{minutes}} دقائق ويستأنف عملهم عند إعادة ضبط الحد.",
+    "claudeLimitAt": "الوكلاء متوقفون حتى إعادة ضبط الحد نحو {{time}}. يتحقق أطلس كل {{minutes}} دقائق.",
+    "claudeBack": "استأنف الوكلاء عملهم."
   },
   "dir": {
     "buy": "شراء",
@@ -151,6 +156,12 @@
     },
     "auth_two_factor_failures": {
       "title": "تكرار رموز التحقق الثنائي الخاطئة"
+    },
+    "claude_limit_reached": {
+      "title": "بلغ Claude حد الاستخدام"
+    },
+    "claude_limit_cleared": {
+      "title": "عاد Claude للعمل"
     }
   },
   "count": {

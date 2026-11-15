@@ -870,6 +870,8 @@ return [
             'reconciliation_mismatch',
             'backup_failed',
             'auth_two_factor_failures',
+            'claude_limit_reached',
+            'claude_limit_cleared',
         ],
         'channels' => [
             'in_app',
@@ -887,10 +889,10 @@ return [
             'stop_hit',
             'target_hit',
             'proposal_awaiting_approval',
+            'claude_limit_reached',
         ],
         'degraded_agent_states' => [
             'degraded',
-            'rate_limited',
         ],
         'param_max_length' => 300,
         'per_page_default' => 50,
@@ -1298,6 +1300,11 @@ return [
     ],
     'agents' => [
         'budget_warning_pct' => '80',
+        'claude_limit' => [
+            'run_timeout_seconds' => 1200,
+            'probe_minutes' => 10,
+            'probe_timeout_seconds' => 90,
+        ],
         'settings_bounds' => [
             'daily_tokens' => [
                 'min' => 1,

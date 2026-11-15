@@ -60,7 +60,9 @@
     "agentDegraded": "{{agent}} isn’t working properly",
     "daily": "Daily report is ready",
     "news": "News on {{inst}}",
-    "newsMore": "News on {{inst}} and {{n}} more"
+    "newsMore": "News on {{inst}} and {{n}} more",
+    "claudeLimit": "Claude usage limit reached",
+    "claudeBack": "Claude is answering again"
   },
   "b": {
     "proposal": {
@@ -92,7 +94,10 @@
     "killFailed": "{{failed}} couldn’t be cancelled. Check Orders.",
     "agentLimit": "It resumes at {{time}}. The team carries on without it.",
     "agentDegraded": "The team carries on without it. Agents shows why.",
-    "daily": "The Portfolio Manager’s report for {{day}} is in the War Room."
+    "daily": "The Portfolio Manager’s report for {{day}} is in the War Room.",
+    "claudeLimit": "The agents are paused. Atlas checks every {{minutes}} minutes and resumes them when the limit resets.",
+    "claudeLimitAt": "The agents are paused until the limit resets around {{time}}. Atlas checks every {{minutes}} minutes.",
+    "claudeBack": "The agents have resumed their work."
   },
   "dir": {
     "buy": "Long",
@@ -151,6 +156,12 @@
     },
     "auth_two_factor_failures": {
       "title": "Repeated wrong two-factor codes"
+    },
+    "claude_limit_reached": {
+      "title": "Claude usage limit reached"
+    },
+    "claude_limit_cleared": {
+      "title": "Claude is answering again"
     }
   },
   "count": {

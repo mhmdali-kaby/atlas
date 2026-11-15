@@ -26,6 +26,8 @@ use Illuminate\Support\Str;
  * | news_alert                  | atlas.warroom   | news.alert on a held instrument (reason held_instrument)          |
  * | backup_failed               | atlas.system    | system.backup_failed (BackupRunner, ATL-231)                      |
  * | auth_two_factor_failures    | atlas.system    | system.auth_two_factor_failures (AuthController, ATL-261)         |
+ * | claude_limit_reached        | atlas.system    | system.claude_limit, state reached (agents runtime)               |
+ * | claude_limit_cleared        | atlas.system    | system.claude_limit, state cleared (agents runtime)               |
  *
  * params are an allow-list of scalar fields per event, cut to notifications.param_max_length:
  * nothing else in a payload (a connection key, secret, UID, an error text) can reach a row.
@@ -56,6 +58,7 @@ final class NotificationMapper
             $stream === 'atlas.system' && $envelope['type'] === 'system.circuit_breaker' => $this->breaker($p),
             $stream === 'atlas.system' && $envelope['type'] === 'system.kill' => $this->kill($p),
             $stream === 'atlas.system' && $envelope['type'] === 'system.agent_state' => $this->agentState($p),
+            $stream === 'atlas.system' && $envelope['type'] === 'system.claude_limit' => $this->claudeLimit($p),
             $stream === 'atlas.system' && $envelope['type'] === self::BACKUP_FAILED_EVENT => $this->backupFailed($p),
             $stream === 'atlas.system' && $envelope['type'] === self::AUTH_TWO_FACTOR_FAILURES_EVENT => $this->twoFactorFailures($p),
             $stream === 'atlas.warroom' && $envelope['type'] === BridgeEventHandler::MESSAGE_EVENT => $this->dailyReport($message),
@@ -237,6 +240,27 @@ final class NotificationMapper
             'previous_state' => self::str($p['previous_state'] ?? null),
             'resets_at' => self::str($p['resets_at'] ?? null),
         ], '/agents');
+    }
+
+    /**
+     * The owner's Claude plan hit its usage limit (the agents pause) or answers again (they resume).
+     *
+     * @param  array<string, mixed>  $p
+     * @return array{event: string, severity: 'info'|'warning'|'critical', params: array<string, bool|int|float|string|list<string>|null>, link: string|null}|null
+     */
+    private function claudeLimit(array $p): ?array
+    {
+        $minutes = $p['probe_minutes'] ?? null;
+        $params = [
+            'resets_at' => self::str($p['resets_at'] ?? null),
+            'probe_minutes' => is_int($minutes) ? $minutes : null,
+        ];
+
+        return match ($p['state'] ?? null) {
+            'reached' => self::draft('claude_limit_reached', 'warning', $params, '/agents'),
+            'cleared' => self::draft('claude_limit_cleared', 'info', $params, '/agents'),
+            default => null,
+        };
     }
 
     /**

@@ -106,10 +106,17 @@ function notifCases(): array
             'sentiment' => 0.6, 'novelty' => 0.8, 'reason' => 'held_instrument', 'held_inst_ids' => ['XAU-USDT-SWAP'],
         ]), 'news_alert', '/warroom?message=', 'warning'],
         'agent_degraded' => ['atlas.system', notifEnvelope('system.agent_state', 'agent:historian', [
-            'agent' => 'historian', 'state' => 'rate_limited', 'previous_state' => 'thinking', 'reason' => 'usage limit',
-            'run_id' => (string) Str::uuid(), 'current_task' => null, 'last_error' => 'rate_limited: Claude usage limit',
-            'resets_at' => '2026-11-02T12:00:00+00:00',
+            'agent' => 'historian', 'state' => 'degraded', 'previous_state' => 'thinking', 'reason' => 'error',
+            'run_id' => (string) Str::uuid(), 'current_task' => null, 'last_error' => 'RuntimeError: CLI crashed',
+            'resets_at' => null,
         ]), 'agent_degraded', '/agents', 'warning'],
+        // The owner's Claude plan hit its usage limit (agents paused) and came back (agents resumed).
+        'claude_limit_reached' => ['atlas.system', notifEnvelope('system.claude_limit', 'system:agents', [
+            'state' => 'reached', 'since' => '2026-11-14T21:00:00+00:00', 'resets_at' => '2026-11-15T00:00:00+00:00', 'probe_minutes' => 10,
+        ]), 'claude_limit_reached', '/agents', 'warning'],
+        'claude_limit_cleared' => ['atlas.system', notifEnvelope('system.claude_limit', 'system:agents', [
+            'state' => 'cleared', 'since' => null, 'resets_at' => null, 'probe_minutes' => 10,
+        ]), 'claude_limit_cleared', '/agents', 'info'],
         'data_stale' => ['atlas.system', notifEnvelope('system.circuit_breaker', 'service:trading_core.breakers', $breaker('data_stale', 'Stale market data')),
             'data_stale', '/settings/data', 'warning'],
         'reconciliation_mismatch' => ['atlas.system', notifEnvelope('system.circuit_breaker', 'service:trading_core.breakers', $breaker('reconciliation_mismatch', 'Reconciliation mismatch')),
@@ -143,7 +150,7 @@ beforeEach(function (): void {
 
 it('covers every brief §17 event, one case each', function (): void {
     expect(array_keys(notifCases()))->toEqualCanonicalizing(SettingsSchema::notificationEvents())
-        ->and(SettingsSchema::notificationEvents())->toHaveCount(13);
+        ->and(SettingsSchema::notificationEvents())->toHaveCount(15);
 });
 
 it('stores exactly one notification with the right event and link, and a replay stores none', function (string $case): void {
@@ -263,7 +270,14 @@ it('ignores envelopes that are not §17 events', function (string $stream, array
         'agent' => 'historian', 'state' => 'idle', 'previous_state' => 'degraded',
     ])],
     'an agent staying degraded' => fn () => ['atlas.system', notifEnvelope('system.agent_state', 'agent:historian', [
-        'agent' => 'historian', 'state' => 'rate_limited', 'previous_state' => 'degraded',
+        'agent' => 'historian', 'state' => 'degraded', 'previous_state' => 'degraded',
+    ])],
+    // The plan limit is one claude_limit_reached notification, not one per rate-limited agent.
+    'an agent hitting the Claude usage limit' => fn () => ['atlas.system', notifEnvelope('system.agent_state', 'agent:historian', [
+        'agent' => 'historian', 'state' => 'rate_limited', 'previous_state' => 'thinking',
+    ])],
+    'an unknown Claude limit state' => fn () => ['atlas.system', notifEnvelope('system.claude_limit', 'system:agents', [
+        'state' => 'something_else',
     ])],
     'news on an instrument not held' => fn () => ['atlas.warroom', notifEnvelope('news.alert', 'system:news', [
         'news_item_id' => (string) Str::uuid(), 'cluster_id' => (string) Str::uuid(),
